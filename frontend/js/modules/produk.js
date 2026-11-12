@@ -13,7 +13,7 @@ let filterState = {
   q: '',
   kategori_id: '',
   aktif_saja: false,
-  view: 'table', // 'table' | 'grid'
+  view: localStorage.getItem('produk_view_mode') || (typeof window !== 'undefined' && window.innerWidth < 768 ? 'grid' : 'table'),
   page: 1,
   limit: 20
 };
@@ -102,6 +102,7 @@ export async function renderProdukModule(container) {
   $('#toggle-view', container)?.querySelectorAll('button').forEach((btn) => {
     btn.addEventListener('click', () => {
       filterState.view = btn.getAttribute('data-view');
+      try { localStorage.setItem('produk_view_mode', filterState.view); } catch (e) {}
       $('#toggle-view', container).querySelectorAll('button').forEach((b) => {
         b.setAttribute('aria-pressed', b.getAttribute('data-view') === filterState.view);
       });

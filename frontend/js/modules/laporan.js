@@ -77,11 +77,15 @@ export async function renderLaporanModule(container) {
               </div>
             </div>
 
-            <div class="cluster" style="align-items: center; gap: var(--sp-2);">
-              <label for="inp-lap-dari" style="font-size: var(--fs-xs); color: var(--text-muted);">Dari:</label>
-              <input type="date" id="inp-lap-dari" class="input input-sm" value="${stateLaporan.dari}" style="width: 140px;">
-              <label for="inp-lap-sampai" style="font-size: var(--fs-xs); color: var(--text-muted);">Sampai:</label>
-              <input type="date" id="inp-lap-sampai" class="input input-sm" value="${stateLaporan.sampai}" style="width: 140px;">
+            <div class="cluster" style="align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
+              <div class="row" style="align-items: center; gap: var(--sp-2);">
+                <label for="inp-lap-dari" style="font-size: var(--fs-xs); color: var(--text-muted); flex-shrink: 0;">Dari:</label>
+                <input type="date" id="inp-lap-dari" class="input input-sm" value="${stateLaporan.dari}" style="width: 130px; max-width: 100%;">
+              </div>
+              <div class="row" style="align-items: center; gap: var(--sp-2);">
+                <label for="inp-lap-sampai" style="font-size: var(--fs-xs); color: var(--text-muted); flex-shrink: 0;">Sampai:</label>
+                <input type="date" id="inp-lap-sampai" class="input input-sm" value="${stateLaporan.sampai}" style="width: 130px; max-width: 100%;">
+              </div>
               <button type="button" class="btn btn-sm btn-primary" id="btn-terapkan-tanggal">Terapkan</button>
             </div>
           </div>

@@ -637,7 +637,7 @@ class App {
 
     let html = `
       <div class="stack">
-        <div class="page-header">
+        <div class="page-header d-none-mobile">
           <div>
             <h2>Semua Menu Aplikasi</h2>
             <p>Daftar seluruh modul dan fitur POS Toko Bangunan sesuai peran Anda</p>
@@ -649,10 +649,9 @@ class App {
 
     listRoutes.forEach((r) => {
       html += `
-        <a href="${r.path}" class="menu-tile card">
+        <a href="${r.path}" class="menu-tile">
           <div class="list-item-icon">${r.icon}</div>
           <span>${escapeHtml(r.shortTitle || r.title)}</span>
-          <span class="text-xs text-muted" style="font-size: 10px;">${escapeHtml(r.fase)}</span>
         </a>
       `;
     });

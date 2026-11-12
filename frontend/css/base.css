@@ -74,8 +74,8 @@ ul, ol { margin: 0; padding: 0; }
 a { color: var(--primary); text-decoration: none; touch-action: manipulation; }
 a:hover { text-decoration: underline; }
 
-img, svg { display: block; max-width: 100%; }
-svg { flex-shrink: 0; }
+img { display: block; max-width: 100%; }
+svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
 
 button, input, select, textarea {
   font: inherit;

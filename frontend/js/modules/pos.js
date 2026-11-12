@@ -34,6 +34,7 @@ export function renderPosModule(container) {
     kategoriAktif: 'semua',
     kataKunci: '',
     viewMode: localStorage.getItem('pos_view_mode') || 'grid', // 'grid' | 'list'
+    mobileView: 'catalog', // 'catalog' | 'cart'
     keranjang: [],
     pelanggan: null, // null = Pelanggan Umum
     diskonTransaksi: { tipe: '', nilai: 0 },
@@ -50,7 +51,20 @@ export function renderPosModule(container) {
 
   // Render Shell POS Layout
   container.innerHTML = `
-    <div class="pos-wrapper">
+    <!-- Navigasi Tab Mobile (Hanya muncul di HP / Layar < 992px) -->
+    <div class="pos-mobile-nav segmented no-print" role="tablist">
+      <button type="button" id="pos-tab-catalog" class="active" aria-pressed="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Katalog</span>
+      </button>
+      <button type="button" id="pos-tab-cart" aria-pressed="false">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span>Keranjang</span>
+        <span class="badge badge-primary" id="mobile-cart-badge">0</span>
+      </button>
+    </div>
+
+    <div class="pos-wrapper" id="pos-wrapper" data-mobile-view="catalog">
       <!-- PANEL KIRI: KATALOG PRODUK -->
       <div class="pos-catalog-panel">
         <!-- Top Toolbar: Pencarian, Barcode, Kategori, Toggle View -->
@@ -97,6 +111,14 @@ export function renderPosModule(container) {
 
       <!-- PANEL KANAN: KERANJANG BELANJA -->
       <div class="pos-cart-panel">
+        <!-- Tombol Kembali ke Katalog (Mobile Saja) -->
+        <div class="pos-cart-back-btn no-print" style="padding: var(--sp-3) var(--sp-4) 0;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-back-to-catalog" style="width: 100%; justify-content: center; gap: var(--sp-2);">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <span>+ Tambah Barang Lagi (Katalog)</span>
+          </button>
+        </div>
+
         <!-- Cart Header -->
         <div class="pos-cart-header">
           <div class="row" style="justify-content: space-between; align-items: center;">
@@ -191,9 +213,35 @@ export function renderPosModule(container) {
         </div>
       </div>
     </div>
+
+    <!-- Floating Bottom Cart Bar (Hanya di Mobile saat katalog aktif & keranjang ada isinya) -->
+    <div class="pos-mobile-floating-cart no-print" id="pos-floating-cart" style="display: none;">
+      <div class="row" style="align-items: center; gap: var(--sp-3);">
+        <div class="pos-floating-icon" style="background: var(--primary-soft); color: var(--primary); width: 38px; height: 38px; border-radius: var(--radius-md); display: grid; place-items: center; flex-shrink: 0;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div>
+          <div class="fw-bold mono" id="floating-cart-total" style="font-size: var(--fs-md); color: var(--primary); line-height: 1.2;">Rp 0</div>
+          <div class="text-xs text-muted" id="floating-cart-count">0 item</div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-floating-view-cart" style="font-weight: var(--fw-bold); padding: 7px 15px; border-radius: var(--radius-full); box-shadow: 0 2px 8px rgba(230,81,0,0.3);">
+        <span>Bayar / Cek</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
   `;
 
   // Selector Shortcuts
+  const elPosWrapper = container.querySelector('#pos-wrapper');
+  const elTabCatalog = container.querySelector('#pos-tab-catalog');
+  const elTabCart = container.querySelector('#pos-tab-cart');
+  const elMobileCartBadge = container.querySelector('#mobile-cart-badge');
+  const elFloatingCart = container.querySelector('#pos-floating-cart');
+  const elFloatingCartTotal = container.querySelector('#floating-cart-total');
+  const elFloatingCartCount = container.querySelector('#floating-cart-count');
+  const elBtnFloatingCart = container.querySelector('#btn-floating-view-cart');
+  const elBtnBackToCatalog = container.querySelector('#btn-back-to-catalog');
   const elSearch = container.querySelector('#pos-search-input');
   const elSearchClear = container.querySelector('#pos-search-clear');
   const elCategoryBar = container.querySelector('#pos-category-bar');
@@ -219,6 +267,38 @@ export function renderPosModule(container) {
   const elBtnCamera = container.querySelector('#btn-scan-camera');
   const elBtnGrid = container.querySelector('#btn-view-grid');
   const elBtnList = container.querySelector('#btn-view-list');
+
+  // ---------- Kontrol Navigasi Tampilan Mobile POS ----------
+  function setMobileView(view) {
+    state.mobileView = view;
+    if (elPosWrapper) elPosWrapper.setAttribute('data-mobile-view', view);
+    if (elTabCatalog && elTabCart) {
+      elTabCatalog.classList.toggle('active', view === 'catalog');
+      elTabCatalog.setAttribute('aria-pressed', view === 'catalog' ? 'true' : 'false');
+      elTabCart.classList.toggle('active', view === 'cart');
+      elTabCart.setAttribute('aria-pressed', view === 'cart' ? 'true' : 'false');
+    }
+    perbaruiFloatingCart();
+    if (view === 'cart') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function perbaruiFloatingCart() {
+    const count = state.keranjang.length;
+    if (elMobileCartBadge) elMobileCartBadge.textContent = count;
+    if (!elFloatingCart) return;
+    if (state.mobileView === 'catalog' && count > 0) {
+      elFloatingCart.style.display = 'flex';
+    } else {
+      elFloatingCart.style.display = 'none';
+    }
+  }
+
+  elTabCatalog?.addEventListener('click', () => setMobileView('catalog'));
+  elTabCart?.addEventListener('click', () => setMobileView('cart'));
+  elBtnFloatingCart?.addEventListener('click', () => setMobileView('cart'));
+  elBtnBackToCatalog?.addEventListener('click', () => setMobileView('catalog'));
 
   // ---------- Inisialisasi Data ----------
   async function muatDataKatalog() {
@@ -1079,6 +1159,11 @@ export function renderPosModule(container) {
       : '+ Diskon';
     elCartGrandTotal.textContent = formatRupiah(grandTotal);
 
+    // Perbarui floating bar di mobile
+    if (elFloatingCartTotal) elFloatingCartTotal.textContent = formatRupiah(grandTotal);
+    if (elFloatingCartCount) elFloatingCartCount.textContent = `${state.keranjang.length} item`;
+    perbaruiFloatingCart();
+
     return {
       subtotalKotor,
       totalDiskonItem,
@@ -1579,6 +1664,7 @@ export function renderPosModule(container) {
         state.keranjang = [];
         state.diskonTransaksi = { tipe: '', nilai: 0 };
         renderKeranjang();
+        if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
 
         // Refresh katalog produk untuk update stok lokal
         muatDataKatalog();
@@ -1707,6 +1793,7 @@ export function renderPosModule(container) {
 
         state.pendingCount++;
         perbaruiBadgePending();
+        if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
       }
     } catch (err) {
       showToast('Gagal menahan transaksi: ' + err.message, 'error');
@@ -1802,6 +1889,7 @@ export function renderPosModule(container) {
         perbaruiBadgePending();
         renderKeranjang();
         modal.close();
+        if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('cart');
         showToast('Draft transaksi berhasil dimuat kembali ke keranjang.', 'success');
       });
     });
@@ -1826,6 +1914,7 @@ export function renderPosModule(container) {
       state.keranjang = [];
       state.diskonTransaksi = { tipe: '', nilai: 0 };
       renderKeranjang();
+      if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
     }
   });
 
