@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.12';
+const CACHE_NAME = 'pos-kasir-static-v1.0.13';
 
 const ASSETS = [
   './',
@@ -44,6 +44,12 @@ const ASSETS = [
   './assets/icon-192.png',
   './assets/icon-512.png'
 ];
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

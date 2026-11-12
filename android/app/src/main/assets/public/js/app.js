@@ -90,10 +90,233 @@ class App {
 
   registerServiceWorker() {
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js').then((registration) => {
+        window.swRegistration = registration;
+
+        // Cek jika sudah ada worker baru yang menunggu
+        if (registration.waiting) {
+          window.swWaitingWorker = registration.waiting;
+          window.appHasUpdate = true;
+          this.segarkanBannerUpdate();
+        }
+
+        // Pantau jika ada worker baru yang sedang diinstal
+        registration.onupdatefound = () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) return;
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.swWaitingWorker = installingWorker;
+              window.appHasUpdate = true;
+              showToast('Pembaruan aplikasi tersedia! Ketuk tombol "Perbarui & Restart" untuk menerapkan.', 'warning');
+              this.segarkanBannerUpdate();
+            }
+          };
+        };
+      }).catch((err) => {
         console.warn('Registrasi Service Worker gagal:', err);
       });
+
+      // Deteksi jika service worker controller berubah
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     }
+  }
+
+  isAppInstalled() {
+    const isCapacitor = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    return isCapacitor || isStandalone;
+  }
+
+  segarkanBannerUpdate() {
+    const banner = document.getElementById('banner-app-install-update');
+    if (banner) {
+      const isDetailed = banner.getAttribute('data-detailed') === 'true';
+      banner.outerHTML = this.renderBannerAppHtml(isDetailed);
+      this.pasangEventBanner(document.getElementById('banner-app-install-update'));
+    }
+  }
+
+  renderBannerAppHtml(isDetailed = false) {
+    const isInstalled = this.isAppInstalled();
+    const hasUpdate = !!window.appHasUpdate;
+
+    if (!isInstalled) {
+      // KONDISI 1: Belum Diinstal (Dibuka lewat Web Browser biasa)
+      return `
+        <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--border); border-left: 4px solid var(--primary);">
+          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
+            <div class="row" style="gap: var(--sp-3); align-items: center;">
+              <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(232, 89, 12, 0.3);">
+                ${ICONS.store}
+              </div>
+              <div>
+                <div class="fw-bold" style="font-size: var(--fs-md);">Pasang Aplikasi Android (APK & PWA)</div>
+                <div class="text-xs text-muted">Jalankan POS Kasir layar penuh layaknya aplikasi native di smartphone Anda</div>
+              </div>
+            </div>
+            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+              <a href="./download/poskasirtoko.apk" download="poskasirtoko.apk" class="btn btn-primary btn-sm" style="border-radius: var(--radius-full); text-decoration: none; font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                <span>Unduh File APK (.apk)</span>
+              </a>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full);">
+                📱 Pasang via Chrome (PWA)
+              </button>
+            </div>
+          </div>
+
+          ${isDetailed ? `
+            <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: var(--fs-xs); line-height: 1.6; border: 1px solid var(--border); margin-top: var(--sp-2);">
+              <div class="fw-bold text-sm text-primary" style="margin-bottom: 4px;">Pilihan 1: Unduh & Pasang File APK Android (Paling Mudah & Pasti Berhasil)</div>
+              1. Ketuk tombol <strong>"Unduh File APK (.apk)"</strong> di atas untuk mengunduh <code>poskasirtoko.apk</code>.<br>
+              2. Buka file hasil unduhan di HP Android Anda.<br>
+              3. Jika muncul konfirmasi keamanan, aktifkan/izinkan <em>"Pasang aplikasi dari sumber ini"</em> (fitur standar Android untuk APK direct download di luar Play Store).<br>
+              4. Aplikasi akan langsung terpasang sebagai aplikasi Android native dengan performa optimal.<br>
+              <div class="divider" style="margin: var(--sp-2) 0;"></div>
+              <div class="fw-bold text-sm text-primary" style="margin-bottom: 4px;">Pilihan 2: Pasang PWA di Google Chrome HP</div>
+              1. Buka Chrome di HP Anda &gt; ketuk ikon <strong>titik tiga (⋮)</strong> di pojok kanan atas.<br>
+              2. Pilih menu <strong>"Tambahkan ke Layar Utama"</strong> (<em>Add to Home screen</em>) atau <strong>"Instal aplikasi"</strong>.<br>
+              3. Ikon POS Toko akan muncul di beranda HP Anda dan berjalan fullscreen tanpa bar URL browser.
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // KONDISI 2: Sudah Terpasang sebagai Aplikasi Native (Capacitor / PWA Standalone)
+    if (hasUpdate) {
+      // Kasus A: Ada Pembaruan Siap Diterapkan!
+      return `
+        <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: linear-gradient(135deg, rgba(232, 89, 12, 0.08) 0%, var(--surface-2) 100%); border: 1px solid var(--primary); border-left: 4px solid var(--primary);">
+          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
+            <div class="row" style="gap: var(--sp-3); align-items: center;">
+              <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(232, 89, 12, 0.35);">
+                ${ICONS.store}
+              </div>
+              <div>
+                <div class="row" style="gap: 6px; align-items: center;">
+                  <span class="fw-bold" style="font-size: var(--fs-md);">Pembaruan Sistem Siap Diterapkan!</span>
+                  <span class="badge badge-warning" style="font-size: 10px; padding: 1px 6px;">Update Siap</span>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 2px;">Versi baru telah diunduh di latar belakang. Ketuk tombol untuk memperbarui tanpa perlu instal ulang APK.</div>
+              </div>
+            </div>
+            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-inapp-update-restart" style="border-radius: var(--radius-full); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(232, 89, 12, 0.35);">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                <span>Perbarui & Restart Aplikasi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Kasus B: Aplikasi Up-To-Date & Terpasang Aktif
+    return `
+      <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--border); border-left: 4px solid var(--green-500);">
+        <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
+          <div class="row" style="gap: var(--sp-3); align-items: center;">
+            <div style="background: var(--surface-3); color: var(--primary); width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; border: 1px solid var(--border);">
+              ${ICONS.store}
+            </div>
+            <div>
+              <div class="row" style="gap: 6px; align-items: center;">
+                <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
+                <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">🟢 Aktif</span>
+              </div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi ${CONFIG.VERSION || 'v1.0.12'} • Berjalan offline dengan performa native</div>
+            </div>
+          </div>
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-inapp-check-update" style="border-radius: var(--radius-full); font-weight: var(--fw-medium); display: inline-flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5"/></svg>
+              <span>Periksa Pembaruan</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  pasangEventBanner(bannerContainer) {
+    if (!bannerContainer) return;
+
+    // Pasang via Chrome PWA
+    bannerContainer.querySelector('#btn-pasang-pwa')?.addEventListener('click', () => {
+      if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+        window.deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            showToast('Aplikasi berhasil dipasang di layar utama!', 'success');
+          }
+          window.deferredPrompt = null;
+        });
+      } else {
+        showToast('Untuk memasang PWA: Buka menu titik tiga (⋮) di Chrome & pilih "Tambahkan ke Layar Utama".', 'info');
+      }
+    });
+
+    // Periksa Pembaruan
+    bannerContainer.querySelector('#btn-inapp-check-update')?.addEventListener('click', async () => {
+      const btn = bannerContainer.querySelector('#btn-inapp-check-update');
+      if (btn) btn.disabled = true;
+      showToast('Memeriksa ketersediaan pembaruan...', 'info');
+
+      try {
+        if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            await reg.update();
+            if (reg.waiting || window.swWaitingWorker) {
+              window.appHasUpdate = true;
+              showToast('Pembaruan baru tersedia! Ketuk tombol "Perbarui & Restart".', 'warning');
+              const isDetailed = bannerContainer.getAttribute('data-detailed') === 'true';
+              bannerContainer.outerHTML = this.renderBannerAppHtml(isDetailed);
+              this.pasangEventBanner(document.getElementById('banner-app-install-update'));
+              return;
+            }
+          }
+        }
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (${CONFIG.VERSION || 'v1.0.12'})!`, 'success');
+      } catch (err) {
+        showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    // Perbarui & Restart
+    bannerContainer.querySelector('#btn-inapp-update-restart')?.addEventListener('click', async () => {
+      showLoading('Menerapkan pembaruan aplikasi & memuat ulang...');
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg && reg.waiting) {
+            reg.waiting.postMessage({ action: 'skipWaiting' });
+          }
+          if (window.swWaitingWorker) {
+            window.swWaitingWorker.postMessage({ action: 'skipWaiting' });
+          }
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch (e) {
+        console.warn('Gagal bersihkan cache update:', e);
+      }
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 600);
+    });
   }
 
   renderShell() {
@@ -498,65 +721,17 @@ class App {
           </div>
         </div>
 
-        <!-- Panduan & Pemasangan Aplikasi Android (PWA & APK) -->
-        <div class="card card-body stack" style="border-left: 4px solid var(--primary);">
-          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
-            <div class="row" style="gap: var(--sp-3); align-items: center;">
-              <div style="background: var(--primary-soft); color: var(--primary); width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0;">
-                ${ICONS.store}
-              </div>
-              <div>
-                <div class="fw-bold" style="font-size: var(--fs-md);">Aplikasi Android (APK Native & PWA)</div>
-                <div class="text-xs text-muted">Jalankan POS Kasir layar penuh layaknya aplikasi native di smartphone Anda</div>
-              </div>
-            </div>
-            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-              <a href="./download/poskasirtoko.apk" download="poskasirtoko.apk" class="btn btn-primary btn-sm" style="border-radius: var(--radius-full); text-decoration: none; font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px;">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                <span>Unduh File APK (.apk)</span>
-              </a>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full);">
-                📱 Pasang via Chrome (PWA)
-              </button>
-            </div>
-          </div>
-
-          <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: var(--fs-xs); line-height: 1.6; border: 1px solid var(--border);">
-            <div class="fw-bold text-sm text-primary" style="margin-bottom: 4px;">Pilihan 1: Unduh & Pasang File APK Android (Paling Mudah & Pasti Berhasil)</div>
-            1. Ketuk tombol <strong>"Unduh File APK (.apk)"</strong> di atas untuk mengunduh <code>poskasirtoko.apk</code> (7.1 MB).<br>
-            2. Buka file hasil unduhan di HP Android Anda.<br>
-            3. Jika muncul konfirmasi keamanan, aktifkan/izinkan <em>"Pasang aplikasi dari sumber ini"</em> (fitur standar Android untuk APK direct download di luar Play Store).<br>
-            4. Aplikasi akan langsung terpasang sebagai aplikasi Android native dengan performa optimal dan offline splash screen.<br>
-            <div class="divider" style="margin: var(--sp-2) 0;"></div>
-            <div class="fw-bold text-sm text-primary" style="margin-bottom: 4px;">Pilihan 2: Pasang PWA di Google Chrome HP</div>
-            <em>Catatan: Jika Anda mengakses melalui IP jaringan WiFi lokal (misal <code>http://192.168.x.x:3000</code>), Google Chrome Android secara otomatis menonaktifkan prompt instalasi PWA otomatis demi kebijakan keamanan web (wajib HTTPS).</em><br>
-            <strong>Cara Memasang PWA di Chrome HP:</strong><br>
-            1. Buka Chrome di HP Anda &gt; ketuk ikon <strong>titik tiga (⋮)</strong> di pojok kanan atas.<br>
-            2. Pilih menu <strong>"Tambahkan ke Layar Utama"</strong> (<em>Add to Home screen</em>) atau <strong>"Instal aplikasi"</strong>.<br>
-            3. Ikon POS Toko akan muncul di beranda HP Anda dan berjalan fullscreen tanpa bar URL browser.
-          </div>
-        </div>
+        <!-- Banner Pintar Status Aplikasi / Update / Unduh -->
+        ${this.renderBannerAppHtml(true)}
       </div>
     `;
+
+    this.pasangEventBanner(container.querySelector('#banner-app-install-update'));
 
     const inputUrl = $('#cfg-api-url', container);
     const btnSimpan = $('#btn-simpan-api-url', container);
     const btnPing = $('#btn-ping-sistem', container);
     const hasilDiv = $('#hasil-diagnostik', container);
-
-    container.querySelector('#btn-pasang-pwa')?.addEventListener('click', () => {
-      if (window.deferredPrompt) {
-        window.deferredPrompt.prompt();
-        window.deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            showToast('Aplikasi berhasil dipasang di layar utama!', 'success');
-          }
-          window.deferredPrompt = null;
-        });
-      } else {
-        showToast('Untuk memasang di HP: Buka di Chrome HP > ketuk titik tiga (⋮) > pilih "Instal aplikasi" / "Tambahkan ke Layar Utama".', 'info', 6000);
-      }
-    });
 
     btnSimpan?.addEventListener('click', () => {
       const urlBaru = inputUrl.value.trim();
@@ -703,29 +878,8 @@ class App {
           </div>
         </div>
 
-        <!-- Banner Unduh Aplikasi Android APK -->
-        <div class="card card-body" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--border); border-left: 4px solid var(--primary);">
-          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
-            <div class="row" style="gap: var(--sp-3); align-items: center;">
-              <div style="background: var(--primary-soft); color: var(--primary); width: 42px; height: 42px; border-radius: var(--radius-lg); display: grid; place-items: center; flex-shrink: 0;">
-                ${ICONS.store}
-              </div>
-              <div>
-                <div class="fw-bold" style="font-size: var(--fs-md);">Aplikasi Android (APK)</div>
-                <div class="text-xs text-muted">Pasang langsung di HP Android tanpa ribet</div>
-              </div>
-            </div>
-            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-              <a href="./download/poskasirtoko.apk" download="poskasirtoko.apk" class="btn btn-primary btn-sm" style="border-radius: var(--radius-full); text-decoration: none; font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px;">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                <span>Unduh APK (7.1 MB)</span>
-              </a>
-              <a href="#/sistem" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-full);">
-                Panduan PWA
-              </a>
-            </div>
-          </div>
-        </div>
+        <!-- Banner Pintar Status Aplikasi / Update / Unduh -->
+        ${this.renderBannerAppHtml(false)}
 
         <div class="menu-grid">
     `;
@@ -745,6 +899,7 @@ class App {
     `;
 
     container.innerHTML = html;
+    this.pasangEventBanner(container.querySelector('#banner-app-install-update'));
   }
 
   /* ======================================================================== */
