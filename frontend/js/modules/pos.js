@@ -112,16 +112,16 @@ export function renderPosModule(container) {
       <!-- PANEL KANAN: KERANJANG BELANJA -->
       <div class="pos-cart-panel">
         <!-- Tombol Kembali ke Katalog (Mobile Saja) -->
-        <div class="pos-cart-back-btn no-print" style="padding: var(--sp-3) var(--sp-4) 0;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-back-to-catalog" style="width: 100%; justify-content: center; gap: var(--sp-2);">
+        <div class="pos-cart-back-btn no-print" style="padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); background: var(--surface-2);">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-back-to-catalog" style="width: 100%; justify-content: center; gap: var(--sp-2); font-weight: var(--fw-semibold);">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            <span>+ Tambah Barang Lagi (Katalog)</span>
+            <span>← Kembali / Tambah Barang Lagi</span>
           </button>
         </div>
 
         <!-- Cart Header -->
         <div class="pos-cart-header">
-          <div class="row" style="justify-content: space-between; align-items: center;">
+          <div class="row" style="justify-content: space-between; align-items: center; width: 100%;">
             <div class="row" style="gap: var(--sp-2); align-items: center;">
               <span style="color: var(--primary);">${ICONS.cart}</span>
               <div class="fw-bold" style="font-size: var(--fs-md);">Keranjang Belanja</div>
