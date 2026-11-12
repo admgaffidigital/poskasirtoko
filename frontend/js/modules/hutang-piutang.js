@@ -967,3 +967,4 @@ function kirimPesanWhatsAppTagihan(piutang) {
   const url = `https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`;
   window.open(url, '_blank');
 }
+

@@ -222,3 +222,64 @@ export function bukaKameraScanner(onScanCallback) {
   });
 }
 
+/**
+ * Generator Barcode SVG (Code 39 Standar)
+ * Menghasilkan markup SVG barcode tajam beresolusi tinggi tanpa dependensi eksternal.
+ * @param {string} text Teks/SKU/Barcode yang akan di-render
+ * @param {Object} [options]
+ * @param {number} [options.height=45] Tinggi garis barcode (px)
+ * @param {boolean} [options.showText=true] Tampilkan teks di bawah barcode
+ * @returns {string} Markup SVG string
+ */
+export function generateBarcodeSvg(text, options = {}) {
+  const height = options.height || 42;
+  const showText = options.showText !== false;
+  const raw = String(text || '000000').toUpperCase().replace(/[^0-9A-Z\-.\s$/+%]/g, '-');
+  const str = `*${raw}*`;
+
+  const CODE39 = {
+    '0': '000110100', '1': '100100001', '2': '001100001', '3': '101100000',
+    '4': '000110001', '5': '100110000', '6': '001110000', '7': '000100101',
+    '8': '100100100', '9': '001100100', 'A': '100001001', 'B': '001001001',
+    'C': '101001000', 'D': '000011001', 'E': '100011000', 'F': '001011000',
+    'G': '000001101', 'H': '100001100', 'I': '001001100', 'J': '000011100',
+    'K': '100000011', 'L': '001000011', 'M': '101000010', 'N': '000010011',
+    'O': '100010010', 'P': '001010010', 'Q': '000000111', 'R': '100000110',
+    'S': '001000110', 'T': '000010110', 'U': '110000001', 'V': '011000001',
+    'W': '111000000', 'X': '010010001', 'Y': '110010000', 'Z': '011010000',
+    '-': '010000101', '.': '110000100', ' ': '011000100', '$': '010101000',
+    '/': '010100010', '+': '010001010', '%': '000101010', '*': '010010100'
+  };
+
+  let x = 6;
+  const rects = [];
+  const narrowW = 1.6;
+  const wideW = 3.8;
+  const interGap = 1.6;
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    const pattern = CODE39[ch] || CODE39['-'];
+    for (let p = 0; p < 9; p++) {
+      const isBar = (p % 2 === 0);
+      const isWide = pattern[p] === '1';
+      const w = isWide ? wideW : narrowW;
+      if (isBar) {
+        rects.push(`<rect x="${x.toFixed(1)}" y="4" width="${w.toFixed(1)}" height="${height}" fill="currentColor" />`);
+      }
+      x += w;
+    }
+    x += interGap; // Celah antar karakter
+  }
+
+  x += 6;
+  const totalH = showText ? height + 18 : height + 8;
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${Math.ceil(x)} ${totalH}" style="max-width: 100%; height: auto; display: block; margin: 0 auto; color: #000000;">
+      ${rects.join('')}
+      ${showText ? `<text x="${(x / 2).toFixed(1)}" y="${height + 15}" text-anchor="middle" font-family="monospace" font-size="11" font-weight="600" fill="currentColor">${raw}</text>` : ''}
+    </svg>
+  `;
+}
+

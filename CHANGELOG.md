@@ -17,6 +17,39 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- [PELANGGAN] Implementasi Lengkap Modul Manajemen Pelanggan & Member (Fase 5):
+  - Antarmuka `frontend/js/modules/pelanggan.js`: Kartu ringkasan statistik (Total Pelanggan, Total Member, Total Piutang Aktif, Total Poin Beredar).
+  - Filter interaktif: Tipe pelanggan (Umum, Proyek, Toko, Kontraktor), Level Member (Reguler, Silver, Gold, Platinum), dan pencarian instan nama/kode/nomor HP.
+  - Tabel pelanggan responsif lengkap dengan badge status member, link WhatsApp Click-to-Chat langsung, tombol detail profil, edit, dan hapus.
+  - Modal Tambah/Edit pelanggan dengan validasi keunikan nomor HP, auto-numbering kode member `MBR-YYYYMMDD-0001`, plafon limit kredit, dan level member.
+  - Penegakan Matriks Hak Akses: Kasir dapat memperbarui kontak pelanggan (nama, HP, alamat), namun parameter finansial (`limit_kredit`, `level`, `tipe`, `kode`) terlindungi ketat dan hanya dapat diubah oleh Owner atau Admin.
+  - Pencegahan Kerusakan Data (Integritas Finansial): Penghapusan pelanggan yang masih memiliki sisa piutang aktif ditolak dengan kode status `CONFLICT` (409).
+  - Modal Profil Komprehensif: Rincian identitas, saldo piutang berjalan & sisa limit kredit, 15 transaksi penjualan terakhir, 20 log mutasi perolehan/pengurangan poin, dan riwayat penukaran hadiah.
+  - Backend handler: `pelanggan.list`, `pelanggan.detail`, `pelanggan.create`, `pelanggan.update`, `pelanggan.delete`.
+  - File: `backend/kode.gs`, `frontend/js/modules/pelanggan.js`, `frontend/js/app.js`, `frontend/sw.js`, `docs/api.md`
+  - Dampak: Pengelolaan database pelanggan, pengendalian kredit piutang, dan manajemen loyalitas pelanggan
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/pelanggan.js`
+
+- [HADIAH] & [MEMBER] Implementasi Modul Katalog Hadiah & Penukaran Poin Loyalitas (Fase 5):
+  - Antarmuka tri-tab `frontend/js/modules/loyalti.js`: Tab Katalog Hadiah visual grid, Tab Formulir Tukar Poin dengan autocomplete member & cek saldo poin/stok realtime, dan Tab Riwayat Penukaran Hadiah.
+  - Manajemen Hadiah CRUD: Form input nama hadiah, poin yang dibutuhkan, stok fisik hadiah, status aktif/non-aktif, dan nilai estimasi rupiah (khusus Owner/Admin).
+  - Transaksi Penukaran Poin Atomik (`member.tukarPoin`): Menggunakan `LockService`, verifikasi saldo poin member dan ketersediaan stok hadiah fisik, pembuatan nomor transaksi berurutan `TK-YYYYMMDD-0001`, pengurangan stok hadiah, pengurangan saldo poin member, pencatatan di sheet `Penukaran_Hadiah`, pencatatan mutasi di `Poin_Log` (tipe `tukar`, kuantitas negatif), dan audit trail `Log_Audit`.
+  - Backend handler: `hadiah.list`, `hadiah.create`, `hadiah.update`, `hadiah.delete`, `member.tukarPoin`, `member.riwayatPoin`.
+  - File: `backend/kode.gs`, `frontend/js/modules/loyalti.js`, `frontend/js/app.js`, `frontend/sw.js`, `docs/api.md`
+  - Dampak: Program apresiasi dan retensi pelanggan loyal toko bangunan
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/loyalti.js`
+
+- [PRICETAG] Implementasi Lengkap Generator Label Harga Rak & Barcode (Fase 5):
+  - Antarmuka `frontend/js/modules/pricetag.js`: Pemilihan produk fleksibel via pencarian live produk & checklist batch dari database barang.
+  - Generator Barcode Code 39 SVG mandiri murni (`frontend/js/utils/barcode.js`): Menghasilkan elemen SVG vektor resolusi tinggi tanpa pustaka pihak ketiga eksternal, sangat tajam untuk printer thermal maupun printer laser.
+  - Multi-Template Label Standar Industri Material: Standar Rak 60x40mm, Kompak 70x30mm, Display Rak Besar 100x60mm, dan Lembar Kertas A4 Grid 24 Label.
+  - Kontrol Kustomisasi Cetak: Multiplier salinan label per produk, toggle visibilitas barcode, toggle harga grosir bertingkat, dan toggle nama toko.
+  - WYSIWYG Live Preview dan styling `@media print` presisi tinggi: Mengisolasi kontainer stiker label harga saat jendela cetak browser aktif serta otomatis menyembunyikan sidebar, topbar, dan tombol aksi.
+  - File: `frontend/js/modules/pricetag.js`, `frontend/js/utils/barcode.js`, `frontend/js/app.js`, `frontend/sw.js`
+  - Dampak: Pelabelan rak display toko bangunan, pemindaian cepat kasir, dan transparansi harga produk bagi konsumen
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/pricetag.js frontend/js/utils/barcode.js`
+
+### Added
 - [HUTANG-PIUTANG] Implementasi Lengkap Modul Hutang & Piutang (Fase 4):
   - Antarmuka dual-tab `frontend/js/modules/hutang-piutang.js`: Tab Piutang Pelanggan dan Tab Hutang Supplier.
   - Kartu ringkasan statistik realtime: Total sisa piutang/hutang berjalan, tagihan jatuh tempo lewat (overdue), dan total entitas mitra terkait.

@@ -432,12 +432,74 @@ Dan struktur respons `data` adalah:
 
 ---
 
-## 8. Peta Aksi Fase Selanjutnya (Roadmap)
+## 8. Modul Fase 5 – Pelanggan, Member, Hadiah, & Loyalitas
 
-- **Fase 5 (Loyalitas):**
-  - `pelanggan.create`, `pelanggan.update`
-  - `hadiah.list`, `hadiah.create`, `member.tukarPoin`
-- **Fase 6 (Laporan):**
+### 8.1 Manajemen Pelanggan & Member
+- `pelanggan.list`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "cari": "...", "tipe": "member|umum", "level": "Reguler|Silver|Gold|Platinum", "aktif_saja": true|false, "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "kode", "nama", "hp", "alamat", "tipe", "level", "limit_kredit", "tempo_hari", "poin", "total_belanja", "aktif", "piutang_berjalan", "sisa_limit" } ], "total", "page", "limit" }`
+- `pelanggan.detail`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "id": "..." }`
+  - Response `data`: `{ "pelanggan": { ... }, "piutang_berjalan": 0, "sisa_limit": 15000000, "daftar_piutang": [ ... ], "riwayat_penjualan": [ ... ], "riwayat_poin": [ ... ], "riwayat_penukaran": [ ... ] }`
+- `pelanggan.create`:
+  - Akses: `owner`, `admin`, `kasir` (Tulis: Ya)
+  - Payload: `{ "nama": "...", "tipe": "member|umum", "hp": "...", "alamat": "...", "kode": "...", "level": "Reguler", "limit_kredit": 10000000, "tempo_hari": 30, "aktif": true }`
+  - Aturan Bisnis & Validasi:
+    - Member wajib menyertakan nomor HP aktif.
+    - Nomor HP divalidasi unik antar-member aktif (`CONFLICT`).
+    - Jika kode member kosong, sistem otomatis menghasilkan nomor `MBR-YYYYMMDD-0001` via sheet `Counter`.
+- `pelanggan.update`:
+  - Akses: `owner`, `admin`, `kasir` (Tulis: Ya)
+  - Payload: `{ "id": "...", "nama": "...", "hp": "...", "alamat": "...", "limit_kredit": 15000000, ... }`
+  - Hak Akses: Kasir hanya diizinkan memperbarui nama, nomor HP, dan alamat pelanggan. Perubahan `limit_kredit`, `level`, `tipe`, dan `kode` otomatis diabaikan bila dilakukan oleh peran Kasir.
+- `pelanggan.delete`:
+  - Akses: `owner`, `admin` (Tulis: Ya, Kasir DILARANG)
+  - Payload: `{ "id": "..." }`
+  - Proteksi Finansial: Sistem menolak penghapusan pelanggan jika pelanggan masih memiliki piutang aktif yang belum lunas (`CONFLICT`).
+
+### 8.2 Katalog Hadiah & Royalti Loyalitas
+- `hadiah.list`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "cari": "...", "aktif_saja": true|false }`
+  - Response `data`: `{ "items": [ { "id", "nama", "deskripsi", "poin_dibutuhkan", "stok", "aktif" } ], "total" }`
+- `hadiah.create`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "nama": "Kaos Toko Bangunan", "deskripsi": "...", "poin_dibutuhkan": 150, "stok": 20, "aktif": true }`
+- `hadiah.update`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "id": "...", "nama": "...", "poin_dibutuhkan": 150, "stok": 15, "aktif": true }`
+- `hadiah.delete`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "id": "..." }`
+  - Efek: Soft-delete item hadiah dari katalog penukaran.
+- `member.tukarPoin`:
+  - Akses: `owner`, `admin`, `kasir` (Tulis: Ya)
+  - Payload: `{ "pelanggan_id": "...", "hadiah_id": "...", "qty": 1, "catatan": "..." }`
+  - Validasi & Efek Atomik (`LockService`):
+    - Pelanggan harus berstatus `member` dan aktif.
+    - Hadiah harus aktif dan memiliki stok memadai (`stok >= qty`).
+    - Saldo poin member harus mencukupi (`poin >= poin_dibutuhkan * qty`).
+    - Menghasilkan nomor bukti penukaran `TK-YYYYMMDD-0001` via `Counter`.
+    - Memotong stok hadiah di sheet `Hadiah`.
+    - Memotong saldo poin member di sheet `Pelanggan`.
+    - Mencatat transaksi di sheet `Penukaran_Hadiah`.
+    - Mencatat mutasi di sheet `Poin_Log` (jenis `tukar`, jumlah `-total_poin`).
+    - Mencatat riwayat di `Log_Audit`.
+    - Response: `{ "pesan", "no_tukar", "hadiah_nama", "qty", "poin_ditukar", "sisa_poin", "sisa_stok" }`
+- `member.riwayatPoin`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "pelanggan_id": "...", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "created_at", "pelanggan_id", "jumlah", "jenis", "ref_id", "saldo" } ], "total", "page", "limit" }`
+
+---
+
+## 9. Peta Aksi Fase Selanjutnya (Roadmap)
+
+- **Fase 6 (Laporan & Dashboard):**
   - `laporan.dashboard`, `laporan.penjualan`, `laporan.stok`
+- **Fase 7 (Finalisasi):**
+  - Bungkus APK Android via Capacitor & optimasi akhir.
 
 

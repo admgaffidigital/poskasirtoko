@@ -19,7 +19,7 @@ import {
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
-// Modul-modul Fase 1, 2, 3, & 4
+// Modul-modul Fase 1, 2, 3, 4, & 5
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin } from './modules/auth.js';
 import { renderKategoriModule } from './modules/kategori.js';
 import { renderProdukModule } from './modules/produk.js';
@@ -32,6 +32,9 @@ import { renderKartuStokModule } from './modules/kartu-stok.js';
 import { renderOpnameModule } from './modules/opname.js';
 import { renderHutangPiutangModule } from './modules/hutang-piutang.js';
 import { renderReturModule } from './modules/retur.js';
+import { renderPelangganModule } from './modules/pelanggan.js';
+import { renderLoyaltiModule } from './modules/loyalti.js';
+import { renderPriceTagModule } from './modules/pricetag.js';
 
 class App {
   constructor() {
@@ -416,6 +419,12 @@ class App {
       renderHutangPiutangModule(content);
     } else if (rute.id === 'retur') {
       renderReturModule(content);
+    } else if (rute.id === 'pelanggan') {
+      renderPelangganModule(content);
+    } else if (rute.id === 'loyalti') {
+      renderLoyaltiModule(content);
+    } else if (rute.id === 'pricetag') {
+      renderPriceTagModule(content);
     } else if (rute.id === 'pengaturan') {
       renderPengaturanModule(content);
     } else if (rute.id === 'users') {
