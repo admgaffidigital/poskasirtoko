@@ -267,6 +267,12 @@ class App {
     $('#btn-font-top')?.addEventListener('click', toggleFontHandler);
     $('#btn-font-sidebar')?.addEventListener('click', toggleFontHandler);
 
+    // Tangkap prompt instalasi PWA untuk tombol pasang aplikasi di HP
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.deferredPrompt = e;
+    });
+
     // Dialog Pengguna (Login / Logout / Ganti PIN)
     const bukaMenuUser = () => {
       const user = store.get('user');
@@ -491,6 +497,33 @@ class App {
             </div>
           </div>
         </div>
+
+        <!-- Panduan & Pemasangan Aplikasi Android (PWA & APK) -->
+        <div class="card card-body stack">
+          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-2);">
+            <div class="row" style="gap: var(--sp-2); align-items: center;">
+              <span style="color: var(--primary);">${ICONS.store}</span>
+              <div>
+                <div class="fw-bold">Aplikasi Android & Pasang di Layar HP</div>
+                <div class="text-sm text-muted">Jalankan POS Kasir layaknya aplikasi native di smartphone Anda</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full);">
+              📱 Pasang di Layar HP
+            </button>
+          </div>
+
+          <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: var(--fs-xs); line-height: 1.6; border: 1px solid var(--border);">
+            <div class="fw-bold text-sm" style="margin-bottom: 4px; color: var(--text);">Cara Pasang Langsung di HP Android (Tanpa Download APK Manual):</div>
+            1. Buka tautan web aplikasi ini menggunakan browser <strong>Google Chrome</strong> di HP Anda.<br>
+            2. Ketuk ikon <strong>titik tiga (⋮)</strong> di pojok kanan atas Chrome.<br>
+            3. Pilih <strong>"Instal aplikasi"</strong> atau <strong>"Tambahkan ke Layar Utama"</strong> (<em>Add to Home screen</em>).<br>
+            4. Aplikasi akan langsung terpasang di HP dengan ikon toko dan berjalan layar penuh (full screen) seperti aplikasi dari Play Store.<br>
+            <div class="divider" style="margin: var(--sp-2) 0;"></div>
+            <div class="fw-bold text-sm" style="margin-bottom: 4px; color: var(--text);">File Paket Native Android APK (Capacitor 6):</div>
+            Source code proyek Android native lengkap telah tersedia di folder <code>android/</code> proyek ini. Anda dapat mengompilasi file <code>.apk</code> menggunakan Android Studio atau perintah <code>npx cap open android</code> sesuai panduan di <code>docs/android-capacitor.md</code>.
+          </div>
+        </div>
       </div>
     `;
 
@@ -498,6 +531,20 @@ class App {
     const btnSimpan = $('#btn-simpan-api-url', container);
     const btnPing = $('#btn-ping-sistem', container);
     const hasilDiv = $('#hasil-diagnostik', container);
+
+    container.querySelector('#btn-pasang-pwa')?.addEventListener('click', () => {
+      if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+        window.deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            showToast('Aplikasi berhasil dipasang di layar utama!', 'success');
+          }
+          window.deferredPrompt = null;
+        });
+      } else {
+        showToast('Untuk memasang di HP: Buka di Chrome HP > ketuk titik tiga (⋮) > pilih "Instal aplikasi" / "Tambahkan ke Layar Utama".', 'info', 6000);
+      }
+    });
 
     btnSimpan?.addEventListener('click', () => {
       const urlBaru = inputUrl.value.trim();
