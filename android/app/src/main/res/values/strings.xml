@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">POS Kasir Toko</string>
+    <string name="title_activity_main">POS Kasir Toko</string>
+    <string name="package_name">com.admgaffidigital.poskasirtoko</string>
+    <string name="custom_url_scheme">com.admgaffidigital.poskasirtoko</string>
+</resources>

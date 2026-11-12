@@ -16,7 +16,22 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-12
+
 ### Added
+- [APK] Finalisasi Pembungkusan Aplikasi Android Native via Capacitor (Fase 7):
+  - Inisialisasi konfigurasi inti: `package.json` dan `capacitor.config.json` dengan ID aplikasi `com.admgaffidigital.poskasirtoko` dan tema gelap splash screen `#0f172a`.
+  - Pengaturan proyek native Android Gradle di direktori `android/` (`build.gradle`, `app/build.gradle`, `variables.gradle`, `settings.gradle`) yang menargetkan Android 14 (API level 34).
+  - Konfigurasi Izin Lengkap pada `android/app/src/main/AndroidManifest.xml`:
+    - Izin Bluetooth Printer Kasir Thermal (ESC/POS 58mm & 80mm): `BLUETOOTH_SCAN` dengan flag `neverForLocation` dan `BLUETOOTH_CONNECT` untuk Android 12+, serta kompatibilitas mundur Android 11 ke bawah (`BLUETOOTH`, `BLUETOOTH_ADMIN`, `ACCESS_FINE_LOCATION`).
+    - Izin Kamera Pemindai Barcode Material: `CAMERA` dengan deklarasi fitur opsional `android.hardware.camera` dan `android.hardware.camera.autofocus`.
+    - Izin Koneksi Data & Keamanan: `INTERNET`, `ACCESS_NETWORK_STATE`, dan `usesCleartextTraffic` untuk jaringan printer thermal lokal.
+  - Panduan kompilasi dan deployment lengkap pada `docs/android-capacitor.md`: langkah build APK Debug (`./gradlew assembleDebug`), APK Release ditandatangani (`./gradlew assembleRelease`), sinkronisasi web assets (`npx cap sync android`), dan integrasi printer via Web Bluetooth atau RawBT.
+  - Bump versi resmi sistem menjadi `v1.0.0` pada `backend/kode.gs`, `frontend/sw.js`, `frontend/js/config.js`, dan `package.json`.
+  - File: `package.json`, `capacitor.config.json`, `android/*`, `docs/android-capacitor.md`, `backend/kode.gs`, `frontend/sw.js`, `frontend/js/config.js`, `README.md`.
+  - Dampak: Ketersediaan aplikasi kasir toko bangunan sebagai aplikasi Android APK mandiri dan kesiapan penuh deployment produksi.
+  - Undo: `rm -r android capacitor.config.json package.json`
+
 - [DASHBOARD] Implementasi Lengkap Modul Dashboard Eksekutif & Laporan Usaha (Fase 6):
   - Modul front end `frontend/js/modules/laporan.js`: Arsitektur 6 tab komprehensif (Ringkasan Eksekutif, Laporan Penjualan, Laporan Pembelian, Buku Arus Kas, Laba Rugi & Margin, dan Valuasi Stok Persediaan).
   - Kartu Ringkasan Realtime (Stat Cards): Omset Penjualan Bersih, Total Pembelian Barang Masuk, Piutang Pelanggan Berjalan, Hutang Supplier Berjalan, Estimasi Nilai Modal Aset Persediaan Stok (HPP), dan Laba Kotor Berjalan beserta Gross Profit Margin %.

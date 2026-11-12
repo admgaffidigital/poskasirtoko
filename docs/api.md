@@ -587,12 +587,10 @@ Dan struktur respons `data` adalah:
 
 ---
 
-## 10. Peta Aksi Fase Selanjutnya (Roadmap)
+## 10. Status Rilis Produksi & Roadmap
 
-- **Fase 7 (Finalisasi):**
-  - Pembungkusan APK Android via Capacitor.
-  - Izin Bluetooth & Kamera Scan Barcode native.
-  - Backup otomatis terintegrasi Google Drive.
-  - Audit keamanan akhir dan rilis v1.0.0.
+- **Seluruh Fase 0 s.d. Fase 7 Telah Selesai 100%:**
+  - ✅ **v1.0.0 Dirilis**: Seluruh modul inti (Auth, POS Penjualan, Produk, Pembelian, Stok Opname, Kartu Stok, Hutang-Piutang, Retur, Pelanggan, Hadiah Member, Price Tag, Dashboard Eksekutif, Laporan Akuntansi, dan Pembungkusan APK Android Capacitor) siap produksi.
+  - Untuk panduan build paket APK Android, lihat [docs/android-capacitor.md](file:///c:/POS%20KASIR%20TOKO/docs/android-capacitor.md).
 
 

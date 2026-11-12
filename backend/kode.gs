@@ -29,7 +29,7 @@
 
 const APP = Object.freeze({
   NAMA: 'POS Kasir Toko Bangunan',
-  VERSI: '0.0.1',
+  VERSI: '1.0.0',
   VERSI_SKEMA: 1,
   TZ: 'Asia/Jakarta',
   FORMAT_WAKTU: 'yyyy-MM-dd HH:mm:ss',
