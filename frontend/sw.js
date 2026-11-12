@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v0.3.0';
+const CACHE_NAME = 'pos-kasir-static-v0.4.0';
 
 const ASSETS = [
   './',
@@ -26,6 +26,8 @@ const ASSETS = [
   './js/modules/pembelian.js',
   './js/modules/kartu-stok.js',
   './js/modules/opname.js',
+  './js/modules/hutang-piutang.js',
+  './js/modules/retur.js',
   './js/modules/pengaturan.js',
   './js/modules/users.js',
   './js/modules/pos.js',

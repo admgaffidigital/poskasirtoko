@@ -350,13 +350,94 @@ Dan struktur respons `data` adalah:
 
 ---
 
-## 7. Peta Aksi Fase Selanjutnya (Roadmap)
+## 7. Modul Fase 4 – Keuangan (Hutang, Piutang, & Retur)
 
-- **Fase 4 (Keuangan):**
-  - `piutang.list`, `piutang.bayar`, `hutang.list`, `hutang.bayar`, `retur.create`, `retur.approve`
+### 7.1 Piutang Pelanggan
+- `piutang.list`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "status": "belum|sebagian|lunas", "pelanggan_id": "...", "jatuh_tempo_lewat": true|false, "cari": "...", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "penjualan_id", "no_nota", "pelanggan_id", "nama_pelanggan", "hp_pelanggan", "total", "sisa", "jatuh_tempo", "status", "jatuh_tempo_lewat", "tanggal_nota" } ], "total_sisa_piutang", "total_data", "page", "total_halaman" }`
+- `piutang.detail`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "id": "..." }`
+  - Response `data`: `{ "piutang": { ... }, "penjualan": { ... }, "pelanggan": { ... }, "riwayat_pembayaran": [ { "id", "created_at", "jumlah", "metode", "catatan", "nama_petugas" } ] }`
+- `piutang.bayar`:
+  - Akses: `owner`, `admin`, `kasir` (Tulis: Ya)
+  - Payload: `{ "id": "...", "jumlah": 200000, "metode": "tunai|transfer|qris", "catatan": "..." }`
+  - Aturan Bisnis #7 & #16:
+    - Mengurangi `sisa` piutang. Jika `sisa === 0`, status berubah menjadi `lunas`.
+    - Poin loyalitas member dan akumulasi `total_belanja` HANYA diberikan saat piutang lunas.
+    - Mencatat pembayaran pada sheet `Pembayaran`.
+    - Mengembalikan `{ "pesan", "piutang_id", "status", "jumlah_bayar", "sisa", "poin_didapat" }`.
+
+### 7.2 Hutang Supplier
+- `hutang.list`:
+  - Akses: `owner`, `admin` (Kasir: Dilarang / FORBIDDEN)
+  - Payload: `{ "status": "belum|sebagian|lunas", "supplier_id": "...", "jatuh_tempo_lewat": true|false, "cari": "...", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "pembelian_id", "no_faktur", "no_faktur_supplier", "supplier_id", "nama_supplier", "hp_supplier", "total", "sisa", "jatuh_tempo", "status", "jatuh_tempo_lewat", "tanggal_faktur" } ], "total_sisa_hutang", "total_data", "page", "total_halaman" }`
+- `hutang.detail`:
+  - Akses: `owner`, `admin`
+  - Payload: `{ "id": "..." }`
+  - Response `data`: `{ "hutang": { ... }, "pembelian": { ... }, "supplier": { ... }, "riwayat_pembayaran": [ ... ] }`
+- `hutang.bayar`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "id": "...", "jumlah": 500000, "metode": "transfer|tunai|giro", "catatan": "..." }`
+  - Efek: Mengurangi `sisa` hutang supplier dan mencatat riwayat cicilan di sheet `Pembayaran`.
+
+### 7.3 Retur Penjualan & Retur Pembelian
+- `retur.list`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "tipe": "jual|beli", "status": "diajukan|disetujui|ditolak", "pihak_id": "...", "cari": "...", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "no_retur", "tipe", "ref_id", "no_transaksi_asal", "pihak_id", "nama_pihak", "total", "metode_refund", "alasan", "status", "dibuat_at", "nama_pembuat", "disetujui_oleh", "disetujui_at" } ], "total_retur_nominal", "total_data", "page", "total_halaman" }`
+- `retur.detail`:
+  - Akses: `owner`, `admin`, `kasir`
+  - Payload: `{ "id": "..." }`
+  - Response `data`: `{ "retur": { ... }, "items": [ ... ], "pihak": { ... }, "transaksi_asal": { ... } }`
+- `retur.create`:
+  - Akses: `owner`, `admin`, `kasir` (Tulis: Ya)
+  - Payload:
+    ```json
+    {
+      "tipe": "jual|beli",
+      "ref_id": "ID_PENJUALAN_ATAU_PEMBELIAN",
+      "alasan": "Keramik pecah dalam kardus",
+      "metode_refund": "potong_piutang|potong_hutang|kas",
+      "items": [
+        {
+          "produk_id": "...",
+          "varian_id": "...",
+          "satuan": "dus",
+          "faktor": 1,
+          "qty": 2,
+          "harga": 85000,
+          "hpp": 70000
+        }
+      ]
+    }
+    ```
+  - Matriks & Aturan Bisnis #4, #7, #12, #16:
+    - Dokumen berurutan: `RT-YYYYMMDD-0001`.
+    - **Kasir:** status otomatis `diajukan` (menunggu persetujuan Owner/Admin).
+    - **Owner / Admin:** status langsung `disetujui` dan efek retur langsung diterapkan.
+    - **Retur Penjualan:** Stok bertambah. Moving Average HPP dihitung ulang memakai HPP snapshot item transaksi asal: `(stok_lama * hpp_lama + qty_retur * hpp_snapshot) / (stok_lama + qty_retur)`. Poin member dipotong proporsional di `Poin_Log` (jenis: `retur`) dan `total_belanja` berkurang. Refund memotong sisa piutang nota jika metode `potong_piutang`.
+    - **Retur Pembelian:** Stok berkurang pada HPP berjalan. Sesuai standar akuntansi moving average, HPP tidak berubah. Refund memotong sisa hutang faktur jika metode `potong_hutang`.
+- `retur.approve`:
+  - Akses: `owner`, `admin` (Tulis: Ya, Kasir DILARANG)
+  - Payload: `{ "id": "..." }`
+  - Efek: Menyetujui pengajuan retur kasir, menerapkan perubahan stok fisik, kalkulasi moving average HPP, pemotongan poin member, dan penyesuaian piutang/hutang.
+- `retur.reject`:
+  - Akses: `owner`, `admin` (Tulis: Ya, Kasir DILARANG)
+  - Payload: `{ "id": "...", "alasan_tolak": "..." }`
+  - Efek: Mengubah status menjadi `ditolak` beserta alasan audit.
+
+---
+
+## 8. Peta Aksi Fase Selanjutnya (Roadmap)
+
 - **Fase 5 (Loyalitas):**
   - `pelanggan.create`, `pelanggan.update`
   - `hadiah.list`, `hadiah.create`, `member.tukarPoin`
 - **Fase 6 (Laporan):**
   - `laporan.dashboard`, `laporan.penjualan`, `laporan.stok`
+
 

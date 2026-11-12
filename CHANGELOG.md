@@ -16,6 +16,35 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Added
+- [HUTANG-PIUTANG] Implementasi Lengkap Modul Hutang & Piutang (Fase 4):
+  - Antarmuka dual-tab `frontend/js/modules/hutang-piutang.js`: Tab Piutang Pelanggan dan Tab Hutang Supplier.
+  - Kartu ringkasan statistik realtime: Total sisa piutang/hutang berjalan, tagihan jatuh tempo lewat (overdue), dan total entitas mitra terkait.
+  - Filter pencarian live, status tagihan (Belum Lunas, Sebagian, Lunas), dan toggle filter cepat "Hanya Jatuh Tempo Lewat".
+  - Integrasi WhatsApp Click-to-Chat otomatis untuk pengingat tagihan ramah pelanggan beserta rincian nomor nota, total transaksi, sisa tagihan, dan tanggal jatuh tempo.
+  - Modal pembayaran cicilan / pelunasan fleksibel dengan shortcut tombol pelunasan cepat (100% dan 50%), pilihan metode bayar (tunai, transfer, qris), dan validasi anti-overpay.
+  - Penegakan Aturan Bisnis #7 & #16: Perolehan poin loyalitas member dan akumulasi total belanja seumur hidup HANYA diberikan saat piutang tempo telah diselesaikan secara LUNAS.
+  - Penegakan Matriks Hak Akses: Pengelolaan hutang supplier dibatasi ketat khusus Pemilik Toko (Owner) & Admin (`FORBIDDEN` bagi kasir).
+  - Modal detail piutang & hutang dengan riwayat audit seluruh tahapan cicilan pembayaran.
+  - Backend handler: `piutang.list`, `piutang.detail`, `piutang.bayar`, `hutang.list`, `hutang.detail`, `hutang.bayar`.
+  - File: `backend/kode.gs`, `frontend/js/modules/hutang-piutang.js`, `frontend/js/app.js`, `frontend/sw.js`, `docs/api.md`
+  - Dampak: Manajemen arus kas tempo, penagihan piutang, dan pemenuhan kewajiban supplier
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/hutang-piutang.js`
+
+- [RETUR] Implementasi Lengkap Modul Retur Penjualan & Retur Pembelian (Fase 4):
+  - Antarmuka dual-tab `frontend/js/modules/retur.js`: Tab Retur Penjualan (pelanggan) dan Tab Retur Pembelian (supplier).
+  - Alur persetujuan bertingkat (Aturan Bisnis #4): Peran kasir hanya berhak membuat permohonan retur (`status = 'diajukan'`); Owner & Admin memiliki wewenang penuh membuat retur langsung disetujui atau menyetujui/menolak pengajuan kasir via `retur.approve` dan `retur.reject`.
+  - Penomoran dokumen retur berurutan `RT-YYYYMMDD-0001` via sheet `Counter` terlindungi `LockService`.
+  - Penegakan Aturan Bisnis #12 pada Retur Penjualan: Stok bertambah kembali ke gudang dan Moving Average HPP produk dihitung ulang menggunakan snapshot HPP item transaksi saat penjualan terjadi: `(stok_lama × hpp_lama + qty_retur × hpp_snapshot) / (stok_lama + qty_retur)`.
+  - Penegakan Aturan Bisnis #12 pada Retur Pembelian: Mengurangi kuantitas stok gudang pada HPP berjalan tanpa mengubah HPP produk (HPP konstan sesuai kaidah moving average akuntansi).
+  - Penyesuaian Loyalitas (Aturan Bisnis #7 & #16): Pemotongan poin loyalitas member secara proporsional yang dicatat di `Poin_Log` bertipe `retur` serta pemotongan `total_belanja`.
+  - Metode Refund Fleksibel: Pengembalian dana tunai/kas toko (`kas`), pemotongan sisa tagihan piutang nota asal (`potong_piutang`), atau pemotongan sisa hutang faktur supplier (`potong_hutang`).
+  - Pencatatan mutasi atomik pada `Kartu_Stok` bertipe `retur_jual` & `retur_beli` serta pencatatan audit log `Log_Audit`.
+  - Backend handler: `retur.list`, `retur.detail`, `retur.create`, `retur.approve`, `retur.reject`.
+  - File: `backend/kode.gs`, `frontend/js/modules/retur.js`, `frontend/js/app.js`, `frontend/sw.js`, `docs/api.md`
+  - Dampak: Penanganan klaim barang cacat, pengembalian barang, dan penyesuaian nilai buku stok
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/retur.js`
+
 ### Fixed
 - [AUTH] Memperbaiki serialisasi token pada `frontend/js/state.js` agar string token disimpan langsung tanpa kutip ganda JSON berlebih.
 - [API] Menambahkan pembersihan kutip ganda otomatis pada `frontend/js/api.js` dan backend `backend/kode.gs` (`parseRequest_`, `validasiSesi_`, `aksiAuthLogout_`).

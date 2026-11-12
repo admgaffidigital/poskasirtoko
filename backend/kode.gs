@@ -266,7 +266,22 @@ const RUTE = {
   // Stok Opname (Fase 3)
   'opname.list': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiOpnameList_ },
   'opname.create': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiOpnameCreate_ },
-  'opname.approve': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiOpnameApprove_ }
+  'opname.approve': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiOpnameApprove_ },
+
+  // Piutang & Hutang (Fase 4)
+  'piutang.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPiutangList_ },
+  'piutang.detail': { publik: false, roles: SEMUA_ROLE, handler: aksiPiutangDetail_ },
+  'piutang.bayar': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPiutangBayar_ },
+  'hutang.list': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiHutangList_ },
+  'hutang.detail': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiHutangDetail_ },
+  'hutang.bayar': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiHutangBayar_ },
+
+  // Retur Penjualan & Pembelian (Fase 4)
+  'retur.list': { publik: false, roles: SEMUA_ROLE, handler: aksiReturList_ },
+  'retur.detail': { publik: false, roles: SEMUA_ROLE, handler: aksiReturDetail_ },
+  'retur.create': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiReturCreate_ },
+  'retur.approve': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiReturApprove_ },
+  'retur.reject': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiReturReject_ }
 };
 
 /** Entry point Web App (semua aksi). */
@@ -3328,6 +3343,917 @@ function aksiOpnameApprove_(ctx) {
     pesan: 'Dokumen stok opname ' + opname.no_opname + ' berhasil disetujui dan stok disesuaikan.',
     no_opname: opname.no_opname
   };
+}
+
+/* ---------- 9.4 HUTANG, PIUTANG, DAN RETUR (FASE 4) ---------- */
+
+/** piutang.list — Daftar piutang pelanggan atas penjualan tempo. */
+function aksiPiutangList_(ctx) {
+  const p = ctx.payload || {};
+  const semuaPiutang = bacaSemua_('Piutang');
+  const semuaPelanggan = bacaSemua_('Pelanggan');
+  const semuaPenjualan = bacaSemua_('Penjualan');
+
+  const pelangganPeta = {};
+  semuaPelanggan.forEach(function (pel) { pelangganPeta[pel.id] = pel; });
+
+  const penjualanPeta = {};
+  semuaPenjualan.forEach(function (pj) { penjualanPeta[pj.id] = pj; });
+
+  const hariIni = Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
+  let totalPiutangBerjalan = 0;
+
+  let data = semuaPiutang.map(function (pt) {
+    const pel = pelangganPeta[pt.pelanggan_id] || {};
+    const pj = penjualanPeta[pt.penjualan_id] || {};
+    const sisa = Number(pt.sisa) || 0;
+
+    if (pt.status !== 'lunas') {
+      totalPiutangBerjalan += sisa;
+    }
+
+    const tJatuh = String(pt.jatuh_tempo || '').substring(0, 10);
+    const sudahLewat = pt.status !== 'lunas' && tJatuh && tJatuh < hariIni;
+
+    return {
+      id: pt.id,
+      penjualan_id: pt.penjualan_id,
+      no_nota: pj.no_nota || '-',
+      tanggal_penjualan: pj.tanggal || pt.created_at,
+      pelanggan_id: pt.pelanggan_id,
+      pelanggan_nama: pel.nama || 'Pelanggan Umum',
+      pelanggan_kode: pel.kode || '',
+      pelanggan_hp: pel.hp || '',
+      total: Number(pt.total) || 0,
+      terbayar: Number(pt.terbayar) || 0,
+      sisa: sisa,
+      jatuh_tempo: pt.jatuh_tempo || '',
+      lewat_jatuh_tempo: sudahLewat,
+      status: pt.status
+    };
+  });
+
+  // Filter status
+  if (p.status) {
+    data = data.filter(function (pt) { return pt.status === p.status; });
+  }
+
+  // Filter pelanggan
+  if (p.pelanggan_id) {
+    data = data.filter(function (pt) { return pt.pelanggan_id === p.pelanggan_id; });
+  }
+
+  // Filter lewat jatuh tempo saja
+  if (p.lewat_jatuh_tempo === true) {
+    data = data.filter(function (pt) { return pt.lewat_jatuh_tempo; });
+  }
+
+  // Pencarian q (no_nota, nama pelanggan, no hp)
+  const q = String(p.q || '').trim().toLowerCase();
+  if (q) {
+    data = data.filter(function (pt) {
+      return String(pt.no_nota || '').toLowerCase().indexOf(q) !== -1 ||
+        String(pt.pelanggan_nama || '').toLowerCase().indexOf(q) !== -1 ||
+        String(pt.pelanggan_hp || '').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  // Urutkan: belum lunas di atas, lalu jatuh tempo terdekat
+  data.sort(function (a, b) {
+    if (a.status !== 'lunas' && b.status === 'lunas') return -1;
+    if (a.status === 'lunas' && b.status !== 'lunas') return 1;
+    return String(a.jatuh_tempo || '9999').localeCompare(String(b.jatuh_tempo || '9999'));
+  });
+
+  const limit = Math.min(Math.max(parseInt(p.limit, 10) || APP.PAGE_LIMIT_DEFAULT, 1), APP.PAGE_LIMIT_MAKS);
+  const page = Math.max(parseInt(p.page, 10) || 1, 1);
+  const mulai = (page - 1) * limit;
+
+  return {
+    items: data.slice(mulai, mulai + limit),
+    total: data.length,
+    total_piutang_berjalan: totalPiutangBerjalan,
+    page: page,
+    limit: limit
+  };
+}
+
+/** piutang.detail — Rincian piutang, nota penjualan, dan riwayat cicilan. */
+function aksiPiutangDetail_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID piutang wajib diberikan.');
+
+  const piutang = cariById_('Piutang', p.id);
+  if (!piutang) gagal_(KODE.NOT_FOUND, 'Data piutang tidak ditemukan.');
+
+  const penjualan = cariById_('Penjualan', piutang.penjualan_id) || {};
+  const pelanggan = cariById_('Pelanggan', piutang.pelanggan_id) || {};
+  const semuaBayar = bacaSemua_('Pembayaran');
+  const riwayatPembayaran = semuaBayar
+    .filter(function (byr) { return byr.tipe === 'piutang' && byr.ref_id === piutang.id && !byr.deleted; })
+    .sort(function (a, b) { return String(b.tanggal || '').localeCompare(String(a.tanggal || '')); });
+
+  return {
+    piutang: piutang,
+    penjualan: penjualan,
+    pelanggan: pelanggan,
+    riwayat_pembayaran: riwayatPembayaran
+  };
+}
+
+/**
+ * piutang.bayar — Catat cicilan atau pelunasan piutang pelanggan.
+ * Penegakan Aturan Bisnis #7 & #16:
+ * Transaksi tempo baru mendapatkan poin loyalitas dan akumulasi total_belanja
+ * saat piutang dilunasi (status menjadi 'lunas').
+ */
+function aksiPiutangBayar_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID piutang wajib diberikan.');
+
+  const piutang = cariById_('Piutang', p.id);
+  if (!piutang || piutang.deleted) gagal_(KODE.NOT_FOUND, 'Data piutang tidak ditemukan.');
+  if (piutang.status === 'lunas') {
+    gagal_(KODE.CONFLICT, 'Piutang ini sudah berstatus lunas.');
+  }
+
+  const sisaSebelum = Number(piutang.sisa) || 0;
+  const jumlahBayar = V_.rupiah(p.jumlah, 'Jumlah Pembayaran', { wajib: true, min: 1 });
+
+  if (jumlahBayar > sisaSebelum) {
+    gagal_(KODE.VALIDATION, 'Jumlah bayar (' + formatRupiah_(jumlahBayar) + ') melebihi sisa piutang (' + formatRupiah_(sisaSebelum) + ').');
+  }
+
+  const sisaBaru = Math.max(0, sisaSebelum - jumlahBayar);
+  const terbayarBaru = (Number(piutang.terbayar) || 0) + jumlahBayar;
+  const statusBaru = sisaBaru === 0 ? 'lunas' : 'sebagian';
+  const waktuBayar = sekarang_();
+
+  // 1. Perbarui record Piutang
+  ubahBaris_('Piutang', [{
+    id: piutang.id,
+    data: {
+      terbayar: terbayarBaru,
+      sisa: sisaBaru,
+      status: statusBaru
+    }
+  }], ctx.user.id);
+
+  // 2. Catat ke sheet Pembayaran
+  tambahBaris_('Pembayaran', [{
+    tipe: 'piutang',
+    ref_id: piutang.id,
+    jumlah: jumlahBayar,
+    metode: p.metode || 'tunai',
+    tanggal: waktuBayar,
+    catatan: p.catatan || ('Pembayaran piutang nota ' + (piutang.penjualan_id || ''))
+  }], ctx.user.id);
+
+  // 3. Update status bayar di Penjualan asal
+  if (piutang.penjualan_id) {
+    const pj = cariById_('Penjualan', piutang.penjualan_id);
+    if (pj) {
+      const bayarBaru = (Number(pj.bayar) || 0) + jumlahBayar;
+      ubahBaris_('Penjualan', [{
+        id: pj.id,
+        data: {
+          bayar: bayarBaru,
+          status_bayar: statusBaru
+        }
+      }], ctx.user.id);
+    }
+  }
+
+  // 4. Aturan Bisnis #7 & #16: Jika lunas dan pelanggan adalah Member, berikan poin dari nilai tempo
+  let poinDiberikan = 0;
+  if (statusBaru === 'lunas' && piutang.pelanggan_id) {
+    const pel = cariById_('Pelanggan', piutang.pelanggan_id);
+    if (pel && pel.tipe === 'member') {
+      const pengaturan = ambilPengaturan_();
+      if (pengaturan.poin_per_rupiah > 0) {
+        let pengali = 1;
+        (pengaturan.level_member || []).forEach(function (lvl) {
+          if (lvl.nama === pel.level) pengali = Number(lvl.pengali) || 1;
+        });
+        poinDiberikan = Math.floor((Number(piutang.total) / pengaturan.poin_per_rupiah) * pengali);
+      }
+
+      const totalBelanjaLama = Number(pel.total_belanja || 0);
+      const totalBelanjaBaru = totalBelanjaLama + Number(piutang.total);
+      const poinLama = Number(pel.poin || 0);
+      const poinBaru = poinLama + poinDiberikan;
+
+      ubahBaris_('Pelanggan', [{
+        id: pel.id,
+        data: {
+          poin: poinBaru,
+          total_belanja: totalBelanjaBaru
+        }
+      }], ctx.user.id);
+
+      if (poinDiberikan > 0) {
+        tambahBaris_('Poin_Log', [{
+          pelanggan_id: pel.id,
+          jumlah: poinDiberikan,
+          jenis: 'dapat',
+          ref_id: piutang.id,
+          saldo: poinBaru
+        }], ctx.user.id);
+      }
+    }
+  }
+
+  // 5. Catat Log Audit
+  catatAudit_(ctx.user.id, 'piutang_bayar', 'KEUANGAN', piutang.id, {
+    jumlah: jumlahBayar,
+    sisa: sisaBaru,
+    status: statusBaru,
+    poin_diberikan: poinDiberikan
+  });
+
+  return {
+    pesan: 'Pembayaran ' + formatRupiah_(jumlahBayar) + ' berhasil dicatat. Status: ' + statusBaru + '.',
+    sisa: sisaBaru,
+    status: statusBaru,
+    poin_didapat: poinDiberikan
+  };
+}
+
+/** hutang.list — Daftar hutang ke supplier atas pembelian tempo (Owner & Admin). */
+function aksiHutangList_(ctx) {
+  const p = ctx.payload || {};
+  const semuaHutang = bacaSemua_('Hutang');
+  const semuaSupplier = bacaSemua_('Supplier');
+  const semuaPembelian = bacaSemua_('Pembelian');
+
+  const supplierPeta = {};
+  semuaSupplier.forEach(function (s) { supplierPeta[s.id] = s; });
+
+  const pembelianPeta = {};
+  semuaPembelian.forEach(function (pb) { pembelianPeta[pb.id] = pb; });
+
+  const hariIni = Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
+  let totalHutangBerjalan = 0;
+
+  let data = semuaHutang.map(function (ht) {
+    const sup = supplierPeta[ht.supplier_id] || {};
+    const pb = pembelianPeta[ht.pembelian_id] || {};
+    const sisa = Number(ht.sisa) || 0;
+
+    if (ht.status !== 'lunas') {
+      totalHutangBerjalan += sisa;
+    }
+
+    const tJatuh = String(ht.jatuh_tempo || '').substring(0, 10);
+    const sudahLewat = ht.status !== 'lunas' && tJatuh && tJatuh < hariIni;
+
+    return {
+      id: ht.id,
+      pembelian_id: ht.pembelian_id,
+      no_faktur: pb.no_faktur || '-',
+      no_faktur_supplier: pb.no_faktur_supplier || '',
+      tanggal_pembelian: pb.tanggal || ht.created_at,
+      supplier_id: ht.supplier_id,
+      supplier_nama: sup.nama || 'Supplier Umum',
+      supplier_hp: sup.hp || '',
+      total: Number(ht.total) || 0,
+      terbayar: Number(ht.terbayar) || 0,
+      sisa: sisa,
+      jatuh_tempo: ht.jatuh_tempo || '',
+      lewat_jatuh_tempo: sudahLewat,
+      status: ht.status
+    };
+  });
+
+  if (p.status) {
+    data = data.filter(function (ht) { return ht.status === p.status; });
+  }
+
+  if (p.supplier_id) {
+    data = data.filter(function (ht) { return ht.supplier_id === p.supplier_id; });
+  }
+
+  if (p.lewat_jatuh_tempo === true) {
+    data = data.filter(function (ht) { return ht.lewat_jatuh_tempo; });
+  }
+
+  const q = String(p.q || '').trim().toLowerCase();
+  if (q) {
+    data = data.filter(function (ht) {
+      return String(ht.no_faktur || '').toLowerCase().indexOf(q) !== -1 ||
+        String(ht.no_faktur_supplier || '').toLowerCase().indexOf(q) !== -1 ||
+        String(ht.supplier_nama || '').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  data.sort(function (a, b) {
+    if (a.status !== 'lunas' && b.status === 'lunas') return -1;
+    if (a.status === 'lunas' && b.status !== 'lunas') return 1;
+    return String(a.jatuh_tempo || '9999').localeCompare(String(b.jatuh_tempo || '9999'));
+  });
+
+  const limit = Math.min(Math.max(parseInt(p.limit, 10) || APP.PAGE_LIMIT_DEFAULT, 1), APP.PAGE_LIMIT_MAKS);
+  const page = Math.max(parseInt(p.page, 10) || 1, 1);
+  const mulai = (page - 1) * limit;
+
+  return {
+    items: data.slice(mulai, mulai + limit),
+    total: data.length,
+    total_hutang_berjalan: totalHutangBerjalan,
+    page: page,
+    limit: limit
+  };
+}
+
+/** hutang.detail — Rincian hutang ke supplier dan riwayat pembayaran cicilan. */
+function aksiHutangDetail_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID hutang wajib diberikan.');
+
+  const hutang = cariById_('Hutang', p.id);
+  if (!hutang) gagal_(KODE.NOT_FOUND, 'Data hutang tidak ditemukan.');
+
+  const pembelian = cariById_('Pembelian', hutang.pembelian_id) || {};
+  const supplier = cariById_('Supplier', hutang.supplier_id) || {};
+  const semuaBayar = bacaSemua_('Pembayaran');
+  const riwayatPembayaran = semuaBayar
+    .filter(function (byr) { return byr.tipe === 'hutang' && byr.ref_id === hutang.id && !byr.deleted; })
+    .sort(function (a, b) { return String(b.tanggal || '').localeCompare(String(a.tanggal || '')); });
+
+  return {
+    hutang: hutang,
+    pembelian: pembelian,
+    supplier: supplier,
+    riwayat_pembayaran: riwayatPembayaran
+  };
+}
+
+/** hutang.bayar — Catat cicilan atau pelunasan hutang ke supplier (Owner & Admin). */
+function aksiHutangBayar_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID hutang wajib diberikan.');
+
+  const hutang = cariById_('Hutang', p.id);
+  if (!hutang || hutang.deleted) gagal_(KODE.NOT_FOUND, 'Data hutang tidak ditemukan.');
+  if (hutang.status === 'lunas') {
+    gagal_(KODE.CONFLICT, 'Hutang ini sudah berstatus lunas.');
+  }
+
+  const sisaSebelum = Number(hutang.sisa) || 0;
+  const jumlahBayar = V_.rupiah(p.jumlah, 'Jumlah Pembayaran', { wajib: true, min: 1 });
+
+  if (jumlahBayar > sisaSebelum) {
+    gagal_(KODE.VALIDATION, 'Jumlah bayar (' + formatRupiah_(jumlahBayar) + ') melebihi sisa hutang (' + formatRupiah_(sisaSebelum) + ').');
+  }
+
+  const sisaBaru = Math.max(0, sisaSebelum - jumlahBayar);
+  const terbayarBaru = (Number(hutang.terbayar) || 0) + jumlahBayar;
+  const statusBaru = sisaBaru === 0 ? 'lunas' : 'sebagian';
+  const waktuBayar = sekarang_();
+
+  // 1. Update record Hutang
+  ubahBaris_('Hutang', [{
+    id: hutang.id,
+    data: {
+      terbayar: terbayarBaru,
+      sisa: sisaBaru,
+      status: statusBaru
+    }
+  }], ctx.user.id);
+
+  // 2. Tambah record Pembayaran
+  tambahBaris_('Pembayaran', [{
+    tipe: 'hutang',
+    ref_id: hutang.id,
+    jumlah: jumlahBayar,
+    metode: p.metode || 'tunai',
+    tanggal: waktuBayar,
+    catatan: p.catatan || ('Pembayaran hutang faktur ' + (hutang.pembelian_id || ''))
+  }], ctx.user.id);
+
+  // 3. Update status bayar di Pembelian asal
+  if (hutang.pembelian_id) {
+    const pb = cariById_('Pembelian', hutang.pembelian_id);
+    if (pb) {
+      const bayarBaru = (Number(pb.bayar) || 0) + jumlahBayar;
+      ubahBaris_('Pembelian', [{
+        id: pb.id,
+        data: {
+          bayar: bayarBaru,
+          status_bayar: statusBaru
+        }
+      }], ctx.user.id);
+    }
+  }
+
+  // 4. Catat Log Audit
+  catatAudit_(ctx.user.id, 'hutang_bayar', 'KEUANGAN', hutang.id, {
+    jumlah: jumlahBayar,
+    sisa: sisaBaru,
+    status: statusBaru
+  });
+
+  return {
+    pesan: 'Pembayaran hutang ' + formatRupiah_(jumlahBayar) + ' berhasil dicatat. Status: ' + statusBaru + '.',
+    sisa: sisaBaru,
+    status: statusBaru
+  };
+}
+
+/** retur.list — Daftar dokumen retur penjualan & pembelian. */
+function aksiReturList_(ctx) {
+  const p = ctx.payload || {};
+  const semuaRetur = bacaSemua_('Retur');
+  const semuaPelanggan = bacaSemua_('Pelanggan');
+  const semuaSupplier = bacaSemua_('Supplier');
+  const semuaPenjualan = bacaSemua_('Penjualan');
+  const semuaPembelian = bacaSemua_('Pembelian');
+
+  const pihakPeta = {};
+  semuaPelanggan.forEach(function (pel) { pihakPeta[pel.id] = pel.nama; });
+  semuaSupplier.forEach(function (sup) { pihakPeta[sup.id] = sup.nama; });
+
+  const refNotaPeta = {};
+  semuaPenjualan.forEach(function (pj) { refNotaPeta[pj.id] = pj.no_nota; });
+  semuaPembelian.forEach(function (pb) { refNotaPeta[pb.id] = pb.no_faktur; });
+
+  let data = semuaRetur.map(function (rt) {
+    return {
+      id: rt.id,
+      no_retur: rt.no_retur,
+      tipe: rt.tipe,
+      ref_id: rt.ref_id,
+      no_referensi_asal: refNotaPeta[rt.ref_id] || rt.ref_id || '-',
+      pihak_id: rt.pihak_id,
+      pihak_nama: pihakPeta[rt.pihak_id] || (rt.tipe === 'jual' ? 'Pelanggan Umum' : 'Supplier Umum'),
+      tanggal: rt.tanggal,
+      total: Number(rt.total) || 0,
+      metode_refund: rt.metode_refund,
+      alasan: rt.alasan,
+      status: rt.status,
+      disetujui_oleh: rt.disetujui_oleh,
+      disetujui_at: rt.disetujui_at
+    };
+  });
+
+  if (p.tipe) {
+    data = data.filter(function (rt) { return rt.tipe === p.tipe; });
+  }
+
+  if (p.status) {
+    data = data.filter(function (rt) { return rt.status === p.status; });
+  }
+
+  const q = String(p.q || '').trim().toLowerCase();
+  if (q) {
+    data = data.filter(function (rt) {
+      return String(rt.no_retur || '').toLowerCase().indexOf(q) !== -1 ||
+        String(rt.no_referensi_asal || '').toLowerCase().indexOf(q) !== -1 ||
+        String(rt.pihak_nama || '').toLowerCase().indexOf(q) !== -1 ||
+        String(rt.alasan || '').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  data.sort(function (a, b) {
+    return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
+  });
+
+  const limit = Math.min(Math.max(parseInt(p.limit, 10) || APP.PAGE_LIMIT_DEFAULT, 1), APP.PAGE_LIMIT_MAKS);
+  const page = Math.max(parseInt(p.page, 10) || 1, 1);
+  const mulai = (page - 1) * limit;
+
+  return {
+    items: data.slice(mulai, mulai + limit),
+    total: data.length,
+    page: page,
+    limit: limit
+  };
+}
+
+/** retur.detail — Rincian dokumen retur, item yang diretur, dan referensi transaksi. */
+function aksiReturDetail_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID retur wajib diberikan.');
+
+  const retur = cariById_('Retur', p.id);
+  if (!retur) gagal_(KODE.NOT_FOUND, 'Data retur tidak ditemukan.');
+
+  const semuaItems = bacaSemua_('Retur_Item');
+  const items = semuaItems.filter(function (it) { return it.retur_id === retur.id && !it.deleted; });
+
+  let pihak = null;
+  let transaksiAsal = null;
+
+  if (retur.tipe === 'jual') {
+    pihak = cariById_('Pelanggan', retur.pihak_id) || { nama: 'Pelanggan Umum' };
+    transaksiAsal = cariById_('Penjualan', retur.ref_id);
+  } else {
+    pihak = cariById_('Supplier', retur.pihak_id) || { nama: 'Supplier Umum' };
+    transaksiAsal = cariById_('Pembelian', retur.ref_id);
+  }
+
+  return {
+    retur: retur,
+    items: items,
+    pihak: pihak,
+    transaksi_asal: transaksiAsal
+  };
+}
+
+/**
+ * retur.create — Membuat retur penjualan atau retur pembelian.
+ * Aturan Bisnis #4, #7, #12, #16:
+ * - Kasir: status 'diajukan'.
+ * - Owner / Admin: status 'disetujui' (langsung menerapkan efek stok, HPP, kas/piutang/hutang, dan poin).
+ */
+function aksiReturCreate_(ctx) {
+  const p = ctx.payload || {};
+  const tipe = String(p.tipe || '').trim().toLowerCase();
+  if (tipe !== 'jual' && tipe !== 'beli') {
+    gagal_(KODE.VALIDATION, 'Tipe retur harus "jual" atau "beli".');
+  }
+
+  const refId = String(p.ref_id || '').trim();
+  if (!refId) gagal_(KODE.VALIDATION, 'ID transaksi asal (ref_id) wajib diberikan.');
+
+  const alasan = V_.teks(p.alasan, 'Alasan Retur', { wajib: true, maks: 300 });
+  const metodeRefund = String(p.metode_refund || 'kas').trim();
+  const rawItems = p.items;
+
+  if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
+    gagal_(KODE.VALIDATION, 'Daftar barang yang diretur tidak boleh kosong.');
+  }
+
+  let pihakId = '';
+  let transaksiAsal = null;
+
+  if (tipe === 'jual') {
+    transaksiAsal = cariById_('Penjualan', refId);
+    if (!transaksiAsal || transaksiAsal.deleted) {
+      gagal_(KODE.NOT_FOUND, 'Transaksi penjualan asal tidak ditemukan.');
+    }
+    if (transaksiAsal.status !== 'final') {
+      gagal_(KODE.CONFLICT, 'Hanya penjualan berstatus "final" yang dapat diretur.');
+    }
+    pihakId = transaksiAsal.pelanggan_id || '';
+  } else {
+    transaksiAsal = cariById_('Pembelian', refId);
+    if (!transaksiAsal || transaksiAsal.deleted) {
+      gagal_(KODE.NOT_FOUND, 'Faktur pembelian asal tidak ditemukan.');
+    }
+    pihakId = transaksiAsal.supplier_id || '';
+  }
+
+  const isOwnerAdmin = ctx.user.role === ROLE.OWNER || ctx.user.role === ROLE.ADMIN;
+  const statusAwal = isOwnerAdmin ? 'disetujui' : 'diajukan';
+  const waktuSekarang = sekarang_();
+  const noRetur = nomorBerikut_('RT');
+
+  let totalRetur = 0;
+  const itemsValid = [];
+
+  for (let i = 0; i < rawItems.length; i++) {
+    const it = rawItems[i];
+    const qty = V_.qty(it.qty, 'Qty Retur Item ' + (i + 1));
+    const faktor = Math.max(1, Number(it.faktor) || 1);
+    const qtyDasar = Math.round(qty * faktor * 1000) / 1000;
+    const harga = V_.rupiah(it.harga, 'Harga Item ' + (i + 1), { wajib: true, min: 0 });
+    const hpp = Number(it.hpp) || 0;
+    const itemSubtotal = Math.round(qty * harga);
+
+    totalRetur += itemSubtotal;
+
+    itemsValid.push({
+      ref_item_id: it.ref_item_id || '',
+      produk_id: it.produk_id,
+      varian_id: it.varian_id || '',
+      nama: it.nama || '',
+      satuan: it.satuan || '',
+      faktor: faktor,
+      qty: qty,
+      qty_dasar: qtyDasar,
+      harga: harga,
+      hpp: hpp,
+      subtotal: itemSubtotal
+    });
+  }
+
+  // Simpan Dokumen Retur
+  const resRetur = tambahBaris_('Retur', [{
+    no_retur: noRetur,
+    tipe: tipe,
+    ref_id: refId,
+    pihak_id: pihakId,
+    tanggal: waktuSekarang,
+    total: totalRetur,
+    metode_refund: metodeRefund,
+    alasan: alasan,
+    status: statusAwal,
+    disetujui_oleh: isOwnerAdmin ? ctx.user.id : '',
+    disetujui_at: isOwnerAdmin ? waktuSekarang : ''
+  }], ctx.user.id);
+
+  const returBaru = resRetur[0];
+
+  // Simpan Item Retur
+  const rowsReturItem = itemsValid.map(function (it) {
+    return Object.assign({ retur_id: returBaru.id }, it);
+  });
+  tambahBaris_('Retur_Item', rowsReturItem, ctx.user.id);
+
+  // Jika langsung disetujui, terapkan efeknya seketika
+  if (statusAwal === 'disetujui') {
+    terapkanEfekRetur_(returBaru, itemsValid, transaksiAsal, ctx);
+  } else {
+    catatAudit_(ctx.user.id, 'retur_ajukan', 'RETUR', noRetur, {
+      tipe: tipe,
+      total: totalRetur,
+      alasan: alasan
+    });
+  }
+
+  return {
+    pesan: statusAwal === 'disetujui'
+      ? 'Dokumen retur ' + noRetur + ' berhasil disetujui dan diterapkan.'
+      : 'Permohonan retur ' + noRetur + ' berhasil diajukan dan menunggu persetujuan Owner/Admin.',
+    no_retur: noRetur,
+    status: statusAwal
+  };
+}
+
+/** retur.approve — Menyetujui permohonan retur yang diajukan kasir (Owner & Admin). */
+function aksiReturApprove_(ctx) {
+  if (ctx.user.role === ROLE.KASIR) {
+    gagal_(KODE.FORBIDDEN, 'Kasir tidak memiliki hak akses untuk menyetujui retur.');
+  }
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID retur wajib diberikan.');
+
+  const retur = cariById_('Retur', p.id);
+  if (!retur || retur.deleted) gagal_(KODE.NOT_FOUND, 'Dokumen retur tidak ditemukan.');
+  if (retur.status !== 'diajukan') {
+    gagal_(KODE.CONFLICT, 'Hanya retur berstatus "diajukan" yang dapat disetujui.');
+  }
+
+  const items = bacaSemua_('Retur_Item').filter(function (it) { return it.retur_id === retur.id && !it.deleted; });
+  let transaksiAsal = null;
+  if (retur.tipe === 'jual') {
+    transaksiAsal = cariById_('Penjualan', retur.ref_id);
+  } else {
+    transaksiAsal = cariById_('Pembelian', retur.ref_id);
+  }
+
+  const waktuSetuju = sekarang_();
+  ubahBaris_('Retur', [{
+    id: retur.id,
+    data: {
+      status: 'disetujui',
+      disetujui_oleh: ctx.user.id,
+      disetujui_at: waktuSetuju
+    }
+  }], ctx.user.id);
+
+  retur.status = 'disetujui';
+  retur.disetujui_oleh = ctx.user.id;
+  retur.disetujui_at = waktuSetuju;
+
+  terapkanEfekRetur_(retur, items, transaksiAsal, ctx);
+
+  return {
+    pesan: 'Dokumen retur ' + retur.no_retur + ' berhasil disetujui dan efek stok/finansial telah diterapkan.',
+    no_retur: retur.no_retur
+  };
+}
+
+/** retur.reject — Menolak permohonan retur (Owner & Admin). */
+function aksiReturReject_(ctx) {
+  if (ctx.user.role === ROLE.KASIR) {
+    gagal_(KODE.FORBIDDEN, 'Kasir tidak memiliki hak akses untuk menolak retur.');
+  }
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID retur wajib diberikan.');
+
+  const retur = cariById_('Retur', p.id);
+  if (!retur || retur.deleted) gagal_(KODE.NOT_FOUND, 'Dokumen retur tidak ditemukan.');
+  if (retur.status !== 'diajukan') {
+    gagal_(KODE.CONFLICT, 'Hanya retur berstatus "diajukan" yang dapat ditolak.');
+  }
+
+  const waktuTolak = sekarang_();
+  const alasanTolak = V_.teks(p.alasan_tolak, 'Alasan Penolakan', { maks: 300 }) || 'Ditolak oleh ' + ctx.user.username;
+
+  ubahBaris_('Retur', [{
+    id: retur.id,
+    data: {
+      status: 'ditolak',
+      alasan: retur.alasan + ' [Ditolak: ' + alasanTolak + ']',
+      disetujui_oleh: ctx.user.id,
+      disetujui_at: waktuTolak
+    }
+  }], ctx.user.id);
+
+  catatAudit_(ctx.user.id, 'retur_reject', 'RETUR', retur.no_retur, { alasan_tolak: alasanTolak });
+
+  return {
+    pesan: 'Permohonan retur ' + retur.no_retur + ' telah ditolak.',
+    no_retur: retur.no_retur
+  };
+}
+
+/**
+ * Helper internal untuk menerapkan seluruh efek atomik persetujuan retur:
+ * - Stok & Moving Average HPP (Aturan Bisnis #12 & #10)
+ * - Kartu Stok (Aturan Bisnis #5)
+ * - Poin Loyalitas & Total Belanja Member (Aturan Bisnis #7 & #16)
+ * - Potong Piutang / Hutang / Kas Refund
+ */
+function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
+  const tipe = retur.tipe;
+  const perbaruiProdukList = [];
+  const perbaruiVarianList = [];
+  const rowsKartuStok = [];
+
+  items.forEach(function (it) {
+    const qtyDasar = Number(it.qty_dasar) || 0;
+
+    if (tipe === 'jual') {
+      // 1. RETUR JUAL: Kembalikan stok & hitung ulang HPP memakai HPP snapshot item asal (Aturan Bisnis #12)
+      if (it.varian_id) {
+        const v = cariById_('Varian', it.varian_id);
+        const p = cariById_('Produk', it.produk_id);
+        const stokLamaV = Number(v.stok || 0);
+        const hppLamaV = Number(v.hpp || 0);
+        const hppSnapshot = Number(it.hpp || 0);
+        const hppBaruV = hitungHppBaru_(stokLamaV, hppLamaV, qtyDasar, hppSnapshot);
+        const stokBaruV = Math.round((stokLamaV + qtyDasar) * 1000) / 1000;
+
+        perbaruiVarianList.push({ id: v.id, data: { stok: stokBaruV, hpp: hppBaruV } });
+
+        const stokLamaP = Number(p.stok || 0);
+        const stokBaruP = Math.round((stokLamaP + qtyDasar) * 1000) / 1000;
+        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaruP } });
+
+        rowsKartuStok.push({
+          produk_id: it.produk_id,
+          varian_id: it.varian_id,
+          tipe: 'retur_jual',
+          qty: qtyDasar,
+          saldo: stokBaruV,
+          hpp: hppBaruV,
+          ref_id: retur.no_retur,
+          user_id: ctx.user.id,
+          keterangan: 'Retur penjualan ' + retur.no_retur + ': ' + retur.alasan
+        });
+      } else {
+        const p = cariById_('Produk', it.produk_id);
+        const stokLama = Number(p.stok || 0);
+        const hppLama = Number(p.hpp || 0);
+        const hppSnapshot = Number(it.hpp || 0);
+        const hppBaru = hitungHppBaru_(stokLama, hppLama, qtyDasar, hppSnapshot);
+        const stokBaru = Math.round((stokLama + qtyDasar) * 1000) / 1000;
+
+        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaru, hpp: hppBaru } });
+
+        rowsKartuStok.push({
+          produk_id: it.produk_id,
+          varian_id: '',
+          tipe: 'retur_jual',
+          qty: qtyDasar,
+          saldo: stokBaru,
+          hpp: hppBaru,
+          ref_id: retur.no_retur,
+          user_id: ctx.user.id,
+          keterangan: 'Retur penjualan ' + retur.no_retur + ': ' + retur.alasan
+        });
+      }
+    } else {
+      // 2. RETUR BELI: Kurangi stok pada HPP berjalan (Aturan Bisnis #12: HPP tidak berubah)
+      if (it.varian_id) {
+        const v = cariById_('Varian', it.varian_id);
+        const p = cariById_('Produk', it.produk_id);
+        const stokLamaV = Number(v.stok || 0);
+        const hppV = Number(v.hpp || 0);
+        const stokBaruV = Math.max(0, Math.round((stokLamaV - qtyDasar) * 1000) / 1000);
+
+        perbaruiVarianList.push({ id: v.id, data: { stok: stokBaruV } });
+
+        const stokLamaP = Number(p.stok || 0);
+        const stokBaruP = Math.max(0, Math.round((stokLamaP - qtyDasar) * 1000) / 1000);
+        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaruP } });
+
+        rowsKartuStok.push({
+          produk_id: it.produk_id,
+          varian_id: it.varian_id,
+          tipe: 'retur_beli',
+          qty: -qtyDasar,
+          saldo: stokBaruV,
+          hpp: hppV,
+          ref_id: retur.no_retur,
+          user_id: ctx.user.id,
+          keterangan: 'Retur pembelian ' + retur.no_retur + ': ' + retur.alasan
+        });
+      } else {
+        const p = cariById_('Produk', it.produk_id);
+        const stokLama = Number(p.stok || 0);
+        const hppP = Number(p.hpp || 0);
+        const stokBaru = Math.max(0, Math.round((stokLama - qtyDasar) * 1000) / 1000);
+
+        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaru } });
+
+        rowsKartuStok.push({
+          produk_id: it.produk_id,
+          varian_id: '',
+          tipe: 'retur_beli',
+          qty: -qtyDasar,
+          saldo: stokBaru,
+          hpp: hppP,
+          ref_id: retur.no_retur,
+          user_id: ctx.user.id,
+          keterangan: 'Retur pembelian ' + retur.no_retur + ': ' + retur.alasan
+        });
+      }
+    }
+  });
+
+  if (perbaruiProdukList.length > 0) ubahBaris_('Produk', perbaruiProdukList, ctx.user.id);
+  if (perbaruiVarianList.length > 0) ubahBaris_('Varian', perbaruiVarianList, ctx.user.id);
+  if (rowsKartuStok.length > 0) tambahBaris_('Kartu_Stok', rowsKartuStok, ctx.user.id);
+
+  // 3. Efek Finansial & Piutang/Hutang
+  if (tipe === 'jual') {
+    // Kurangi poin & total belanja member jika ada
+    if (retur.pihak_id) {
+      const pel = cariById_('Pelanggan', retur.pihak_id);
+      if (pel && pel.tipe === 'member') {
+        const pengaturan = ambilPengaturan_();
+        let poinPotong = 0;
+        if (pengaturan.poin_per_rupiah > 0) {
+          let pengali = 1;
+          (pengaturan.level_member || []).forEach(function (l) { if (l.nama === pel.level) pengali = Number(l.pengali) || 1; });
+          poinPotong = Math.floor((Number(retur.total) / pengaturan.poin_per_rupiah) * pengali);
+        }
+
+        const poinLama = Number(pel.poin || 0);
+        const poinBaru = Math.max(0, poinLama - poinPotong);
+        const belanjaLama = Number(pel.total_belanja || 0);
+        const belanjaBaru = Math.max(0, belanjaLama - Number(retur.total));
+
+        ubahBaris_('Pelanggan', [{
+          id: pel.id,
+          data: { poin: poinBaru, total_belanja: belanjaBaru }
+        }], ctx.user.id);
+
+        if (poinPotong > 0) {
+          tambahBaris_('Poin_Log', [{
+            pelanggan_id: pel.id,
+            jumlah: -poinPotong,
+            jenis: 'retur',
+            ref_id: retur.no_retur,
+            saldo: poinBaru
+          }], ctx.user.id);
+        }
+      }
+    }
+
+    // Refund: potong piutang jika ada
+    if (retur.metode_refund === 'potong_piutang') {
+      const pt = bacaSemua_('Piutang').filter(function (p) { return p.penjualan_id === retur.ref_id && !p.deleted && p.status !== 'lunas'; })[0];
+      if (pt) {
+        const sisaBaru = Math.max(0, (Number(pt.sisa) || 0) - Number(retur.total));
+        ubahBaris_('Piutang', [{
+          id: pt.id,
+          data: {
+            sisa: sisaBaru,
+            status: sisaBaru === 0 ? 'lunas' : 'sebagian'
+          }
+        }], ctx.user.id);
+      }
+    }
+  } else {
+    // Retur Beli: potong hutang jika metode_refund === 'potong_hutang'
+    if (retur.metode_refund === 'potong_hutang') {
+      const ht = bacaSemua_('Hutang').filter(function (h) { return h.pembelian_id === retur.ref_id && !h.deleted && h.status !== 'lunas'; })[0];
+      if (ht) {
+        const sisaBaru = Math.max(0, (Number(ht.sisa) || 0) - Number(retur.total));
+        ubahBaris_('Hutang', [{
+          id: ht.id,
+          data: {
+            sisa: sisaBaru,
+            status: sisaBaru === 0 ? 'lunas' : 'sebagian'
+          }
+        }], ctx.user.id);
+      }
+    }
+  }
+
+  // 4. Catat Audit Log
+  catatAudit_(ctx.user.id, 'retur_approve', 'RETUR', retur.no_retur, {
+    tipe: tipe,
+    total: retur.total,
+    metode_refund: retur.metode_refund
+  });
+
+  cacheHapus_('produk');
 }
 
 /* ========================================================================== */

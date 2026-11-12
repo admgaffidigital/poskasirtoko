@@ -389,7 +389,7 @@ Sebuah modul dianggap selesai jika:
 - [x] **Fase 1 – Fondasi**: login multiuser, produk, kategori, varian, pengaturan, multi akun *(Selesai & diuji)*
 - [x] **Fase 2 – POS Penjualan**: kasir, pending transaksi, nota Bluetooth *(Selesai & diuji)*
 - [x] **Fase 3 – Stok & Pembelian**: supplier, POS pembelian, kartu stok, stok opname *(Selesai & diuji)*
-- [ ] **Fase 4 – Keuangan**: hutang & piutang, retur
+- [x] **Fase 4 – Keuangan**: hutang & piutang, retur *(Selesai & diuji)*
 - [ ] **Fase 5 – Loyalitas**: pelanggan, membership, poin & hadiah, price tag
 - [ ] **Fase 6 – Laporan**: dashboard lengkap
 - [ ] **Fase 7 – Finalisasi**: APK Capacitor, optimasi, uji menyeluruh, backup otomatis

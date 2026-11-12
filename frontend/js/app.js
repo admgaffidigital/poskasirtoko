@@ -19,7 +19,7 @@ import {
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
-// Modul-modul Fase 1, 2, & 3
+// Modul-modul Fase 1, 2, 3, & 4
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin } from './modules/auth.js';
 import { renderKategoriModule } from './modules/kategori.js';
 import { renderProdukModule } from './modules/produk.js';
@@ -30,6 +30,8 @@ import { renderSupplierModule } from './modules/supplier.js';
 import { renderPembelianModule } from './modules/pembelian.js';
 import { renderKartuStokModule } from './modules/kartu-stok.js';
 import { renderOpnameModule } from './modules/opname.js';
+import { renderHutangPiutangModule } from './modules/hutang-piutang.js';
+import { renderReturModule } from './modules/retur.js';
 
 class App {
   constructor() {
@@ -410,6 +412,10 @@ class App {
       renderKartuStokModule(content);
     } else if (rute.id === 'opname') {
       renderOpnameModule(content);
+    } else if (rute.id === 'hutang-piutang') {
+      renderHutangPiutangModule(content);
+    } else if (rute.id === 'retur') {
+      renderReturModule(content);
     } else if (rute.id === 'pengaturan') {
       renderPengaturanModule(content);
     } else if (rute.id === 'users') {
