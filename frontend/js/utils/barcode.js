@@ -111,7 +111,7 @@ export function bukaKameraScanner(onScanCallback) {
           
           <!-- Laser Target Overlay -->
           <div style="position: absolute; inset: 0; pointer-events: none; border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
-            <div style="width: 75%; height: 50%; border: 2px dashed var(--brand-primary); border-radius: var(--radius-sm); position: relative; box-shadow: 0 0 12px rgba(230,81,0,0.4);">
+            <div style="width: 75%; height: 50%; border: 2px dashed var(--primary); border-radius: var(--radius-sm); position: relative; box-shadow: 0 0 12px rgba(230,81,0,0.4);">
               <div style="position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #ff1744; box-shadow: 0 0 8px #ff1744; animation: scanLine 2s infinite ease-in-out;"></div>
             </div>
           </div>
@@ -122,7 +122,7 @@ export function bukaKameraScanner(onScanCallback) {
         </div>
 
         <div class="row" style="width: 100%; gap: var(--sp-2);">
-          <input type="text" id="input-manual-barcode" class="form-input" placeholder="Atau ketik Barcode / SKU..." style="flex: 1;" />
+          <input type="text" id="input-manual-barcode" class="input" placeholder="Atau ketik Barcode / SKU..." style="flex: 1;" />
           <button type="button" class="btn btn-secondary btn-sm" id="btn-manual-barcode">Pilih</button>
         </div>
       </div>

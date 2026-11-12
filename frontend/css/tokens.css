@@ -127,6 +127,8 @@
   --primary-active: var(--orange-800);
   --primary-soft: var(--orange-50);
   --primary-soft-text: var(--orange-800);
+  --brand-primary: var(--primary);
+  --brand-primary-soft: var(--primary-soft);
 
   --success: var(--green-500);
   --success-soft: #e8f7ee;
@@ -178,6 +180,8 @@
   --primary-active: var(--orange-600);
   --primary-soft: rgba(247, 107, 28, 0.14);
   --primary-soft-text: var(--orange-300);
+  --brand-primary: var(--primary);
+  --brand-primary-soft: var(--primary-soft);
 
   --success: #22c55e;
   --success-soft: rgba(34, 197, 94, 0.14);

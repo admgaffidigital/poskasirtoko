@@ -60,7 +60,7 @@ export function renderPosModule(container) {
       <button type="button" id="pos-tab-cart" aria-pressed="false">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
         <span>Keranjang</span>
-        <span class="badge badge-primary" id="mobile-cart-badge">0</span>
+        <span class="badge badge-primary" id="mobile-cart-badge" style="display: none; padding: 2px 7px; font-size: 11px;">0</span>
       </button>
     </div>
 
@@ -69,24 +69,24 @@ export function renderPosModule(container) {
       <div class="pos-catalog-panel">
         <!-- Top Toolbar: Pencarian, Barcode, Kategori, Toggle View -->
         <div class="pos-toolbar">
-          <div class="row" style="gap: var(--sp-2); width: 100%;">
-            <div class="form-search grow" style="position: relative;">
-              <span class="search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;">
+          <div class="row" style="gap: var(--sp-2); width: 100%; align-items: center;">
+            <div class="input-group grow" style="position: relative;">
+              <span class="input-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
                 ${ICONS.search}
               </span>
-              <input type="text" id="pos-search-input" class="form-input" placeholder="Cari nama, SKU, barcode (F2)..." style="padding-left: 38px; width: 100%;" autocomplete="off" />
+              <input type="text" id="pos-search-input" class="input" placeholder="Cari nama, SKU, barcode..." style="padding-left: 38px; width: 100%; border-radius: var(--radius-full);" autocomplete="off" />
               <button type="button" id="pos-search-clear" class="btn btn-ghost btn-icon btn-sm" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: none;" aria-label="Hapus pencarian">
                 ${ICONS.x}
               </button>
             </div>
-            <button type="button" id="btn-scan-camera" class="btn btn-secondary btn-icon" title="Scan Barcode Kamera">
+            <button type="button" id="btn-scan-camera" class="btn btn-secondary btn-icon" style="border-radius: var(--radius-full); width: var(--control-h); height: var(--control-h); flex-shrink: 0;" title="Scan Barcode Kamera">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="6" x="7" y="9" rx="1"/></svg>
             </button>
-            <div class="pos-view-toggle">
-              <button type="button" id="btn-view-grid" class="btn btn-ghost btn-icon btn-sm ${state.viewMode === 'grid' ? 'active' : ''}" title="Tampilan Grid">
+            <div class="pos-view-toggle segmented" style="border-radius: var(--radius-full); padding: 2px;">
+              <button type="button" id="btn-view-grid" class="btn btn-ghost btn-icon btn-sm ${state.viewMode === 'grid' ? 'active' : ''}" style="border-radius: var(--radius-full);" title="Tampilan Grid">
                 ${ICONS.grid}
               </button>
-              <button type="button" id="btn-view-list" class="btn btn-ghost btn-icon btn-sm ${state.viewMode === 'list' ? 'active' : ''}" title="Tampilan Baris">
+              <button type="button" id="btn-view-list" class="btn btn-ghost btn-icon btn-sm ${state.viewMode === 'list' ? 'active' : ''}" style="border-radius: var(--radius-full);" title="Tampilan Baris">
                 ${ICONS.list}
               </button>
             </div>
@@ -123,7 +123,7 @@ export function renderPosModule(container) {
         <div class="pos-cart-header">
           <div class="row" style="justify-content: space-between; align-items: center;">
             <div class="row" style="gap: var(--sp-2); align-items: center;">
-              <span style="color: var(--brand-primary);">${ICONS.cart}</span>
+              <span style="color: var(--primary);">${ICONS.cart}</span>
               <div class="fw-bold" style="font-size: var(--fs-md);">Keranjang Belanja</div>
               <span class="badge badge-primary" id="cart-item-count">0</span>
             </div>
@@ -286,7 +286,10 @@ export function renderPosModule(container) {
 
   function perbaruiFloatingCart() {
     const count = state.keranjang.length;
-    if (elMobileCartBadge) elMobileCartBadge.textContent = count;
+    if (elMobileCartBadge) {
+      elMobileCartBadge.textContent = count;
+      elMobileCartBadge.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
     if (!elFloatingCart) return;
     if (state.mobileView === 'catalog' && count > 0) {
       elFloatingCart.style.display = 'flex';
@@ -444,12 +447,14 @@ export function renderPosModule(container) {
         infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: var(--surface-3);">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
+      const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
+
       html += `
         <div class="pos-product-card card" data-id="${p.id}" tabindex="0">
           <div class="card-body" style="padding: var(--sp-3); display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
             <div>
               <div class="row" style="justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                <span class="text-xs text-muted mono">${escapeHtml(p.sku || p.barcode || '-')}</span>
+                <span class="text-xs text-muted mono">${kodeItem}</span>
                 ${badgeStok}
               </div>
               <div class="fw-bold pos-card-title">${escapeHtml(p.nama)}</div>
@@ -459,7 +464,7 @@ export function renderPosModule(container) {
               </div>
             </div>
 
-            <div style="margin-top: var(--sp-2); border-top: 1px dashed var(--border); padding-top: 6px;">
+            <div style="margin-top: var(--sp-2); border-top: 1px solid var(--surface-2); padding-top: 6px;">
               <div class="row" style="justify-content: space-between; align-items: baseline;">
                 <div class="text-xs text-muted">${escapeHtml(p.satuan_dasar)}</div>
                 <div class="fw-bold pos-card-price mono">${formatRupiah(p.harga_ritel)}</div>
@@ -482,7 +487,7 @@ export function renderPosModule(container) {
 
   function renderKatalogList(items) {
     let html = `
-      <div class="table-container" style="background: var(--surface); border-radius: var(--radius-md);">
+      <div class="table-wrap keep-table" style="background: var(--surface); border-radius: var(--radius-md); border: 1px solid var(--border);">
         <table class="table" style="width: 100%;">
           <thead>
             <tr>
@@ -619,13 +624,13 @@ export function renderPosModule(container) {
               <label class="form-label">Jumlah Beli (Qty):</label>
               <div class="row" style="gap: var(--sp-1);">
                 <button type="button" class="btn btn-secondary btn-icon" id="btn-modal-min">-</button>
-                <input type="number" id="input-modal-qty" class="form-input text-center fw-bold" value="1" min="0.001" step="any" style="width: 90px;" />
+                <input type="number" id="input-modal-qty" class="input text-center fw-bold" value="1" min="0.001" step="any" style="width: 90px;" />
                 <button type="button" class="btn btn-secondary btn-icon" id="btn-modal-plus">+</button>
               </div>
             </div>
             <div style="flex: 1; text-align: right;">
               <div class="text-xs text-muted">Subtotal Estimasi:</div>
-              <div class="fw-bold mono" id="modal-subtotal-est" style="font-size: var(--fs-lg); color: var(--brand-primary);">
+              <div class="fw-bold mono" id="modal-subtotal-est" style="font-size: var(--fs-lg); color: var(--primary);">
                 Rp 0
               </div>
             </div>
@@ -845,7 +850,7 @@ export function renderPosModule(container) {
             <!-- Qty Stepper -->
             <div class="row" style="gap: 2px; align-items: center;">
               <button type="button" class="btn btn-secondary btn-icon btn-sm btn-item-min" data-idx="${idx}" style="width: 28px; height: 28px;">-</button>
-              <input type="number" class="form-input text-center fw-bold input-item-qty" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" style="width: 65px; height: 28px; padding: 2px 4px; font-size: 12px;" />
+              <input type="number" class="input text-center fw-bold input-item-qty" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" style="width: 65px; height: 28px; padding: 2px 4px; font-size: 12px;" />
               <button type="button" class="btn btn-secondary btn-icon btn-sm btn-item-plus" data-idx="${idx}" style="width: 28px; height: 28px;">+</button>
             </div>
 
@@ -961,7 +966,7 @@ export function renderPosModule(container) {
           </div>
           <div>
             <label class="form-label fw-bold">Harga Satuan Baru (Rp):</label>
-            <input type="number" id="input-edit-harga" class="form-input fw-bold mono" value="${it.harga}" min="${hpp}" step="100" />
+            <input type="number" id="input-edit-harga" class="input fw-bold mono" value="${it.harga}" min="${hpp}" step="100" />
             <div class="form-hint text-xs">Harga jual tidak boleh di bawah HPP barang.</div>
           </div>
         </div>
@@ -1021,7 +1026,7 @@ export function renderPosModule(container) {
 
           <div>
             <label class="form-label" id="label-disc-val">Nilai Diskon:</label>
-            <input type="number" id="input-disc-val" class="form-input fw-bold mono" value="${it.diskon_nilai || 0}" min="0" />
+            <input type="number" id="input-disc-val" class="input fw-bold mono" value="${it.diskon_nilai || 0}" min="0" />
             ${isKasir ? `<div class="form-hint text-xs text-warning">Batas maksimal diskon kasir: ${maksDiskonKasir}%.</div>` : ''}
           </div>
         </div>
@@ -1201,7 +1206,7 @@ export function renderPosModule(container) {
 
           <div>
             <label class="form-label">Nilai Diskon Transaksi:</label>
-            <input type="number" id="input-gdisc-val" class="form-input fw-bold mono" value="${state.diskonTransaksi.nilai || 0}" min="0" />
+            <input type="number" id="input-gdisc-val" class="input fw-bold mono" value="${state.diskonTransaksi.nilai || 0}" min="0" />
             ${isKasir ? `<div class="form-hint text-xs text-warning">Batas diskon kasir: ${maksDiskonKasir}%.</div>` : ''}
           </div>
         </div>
@@ -1278,7 +1283,7 @@ export function renderPosModule(container) {
 
           <div>
             <label class="form-label fw-bold">Cari Member Terdaftar:</label>
-            <input type="text" id="input-cari-member" class="form-input" placeholder="Ketik nama, no HP, atau kode..." />
+            <input type="text" id="input-cari-member" class="input" placeholder="Ketik nama, no HP, atau kode..." />
           </div>
 
           <div class="list" id="member-list-container" style="max-height: 280px; overflow-y: auto;">
@@ -1317,7 +1322,7 @@ export function renderPosModule(container) {
         const isSelected = state.pelanggan && state.pelanggan.id === pel.id;
         h += `
           <button type="button" class="list-item btn-select-pel ${isSelected ? 'active' : ''}" data-id="${pel.id}">
-            <div class="list-item-icon" style="background: var(--brand-primary-soft); color: var(--brand-primary);">
+            <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary);">
               ${ICONS.award}
             </div>
             <div class="grow" style="text-align: left;">
@@ -1395,7 +1400,7 @@ export function renderPosModule(container) {
             <div class="card" style="background: var(--surface-2);">
               <div class="card-body" style="padding: var(--sp-3);">
                 <div class="text-xs text-muted">TOTAL TAGIHAN</div>
-                <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--brand-primary);">${formatRupiah(grandTotal)}</div>
+                <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary);">${formatRupiah(grandTotal)}</div>
                 <div class="text-xs text-muted" style="margin-top: 4px;">
                   Pelanggan: <b>${escapeHtml(state.pelanggan ? state.pelanggan.nama : 'Pelanggan Umum')}</b>
                   ${isMember ? `(Sisa Limit: <span class="text-success">${formatRupiah(state.pelanggan.sisa_limit || 0)}</span>)` : ''}
@@ -1419,12 +1424,12 @@ export function renderPosModule(container) {
             <!-- Alamat Kirim & Catatan (Muncul jika opsi 'dikirim') -->
             <div id="box-detail-kirim" style="display: ${state.pengiriman === 'dikirim' ? 'block' : 'none'};">
               <label class="form-label">Alamat Pengiriman:</label>
-              <textarea id="checkout-alamat" class="form-input" rows="2" placeholder="Alamat lengkap tujuan pengiriman...">${escapeHtml(state.alamatKirim || (state.pelanggan?.alamat || ''))}</textarea>
+              <textarea id="checkout-alamat" class="textarea" rows="2" placeholder="Alamat lengkap tujuan pengiriman...">${escapeHtml(state.alamatKirim || (state.pelanggan?.alamat || ''))}</textarea>
             </div>
 
             <div>
               <label class="form-label">Catatan Nota (Opsional):</label>
-              <input type="text" id="checkout-catatan" class="form-input" placeholder="Catatan transaksi..." value="${escapeHtml(state.catatan)}" />
+              <input type="text" id="checkout-catatan" class="input" placeholder="Catatan transaksi..." value="${escapeHtml(state.catatan)}" />
             </div>
           </div>
 
@@ -1448,7 +1453,7 @@ export function renderPosModule(container) {
               <!-- Default Tunai Input -->
               <div id="sec-tunai">
                 <label class="form-label">Nominal Uang Diterima (Rp):</label>
-                <input type="number" id="input-tunai-terima" class="form-input fw-bold mono" style="font-size: var(--fs-lg);" value="${grandTotal}" min="${grandTotal}" />
+                <input type="number" id="input-tunai-terima" class="input fw-bold mono" style="font-size: var(--fs-lg);" value="${grandTotal}" min="${grandTotal}" />
 
                 <!-- Tombol Cepat Uang Pas -->
                 <div class="row" style="gap: 4px; margin-top: var(--sp-2); flex-wrap: wrap;" id="quick-cash-btns">
@@ -1470,7 +1475,7 @@ export function renderPosModule(container) {
               <!-- Section QRIS / Transfer -->
               <div id="sec-transfer-qris" style="display: none;">
                 <label class="form-label">Nomor Referensi / Approval Code:</label>
-                <input type="text" id="input-ref-bayar" class="form-input" placeholder="Contoh: REF-12345678" />
+                <input type="text" id="input-ref-bayar" class="input" placeholder="Contoh: REF-12345678" />
               </div>
 
               <!-- Section Tempo -->
@@ -1485,15 +1490,15 @@ export function renderPosModule(container) {
                 <div class="stack" style="gap: var(--sp-2);">
                   <div class="row" style="gap: var(--sp-2); align-items: center;">
                     <span class="text-xs" style="width: 70px;">Tunai:</span>
-                    <input type="number" id="komb-tunai" class="form-input mono" value="0" min="0" style="flex: 1;" />
+                    <input type="number" id="komb-tunai" class="input mono" value="0" min="0" style="flex: 1;" />
                   </div>
                   <div class="row" style="gap: var(--sp-2); align-items: center;">
                     <span class="text-xs" style="width: 70px;">Transfer:</span>
-                    <input type="number" id="komb-transfer" class="form-input mono" value="0" min="0" style="flex: 1;" />
+                    <input type="number" id="komb-transfer" class="input mono" value="0" min="0" style="flex: 1;" />
                   </div>
                   <div class="row" style="gap: var(--sp-2); align-items: center;">
                     <span class="text-xs" style="width: 70px;">Tempo:</span>
-                    <input type="number" id="komb-tempo" class="form-input mono" value="0" min="0" style="flex: 1;" ${!isMember ? 'disabled' : ''} />
+                    <input type="number" id="komb-tempo" class="input mono" value="0" min="0" style="flex: 1;" ${!isMember ? 'disabled' : ''} />
                   </div>
                   <div class="text-xs text-muted text-right" id="komb-sisa-label">Sisa Kurang: Rp 0</div>
                 </div>
@@ -1831,7 +1836,7 @@ export function renderPosModule(container) {
                   <div class="text-xs text-muted">${formatTanggal(p.created_at, true)}</div>
                 </div>
                 <div class="text-right">
-                  <div class="fw-bold mono text-sm" style="color: var(--brand-primary);">${formatRupiah(p.total)}</div>
+                  <div class="fw-bold mono text-sm" style="color: var(--primary);">${formatRupiah(p.total)}</div>
                   <div class="row" style="gap: var(--sp-1); margin-top: 4px; justify-content: flex-end;">
                     <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-draft" data-id="${p.id}">Hapus</button>
                     <button type="button" class="btn btn-primary btn-sm btn-muat-draft" data-id="${p.id}">Muat</button>
