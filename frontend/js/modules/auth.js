@@ -231,3 +231,4 @@ export async function konfirmasiLogout() {
     window.location.hash = '#/pos';
   });
 }
+
