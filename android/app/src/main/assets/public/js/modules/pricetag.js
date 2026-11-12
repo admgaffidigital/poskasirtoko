@@ -7,7 +7,7 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
-import { escapeHtml, formatRupiah, formatTanggal } from '../utils/format.js';
+import { escapeHtml, formatRupiah, formatTanggal, formatQty } from '../utils/format.js';
 import { generateBarcodeSvg } from '../utils/barcode.js';
 
 export async function renderPriceTagModule(container) {
