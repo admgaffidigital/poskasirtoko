@@ -10,7 +10,8 @@
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
-import { $, escapeHtml } from '../utils/dom.js';
+import { $ } from '../utils/dom.js';
+import { escapeHtml } from '../utils/format.js';
 
 let modalLoginRef = null;
 

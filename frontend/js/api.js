@@ -121,3 +121,19 @@ export async function apiCall(action, payload = {}, options = {}) {
   }
 }
 
+/**
+ * Objek helper API serbaguna untuk kemudahan pemanggilan (cth: api.post(action, payload))
+ */
+export const api = {
+  call: apiCall,
+  post: async (action, payload = {}, options = {}) => {
+    try {
+      const res = await apiCall(action, payload, options);
+      return { ok: true, data: res, error: null, code: null };
+    } catch (err) {
+      return { ok: false, data: null, error: err.message, code: err.code || 'SERVER' };
+    }
+  }
+};
+
+
