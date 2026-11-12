@@ -122,3 +122,4 @@ export function formatPersen(val) {
   const n = Number(val) || 0;
   return `${n}%`;
 }
+

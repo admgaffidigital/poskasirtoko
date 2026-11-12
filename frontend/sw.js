@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v0.0.1';
+const CACHE_NAME = 'pos-kasir-static-v0.1.0';
 
 const ASSETS = [
   './',
@@ -19,6 +19,11 @@ const ASSETS = [
   './js/api.js',
   './js/state.js',
   './js/app.js',
+  './js/modules/auth.js',
+  './js/modules/kategori.js',
+  './js/modules/produk.js',
+  './js/modules/pengaturan.js',
+  './js/modules/users.js',
   './js/utils/format.js',
   './js/utils/ui.js',
   './js/utils/dom.js',
@@ -100,3 +105,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+

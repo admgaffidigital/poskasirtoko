@@ -210,8 +210,35 @@ const PENGATURAN_DEFAULT = {
  * ctx = { action, payload, token, user, waktu }
  */
 const RUTE = {
-  'sistem.ping': { publik: true, handler: aksiSistemPing_ }
-  // Fase 1: auth.login, auth.logout, auth.me, auth.gantiPin, kategori.*, produk.*, pengaturan.*, user.*
+  'sistem.ping': { publik: true, handler: aksiSistemPing_ },
+
+  // Auth (Fase 1)
+  'auth.login': { publik: true, tulis: true, handler: aksiAuthLogin_ },
+  'auth.logout': { publik: false, tulis: true, handler: aksiAuthLogout_ },
+  'auth.me': { publik: false, handler: aksiAuthMe_ },
+  'auth.gantiPin': { publik: false, tulis: true, handler: aksiAuthGantiPin_ },
+
+  // Kategori (Fase 1)
+  'kategori.list': { publik: false, roles: SEMUA_ROLE, handler: aksiKategoriList_ },
+  'kategori.create': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiKategoriCreate_ },
+  'kategori.update': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiKategoriUpdate_ },
+  'kategori.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiKategoriDelete_ },
+
+  // Produk (Fase 1)
+  'produk.list': { publik: false, roles: SEMUA_ROLE, handler: aksiProdukList_ },
+  'produk.create': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukCreate_ },
+  'produk.update': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukUpdate_ },
+  'produk.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukDelete_ },
+
+  // Pengaturan (Fase 1)
+  'pengaturan.get': { publik: false, roles: SEMUA_ROLE, handler: aksiPengaturanGet_ },
+  'pengaturan.set': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiPengaturanSet_ },
+
+  // User Management (Fase 1)
+  'user.list': { publik: false, roles: [ROLE.OWNER], handler: aksiUserList_ },
+  'user.create': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiUserCreate_ },
+  'user.update': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiUserUpdate_ },
+  'user.resetPin': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiUserResetPin_ }
 };
 
 /** Entry point Web App (semua aksi). */
@@ -303,11 +330,49 @@ function cekRole_(user, roles) {
 
 /**
  * Validasi token sesi → user.
- * Diimplementasikan penuh pada FASE 1 (login multiuser). Pada Fase 0 belum ada
- * aksi yang membutuhkan login, sehingga semua token dianggap tidak valid.
+ * Tahan pembersihan cache: membaca dari sheet `Sesi` dan memverifikasi waktu kedaluwarsa.
  */
-function validasiSesi_(token) { // eslint-disable-line no-unused-vars
-  gagal_(KODE.AUTH_INVALID, 'Fitur login belum tersedia (Fase 1).');
+function validasiSesi_(token) {
+  if (!token || typeof token !== 'string') {
+    gagal_(KODE.AUTH_INVALID, 'Token sesi tidak valid.');
+  }
+  const th = sha256Hex_(token.trim());
+  const cacheKey = 'sesi_' + th;
+  const dariCache = cacheAmbil_(cacheKey);
+  if (dariCache && dariCache.id) {
+    return dariCache;
+  }
+
+  const semuaSesi = bacaSemua_('Sesi');
+  const sesi = semuaSesi.filter(function (s) { return s.token_hash === th && !s.deleted; })[0];
+  if (!sesi) {
+    gagal_(KODE.AUTH_INVALID, 'Sesi tidak valid atau telah berakhir. Silakan login kembali.');
+  }
+
+  // Cek kedaluwarsa waktu
+  if (sesi.kedaluwarsa) {
+    const tExp = new Date(String(sesi.kedaluwarsa).replace(' ', 'T')).getTime();
+    if (isFinite(tExp) && tExp < Date.now()) {
+      hapusLunak_('Sesi', sesi.id, 'sistem');
+      gagal_(KODE.AUTH_INVALID, 'Sesi Anda telah kedaluwarsa. Silakan login kembali.');
+    }
+  }
+
+  const u = cariById_('Users', sesi.user_id);
+  if (!u || !u.aktif || u.deleted) {
+    gagal_(KODE.AUTH_INVALID, 'Akun pengguna tidak aktif atau tidak ditemukan.');
+  }
+
+  const userAman = {
+    id: u.id,
+    username: u.username,
+    nama: u.nama,
+    role: u.role,
+    wajib_ganti_pin: !!u.wajib_ganti_pin
+  };
+
+  cacheSimpan_(cacheKey, userAman, 300); // Cache 5 menit
+  return userAman;
 }
 
 /* ========================================================================== */
@@ -763,6 +828,737 @@ function aksiSistemPing_() {
     db_siap: dbSiap,
     waktu_server: sekarang_()
   };
+}
+
+/* ---------- 9.1 AUTENTIKASI & SESI ---------- */
+
+/** auth.login — Login dengan username & 6-digit PIN. */
+function aksiAuthLogin_(ctx) {
+  const p = ctx.payload || {};
+  const username = V_.teks(p.username, 'Username', { wajib: true, maks: 50 });
+  const pin = V_.pin(p.pin);
+
+  const semuaUser = bacaSemua_('Users');
+  const user = semuaUser.filter(function (u) {
+    return String(u.username || '').toLowerCase() === username.toLowerCase();
+  })[0];
+
+  if (!user || user.deleted) {
+    gagal_(KODE.AUTH_INVALID, 'Username atau PIN salah.');
+  }
+
+  if (!user.aktif) {
+    gagal_(KODE.FORBIDDEN, 'Akun pengguna ini telah dinonaktifkan.');
+  }
+
+  // Cek apakah akun sedang terkunci karena gagal 5x
+  if (user.kunci_sampai) {
+    const tKunci = new Date(String(user.kunci_sampai).replace(' ', 'T')).getTime();
+    if (isFinite(tKunci) && tKunci > Date.now()) {
+      gagal_(KODE.AUTH_LOCKED, 'Akun Anda terkunci sementara hingga ' + user.kunci_sampai + ' karena salah PIN 5 kali.');
+    }
+  }
+
+  // Verifikasi hash PIN
+  const hashMasuk = hashPin_(pin, user.salt);
+  if (hashMasuk !== user.pin_hash) {
+    const peng = ambilPengaturan_();
+    const maksGagal = peng.login_maks_gagal || 5;
+    const kunciMenit = peng.login_kunci_menit || 15;
+    const gagalBaru = (Number(user.gagal_login) || 0) + 1;
+    let waktuKunciStr = '';
+
+    if (gagalBaru >= maksGagal) {
+      waktuKunciStr = formatWaktu_(new Date(Date.now() + kunciMenit * 60 * 1000));
+    }
+
+    ubahBaris_('Users', [{
+      id: user.id,
+      data: { gagal_login: gagalBaru, kunci_sampai: waktuKunciStr }
+    }], 'sistem');
+
+    catatAudit_(user.id, 'login_gagal', 'AUTH', user.id, { username: user.username, percobaan: gagalBaru });
+
+    if (waktuKunciStr) {
+      gagal_(KODE.AUTH_LOCKED, 'PIN salah 5 kali berturut-turut. Akun dikunci selama 15 menit (hingga ' + waktuKunciStr + ').');
+    } else {
+      const sisa = maksGagal - gagalBaru;
+      gagal_(KODE.AUTH_INVALID, 'Username atau PIN salah. Sisa percobaan: ' + sisa + ' kali.');
+    }
+  }
+
+  // Login berhasil: reset counter gagal & update last_login
+  const waktuSekarang = sekarang_();
+  ubahBaris_('Users', [{
+    id: user.id,
+    data: { gagal_login: 0, kunci_sampai: '', last_login: waktuSekarang }
+  }], 'sistem');
+
+  // Buat sesi baru
+  const token = buatToken_();
+  const tokenHash = sha256Hex_(token);
+  const peng = ambilPengaturan_();
+  const durasiJam = Number(peng.sesi_jam) || 6;
+  const tglKedaluwarsa = formatWaktu_(new Date(Date.now() + durasiJam * 3600 * 1000));
+
+  tambahBaris_('Sesi', [{
+    user_id: user.id,
+    token_hash: tokenHash,
+    kedaluwarsa: tglKedaluwarsa,
+    terakhir_aktif: waktuSekarang,
+    perangkat: p.perangkat || 'Web'
+  }], user.id);
+
+  const userAman = {
+    id: user.id,
+    username: user.username,
+    nama: user.nama,
+    role: user.role,
+    wajib_ganti_pin: !!user.wajib_ganti_pin
+  };
+
+  cacheSimpan_('sesi_' + tokenHash, userAman, 300);
+  catatAudit_(user.id, 'login_sukses', 'AUTH', user.id, { username: user.username, role: user.role });
+
+  return {
+    token: token,
+    user: userAman
+  };
+}
+
+/** auth.logout — Mengakhiri sesi aktif. */
+function aksiAuthLogout_(ctx) {
+  const th = sha256Hex_(ctx.token);
+  const semuaSesi = bacaSemua_('Sesi');
+  const sesi = semuaSesi.filter(function (s) { return s.token_hash === th && !s.deleted; })[0];
+  if (sesi) {
+    hapusLunak_('Sesi', sesi.id, ctx.user.id);
+  }
+  cacheHapus_('sesi_' + th);
+  catatAudit_(ctx.user.id, 'logout', 'AUTH', ctx.user.id, {});
+  return { pesan: 'Logout berhasil.' };
+}
+
+/** auth.me — Mengambil data profil sesi pengguna yang sedang aktif. */
+function aksiAuthMe_(ctx) {
+  return { user: ctx.user };
+}
+
+/** auth.gantiPin — Mengganti PIN user sendiri. */
+function aksiAuthGantiPin_(ctx) {
+  const p = ctx.payload || {};
+  const pinLama = V_.pin(p.pin_lama);
+  const pinBaru = V_.pin(p.pin_baru);
+
+  if (pinLama === pinBaru) {
+    gagal_(KODE.VALIDATION, 'PIN baru harus berbeda dengan PIN lama.');
+  }
+
+  const u = cariById_('Users', ctx.user.id);
+  if (!u || u.deleted) {
+    gagal_(KODE.AUTH_INVALID, 'Data pengguna tidak ditemukan.');
+  }
+
+  if (hashPin_(pinLama, u.salt) !== u.pin_hash) {
+    gagal_(KODE.VALIDATION, 'PIN lama Anda salah.');
+  }
+
+  const saltBaru = buatSalt_();
+  ubahBaris_('Users', [{
+    id: u.id,
+    data: {
+      pin_hash: hashPin_(pinBaru, saltBaru),
+      salt: saltBaru,
+      wajib_ganti_pin: false
+    }
+  }], ctx.user.id);
+
+  // Perbarui cache sesi
+  ctx.user.wajib_ganti_pin = false;
+  cacheSimpan_('sesi_' + sha256Hex_(ctx.token), ctx.user, 300);
+  catatAudit_(ctx.user.id, 'ganti_pin', 'AUTH', u.id, {});
+
+  return { pesan: 'PIN Anda berhasil diperbarui.' };
+}
+
+/* ---------- 9.2 KATEGORI PRODUK ---------- */
+
+/** kategori.list — Mengambil semua kategori aktif. */
+function aksiKategoriList_() {
+  const items = bacaSemua_('Kategori').filter(function (k) { return !k.deleted; });
+  items.sort(function (a, b) {
+    const ua = Number(a.urutan) || 0;
+    const ub = Number(b.urutan) || 0;
+    if (ua !== ub) return ua - ub;
+    return String(a.nama || '').localeCompare(String(b.nama || ''));
+  });
+  return { items: items };
+}
+
+/** kategori.create — Tambah kategori baru (Owner & Admin). */
+function aksiKategoriCreate_(ctx) {
+  const p = ctx.payload || {};
+  const nama = V_.teks(p.nama, 'Nama Kategori', { wajib: true, maks: 100 });
+  const parentId = p.parent_id ? String(p.parent_id).trim() : '';
+  const urutan = V_.angka(p.urutan, 'Urutan', { bawaan: 0 });
+
+  const dibuat = tambahBaris_('Kategori', [{
+    nama: nama,
+    parent_id: parentId,
+    urutan: urutan
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'kategori_tambah', 'KATEGORI', dibuat.id, { nama: nama });
+  return dibuat;
+}
+
+/** kategori.update — Edit kategori (Owner & Admin). */
+function aksiKategoriUpdate_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Kategori', { wajib: true });
+  const nama = V_.teks(p.nama, 'Nama Kategori', { wajib: true, maks: 100 });
+  const parentId = p.parent_id ? String(p.parent_id).trim() : '';
+  const urutan = V_.angka(p.urutan, 'Urutan', { bawaan: 0 });
+
+  if (parentId === id) {
+    gagal_(KODE.VALIDATION, 'Kategori tidak dapat menjadi induk dirinya sendiri.');
+  }
+
+  const diubah = ubahBaris_('Kategori', [{
+    id: id,
+    data: { nama: nama, parent_id: parentId, urutan: urutan }
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'kategori_ubah', 'KATEGORI', id, { nama: nama });
+  return diubah;
+}
+
+/** kategori.delete — Hapus kategori (soft delete). */
+function aksiKategoriDelete_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Kategori', { wajib: true });
+
+  // Cek apakah ada produk aktif yang masih menggunakan kategori ini
+  const produkTerkait = bacaSemua_('Produk').some(function (pr) {
+    return pr.kategori_id === id && !pr.deleted;
+  });
+  if (produkTerkait) {
+    gagal_(KODE.CONFLICT, 'Kategori ini tidak dapat dihapus karena masih digunakan oleh produk aktif.');
+  }
+
+  hapusLunak_('Kategori', id, ctx.user.id);
+  catatAudit_(ctx.user.id, 'kategori_hapus', 'KATEGORI', id, {});
+  return { pesan: 'Kategori berhasil dihapus.' };
+}
+
+/* ---------- 9.3 PRODUK, VARIAN & SATUAN KONVERSI ---------- */
+
+/** produk.list — Daftar produk dengan varian & satuan, filter & paginasi. */
+function aksiProdukList_(ctx) {
+  const p = ctx.payload || {};
+  const isKasir = ctx.user.role === ROLE.KASIR;
+
+  const produk = bacaSemua_('Produk');
+  const varianSemua = bacaSemua_('Varian');
+  const satuanSemua = bacaSemua_('Satuan_Konversi');
+
+  // Indeks varian dan satuan konversi berdasarkan produk_id
+  const petaVarian = {};
+  varianSemua.forEach(function (v) {
+    if (v.deleted) return;
+    if (!petaVarian[v.produk_id]) petaVarian[v.produk_id] = [];
+    const vCopy = Object.assign({}, v);
+    if (isKasir) vCopy.hpp = null; // Kasir TIDAK BOLEH melihat HPP
+    petaVarian[v.produk_id].push(vCopy);
+  });
+
+  const petaSatuan = {};
+  satuanSemua.forEach(function (s) {
+    if (s.deleted) return;
+    if (!petaSatuan[s.produk_id]) petaSatuan[s.produk_id] = [];
+    petaSatuan[s.produk_id].push(Object.assign({}, s));
+  });
+
+  // Susun data produk lengkap
+  const daftarLengkap = produk.map(function (pr) {
+    const prAman = Object.assign({}, pr);
+    if (isKasir) prAman.hpp = null; // Kasir TIDAK BOLEH melihat HPP
+    prAman.varian = petaVarian[pr.id] || [];
+    prAman.satuan_konversi = petaSatuan[pr.id] || [];
+    return prAman;
+  });
+
+  // Filter kategori
+  let tersaring = daftarLengkap;
+  if (p.kategori_id) {
+    tersaring = tersaring.filter(function (pr) { return pr.kategori_id === p.kategori_id; });
+  }
+
+  // Filter hanya produk aktif
+  if (p.aktif_saja) {
+    tersaring = tersaring.filter(function (pr) { return pr.aktif; });
+  }
+
+  // Pencarian q (nama, sku, barcode, nama varian, barcode varian)
+  const q = String(p.q || '').trim().toLowerCase();
+  if (q) {
+    tersaring = tersaring.filter(function (pr) {
+      if (String(pr.nama || '').toLowerCase().indexOf(q) !== -1) return true;
+      if (String(pr.sku || '').toLowerCase().indexOf(q) !== -1) return true;
+      if (String(pr.barcode || '').toLowerCase().indexOf(q) !== -1) return true;
+      return pr.varian.some(function (v) {
+        return String(v.nama_varian || '').toLowerCase().indexOf(q) !== -1 ||
+          String(v.sku || '').toLowerCase().indexOf(q) !== -1 ||
+          String(v.barcode || '').toLowerCase().indexOf(q) !== -1;
+      });
+    });
+  }
+
+  // Paginasi
+  const limit = Math.min(Math.max(parseInt(p.limit, 10) || APP.PAGE_LIMIT_DEFAULT, 1), APP.PAGE_LIMIT_MAKS);
+  const page = Math.max(parseInt(p.page, 10) || 1, 1);
+  const mulai = (page - 1) * limit;
+
+  return {
+    items: tersaring.slice(mulai, mulai + limit),
+    total: tersaring.length,
+    page: page,
+    limit: limit
+  };
+}
+
+/** produk.create — Tambah master produk lengkap (Owner & Admin). */
+function aksiProdukCreate_(ctx) {
+  const p = ctx.payload || {};
+  const nama = V_.teks(p.nama, 'Nama Produk', { wajib: true, maks: 200 });
+  const sku = V_.teks(p.sku, 'SKU Produk', { maks: 50 });
+  const barcode = V_.teks(p.barcode, 'Barcode', { maks: 50 });
+  const kategoriId = p.kategori_id ? String(p.kategori_id).trim() : '';
+  const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 });
+  const hpp = V_.rupiah(p.hpp, 'HPP', { bawaan: 0 });
+  const hargaRitel = V_.rupiah(p.harga_ritel, 'Harga Ritel', { wajib: true });
+  const hargaGrosir = V_.rupiah(p.harga_grosir, 'Harga Grosir', { bawaan: hargaRitel });
+  const minGrosirQty = V_.qty(p.min_grosir_qty || 1, 'Min Grosir Qty');
+  const stok = V_.angka(p.stok, 'Stok Awal', { bawaan: 0 });
+  const stokMin = V_.angka(p.stok_min, 'Stok Minimum', { bawaan: 0 });
+  const punyaVarian = !!p.punya_varian;
+  const fotoUrl = V_.teks(p.foto_url, 'Foto URL', { maks: 500 });
+  const aktif = p.aktif !== false;
+
+  // Aturan Bisnis #1: Harga jual tidak boleh < HPP
+  if (hargaRitel < hpp) {
+    gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga ritel (' + hargaRitel + ') tidak boleh di bawah HPP (' + hpp + ').');
+  }
+  if (hargaGrosir < hpp) {
+    gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga grosir (' + hargaGrosir + ') tidak boleh di bawah HPP (' + hpp + ').');
+  }
+
+  // Simpan record master produk
+  const produkBaru = tambahBaris_('Produk', [{
+    sku: sku,
+    barcode: barcode,
+    nama: nama,
+    kategori_id: kategoriId,
+    satuan_dasar: satuanDasar,
+    hpp: hpp,
+    harga_ritel: hargaRitel,
+    harga_grosir: hargaGrosir,
+    min_grosir_qty: minGrosirQty,
+    stok: stok,
+    stok_min: stokMin,
+    punya_varian: punyaVarian,
+    foto_url: fotoUrl,
+    aktif: aktif
+  }], ctx.user.id)[0];
+
+  // Simpan varian jika ada
+  const varianInput = Array.isArray(p.varian) ? p.varian : [];
+  let totalStokVarian = 0;
+  if (punyaVarian && varianInput.length) {
+    const barisVarian = varianInput.map(function (v) {
+      const vHpp = V_.rupiah(v.hpp || hpp, 'HPP Varian', { bawaan: hpp });
+      const vRitel = V_.rupiah(v.harga_ritel || hargaRitel, 'Harga Ritel Varian', { wajib: true });
+      const vGrosir = V_.rupiah(v.harga_grosir || hargaGrosir, 'Harga Grosir Varian', { bawaan: vRitel });
+      if (vRitel < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga ritel varian tidak boleh di bawah HPP.');
+      if (vGrosir < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga grosir varian tidak boleh di bawah HPP.');
+      const vStok = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
+      totalStokVarian += vStok;
+      return {
+        produk_id: produkBaru.id,
+        nama_varian: V_.teks(v.nama_varian, 'Nama Varian', { wajib: true }),
+        sku: V_.teks(v.sku, 'SKU Varian', { maks: 50 }),
+        barcode: V_.teks(v.barcode, 'Barcode Varian', { maks: 50 }),
+        hpp: vHpp,
+        harga_ritel: vRitel,
+        harga_grosir: vGrosir,
+        stok: vStok,
+        stok_min: V_.angka(v.stok_min, 'Stok Min Varian', { bawaan: stokMin }),
+        aktif: v.aktif !== false
+      };
+    });
+    tambahBaris_('Varian', barisVarian, ctx.user.id);
+
+    // Update stok produk induk sesuai jumlah stok varian (Aturan Bisnis #17)
+    ubahBaris_('Produk', [{ id: produkBaru.id, data: { stok: totalStokVarian } }], ctx.user.id);
+    produkBaru.stok = totalStokVarian;
+  }
+
+  // Simpan satuan konversi jika ada
+  const satuanInput = Array.isArray(p.satuan_konversi) ? p.satuan_konversi : [];
+  if (satuanInput.length) {
+    const barisSatuan = satuanInput.map(function (s) {
+      const faktor = V_.angka(s.faktor, 'Faktor Satuan', { wajib: true, min: 0.001 });
+      const hppSatuan = Math.round(hpp * faktor);
+      const sRitel = V_.rupiah(s.harga_ritel, 'Harga Ritel Satuan (' + s.satuan + ')', { wajib: true });
+      const sGrosir = V_.rupiah(s.harga_grosir, 'Harga Grosir Satuan', { bawaan: sRitel });
+      if (sRitel < hppSatuan) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga konversi satuan ' + s.satuan + ' tidak boleh di bawah HPP konversi (' + hppSatuan + ').');
+      return {
+        produk_id: produkBaru.id,
+        satuan: V_.teks(s.satuan, 'Nama Satuan Konversi', { wajib: true }),
+        faktor: faktor,
+        barcode: V_.teks(s.barcode, 'Barcode Satuan', { maks: 50 }),
+        harga_ritel: sRitel,
+        harga_grosir: sGrosir
+      };
+    });
+    tambahBaris_('Satuan_Konversi', barisSatuan, ctx.user.id);
+  }
+
+  // Catat stok awal ke Kartu_Stok jika ada saldo awal (Aturan Bisnis #5)
+  const saldoAkhir = punyaVarian ? totalStokVarian : stok;
+  if (saldoAkhir > 0) {
+    tambahBaris_('Kartu_Stok', [{
+      produk_id: produkBaru.id,
+      varian_id: '',
+      tipe: 'koreksi',
+      qty: saldoAkhir,
+      saldo: saldoAkhir,
+      hpp: hpp,
+      ref_id: produkBaru.id,
+      user_id: ctx.user.id,
+      keterangan: 'Saldo stok awal saat produk dibuat'
+    }], ctx.user.id);
+  }
+
+  catatAudit_(ctx.user.id, 'produk_tambah', 'PRODUK', produkBaru.id, { nama: nama, sku: sku, hpp: hpp, harga_ritel: hargaRitel });
+  return produkBaru;
+}
+
+/** produk.update — Edit master produk & sinkronisasi varian/satuan (Owner & Admin). */
+function aksiProdukUpdate_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Produk', { wajib: true });
+  const lama = cariById_('Produk', id);
+  if (!lama || lama.deleted) gagal_(KODE.NOT_FOUND, 'Produk tidak ditemukan.');
+
+  const nama = V_.teks(p.nama, 'Nama Produk', { wajib: true, maks: 200 });
+  const sku = V_.teks(p.sku, 'SKU Produk', { maks: 50 });
+  const barcode = V_.teks(p.barcode, 'Barcode', { maks: 50 });
+  const kategoriId = p.kategori_id ? String(p.kategori_id).trim() : '';
+  const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 });
+  const hpp = V_.rupiah(p.hpp, 'HPP', { bawaan: lama.hpp });
+  const hargaRitel = V_.rupiah(p.harga_ritel, 'Harga Ritel', { wajib: true });
+  const hargaGrosir = V_.rupiah(p.harga_grosir, 'Harga Grosir', { bawaan: hargaRitel });
+  const minGrosirQty = V_.qty(p.min_grosir_qty || 1, 'Min Grosir Qty');
+  const stokMin = V_.angka(p.stok_min, 'Stok Minimum', { bawaan: 0 });
+  const punyaVarian = !!p.punya_varian;
+  const fotoUrl = V_.teks(p.foto_url, 'Foto URL', { maks: 500 });
+  const aktif = p.aktif !== false;
+
+  if (hargaRitel < hpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga ritel tidak boleh di bawah HPP.');
+  if (hargaGrosir < hpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga grosir tidak boleh di bawah HPP.');
+
+  // Update data produk induk
+  const diubah = ubahBaris_('Produk', [{
+    id: id,
+    data: {
+      sku: sku,
+      barcode: barcode,
+      nama: nama,
+      kategori_id: kategoriId,
+      satuan_dasar: satuanDasar,
+      hpp: hpp,
+      harga_ritel: hargaRitel,
+      harga_grosir: hargaGrosir,
+      min_grosir_qty: minGrosirQty,
+      stok_min: stokMin,
+      punya_varian: punyaVarian,
+      foto_url: fotoUrl,
+      aktif: aktif
+    }
+  }], ctx.user.id)[0];
+
+  // Sinkronisasi varian jika array dikirimkan
+  if (Array.isArray(p.varian)) {
+    const varianLama = bacaSemua_('Varian').filter(function (v) { return v.produk_id === id && !v.deleted; });
+    const idBaru = {};
+    let totalStokVarian = 0;
+
+    p.varian.forEach(function (v) {
+      const vHpp = V_.rupiah(v.hpp || hpp, 'HPP Varian', { bawaan: hpp });
+      const vRitel = V_.rupiah(v.harga_ritel || hargaRitel, 'Harga Ritel Varian', { wajib: true });
+      const vGrosir = V_.rupiah(v.harga_grosir || hargaGrosir, 'Harga Grosir Varian', { bawaan: vRitel });
+      if (vRitel < vHpp || vGrosir < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga varian tidak boleh di bawah HPP.');
+      const vStok = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
+      totalStokVarian += vStok;
+
+      if (v.id) {
+        idBaru[v.id] = true;
+        ubahBaris_('Varian', [{
+          id: v.id,
+          data: {
+            nama_varian: V_.teks(v.nama_varian, 'Nama Varian', { wajib: true }),
+            sku: V_.teks(v.sku, 'SKU Varian', { maks: 50 }),
+            barcode: V_.teks(v.barcode, 'Barcode Varian', { maks: 50 }),
+            hpp: vHpp,
+            harga_ritel: vRitel,
+            harga_grosir: vGrosir,
+            stok: vStok,
+            stok_min: V_.angka(v.stok_min, 'Stok Min Varian', { bawaan: stokMin }),
+            aktif: v.aktif !== false
+          }
+        }], ctx.user.id);
+      } else {
+        const vBaru = tambahBaris_('Varian', [{
+          produk_id: id,
+          nama_varian: V_.teks(v.nama_varian, 'Nama Varian', { wajib: true }),
+          sku: V_.teks(v.sku, 'SKU Varian', { maks: 50 }),
+          barcode: V_.teks(v.barcode, 'Barcode Varian', { maks: 50 }),
+          hpp: vHpp,
+          harga_ritel: vRitel,
+          harga_grosir: vGrosir,
+          stok: vStok,
+          stok_min: V_.angka(v.stok_min, 'Stok Min Varian', { bawaan: stokMin }),
+          aktif: v.aktif !== false
+        }], ctx.user.id)[0];
+        idBaru[vBaru.id] = true;
+      }
+    });
+
+    // Soft delete varian yang dihilangkan
+    varianLama.forEach(function (vl) {
+      if (!idBaru[vl.id]) hapusLunak_('Varian', vl.id, ctx.user.id);
+    });
+
+    if (punyaVarian) {
+      ubahBaris_('Produk', [{ id: id, data: { stok: totalStokVarian } }], ctx.user.id);
+      diubah.stok = totalStokVarian;
+    }
+  }
+
+  // Sinkronisasi satuan konversi
+  if (Array.isArray(p.satuan_konversi)) {
+    const satuanLama = bacaSemua_('Satuan_Konversi').filter(function (s) { return s.produk_id === id && !s.deleted; });
+    satuanLama.forEach(function (sl) { hapusLunak_('Satuan_Konversi', sl.id, ctx.user.id); });
+
+    const barisSatuan = p.satuan_konversi.map(function (s) {
+      const faktor = V_.angka(s.faktor, 'Faktor Satuan', { wajib: true, min: 0.001 });
+      const hppSatuan = Math.round(hpp * faktor);
+      const sRitel = V_.rupiah(s.harga_ritel, 'Harga Ritel Satuan', { wajib: true });
+      const sGrosir = V_.rupiah(s.harga_grosir, 'Harga Grosir Satuan', { bawaan: sRitel });
+      if (sRitel < hppSatuan) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga konversi satuan ' + s.satuan + ' tidak boleh di bawah HPP.');
+      return {
+        produk_id: id,
+        satuan: V_.teks(s.satuan, 'Nama Satuan', { wajib: true }),
+        faktor: faktor,
+        barcode: V_.teks(s.barcode, 'Barcode Satuan', { maks: 50 }),
+        harga_ritel: sRitel,
+        harga_grosir: sGrosir
+      };
+    });
+    if (barisSatuan.length) tambahBaris_('Satuan_Konversi', barisSatuan, ctx.user.id);
+  }
+
+  catatAudit_(ctx.user.id, 'produk_ubah', 'PRODUK', id, { nama: nama, sku: sku });
+  return diubah;
+}
+
+/** produk.delete — Soft delete produk & varian terkait (Owner & Admin). */
+function aksiProdukDelete_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Produk', { wajib: true });
+
+  hapusLunak_('Produk', id, ctx.user.id);
+
+  // Soft delete seluruh varian & satuan konversi terkait
+  bacaSemua_('Varian').filter(function (v) { return v.produk_id === id && !v.deleted; }).forEach(function (v) {
+    hapusLunak_('Varian', v.id, ctx.user.id);
+  });
+  bacaSemua_('Satuan_Konversi').filter(function (s) { return s.produk_id === id && !s.deleted; }).forEach(function (s) {
+    hapusLunak_('Satuan_Konversi', s.id, ctx.user.id);
+  });
+
+  catatAudit_(ctx.user.id, 'produk_hapus', 'PRODUK', id, {});
+  return { pesan: 'Produk berhasil dihapus.' };
+}
+
+/* ---------- 9.4 PENGATURAN UMUM ---------- */
+
+/** pengaturan.get — Membaca konfigurasi operasional toko. */
+function aksiPengaturanGet_() {
+  return { pengaturan: ambilPengaturan_() };
+}
+
+/** pengaturan.set — Mengubah konfigurasi operasional toko (Khusus Owner). */
+function aksiPengaturanSet_(ctx) {
+  const p = ctx.payload || {};
+  const kunciDukungan = Object.keys(PENGATURAN_DEFAULT);
+  const barisPengaturan = bacaSemua_('Pengaturan', { termasukTerhapus: true });
+  const petaId = {};
+  barisPengaturan.forEach(function (row) { petaId[row.key] = row.id; });
+
+  const diubah = [];
+  const ditambah = [];
+
+  kunciDukungan.forEach(function (k) {
+    if (p[k] !== undefined) {
+      let val = p[k];
+      if (k === 'diskon_maks_kasir_persen') val = V_.angka(val, 'Maks Diskon Kasir', { min: 0, max: 100 });
+      if (k === 'pajak_persen') val = V_.angka(val, 'Pajak Persen', { min: 0, max: 100 });
+      if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
+
+      if (petaId[k]) {
+        diubah.push({ id: petaId[k], data: { value: val } });
+      } else {
+        ditambah.push({ key: k, value: val });
+      }
+    }
+  });
+
+  if (diubah.length) ubahBaris_('Pengaturan', diubah, ctx.user.id);
+  if (ditambah.length) tambahBaris_('Pengaturan', ditambah, ctx.user.id);
+
+  cacheHapus_('pengaturan');
+  catatAudit_(ctx.user.id, 'pengaturan_ubah', 'SETTING', '', { perubahan: p });
+
+  return { pengaturan: ambilPengaturan_() };
+}
+
+/* ---------- 9.5 MANAJEMEN MULTI AKUN PENGGUNA ---------- */
+
+/** user.list — Daftar akun pengguna (Khusus Owner). */
+function aksiUserList_() {
+  const users = bacaSemua_('Users').map(function (u) {
+    return {
+      id: u.id,
+      username: u.username,
+      nama: u.nama,
+      role: u.role,
+      aktif: !!u.aktif,
+      wajib_ganti_pin: !!u.wajib_ganti_pin,
+      gagal_login: Number(u.gagal_login) || 0,
+      kunci_sampai: u.kunci_sampai || '',
+      last_login: u.last_login || '',
+      created_at: u.created_at || ''
+    };
+  });
+  return { items: users };
+}
+
+/** user.create — Tambah akun pengguna baru (Khusus Owner). */
+function aksiUserCreate_(ctx) {
+  const p = ctx.payload || {};
+  const username = V_.teks(p.username, 'Username', { wajib: true, maks: 30, pola: /^[a-zA-Z0-9_.-]+$/ });
+  const nama = V_.teks(p.nama, 'Nama Lengkap', { wajib: true, maks: 100 });
+  const role = V_.pilihan(p.role, 'Role', SEMUA_ROLE);
+  const pin = V_.pin(p.pin);
+
+  // Cek duplikasi username
+  const sudahAda = bacaSemua_('Users').some(function (u) {
+    return String(u.username || '').toLowerCase() === username.toLowerCase() && !u.deleted;
+  });
+  if (sudahAda) {
+    gagal_(KODE.CONFLICT, 'Username "' + username + '" sudah digunakan oleh pengguna lain.');
+  }
+
+  const salt = buatSalt_();
+  const dibuat = tambahBaris_('Users', [{
+    username: username,
+    nama: nama,
+    role: role,
+    pin_hash: hashPin_(pin, salt),
+    salt: salt,
+    aktif: true,
+    wajib_ganti_pin: true,
+    gagal_login: 0,
+    kunci_sampai: '',
+    last_login: ''
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'user_tambah', 'USER', dibuat.id, { username: username, role: role });
+
+  return {
+    id: dibuat.id,
+    username: dibuat.username,
+    nama: dibuat.nama,
+    role: dibuat.role,
+    aktif: true,
+    wajib_ganti_pin: true
+  };
+}
+
+/** user.update — Ubah nama, role, status aktif pengguna (Khusus Owner). */
+function aksiUserUpdate_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Pengguna', { wajib: true });
+  const nama = V_.teks(p.nama, 'Nama Lengkap', { wajib: true, maks: 100 });
+  const role = V_.pilihan(p.role, 'Role', SEMUA_ROLE);
+  const aktif = p.aktif !== false;
+
+  // Proteksi akun sendiri
+  if (id === ctx.user.id && !aktif) {
+    gagal_(KODE.VALIDATION, 'Anda tidak dapat menonaktifkan akun Anda sendiri yang sedang aktif.');
+  }
+  if (id === ctx.user.id && role !== ctx.user.role) {
+    gagal_(KODE.VALIDATION, 'Anda tidak dapat mengubah role akun Anda sendiri saat sedang login.');
+  }
+
+  const diubah = ubahBaris_('Users', [{
+    id: id,
+    data: { nama: nama, role: role, aktif: aktif }
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'user_ubah', 'USER', id, { role: role, aktif: aktif });
+
+  return {
+    id: diubah.id,
+    username: diubah.username,
+    nama: diubah.nama,
+    role: diubah.role,
+    aktif: diubah.aktif
+  };
+}
+
+/** user.resetPin — Reset PIN akun pengguna lain ke PIN baru (Khusus Owner). */
+function aksiUserResetPin_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Pengguna', { wajib: true });
+  const pinBaru = V_.pin(p.pin_baru);
+
+  const u = cariById_('Users', id);
+  if (!u || u.deleted) gagal_(KODE.NOT_FOUND, 'Pengguna tidak ditemukan.');
+
+  const saltBaru = buatSalt_();
+  ubahBaris_('Users', [{
+    id: id,
+    data: {
+      pin_hash: hashPin_(pinBaru, saltBaru),
+      salt: saltBaru,
+      wajib_ganti_pin: true,
+      gagal_login: 0,
+      kunci_sampai: ''
+    }
+  }], ctx.user.id);
+
+  // Batalkan sesi aktif pengguna yang di-reset PIN-nya di perangkat lain
+  bacaSemua_('Sesi').filter(function (s) { return s.user_id === id && !s.deleted; }).forEach(function (s) {
+    hapusLunak_('Sesi', s.id, ctx.user.id);
+    cacheHapus_('sesi_' + s.token_hash);
+  });
+
+  catatAudit_(ctx.user.id, 'user_reset_pin', 'USER', id, { username: u.username });
+
+  return { pesan: 'PIN pengguna ' + u.username + ' berhasil direset. Pengguna wajib mengganti PIN saat login berikutnya.' };
 }
 
 /* ========================================================================== */

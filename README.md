@@ -385,8 +385,8 @@ Sebuah modul dianggap selesai jika:
 
 ## 17. Roadmap
 
-- [x] **Fase 0 – Persiapan**: kerangka folder, design system, `kode.gs` dasar, `setupDatabase()`, PWA dasar *(menunggu review)*
-- [ ] **Fase 1 – Fondasi**: login multiuser, produk, kategori, varian, pengaturan, multi akun
+- [x] **Fase 0 – Persiapan**: kerangka folder, design system, `kode.gs` dasar, `setupDatabase()`, PWA dasar *(Selesai)*
+- [x] **Fase 1 – Fondasi**: login multiuser, produk, kategori, varian, pengaturan, multi akun *(Selesai & diuji)*
 - [ ] **Fase 2 – POS Penjualan**: kasir, pending transaksi, nota Bluetooth
 - [ ] **Fase 3 – Stok & Pembelian**: supplier, POS pembelian, kartu stok, stok opname
 - [ ] **Fase 4 – Keuangan**: hutang & piutang, retur

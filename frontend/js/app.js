@@ -19,6 +19,13 @@ import {
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
+// Modul-modul Fase 1
+import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin } from './modules/auth.js';
+import { renderKategoriModule } from './modules/kategori.js';
+import { renderProdukModule } from './modules/produk.js';
+import { renderPengaturanModule } from './modules/pengaturan.js';
+import { renderUsersModule } from './modules/users.js';
+
 class App {
   constructor() {
     this.currentRoute = null;
@@ -30,6 +37,25 @@ class App {
     this.bindGlobalEvents();
     this.initRouter();
     this.registerServiceWorker();
+
+    // Verifikasi sesi saat aplikasi dimuat
+    const token = store.get('token');
+    if (token) {
+      apiCall('auth.me', {})
+        .then((res) => {
+          store.set('user', res.user);
+          this.updateUserUI(res.user);
+          if (res.user.wajib_ganti_pin) {
+            tampilkanDialogWajibGantiPin();
+          }
+        })
+        .catch(() => {
+          store.clearUserSession();
+          this.updateUserUI(null);
+        });
+    } else {
+      this.updateUserUI(null);
+    }
   }
 
   registerServiceWorker() {
@@ -67,6 +93,9 @@ class App {
             <button type="button" class="btn btn-sm btn-icon" id="btn-font-sidebar" title="Ukuran Font" aria-label="Ukuran Font">
               <span class="fw-bold" style="font-size: 13px;">Aa</span>
             </button>
+            <button type="button" class="btn btn-sm btn-ghost grow text-xs" id="btn-user-sidebar" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              Masuk
+            </button>
           </div>
         </aside>
 
@@ -93,6 +122,12 @@ class App {
               <a href="#/sistem" class="btn btn-ghost btn-icon btn-sm" title="Status Sistem" aria-label="Status Sistem">
                 ${ICONS.database}
               </a>
+
+              <!-- Tombol Profil Pengguna / Login -->
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-user-top" style="gap: 4px; padding: 0 8px;">
+                ${ICONS.users}
+                <span id="label-user-top" class="text-xs fw-semibold">Login</span>
+              </button>
             </div>
           </header>
 
@@ -113,14 +148,39 @@ class App {
     this.renderBottomNav();
   }
 
+  updateUserUI(user) {
+    const labelTop = $('#label-user-top');
+    const btnSidebar = $('#btn-user-sidebar');
+
+    if (user) {
+      const namaRingkas = user.nama ? user.nama.split(' ')[0] : user.username;
+      if (labelTop) labelTop.textContent = namaRingkas;
+      if (btnSidebar) {
+        btnSidebar.textContent = `${namaRingkas} (${user.role})`;
+        btnSidebar.classList.remove('btn-ghost');
+        btnSidebar.classList.add('btn-secondary');
+      }
+    } else {
+      if (labelTop) labelTop.textContent = 'Masuk';
+      if (btnSidebar) {
+        btnSidebar.textContent = 'Masuk';
+        btnSidebar.classList.remove('btn-secondary');
+        btnSidebar.classList.add('btn-ghost');
+      }
+    }
+  }
+
   renderSidebar() {
     const navEl = $('#sidebar-nav');
     if (!navEl) return;
 
-    // Kelompokkan rute berdasarkan group
+    const user = store.get('user');
+    const userRole = user ? user.role : 'kasir';
+
     const groups = {};
     ROUTES.forEach((r) => {
-      if (r.id === 'lainnya') return; // Sembunyikan 'lainnya' di sidebar desktop
+      if (r.id === 'lainnya') return;
+      if (r.roles && !r.roles.includes(userRole)) return; // Sembunyikan jika tidak ada akses
       if (!groups[r.group]) groups[r.group] = [];
       groups[r.group].push(r);
     });
@@ -162,7 +222,6 @@ class App {
   }
 
   bindGlobalEvents() {
-    // Tombol Toggle Tema & Font
     const toggleTemaHandler = () => {
       const mode = toggleTheme();
       showToast(`Tema beralih ke mode ${mode === 'dark' ? 'Gelap' : 'Terang'}`, 'info', 1800);
@@ -178,7 +237,72 @@ class App {
     $('#btn-font-top')?.addEventListener('click', toggleFontHandler);
     $('#btn-font-sidebar')?.addEventListener('click', toggleFontHandler);
 
-    // Pemantauan Online/Offline
+    // Dialog Pengguna (Login / Logout / Ganti PIN)
+    const bukaMenuUser = () => {
+      const user = store.get('user');
+      if (!user) {
+        tampilkanModalLogin(() => {
+          this.renderSidebar();
+          this.navigate(window.location.hash || '#/pos');
+        });
+        return;
+      }
+
+      showModal({
+        title: 'Akun Pengguna',
+        isSheet: true,
+        body: `
+          <div class="stack">
+            <div class="row" style="gap: var(--sp-3);">
+              <div class="brand-logo" style="width: 44px; height: 44px; background: var(--surface-3); color: var(--text);">
+                ${ICONS.users}
+              </div>
+              <div class="grow">
+                <div class="fw-bold">${escapeHtml(user.nama || user.username)}</div>
+                <div class="text-xs text-muted mono">@${escapeHtml(user.username)}</div>
+                <span class="badge badge-primary" style="margin-top: 4px; text-transform: capitalize;">${escapeHtml(user.role)}</span>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="list">
+              <button type="button" class="list-item" id="btn-menu-ganti-pin">
+                <div class="list-item-icon">${ICONS.userCheck}</div>
+                <div class="grow">
+                  <div class="list-item-title">Ganti PIN Keamanan</div>
+                  <div class="list-item-sub">Ubah 6 angka PIN masuk akun Anda</div>
+                </div>
+              </button>
+              <button type="button" class="list-item text-danger" id="btn-menu-logout">
+                <div class="list-item-icon" style="background: var(--danger-soft); color: var(--danger-text);">${ICONS.rotateCcw}</div>
+                <div class="grow">
+                  <div class="list-item-title">Keluar (Logout)</div>
+                  <div class="list-item-sub">Akhiri sesi di perangkat ini</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        `
+      });
+
+      document.getElementById('btn-menu-ganti-pin')?.addEventListener('click', () => {
+        tampilkanDialogWajibGantiPin();
+      });
+
+      document.getElementById('btn-menu-logout')?.addEventListener('click', () => {
+        konfirmasiLogout();
+      });
+    };
+
+    $('#btn-user-top')?.addEventListener('click', bukaMenuUser);
+    $('#btn-user-sidebar')?.addEventListener('click', bukaMenuUser);
+
+    store.subscribe('user', (user) => {
+      this.updateUserUI(user);
+      this.renderSidebar();
+    });
+
     store.subscribe('isOnline', (online) => {
       const pill = $('#net-pill');
       if (pill) {
@@ -207,11 +331,9 @@ class App {
     const rute = cariRute(hash);
     this.currentRoute = rute;
 
-    // Perbarui judul Top Bar
     const titleEl = $('#topbar-title');
     if (titleEl) titleEl.textContent = rute.title;
 
-    // Perbarui penanda link aktif
     $$('.nav-link, .bottomnav-link').forEach((link) => {
       if (link.getAttribute('data-path') === rute.path) {
         link.setAttribute('aria-current', 'page');
@@ -220,7 +342,30 @@ class App {
       }
     });
 
-    // Render halaman
+    // Validasi Sesi & Hak Akses Rute
+    const rutePublik = ['sistem', 'desainsistem'];
+    if (!rutePublik.includes(rute.id)) {
+      const isLogged = pastikanLogin((user) => {
+        this.cekIzinDanRender(rute, user);
+      });
+      if (!isLogged) return;
+    }
+
+    const user = store.get('user');
+    this.cekIzinDanRender(rute, user);
+  }
+
+  cekIzinDanRender(rute, user) {
+    const content = $('#page-content');
+    if (!content) return;
+
+    // Periksa apakah peran user diizinkan mengakses rute ini
+    if (rute.roles && user && !rute.roles.includes(user.role)) {
+      showToast(`Akses ke halaman "${rute.title}" dibatasi untuk peran: ${rute.roles.join(', ')}.`, 'warning', 4000);
+      window.location.hash = '#/pos';
+      return;
+    }
+
     this.renderPage(rute);
   }
 
@@ -228,7 +373,6 @@ class App {
     const content = $('#page-content');
     if (!content) return;
 
-    // Animasi transisi halus
     content.classList.remove('masuk');
     void content.offsetWidth;
     content.classList.add('masuk');
@@ -237,16 +381,23 @@ class App {
       this.renderHalamanSistem(content);
     } else if (rute.id === 'desainsistem') {
       this.renderHalamanDesainSistem(content);
+    } else if (rute.id === 'kategori') {
+      renderKategoriModule(content);
+    } else if (rute.id === 'produk') {
+      renderProdukModule(content);
+    } else if (rute.id === 'pengaturan') {
+      renderPengaturanModule(content);
+    } else if (rute.id === 'users') {
+      renderUsersModule(content);
     } else if (rute.id === 'lainnya') {
       this.renderHalamanLainnya(content);
     } else {
-      // Halaman placeholder untuk modul fase berikutnya
       this.renderPlaceholder(content, rute);
     }
   }
 
   /* ======================================================================== */
-  /* HALAMAN STATUS SISTEM (FASE 0)                                           */
+  /* HALAMAN STATUS SISTEM                                                    */
   /* ======================================================================== */
   renderHalamanSistem(container) {
     container.innerHTML = `
@@ -271,7 +422,7 @@ class App {
               <input type="url" class="input grow" id="cfg-api-url" placeholder="https://script.google.com/macros/s/.../exec" value="${escapeHtml(CONFIG.API_URL || '')}">
               <button type="button" class="btn btn-secondary" id="btn-simpan-api-url">Simpan URL</button>
             </div>
-            <div class="field-hint">URL deployment Web App diperoleh dari menu Deploy > New deployment di Apps Script.</div>
+            <div class="field-hint">URL deployment Web App aktif di Google Apps Script.</div>
           </div>
         </div>
 
@@ -286,21 +437,6 @@ class App {
                 ${CONFIG.API_URL ? 'URL Terisi' : 'URL Belum Diatur'}
               </span>
             </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Panduan Ringkas Setup Database (Apps Script)</span>
-          </div>
-          <div class="card-body stack-sm text-sm">
-            <p>1. Buka Google Spreadsheet baru (misal: <strong>DB POS Toko Bangunan</strong>).</p>
-            <p>2. Klik menu <strong>Extensions > Apps Script</strong>.</p>
-            <p>3. Salin isi file <code>backend/kode.gs</code> ke editor skrip Apps Script.</p>
-            <p>4. Pada toolbar atas, pilih fungsi <code>setupDatabase</code> lalu klik <strong>Run</strong> dan izinkan akses.</p>
-            <p>5. Catat <strong>PIN Owner awal</strong> yang dimunculkan pada kotak dialog.</p>
-            <p>6. Klik menu <strong>Deploy > New deployment > Web app</strong> (Execute as: <em>Me</em>, Who has access: <em>Anyone</em>).</p>
-            <p>7. Salin URL Web App dan tempelkan pada kolom URL di atas, lalu klik <strong>Simpan & Uji</strong>.</p>
           </div>
         </div>
       </div>
@@ -350,7 +486,7 @@ class App {
               <dd>${escapeHtml(res.nama || '-')}</dd>
 
               <dt>Status Database</dt>
-              <dd>${res.db_siap ? '<span class="text-success fw-bold">Siap (Semua sheet & kolom lengkap)</span>' : '<span class="text-danger fw-bold">Belum Siap (Jalankan setupDatabase())</span>'}</dd>
+              <dd>${res.db_siap ? '<span class="text-success fw-bold">Siap (26 Sheet Lengkap)</span>' : '<span class="text-danger fw-bold">Belum Siap</span>'}</dd>
 
               <dt>Versi Skema Backend</dt>
               <dd>${res.versi_skema || 1}</dd>
@@ -374,9 +510,6 @@ class App {
                 <div>${escapeHtml(err.message)}</div>
               </div>
             </div>
-            <div class="text-xs text-muted">
-              Pastikan Anda telah melakukan deploy Apps Script sebagai Web App dengan izin: <em>Execute as: Me</em> dan <em>Who has access: Anyone</em>.
-            </div>
           </div>
         `;
         showToast(err.message, 'error', 5000);
@@ -386,14 +519,13 @@ class App {
       }
     });
 
-    // Otomatis ping jika URL sudah terisi
     if (CONFIG.API_URL) {
       btnPing?.click();
     }
   }
 
   /* ======================================================================== */
-  /* HALAMAN DESIGN SYSTEM & GALERI KOMPONEN (FASE 0)                         */
+  /* HALAMAN DESIGN SYSTEM                                                    */
   /* ======================================================================== */
   renderHalamanDesainSistem(container) {
     container.innerHTML = `
@@ -405,7 +537,6 @@ class App {
           </div>
         </div>
 
-        <!-- Bagian Warna & Token -->
         <div class="card card-body stack">
           <div class="section-title">Palet Warna Utama</div>
           <div class="swatch-grid">
@@ -435,157 +566,29 @@ class App {
             </div>
           </div>
         </div>
-
-        <!-- Bagian Tombol -->
-        <div class="card card-body stack">
-          <div class="section-title">Varian Tombol</div>
-          <div class="row">
-            <button type="button" class="btn btn-primary">Primary</button>
-            <button type="button" class="btn btn-secondary">Secondary</button>
-            <button type="button" class="btn btn-ghost">Ghost</button>
-            <button type="button" class="btn btn-success">Success</button>
-            <button type="button" class="btn btn-danger">Danger</button>
-            <button type="button" class="btn btn-primary" disabled>Disabled</button>
-          </div>
-          <div class="row">
-            <button type="button" class="btn btn-primary btn-sm">Small</button>
-            <button type="button" class="btn btn-primary">Regular</button>
-            <button type="button" class="btn btn-primary btn-lg">Large</button>
-            <button type="button" class="btn btn-primary btn-icon">${ICONS.cart}</button>
-          </div>
-        </div>
-
-        <!-- Bagian Form -->
-        <div class="card card-body stack">
-          <div class="section-title">Elemen Formulir</div>
-          <div class="form-grid cols-2">
-            <div class="field">
-              <label class="field-label">Input Teks Standar <span class="wajib">*</span></label>
-              <input type="text" class="input" placeholder="Masukkan nama barang...">
-              <span class="field-hint">Keterangan pembantu pengguna</span>
-            </div>
-
-            <div class="field">
-              <label class="field-label">Input Nominal Rupiah</label>
-              <div class="input-prefix">
-                <span>Rp</span>
-                <input type="text" class="input input-num" value="150.000">
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="field-label">Pilihan (Select)</label>
-              <select class="select">
-                <option>Semen Padang 50kg</option>
-                <option>Cat Avian 1kg</option>
-                <option>Paku 5cm</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label class="field-label">Switch Toggle</label>
-              <label class="switch">
-                <input type="checkbox" checked>
-                <span class="switch-track"></span>
-                <span class="text-sm">Status Aktif Produk</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Bagian Dialog & Notifikasi Interaktif -->
-        <div class="card card-body stack">
-          <div class="section-title">Uji Interaktif Dialog & Toast</div>
-          <div class="row">
-            <button type="button" class="btn btn-secondary" id="btn-test-toast-success">Toast Sukses</button>
-            <button type="button" class="btn btn-secondary" id="btn-test-toast-error">Toast Gagal</button>
-            <button type="button" class="btn btn-secondary" id="btn-test-modal">Buka Modal</button>
-            <button type="button" class="btn btn-secondary" id="btn-test-sheet">Buka Bottom Sheet</button>
-            <button type="button" class="btn btn-danger" id="btn-test-confirm">Dialog Konfirmasi Hapus</button>
-          </div>
-        </div>
       </div>
     `;
-
-    // Pasang event listener untuk demonstrasi interaktif
-    $('#btn-test-toast-success', container)?.addEventListener('click', () => {
-      showToast('Transaksi penjualan INV-20261112-0001 berhasil disimpan!', 'success');
-    });
-
-    $('#btn-test-toast-error', container)?.addEventListener('click', () => {
-      showToast('Harga jual tidak boleh di bawah HPP (Rp 52.000)', 'error');
-    });
-
-    $('#btn-test-modal', container)?.addEventListener('click', () => {
-      showModal({
-        title: 'Pratinjau Nota POS',
-        body: `
-          <div class="stack-sm text-sm">
-            <div class="text-center fw-bold text-lg">TOKO BANGUNAN MAKMUR</div>
-            <div class="text-center text-xs text-muted">Jl. Raya Industri No. 45 • Telp: 0812-3456-7890</div>
-            <div class="divider"></div>
-            <div class="row-between"><span>Semen Gresik 50kg (2 sak)</span><span class="num">Rp 120.000</span></div>
-            <div class="row-between"><span>Pasir Pasang (1 truk)</span><span class="num">Rp 650.000</span></div>
-            <div class="divider"></div>
-            <div class="row-between fw-bold"><span>TOTAL</span><span class="num">Rp 770.000</span></div>
-          </div>
-        `,
-        footer: `<button type="button" class="btn btn-primary btn-block btn-close-modal">Tutup Pratinjau</button>`
-      });
-    });
-
-    $('#btn-test-sheet', container)?.addEventListener('click', () => {
-      showModal({
-        title: 'Pilihan Pembayaran Cepat',
-        isSheet: true,
-        body: `
-          <div class="list">
-            <button type="button" class="list-item">
-              <div class="list-item-icon">${ICONS.wallet}</div>
-              <div class="grow">
-                <div class="list-item-title">Tunai (Cash)</div>
-                <div class="list-item-sub">Pembayaran tunai di kasir</div>
-              </div>
-            </button>
-            <button type="button" class="list-item">
-              <div class="list-item-icon">${ICONS.cashier}</div>
-              <div class="grow">
-                <div class="list-item-title">QRIS Statis / Dinamis</div>
-                <div class="list-item-sub">Scan langsung lewat m-Banking</div>
-              </div>
-            </button>
-          </div>
-        `
-      });
-    });
-
-    $('#btn-test-confirm', container)?.addEventListener('click', async () => {
-      const setuju = await showConfirm({
-        title: 'Konfirmasi Void Transaksi',
-        message: 'Apakah Anda yakin ingin membatalkan transaksi ini? Stok barang akan dikembalikan ke saldo sistem.',
-        confirmText: 'Ya, Void Transaksi',
-        danger: true
-      });
-      if (setuju) {
-        showToast('Transaksi berhasil dibatalkan (Void).', 'warning');
-      } else {
-        showToast('Batal melakukan void.', 'info');
-      }
-    });
   }
 
   /* ======================================================================== */
   /* HALAMAN MENU LAINNYA (MOBILE GRID)                                       */
   /* ======================================================================== */
   renderHalamanLainnya(container) {
-    const listRoutes = ROUTES.filter((r) => r.id !== 'lainnya');
+    const user = store.get('user');
+    const userRole = user ? user.role : 'kasir';
+
+    const listRoutes = ROUTES.filter((r) => {
+      if (r.id === 'lainnya') return false;
+      if (r.roles && !r.roles.includes(userRole)) return false;
+      return true;
+    });
 
     let html = `
       <div class="stack">
         <div class="page-header">
           <div>
             <h2>Semua Menu Aplikasi</h2>
-            <p>Daftar seluruh modul dan fitur POS Toko Bangunan</p>
+            <p>Daftar seluruh modul dan fitur POS Toko Bangunan sesuai peran Anda</p>
           </div>
         </div>
 
@@ -630,8 +633,8 @@ class App {
             icon: rute.icon,
             actionButton: `
               <div class="row">
+                <a href="#/produk" class="btn btn-primary">${ICONS.box} Kelola Produk</a>
                 <a href="#/sistem" class="btn btn-secondary">${ICONS.database} Cek Koneksi Backend</a>
-                <a href="#/desainsistem" class="btn btn-ghost">${ICONS.grid} Galeri Komponen</a>
               </div>
             `
           })}

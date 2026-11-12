@@ -330,3 +330,4 @@ Pencatatan jejak audit aksi sensitif sistem.
 Penghitung sekuensial nomor urut harian untuk mencegah nomor nota ganda/loncat.
 - `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`)
 - `nilai` (n): Nomor urut terakhir hari tersebut
+

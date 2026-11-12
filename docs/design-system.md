@@ -99,3 +99,4 @@ Dokumentasi sistem desain antarmuka POS Kasir Toko Bangunan. Dibangun menggunaka
 - Muncul di area atas bottom navigation pada mobile, atau pojok kanan bawah pada desktop.
 - Varian: `success`, `error`, `warning`, `info`.
 - Otomatis hilang setelah durasi yang ditentukan atau dapat ditutup manual.
+

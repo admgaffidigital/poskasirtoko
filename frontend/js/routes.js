@@ -219,3 +219,4 @@ export function cariRute(hash) {
   const cleanHash = (hash || '#/pos').split('?')[0];
   return ROUTES.find((r) => r.path === cleanHash) || ROUTES[0];
 }
+

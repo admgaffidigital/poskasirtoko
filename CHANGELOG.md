@@ -17,6 +17,51 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- [AUTH] Implementasi login multiuser lengkap:
+  - Verifikasi PIN 6 digit dengan SHA-256 + salt per pengguna.
+  - Sesi token 6 jam di sheet `Sesi` dan `CacheService`.
+  - Proteksi penguncian akun 15 menit setelah 5x salah PIN berturut-turut (`AUTH_LOCKED`).
+  - Fitur `auth.gantiPin` dan dialog wajib ganti PIN pada login awal / pasca reset.
+  - Modul front end `frontend/js/modules/auth.js` dengan form PIN responsif.
+  - File: `backend/kode.gs`, `frontend/js/modules/auth.js`
+  - Dampak: Keamanan seluruh modul & hak akses
+  - Undo: `git checkout HEAD~1 -- backend/kode.gs frontend/js/modules/auth.js`
+
+- [KATEGORI] Implementasi CRUD Kategori & Sub Kategori Produk:
+  - Aksi `kategori.list`, `kategori.create`, `kategori.update`, `kategori.delete`.
+  - Validasi pencegahan hapus kategori jika masih ada produk aktif yang terkait (`CONFLICT`).
+  - Antarmuka visual `frontend/js/modules/kategori.js` dengan modal formulir hierarkis.
+  - File: `backend/kode.gs`, `frontend/js/modules/kategori.js`
+  - Dampak: Pengelompokan master produk dan POS kasir
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/kategori.js`
+
+- [PRODUK] Implementasi Manajemen Master Produk, Multi Satuan, & Varian:
+  - Aksi `produk.list`, `produk.create`, `produk.update`, `produk.delete`.
+  - Penegakan Aturan Bisnis #1: Harga ritel, grosir, varian, dan satuan konversi dilarang di bawah HPP (`HARGA_DI_BAWAH_HPP`).
+  - Penegakan Hak Akses: Field `hpp` otomatis disensor (`null`) saat dipanggil oleh peran `kasir`.
+  - Dukungan multi varian (warna, tebal, ukuran) dan multi satuan konversi (dus, sak, batang).
+  - Pencatatan saldo stok awal otomatis ke `Kartu_Stok`.
+  - Antarmuka visual `frontend/js/modules/produk.js` dengan filter kategori, pencarian live, dan toggle List/Grid view.
+  - File: `backend/kode.gs`, `frontend/js/modules/produk.js`
+  - Dampak: Master katalog barang, stok, dan kontrol margin
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/produk.js`
+
+- [SETTING] Implementasi Modul Pengaturan Umum Toko:
+  - Aksi `pengaturan.get` dan `pengaturan.set` (khusus Owner).
+  - Pengaturan profil toko, footer nota, printer thermal 58mm/80mm, PPN, pembulatan total belanja, toleransi stok minus, dan rasio poin belanja member.
+  - Antarmuka visual `frontend/js/modules/pengaturan.js`.
+  - File: `backend/kode.gs`, `frontend/js/modules/pengaturan.js`
+  - Dampak: Seluruh aturan operasional aplikasi
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/pengaturan.js`
+
+- [USER] Implementasi Modul Manajemen Pengguna Multi Akun:
+  - Aksi `user.list`, `user.create`, `user.update`, `user.resetPin` (khusus Owner).
+  - Validasi username unik dan proteksi agar tidak menonaktifkan akun sendiri yang sedang aktif.
+  - Reset PIN yang secara otomatis mencabut sesi aktif pengguna tersebut di perangkat lain.
+  - Antarmuka visual `frontend/js/modules/users.js`.
+  - File: `backend/kode.gs`, `frontend/js/modules/users.js`
+  - Dampak: Manajemen akun kasir dan admin toko
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/users.js`
 - [BACKEND] Implementasi fondasi Apps Script di `backend/kode.gs`:
   - Router `doPost` / `doGet` dengan kontrak respons seragam `{ ok, data, error, code }`.
   - Skema database 26 sheet lengkap beserta tipe kolom baku (`s`, `n`, `b`, `d`, `j`).
@@ -80,7 +125,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ### [0.1.0] - Fase 0 & 1: Fondasi
 - [x] **Fase 0**: Kerangka folder, design system, `kode.gs` dasar, `setupDatabase()`, PWA dasar, shell router hash, diagnostik koneksi. *(Selesai & diuji)*
-- [ ] **Fase 1**: Login multiuser (Owner/Admin/Kasir), CRUD produk, kategori & varian, multi satuan, pengaturan umum, multi akun pengguna.
+- [x] **Fase 1**: Login multiuser (Owner/Admin/Kasir), CRUD produk, kategori & varian, multi satuan, pengaturan umum, multi akun pengguna. *(Selesai & diuji)*
 
 ### [0.2.0] - Fase 2: POS Penjualan
 - [ ] [POS-JUAL] List/grid view, multi varian, desimal, diskon, keranjang, pending transaksi.

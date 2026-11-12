@@ -94,30 +94,93 @@ Dan struktur respons `data` adalah:
 
 ---
 
-## 5. Aksi yang Tersedia (Fase 0)
+## 5. Aksi yang Tersedia
 
-### `sistem.ping`
-Memeriksa status operasional backend, ketersediaan database spreadsheet, dan versi skema.
-- **Akses:** Publik (tanpa token)
-- **Payload:** `{}`
-- **Contoh Response `data`:**
-  ```json
-  {
-    "pesan": "pong",
-    "nama": "POS Kasir Toko Bangunan",
-    "versi": "0.0.1",
-    "versi_skema": 1,
-    "versi_skema_db": 1,
-    "db_siap": true,
-    "waktu_server": "2026-11-12 13:30:00"
-  }
-  ```
+### 5.1 Sistem & Diagnostik
+- `sistem.ping`: Memeriksa status backend & kesiapan spreadsheet (Publik, payload: `{}`).
+
+### 5.2 Autentikasi (`auth.*`)
+- `auth.login`:
+  - Akses: Publik
+  - Payload: `{ "username": "owner", "pin": "123456" }`
+  - Response `data`: `{ "token": "...", "user": { "id", "username", "nama", "role", "wajib_ganti_pin" } }`
+  - Proteksi: 5x gagal PIN berturut-turut -> akun dikunci 15 menit (`AUTH_LOCKED`).
+- `auth.logout`:
+  - Akses: Semua role yang login
+  - Payload: `{}`
+  - Efek: Menghapus sesi di sheet `Sesi` dan membersihkan cache.
+- `auth.me`:
+  - Akses: Semua role yang login
+  - Response `data`: `{ "user": { "id", "username", "nama", "role", "wajib_ganti_pin" } }`
+- `auth.gantiPin`:
+  - Akses: Semua role yang login
+  - Payload: `{ "pin_lama": "123456", "pin_baru": "654321" }`
+  - Response `data`: `{ "pesan": "PIN Anda berhasil diperbarui." }`
+
+### 5.3 Kategori (`kategori.*`)
+- `kategori.list`:
+  - Akses: Semua role yang login
+  - Response `data`: `{ "items": [ { "id", "nama", "parent_id", "urutan" } ] }`
+- `kategori.create`:
+  - Akses: Owner & Admin
+  - Payload: `{ "nama": "Cat & Pelapis", "parent_id": "", "urutan": 1 }`
+- `kategori.update`:
+  - Akses: Owner & Admin
+  - Payload: `{ "id": "...", "nama": "...", "parent_id": "...", "urutan": 2 }`
+- `kategori.delete`:
+  - Akses: Owner & Admin
+  - Payload: `{ "id": "..." }`
+  - Validasi: Ditolak (`CONFLICT`) jika masih digunakan oleh produk aktif.
+
+### 5.4 Master Produk (`produk.*`)
+- `produk.list`:
+  - Akses: Semua role yang login
+  - Payload: `{ "page": 1, "limit": 50, "q": "semen", "kategori_id": "", "aktif_saja": false }`
+  - Hak Akses Khusus: Jika role pemanggil adalah `kasir`, field `hpp` pada produk dan seluruh varian otomatis disensor (`null`).
+  - Response `data`: `{ "items": [ { "id", "nama", "sku", "barcode", "hpp", "harga_ritel", "harga_grosir", "stok", "stok_min", "varian": [...], "satuan_konversi": [...] } ], "total", "page", "limit" }`
+- `produk.create`:
+  - Akses: Owner & Admin
+  - Payload: `{ "nama", "sku", "barcode", "kategori_id", "satuan_dasar", "hpp", "harga_ritel", "harga_grosir", "stok", "stok_min", "varian": [...], "satuan_konversi": [...] }`
+  - Aturan Bisnis #1: Harga jual (ritel/grosir/varian/satuan) dilarang < HPP (`HARGA_DI_BAWAH_HPP`).
+- `produk.update`:
+  - Akses: Owner & Admin
+  - Payload: `{ "id", ... }`
+  - Efek: Memperbarui produk induk dan menyinkronkan daftar varian & satuan konversi.
+- `produk.delete`:
+  - Akses: Owner & Admin
+  - Payload: `{ "id": "..." }`
+  - Efek: Soft delete produk beserta seluruh varian dan satuan konversi terkait.
+
+### 5.5 Pengaturan Umum (`pengaturan.*`)
+- `pengaturan.get`:
+  - Akses: Semua role yang login
+  - Response `data`: `{ "pengaturan": { "toko_nama", "toko_hp", "printer_ukuran", "pajak_aktif", "pembulatan_aktif", ... } }`
+- `pengaturan.set`:
+  - Akses: Khusus Owner
+  - Payload: Objek key-value pengaturan yang diubah.
+
+### 5.6 Manajemen Pengguna (`user.*`)
+- `user.list`:
+  - Akses: Khusus Owner
+  - Response `data`: `{ "items": [ { "id", "username", "nama", "role", "aktif", "wajib_ganti_pin", "last_login" } ] }` (tanpa pin_hash dan salt).
+- `user.create`:
+  - Akses: Khusus Owner
+  - Payload: `{ "username": "kasir1", "nama": "Siti", "role": "kasir", "pin": "112233" }`
+  - Efek: Akun dibuat dengan `wajib_ganti_pin: true`.
+- `user.update`:
+  - Akses: Khusus Owner
+  - Payload: `{ "id": "...", "nama": "...", "role": "admin", "aktif": true }`
+  - Validasi: Tidak dapat menonaktifkan atau mengubah role akun sendiri yang sedang aktif.
+- `user.resetPin`:
+  - Akses: Khusus Owner
+  - Payload: `{ "id": "...", "pin_baru": "654321" }`
+  - Efek: Reset hash PIN dan otomatis membatalkan seluruh sesi aktif pengguna tersebut di perangkat lain.
 
 ---
 
 ## 6. Peta Aksi Fase Selanjutnya (Roadmap)
 
-- **Fase 1 (Fondasi):**
+- **Fase 2 (POS Penjualan):**
   - `auth.login`, `auth.logout`, `auth.me`, `auth.gantiPin`
   - `kategori.list`, `kategori.create`, `kategori.update`, `kategori.delete`
   - `produk.list`, `produk.create`, `produk.update`, `produk.delete`
@@ -135,3 +198,4 @@ Memeriksa status operasional backend, ketersediaan database spreadsheet, dan ver
   - `hadiah.list`, `hadiah.create`, `member.tukarPoin`
 - **Fase 6 (Laporan):**
   - `laporan.dashboard`, `laporan.penjualan`, `laporan.stok`
+

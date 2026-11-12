@@ -247,3 +247,4 @@ export function toggleFontSize() {
   localStorage.setItem('pos_font', next);
   return next;
 }
+
