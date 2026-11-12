@@ -293,7 +293,10 @@ function parseRequest_(e) {
   if (!/^[a-zA-Z]+(\.[a-zA-Z]+){1,2}$/.test(action)) gagal_(KODE.VALIDATION, 'Nama aksi tidak valid.');
   const payload = req.payload === undefined || req.payload === null ? {} : req.payload;
   if (typeof payload !== 'object' || Array.isArray(payload)) gagal_(KODE.VALIDATION, 'Payload harus berupa objek.');
-  const token = typeof req.token === 'string' ? req.token.trim() : '';
+  let token = typeof req.token === 'string' ? req.token.trim() : '';
+  if (token.startsWith('"') && token.endsWith('"') && token.length > 2) {
+    token = token.substring(1, token.length - 1).trim();
+  }
   return { action: action, payload: payload, token: token };
 }
 
@@ -345,7 +348,12 @@ function validasiSesi_(token) {
   if (!token || typeof token !== 'string') {
     gagal_(KODE.AUTH_INVALID, 'Token sesi tidak valid.');
   }
-  const th = sha256Hex_(token.trim());
+  let t = token.trim();
+  // Bersihkan kutip ganda bila client menyimpan string JSON berlebih
+  if (t.startsWith('"') && t.endsWith('"') && t.length > 2) {
+    t = t.substring(1, t.length - 1).trim();
+  }
+  const th = sha256Hex_(t);
   const cacheKey = 'sesi_' + th;
   const dariCache = cacheAmbil_(cacheKey);
   if (dariCache && dariCache.id) {
@@ -937,7 +945,11 @@ function aksiAuthLogin_(ctx) {
 
 /** auth.logout — Mengakhiri sesi aktif. */
 function aksiAuthLogout_(ctx) {
-  const th = sha256Hex_(ctx.token);
+  let t = (ctx.token || '').trim();
+  if (t.startsWith('"') && t.endsWith('"') && t.length > 2) {
+    t = t.substring(1, t.length - 1).trim();
+  }
+  const th = sha256Hex_(t);
   const semuaSesi = bacaSemua_('Sesi');
   const sesi = semuaSesi.filter(function (s) { return s.token_hash === th && !s.deleted; })[0];
   if (sesi) {

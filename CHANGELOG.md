@@ -17,6 +17,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Fixed
+- [AUTH] Memperbaiki serialisasi token pada `frontend/js/state.js` agar string token disimpan langsung tanpa kutip ganda JSON berlebih.
+- [API] Menambahkan pembersihan kutip ganda otomatis pada `frontend/js/api.js` dan backend `backend/kode.gs` (`parseRequest_`, `validasiSesi_`, `aksiAuthLogout_`).
+- [AUTH] Memperbaiki alur "Wajib Ganti PIN" pada `frontend/js/modules/auth.js` dan `frontend/js/app.js` dengan menyertakan token sesi aktif, tombol logout/batal, dan otomatis mengarahkan ke form login bila sesi kedaluwarsa (`AUTH_INVALID`).
+- [UI] Memperbaiki inisialisasi badge `#net-pill` pada `frontend/js/app.js` agar langsung menampilkan status online sesuai kondisi `navigator.onLine`.
+- [PWA] Memperbarui versi cache Service Worker ke `pos-kasir-static-v0.2.2` pada `frontend/sw.js`.
 - [AUTH] Memperbaiki ekspor `escapeHtml` pada `frontend/js/utils/dom.js` dan mengarahkan impor `escapeHtml` di `frontend/js/modules/auth.js` langsung ke `frontend/js/utils/format.js`.
 - [API] Menambahkan objek helper wrapper `export const api` pada `frontend/js/api.js` untuk kompatibilitas pemanggilan `api.post()`.
 

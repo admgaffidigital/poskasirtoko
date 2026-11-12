@@ -41,8 +41,17 @@ export async function apiCall(action, payload = {}, options = {}) {
     );
   }
 
-  // Ambil token dari options atau localStorage
-  const token = options.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('pos_token') || '' : '');
+  // Ambil token dari options atau localStorage (dan bersihkan dari kutip ganda bila ada)
+  let token = options.token;
+  if (!token && typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem('pos_token') || '';
+    if (raw.startsWith('"') && raw.endsWith('"')) {
+      try { token = JSON.parse(raw); } catch { token = raw; }
+    } else {
+      token = raw;
+    }
+  }
+  token = (token || '').trim();
   const timeoutMs = options.timeoutMs || CONFIG.API_TIMEOUT_MS || 30000;
 
   const controller = new AbortController();

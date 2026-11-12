@@ -34,7 +34,12 @@ class Store {
   load(key, fallback) {
     try {
       const val = localStorage.getItem(key);
-      return val ? JSON.parse(val) : fallback;
+      if (val === null || val === undefined) return fallback;
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val;
+      }
     } catch {
       return fallback;
     }
@@ -42,7 +47,11 @@ class Store {
 
   save(key, val) {
     try {
-      localStorage.setItem(key, JSON.stringify(val));
+      if (typeof val === 'string') {
+        localStorage.setItem(key, val);
+      } else {
+        localStorage.setItem(key, JSON.stringify(val));
+      }
     } catch (e) {
       console.warn('Gagal menyimpan ke localStorage:', e);
     }

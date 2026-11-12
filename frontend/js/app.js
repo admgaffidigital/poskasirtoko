@@ -39,6 +39,16 @@ class App {
     this.initRouter();
     this.registerServiceWorker();
 
+    // Sinkronkan status koneksi online/offline pada badge net-pill
+    const pill = $('#net-pill');
+    if (pill) {
+      if (navigator.onLine) {
+        pill.classList.remove('is-offline');
+      } else {
+        pill.classList.add('is-offline');
+      }
+    }
+
     // Verifikasi sesi saat aplikasi dimuat
     const token = store.get('token');
     if (token) {
@@ -47,7 +57,7 @@ class App {
           store.set('user', res.user);
           this.updateUserUI(res.user);
           if (res.user.wajib_ganti_pin) {
-            tampilkanDialogWajibGantiPin();
+            tampilkanDialogWajibGantiPin(token);
           }
         })
         .catch(() => {
@@ -110,7 +120,7 @@ class App {
             <h1 class="topbar-title" id="topbar-title">POS Kasir</h1>
 
             <div class="topbar-actions">
-              <span class="badge badge-warning net-pill is-offline" id="net-pill">Offline</span>
+              <span class="badge badge-warning net-pill ${typeof navigator !== 'undefined' && navigator.onLine ? '' : 'is-offline'}" id="net-pill">Offline</span>
 
               <button type="button" class="btn btn-ghost btn-icon btn-sm" id="btn-theme-top" title="Ubah Tema" aria-label="Ubah Tema">
                 ${ICONS.moon}
@@ -288,7 +298,7 @@ class App {
       });
 
       document.getElementById('btn-menu-ganti-pin')?.addEventListener('click', () => {
-        tampilkanDialogWajibGantiPin();
+        tampilkanDialogWajibGantiPin(store.get('token'));
       });
 
       document.getElementById('btn-menu-logout')?.addEventListener('click', () => {
