@@ -16,6 +16,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Fixed
+- [AUTH] Memperbaiki ekspor `escapeHtml` pada `frontend/js/utils/dom.js` dan mengarahkan impor `escapeHtml` di `frontend/js/modules/auth.js` langsung ke `frontend/js/utils/format.js`.
+- [API] Menambahkan objek helper wrapper `export const api` pada `frontend/js/api.js` untuk kompatibilitas pemanggilan `api.post()`.
+
 ### Added
 - [POS-JUAL] Implementasi Lengkap POS Kasir Penjualan (Fase 2):
   - Modul front end `frontend/js/modules/pos.js`: antarmuka kasir cepat dengan List & Grid view, filter chip kategori, pencarian instan (F2), dan integrasi pemindai barcode.
