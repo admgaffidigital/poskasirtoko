@@ -1376,4 +1376,48 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   }
 }
 
+/* ---------- Price Tag & Label Rak UI ---------- */
+.ptag-prod-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+  user-select: none;
+}
+.ptag-prod-item:last-child {
+  border-bottom: 0;
+}
+.ptag-prod-item:hover {
+  background: var(--surface-2);
+}
+.ptag-prod-item.is-selected {
+  background: var(--primary-soft);
+}
+.ptag-preview-box {
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  min-height: 380px;
+  max-height: 600px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  align-items: center;
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .ptag-preview-sticky {
+    position: sticky;
+    top: calc(var(--topbar-h) + var(--sp-4));
+  }
+}
+
+
 

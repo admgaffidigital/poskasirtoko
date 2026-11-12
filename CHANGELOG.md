@@ -29,6 +29,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   - Menyajikan panduan lengkap penanganan instalasi PWA pada Google Chrome Android ketika diakses via IP jaringan lokal (HTTP non-SSL).
 
 ### Changed & Enhanced
+- [UI] **Perbaikan Checkbox & Radio Native Modern**:
+  - Mengatasi masalah checkbox dan radio yang tidak terlihat karena `appearance: none;` global pada `base.css`.
+  - Menerapkan `appearance: auto`, `accent-color: var(--primary)`, dan dimensi sentuh 18x18px pada semua input checkbox dan radio.
+- [UI] **Penyelarasan Modul Price Tag & Label Rak (`pricetag.js`)**:
+  - Menambahkan sistem grid responsif `.grid-2` di `layout.css` sehingga pada layar tablet/desktop halaman Price Tag tampil rapi dalam 2 kolom (Kolom Kiri: Pemilihan Produk & Template, Kolom Kanan: Pratinjau Live Sticky).
+  - Merapikan daftar produk dengan seleksi kartu checklist `.ptag-prod-item.is-selected`, badge stok, SKU, dan harga ritel dalam warna brand primer.
 - [PWA] **Penyelarasan Manifest PWA Android Terbaru**:
   - Memperbarui `frontend/manifest.json` dengan menambahkan properti `id: "./"`, `scope: "./"`, dan `prefer_related_applications: false`.
   - Memisahkan definisi ikon untuk `purpose: "any"` dan `purpose: "maskable"` sesuai standar audit Web App Manifest Google Chrome.

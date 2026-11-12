@@ -26,7 +26,7 @@ export async function renderPriceTagModule(container) {
         </div>
       </div>
 
-      <div class="grid grid-2" style="gap: var(--sp-3); align-items: flex-start;">
+      <div class="grid grid-2" style="gap: var(--sp-4); align-items: flex-start;">
         <!-- Kolom Kiri: Pemilihan Produk & Format -->
         <div class="card card-body stack">
           <h3 style="margin-bottom: var(--sp-1);">1. Pilih Produk & Pengaturan Label</h3>
@@ -44,11 +44,11 @@ export async function renderPriceTagModule(container) {
               <button type="button" class="btn btn-xs btn-secondary" id="btn-pilih-semua-ptag">Pilih Semua</button>
               <button type="button" class="btn btn-xs btn-ghost" id="btn-batal-semua-ptag">Kosongkan</button>
             </div>
-            <span class="text-xs text-muted" id="label-terpilih-count">0 produk dipilih</span>
+            <span class="text-xs text-muted fw-semibold" id="label-terpilih-count">0 produk dipilih</span>
           </div>
 
           <!-- Daftar Produk dengan Checkbox -->
-          <div id="area-list-produk-ptag" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-2);">
+          <div id="area-list-produk-ptag" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-2);">
             ${renderSkeleton(4)}
           </div>
 
@@ -72,34 +72,34 @@ export async function renderPriceTagModule(container) {
               </div>
             </div>
 
-            <div class="stack" style="gap: var(--sp-1); margin-top: var(--sp-1);">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); cursor: pointer;">
-                <input type="checkbox" id="check-show-barcode" checked>
-                <span>Tampilkan Barcode SVG & SKU</span>
+            <div class="stack" style="gap: var(--sp-2); margin-top: var(--sp-1);">
+              <label style="display: flex; align-items: center; gap: 10px; font-size: var(--fs-xs); cursor: pointer; user-select: none;">
+                <input type="checkbox" id="check-show-barcode" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span class="fw-medium">Tampilkan Barcode SVG & SKU</span>
               </label>
-              <label style="display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); cursor: pointer;">
-                <input type="checkbox" id="check-show-grosir" checked>
-                <span>Tampilkan Harga Grosir (di bawah harga ritel)</span>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: var(--fs-xs); cursor: pointer; user-select: none;">
+                <input type="checkbox" id="check-show-grosir" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span class="fw-medium">Tampilkan Harga Grosir (di bawah harga ritel)</span>
               </label>
-              <label style="display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); cursor: pointer;">
-                <input type="checkbox" id="check-show-toko" checked>
-                <span>Tampilkan Header Nama Toko</span>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: var(--fs-xs); cursor: pointer; user-select: none;">
+                <input type="checkbox" id="check-show-toko" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                <span class="fw-medium">Tampilkan Header Nama Toko</span>
               </label>
             </div>
           </div>
         </div>
 
         <!-- Kolom Kanan: Live Preview Pratinjau Price Tag -->
-        <div class="card card-body stack">
+        <div class="card card-body stack ptag-preview-sticky">
           <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: var(--sp-2);">
             <h3 style="margin: 0;">Pratinjau Hasil Cetak</h3>
             <span class="badge badge-info text-xs" id="badge-template-aktif">Ukuran: 60 x 40 mm</span>
           </div>
 
-          <div id="area-preview-ptag" style="background: #e2e8f0; border-radius: var(--radius-md); padding: var(--sp-4); min-height: 380px; max-height: 520px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-3); align-items: center;">
+          <div id="area-preview-ptag" class="ptag-preview-box">
             <div class="text-muted text-xs text-center" style="margin-top: 80px;">
               ${ICONS.printer}
-              <div style="margin-top: var(--sp-1);">Pilih satu atau beberapa produk di sebelah kiri untuk melihat pratinjau label rak</div>
+              <div style="margin-top: var(--sp-1);">Centang produk untuk melihat pratinjau label harga rak</div>
             </div>
           </div>
         </div>
@@ -287,16 +287,21 @@ export async function renderPriceTagModule(container) {
 
       areaList.innerHTML = list.map((p) => {
         const isChecked = terpilihIds.has(p.id);
+        const stok = Number(p.stok || 0);
         return `
-          <label style="display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: var(--fs-sm);">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <input type="checkbox" class="cb-ptag-item" data-id="${escapeHtml(p.id)}" ${isChecked ? 'checked' : ''}>
-              <div>
-                <div class="fw-semibold">${escapeHtml(p.nama)}</div>
-                <div class="text-xs text-muted">${(p.sku && p.sku !== '-') ? `<span class="badge badge-secondary" style="font-size: 10px; padding: 1px 5px; margin-right: 4px;">SKU: ${escapeHtml(p.sku)}</span>` : ''}${escapeHtml(p.satuan_dasar || '')}</div>
+          <label class="ptag-prod-item ${isChecked ? 'is-selected' : ''}">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+              <input type="checkbox" class="cb-ptag-item" data-id="${escapeHtml(p.id)}" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary);">
+              <div style="min-width: 0;">
+                <div class="fw-semibold text-sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.nama)}</div>
+                <div class="text-xs text-muted" style="display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap;">
+                  ${(p.sku && p.sku !== '-') ? `<span class="badge badge-secondary" style="font-size: 10px; padding: 1px 5px;">SKU: ${escapeHtml(p.sku)}</span>` : ''}
+                  <span>${escapeHtml(p.satuan_dasar || '')}</span>
+                  <span class="badge ${stok > 0 ? 'badge-success' : 'badge-danger'}" style="font-size: 10px; padding: 1px 6px;">Stok: ${formatQty(stok)}</span>
+                </div>
               </div>
             </div>
-            <div class="fw-bold text-danger text-xs">${formatRupiah(p.harga_ritel)}</div>
+            <div class="fw-bold mono text-sm" style="color: var(--primary); white-space: nowrap;">${formatRupiah(p.harga_ritel)}</div>
           </label>
         `;
       }).join('');
@@ -304,8 +309,14 @@ export async function renderPriceTagModule(container) {
       areaList.querySelectorAll('.cb-ptag-item').forEach((cb) => {
         cb.addEventListener('change', () => {
           const id = cb.getAttribute('data-id');
-          if (cb.checked) terpilihIds.add(id);
-          else terpilihIds.delete(id);
+          const parentLabel = cb.closest('.ptag-prod-item');
+          if (cb.checked) {
+            terpilihIds.add(id);
+            if (parentLabel) parentLabel.classList.add('is-selected');
+          } else {
+            terpilihIds.delete(id);
+            if (parentLabel) parentLabel.classList.remove('is-selected');
+          }
           updatePreview();
         });
       });

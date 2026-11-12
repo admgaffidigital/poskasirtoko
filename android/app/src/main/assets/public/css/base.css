@@ -99,6 +99,18 @@ button, input, select, textarea {
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 
+/* Checkbox & Radio Native Modern */
+input[type="checkbox"], input[type="radio"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+  accent-color: var(--primary);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
 /* Hapus panah spinner bawaan browser pada input number agar lebih bersih */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
