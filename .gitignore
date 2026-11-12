@@ -3,6 +3,9 @@ node_modules/
 .vercel
 dist/
 build/
+.gradle/
+android/.gradle/
+android/app/build/
 
 # OS & Editor
 .DS_Store

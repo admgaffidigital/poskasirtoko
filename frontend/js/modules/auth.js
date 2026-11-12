@@ -14,6 +14,21 @@ import { $ } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
 
 let modalLoginRef = null;
+let modalGantiPinRef = null;
+
+/**
+ * Tutup semua modal login / ganti PIN jika terbuka
+ */
+export function tutupModalAuth() {
+  if (modalLoginRef) {
+    try { modalLoginRef.close(); } catch (e) {}
+    modalLoginRef = null;
+  }
+  if (modalGantiPinRef) {
+    try { modalGantiPinRef.close(); } catch (e) {}
+    modalGantiPinRef = null;
+  }
+}
 
 /**
  * Periksa apakah pengguna sudah login.
@@ -25,8 +40,10 @@ export function pastikanLogin(onSuccess) {
 
   if (token && user) {
     if (user.wajib_ganti_pin) {
-      tampilkanDialogWajibGantiPin(token);
-    } else if (onSuccess) {
+      tampilkanDialogWajibGantiPin(token, onSuccess);
+      return false;
+    }
+    if (onSuccess) {
       onSuccess(user);
     }
     return true;
@@ -116,7 +133,7 @@ export function tampilkanModalLogin(onSuccess) {
       modalToClose.close();
 
       if (res.user.wajib_ganti_pin) {
-        tampilkanDialogWajibGantiPin(res.token);
+        tampilkanDialogWajibGantiPin(res.token, onSuccess);
       } else if (onSuccess) {
         onSuccess(res.user);
       }
@@ -137,7 +154,9 @@ export function tampilkanModalLogin(onSuccess) {
 /**
  * Tampilkan dialog wajib ganti PIN untuk akun baru atau setelah direset
  */
-export function tampilkanDialogWajibGantiPin(tokenLangsung = null) {
+export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = null) {
+  if (modalGantiPinRef) return;
+
   const modal = showModal({
     title: 'Wajib Ganti PIN',
     closeOnOverlay: false,
@@ -179,15 +198,18 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null) {
     `
   });
 
+  modalGantiPinRef = modal;
+
   const btnClose = modal.el.querySelector('.btn-close-modal');
   if (btnClose) btnClose.style.display = 'none';
 
   modal.el.querySelector('#btn-batal-ganti-pin')?.addEventListener('click', () => {
     store.clearUserSession();
+    modalGantiPinRef = null;
     modal.close();
-    tampilkanModalLogin(() => {
+    tampilkanModalLogin(onSuccess || (() => {
       window.location.hash = '#/pos';
-    });
+    }));
   });
 
   const form = $('#form-ganti-pin', modal.el);
@@ -215,19 +237,25 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null) {
         user.wajib_ganti_pin = false;
         store.set('user', user);
       }
+      modalGantiPinRef = null;
       modal.close();
       showToast('PIN berhasil diganti! Selamat bekerja.', 'success');
-      window.location.hash = '#/pos';
+      if (onSuccess) {
+        onSuccess(user);
+      } else {
+        window.location.hash = '#/pos';
+      }
     } catch (err) {
       showToast(err.message, 'error', 4500);
 
       // Jika token sesi sudah kedaluwarsa atau tidak valid, kembalikan ke modal login
       if (err.code === 'AUTH_INVALID' || err.code === 'AUTH_REQUIRED') {
         store.clearUserSession();
+        modalGantiPinRef = null;
         modal.close();
-        tampilkanModalLogin(() => {
+        tampilkanModalLogin(onSuccess || (() => {
           window.location.hash = '#/pos';
-        });
+        }));
       }
     }
   });

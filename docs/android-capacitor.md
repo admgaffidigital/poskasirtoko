@@ -136,3 +136,4 @@ Aplikasi mendukung dua metode pencetakan struk di Android:
    - Pasang aplikasi gratis **RawBT Print Service** dari Google Play Store.
    - Sambungkan printer di RawBT.
    - Di aplikasi POS, pilih jalur cetak **RawBT**. Aplikasi akan otomatis mengirimkan payload cetak struk via intent `rawbt:data:base64` secara instan tanpa perlu pairing ulang.
+

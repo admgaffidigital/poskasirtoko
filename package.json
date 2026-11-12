@@ -4,8 +4,10 @@
   "description": "Aplikasi Point of Sale (POS) Kasir Toko Bangunan Modern & Responsif (PWA + Android Capacitor)",
   "main": "frontend/js/app.js",
   "scripts": {
-    "test": "node scratch/check_imports.js && node scratch/test_fase6.js",
-    "test:all": "node scratch/check_imports.js && node scratch/test_fase3.js && node scratch/test_fase4.js && node scratch/test_fase5.js && node scratch/test_fase6.js",
+    "test": "node scratch/check_syntax.js && node scratch/check_imports.js && node scratch/test_debug_final.js",
+    "test:syntax": "node scratch/check_syntax.js && node scratch/check_imports.js",
+    "test:audit": "node scratch/test_debug_final.js",
+    "test:all": "node scratch/check_syntax.js && node scratch/check_imports.js && node scratch/test_fase3.js && node scratch/test_fase4.js && node scratch/test_fase5.js && node scratch/test_fase6.js && node scratch/test_debug_final.js",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android",
     "cap:build": "cap build android"
@@ -35,3 +37,4 @@
     "@capacitor/cli": "^6.2.0"
   }
 }
+

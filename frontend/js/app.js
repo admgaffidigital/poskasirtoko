@@ -20,7 +20,7 @@ import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js'
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
 // Modul-modul Fase 1, 2, 3, 4, & 5
-import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin } from './modules/auth.js';
+import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin, tutupModalAuth } from './modules/auth.js';
 import { renderKategoriModule } from './modules/kategori.js';
 import { renderProdukModule } from './modules/produk.js';
 import { renderPengaturanModule } from './modules/pengaturan.js';
@@ -67,12 +67,21 @@ class App {
           store.set('user', res.user);
           this.updateUserUI(res.user);
           if (res.user.wajib_ganti_pin) {
-            tampilkanDialogWajibGantiPin(token);
+            tampilkanDialogWajibGantiPin(token, (u) => {
+              this.cekIzinDanRender(this.currentRoute, u);
+            });
           }
         })
         .catch(() => {
           store.clearUserSession();
           this.updateUserUI(null);
+          tutupModalAuth();
+          const rutePublik = ['sistem', 'desainsistem'];
+          if (this.currentRoute && !rutePublik.includes(this.currentRoute.id)) {
+            pastikanLogin((u) => {
+              this.cekIzinDanRender(this.currentRoute, u);
+            });
+          }
         });
     } else {
       this.updateUserUI(null);
