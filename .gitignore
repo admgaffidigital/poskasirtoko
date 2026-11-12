@@ -17,6 +17,7 @@ desktop.ini
 *.swo
 
 # Log & environment lokal
+android/local.properties
 *.log
 .env
 .env.local

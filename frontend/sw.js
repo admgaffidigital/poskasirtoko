@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.0';
+const CACHE_NAME = 'pos-kasir-static-v1.0.9';
 
 const ASSETS = [
   './',
@@ -81,6 +81,11 @@ self.addEventListener('fetch', (event) => {
 
   // Jangan pernah cache request ke Google Script API atau domain luar non-statis
   if (url.hostname.includes('script.google.com') || url.hostname.includes('googleusercontent.com')) {
+    return;
+  }
+
+  // Jangan cache file biner instalasi APK
+  if (url.pathname.endsWith('.apk')) {
     return;
   }
 

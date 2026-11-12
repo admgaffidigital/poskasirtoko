@@ -1,0 +1,221 @@
+/* ==========================================================================
+   tokens.css — Design token POS Kasir Toko Bangunan
+   Semua komponen WAJIB memakai variabel di file ini (lihat docs/design-system.md).
+   Tema: [data-theme="light" | "dark"] pada <html>. Ukuran font: [data-font="normal" | "besar"].
+   ========================================================================== */
+
+:root {
+  /* ---- Palet dasar: Oranye Bata (brand) ---- */
+  --orange-50: #fff4e6;
+  --orange-100: #ffe8cc;
+  --orange-200: #ffd8a8;
+  --orange-300: #ffc078;
+  --orange-400: #ffa94d;
+  --orange-500: #fd7e14;
+  --orange-600: #e8590c;
+  --orange-700: #d9480f;
+  --orange-800: #b13a0c;
+  --orange-900: #7c2d12;
+
+  /* ---- Palet dasar: Baja/Slate (netral) ---- */
+  --slate-0: #ffffff;
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #0a101e;
+
+  /* ---- Palet status ---- */
+  --green-500: #16a34a;
+  --green-600: #15803d;
+  --amber-500: #d97706;
+  --amber-600: #b45309;
+  --red-500: #dc2626;
+  --red-600: #b91c1c;
+  --blue-500: #2563eb;
+  --blue-600: #1d4ed8;
+
+  /* ---- Tipografi ---- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+  --font-scale: 1;
+  --fs-xs: 0.75rem;   /* 12px */
+  --fs-sm: 0.875rem;  /* 14px */
+  --fs-md: 1rem;      /* 16px */
+  --fs-lg: 1.125rem;  /* 18px */
+  --fs-xl: 1.25rem;   /* 20px */
+  --fs-2xl: 1.5rem;   /* 24px */
+  --fs-3xl: 1.875rem; /* 30px */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+
+  /* ---- Spasi (kelipatan 4px) ---- */
+  --sp-0: 0;
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+
+  /* ---- Radius ---- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* ---- Ukuran & tata letak ---- */
+  --touch: 44px;            /* target sentuh minimum */
+  --control-h: 44px;        /* tinggi input/tombol standar */
+  --control-h-sm: 36px;
+  --control-h-lg: 52px;
+  --topbar-h: 56px;
+  --bottomnav-h: 64px;
+  --sidebar-w: 248px;
+  --rail-w: 76px;
+  --content-max: 1280px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* ---- Gerak ---- */
+  --dur-fast: 120ms;
+  --dur-normal: 200ms;
+  --dur-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---- Lapisan ---- */
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}
+
+/* ---- Tema TERANG (default) ---- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: var(--slate-100);
+  --surface: var(--slate-0);
+  --surface-2: var(--slate-50);
+  --surface-3: var(--slate-200);
+  --border: var(--slate-200);
+  --border-strong: var(--slate-300);
+  --text: var(--slate-900);
+  --text-muted: var(--slate-500);
+  --text-subtle: var(--slate-400);
+  --text-on-primary: #ffffff;
+
+  --primary: var(--orange-600);
+  --primary-hover: var(--orange-700);
+  --primary-active: var(--orange-800);
+  --primary-soft: var(--orange-50);
+  --primary-soft-text: var(--orange-800);
+  --brand-primary: var(--primary);
+  --brand-primary-soft: var(--primary-soft);
+
+  --success: var(--green-500);
+  --success-soft: #e8f7ee;
+  --success-text: var(--green-600);
+  --warning: var(--amber-500);
+  --warning-soft: #fdf3e2;
+  --warning-text: var(--amber-600);
+  --danger: var(--red-500);
+  --danger-hover: var(--red-600);
+  --danger-soft: #fdecec;
+  --danger-text: var(--red-600);
+  --info: var(--blue-500);
+  --info-soft: #e9effd;
+  --info-text: var(--blue-600);
+
+  --nav-bg: var(--slate-900);
+  --nav-text: var(--slate-300);
+  --nav-text-active: #ffffff;
+  --nav-item-active: rgba(232, 89, 12, 0.18);
+
+  --overlay: rgba(15, 23, 42, 0.5);
+  --focus-ring: 0 0 0 3px rgba(232, 89, 12, 0.28);
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 16px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 14px 34px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+  --shadow-xl: 0 24px 48px -8px rgba(15, 23, 42, 0.18), 0 8px 18px -4px rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 16px -4px rgba(15, 23, 42, 0.05);
+  --skeleton-a: var(--slate-200);
+  --skeleton-b: var(--slate-100);
+}
+
+/* ---- Tema GELAP ---- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: var(--slate-950);
+  --surface: #111a2e;
+  --surface-2: #17223a;
+  --surface-3: #1f2c47;
+  --border: #24324f;
+  --border-strong: #31416a;
+  --text: var(--slate-100);
+  --text-muted: var(--slate-400);
+  --text-subtle: var(--slate-500);
+  --text-on-primary: #ffffff;
+
+  --primary: #f76b1c;
+  --primary-hover: #ff8a3d;
+  --primary-active: var(--orange-600);
+  --primary-soft: rgba(247, 107, 28, 0.14);
+  --primary-soft-text: var(--orange-300);
+  --brand-primary: var(--primary);
+  --brand-primary-soft: var(--primary-soft);
+
+  --success: #22c55e;
+  --success-soft: rgba(34, 197, 94, 0.14);
+  --success-text: #4ade80;
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.14);
+  --warning-text: #fbbf24;
+  --danger: #ef4444;
+  --danger-hover: #f87171;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+  --danger-text: #f87171;
+  --info: #3b82f6;
+  --info-soft: rgba(59, 130, 246, 0.14);
+  --info-text: #60a5fa;
+
+  --nav-bg: #0b1324;
+  --nav-text: var(--slate-400);
+  --nav-text-active: #ffffff;
+  --nav-item-active: rgba(247, 107, 28, 0.2);
+
+  --overlay: rgba(2, 6, 23, 0.7);
+  --focus-ring: 0 0 0 3px rgba(247, 107, 28, 0.35);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 16px -2px rgba(0, 0, 0, 0.48);
+  --shadow-lg: 0 14px 34px -4px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, 0.72);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --skeleton-a: #1c2842;
+  --skeleton-b: #24324f;
+}
+
+/* ---- Ukuran font besar (aksesibilitas) ---- */
+[data-font="besar"] {
+  --font-scale: 1.125;
+}
+

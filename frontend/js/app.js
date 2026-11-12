@@ -499,29 +499,41 @@ class App {
         </div>
 
         <!-- Panduan & Pemasangan Aplikasi Android (PWA & APK) -->
-        <div class="card card-body stack">
-          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-2);">
-            <div class="row" style="gap: var(--sp-2); align-items: center;">
-              <span style="color: var(--primary);">${ICONS.store}</span>
+        <div class="card card-body stack" style="border-left: 4px solid var(--primary);">
+          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
+            <div class="row" style="gap: var(--sp-3); align-items: center;">
+              <div style="background: var(--primary-soft); color: var(--primary); width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0;">
+                ${ICONS.store}
+              </div>
               <div>
-                <div class="fw-bold">Aplikasi Android & Pasang di Layar HP</div>
-                <div class="text-sm text-muted">Jalankan POS Kasir layaknya aplikasi native di smartphone Anda</div>
+                <div class="fw-bold" style="font-size: var(--fs-md);">Aplikasi Android (APK Native & PWA)</div>
+                <div class="text-xs text-muted">Jalankan POS Kasir layar penuh layaknya aplikasi native di smartphone Anda</div>
               </div>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full);">
-              📱 Pasang di Layar HP
-            </button>
+            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+              <a href="./download/poskasirtoko.apk" download="poskasirtoko.apk" class="btn btn-primary btn-sm" style="border-radius: var(--radius-full); text-decoration: none; font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                <span>Unduh File APK (.apk)</span>
+              </a>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full);">
+                📱 Pasang via Chrome (PWA)
+              </button>
+            </div>
           </div>
 
           <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: var(--fs-xs); line-height: 1.6; border: 1px solid var(--border);">
-            <div class="fw-bold text-sm" style="margin-bottom: 4px; color: var(--text);">Cara Pasang Langsung di HP Android (Tanpa Download APK Manual):</div>
-            1. Buka tautan web aplikasi ini menggunakan browser <strong>Google Chrome</strong> di HP Anda.<br>
-            2. Ketuk ikon <strong>titik tiga (⋮)</strong> di pojok kanan atas Chrome.<br>
-            3. Pilih <strong>"Instal aplikasi"</strong> atau <strong>"Tambahkan ke Layar Utama"</strong> (<em>Add to Home screen</em>).<br>
-            4. Aplikasi akan langsung terpasang di HP dengan ikon toko dan berjalan layar penuh (full screen) seperti aplikasi dari Play Store.<br>
+            <div class="fw-bold text-sm text-primary" style="margin-bottom: 4px;">Pilihan 1: Unduh & Pasang File APK Android (Paling Mudah & Pasti Berhasil)</div>
+            1. Ketuk tombol <strong>"Unduh File APK (.apk)"</strong> di atas untuk mengunduh <code>poskasirtoko.apk</code> (7.1 MB).<br>
+            2. Buka file hasil unduhan di HP Android Anda.<br>
+            3. Jika muncul konfirmasi keamanan, aktifkan/izinkan <em>"Pasang aplikasi dari sumber ini"</em> (fitur standar Android untuk APK direct download di luar Play Store).<br>
+            4. Aplikasi akan langsung terpasang sebagai aplikasi Android native dengan performa optimal dan offline splash screen.<br>
             <div class="divider" style="margin: var(--sp-2) 0;"></div>
-            <div class="fw-bold text-sm" style="margin-bottom: 4px; color: var(--text);">File Paket Native Android APK (Capacitor 6):</div>
-            Source code proyek Android native lengkap telah tersedia di folder <code>android/</code> proyek ini. Anda dapat mengompilasi file <code>.apk</code> menggunakan Android Studio atau perintah <code>npx cap open android</code> sesuai panduan di <code>docs/android-capacitor.md</code>.
+            <div class="fw-bold text-sm text-primary" style="margin-bottom: 4px;">Pilihan 2: Pasang PWA di Google Chrome HP</div>
+            <em>Catatan: Jika Anda mengakses melalui IP jaringan WiFi lokal (misal <code>http://192.168.x.x:3000</code>), Google Chrome Android secara otomatis menonaktifkan prompt instalasi PWA otomatis demi kebijakan keamanan web (wajib HTTPS).</em><br>
+            <strong>Cara Memasang PWA di Chrome HP:</strong><br>
+            1. Buka Chrome di HP Anda &gt; ketuk ikon <strong>titik tiga (⋮)</strong> di pojok kanan atas.<br>
+            2. Pilih menu <strong>"Tambahkan ke Layar Utama"</strong> (<em>Add to Home screen</em>) atau <strong>"Instal aplikasi"</strong>.<br>
+            3. Ikon POS Toko akan muncul di beranda HP Anda dan berjalan fullscreen tanpa bar URL browser.
           </div>
         </div>
       </div>
@@ -688,6 +700,30 @@ class App {
           <div>
             <h2>Semua Menu Aplikasi</h2>
             <p>Daftar seluruh modul dan fitur POS Toko Bangunan sesuai peran Anda</p>
+          </div>
+        </div>
+
+        <!-- Banner Unduh Aplikasi Android APK -->
+        <div class="card card-body" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--border); border-left: 4px solid var(--primary);">
+          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
+            <div class="row" style="gap: var(--sp-3); align-items: center;">
+              <div style="background: var(--primary-soft); color: var(--primary); width: 42px; height: 42px; border-radius: var(--radius-lg); display: grid; place-items: center; flex-shrink: 0;">
+                ${ICONS.store}
+              </div>
+              <div>
+                <div class="fw-bold" style="font-size: var(--fs-md);">Aplikasi Android (APK)</div>
+                <div class="text-xs text-muted">Pasang langsung di HP Android tanpa ribet</div>
+              </div>
+            </div>
+            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+              <a href="./download/poskasirtoko.apk" download="poskasirtoko.apk" class="btn btn-primary btn-sm" style="border-radius: var(--radius-full); text-decoration: none; font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                <span>Unduh APK (7.1 MB)</span>
+              </a>
+              <a href="#/sistem" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-full);">
+                Panduan PWA
+              </a>
+            </div>
           </div>
         </div>
 
