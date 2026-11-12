@@ -26,6 +26,50 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - [API] Menambahkan objek helper wrapper `export const api` pada `frontend/js/api.js` untuk kompatibilitas pemanggilan `api.post()`.
 
 ### Added
+- [SUPPLIER] Master Data Supplier & Distributor (Fase 3):
+  - Modul front end `frontend/js/modules/supplier.js`: daftar distributor dengan pencarian cepat, kontak PIC, integrasi WhatsApp Click-to-Chat, alamat, dan catatan rekening.
+  - Agregasi realtime total saldo hutang aktif berjalan per supplier dari sheet `Hutang`.
+  - Proteksi penolakan penghapusan supplier jika masih memiliki saldo hutang aktif (`CONFLICT`).
+  - Handler backend: `supplier.list`, `supplier.create`, `supplier.update`, `supplier.delete`.
+  - File: `backend/kode.gs`, `frontend/js/modules/supplier.js`, `docs/api.md`
+  - Dampak: Pengelolaan relasi distributor dan pemantauan kewajiban hutang toko
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/supplier.js`
+
+- [POS-BELI] Implementasi Lengkap POS Pembelian & Barang Masuk (Fase 3):
+  - Modul front end `frontend/js/modules/pembelian.js`: antarmuka faktur pembelian baru dan riwayat faktur pengadaan material.
+  - Pencarian produk autocomplete cepat dengan pemindai barcode dan pemilihan varian.
+  - Dukungan multi-satuan beli dengan faktor konversi otomatis ke satuan dasar (cth: 1 dus = 24 pcs).
+  - Penegakan Aturan Bisnis #10: Alokasi diskon faktur proporsional ke setiap item untuk menghasilkan harga beli efektif dasar.
+  - Perhitungan otomatis Moving Average HPP: `(stok_lama × hpp_lama + qty_masuk × harga_beli_efektif) / (stok_lama + qty_masuk)` dibulatkan ke rupiah terdekat.
+  - Penomoran faktur berurutan `PB-YYYYMMDD-0001` via sheet `Counter` di dalam `LockService`.
+  - Pembayaran fleksibel: Lunas, Hutang/Tempo, atau DP/Sebagian dengan pencatatan otomatis ke sheet `Hutang` dan `Pembayaran`.
+  - Pencatatan mutasi barang masuk secara atomik ke sheet `Kartu_Stok` bertipe `beli`.
+  - Handler backend: `pembelian.list`, `pembelian.detail`, `pembelian.create`.
+  - File: `backend/kode.gs`, `frontend/js/modules/pembelian.js`, `docs/api.md`
+  - Dampak: Restock barang, mutasi stok masuk, kalkulasi HPP bergerak, dan kewajiban hutang
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/pembelian.js`
+
+- [KARTU-STOK] Modul Buku Besar Kartu Stok (Fase 3):
+  - Modul front end `frontend/js/modules/kartu-stok.js`: jejak audit buku besar mutasi seluruh pergerakan barang.
+  - Filter dinamis berdasarkan produk, varian, jenis mutasi (beli, jual, opname, void), dan rentang tanggal.
+  - Rincian kuantitas masuk/keluar (+/-), saldo akhir fisik, snapshot HPP mutasi, nomor dokumen referensi, dan identitas petugas.
+  - Handler backend: `kartuStok.list`.
+  - File: `backend/kode.gs`, `frontend/js/modules/kartu-stok.js`, `docs/api.md`
+  - Dampak: Transparansi audit pergerakan stok barang
+
+- [OPNAME] Modul Stok Opname Fisik Gudang (Fase 3):
+  - Modul front end `frontend/js/modules/opname.js`: antarmuka opname fisik vs catatan sistem.
+  - Penomoran dokumen opname berurutan `OP-YYYYMMDD-0001`.
+  - Kalkulasi selisih realtime (Fisik - Sistem) dan wajib mencantumkan alasan selisih.
+  - Penegakan Aturan Bisnis #12: Opname menyesuaikan kuantitas stok tanpa mengubah HPP produk.
+  - Penegakan Aturan Bisnis #8: Setiap persetujuan penyesuaian opname wajib tercatat di `Log_Audit`.
+  - Alur persetujuan: Opsi penyesuaian langsung atau mode Draft dengan tombol persetujuan (Approve) bagi Owner/Admin.
+  - Handler backend: `opname.list`, `opname.create`, `opname.approve`.
+  - File: `backend/kode.gs`, `frontend/js/modules/opname.js`, `docs/api.md`
+  - Dampak: Rekonsiliasi fisik berkala dan pencegahan kebocoran stok
+
+- [PWA] Peningkatan Cache Shell Service Worker ke `pos-kasir-static-v0.3.0` pada `frontend/sw.js`.
+
 - [POS-JUAL] Implementasi Lengkap POS Kasir Penjualan (Fase 2):
   - Modul front end `frontend/js/modules/pos.js`: antarmuka kasir cepat dengan List & Grid view, filter chip kategori, pencarian instan (F2), dan integrasi pemindai barcode.
   - Dukungan desimal kuantitas hingga 3 digit di belakang koma (cth: 2.5 kg, 0.75 m3).

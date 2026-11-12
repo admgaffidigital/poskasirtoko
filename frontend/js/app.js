@@ -19,13 +19,17 @@ import {
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
-// Modul-modul Fase 1 & 2
+// Modul-modul Fase 1, 2, & 3
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin } from './modules/auth.js';
 import { renderKategoriModule } from './modules/kategori.js';
 import { renderProdukModule } from './modules/produk.js';
 import { renderPengaturanModule } from './modules/pengaturan.js';
 import { renderUsersModule } from './modules/users.js';
 import { renderPosModule } from './modules/pos.js';
+import { renderSupplierModule } from './modules/supplier.js';
+import { renderPembelianModule } from './modules/pembelian.js';
+import { renderKartuStokModule } from './modules/kartu-stok.js';
+import { renderOpnameModule } from './modules/opname.js';
 
 class App {
   constructor() {
@@ -398,6 +402,14 @@ class App {
       renderKategoriModule(content);
     } else if (rute.id === 'produk') {
       renderProdukModule(content);
+    } else if (rute.id === 'supplier') {
+      renderSupplierModule(content);
+    } else if (rute.id === 'pembelian') {
+      renderPembelianModule(content);
+    } else if (rute.id === 'kartu-stok') {
+      renderKartuStokModule(content);
+    } else if (rute.id === 'opname') {
+      renderOpnameModule(content);
     } else if (rute.id === 'pengaturan') {
       renderPengaturanModule(content);
     } else if (rute.id === 'users') {

@@ -261,11 +261,97 @@ Dan struktur respons `data` adalah:
 
 ---
 
-## 6. Peta Aksi Fase Selanjutnya (Roadmap)
+## 6. Modul Stok & Pembelian (Fase 3)
 
-- **Fase 3 (Stok & Pembelian):**
-  - `supplier.list`, `supplier.create`, `supplier.update`
-  - `pembelian.create`, `kartustok.list`, `opname.create`, `opname.approve`
+### 6.1 Supplier
+- `supplier.list`:
+  - Akses: `owner`, `admin`
+  - Payload: `{ "q": "...", "page": 1, "limit": 50, "aktif_saja": true }`
+  - Response `data`: `{ "items": [ { "id", "nama", "kontak", "hp", "alamat", "catatan", "aktif", "saldo_hutang", "total_pembelian" } ], "total", "page", "limit" }`
+- `supplier.create`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "nama", "kontak", "hp", "alamat", "catatan", "aktif" }`
+  - Response `data`: `{ "supplier", "pesan" }`
+- `supplier.update`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "id", "nama", "kontak", "hp", "alamat", "catatan", "aktif" }`
+  - Response `data`: `{ "pesan" }`
+- `supplier.delete`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "id": "..." }`
+  - Validasi: Ditolak dengan `CONFLICT` bila supplier masih memiliki saldo hutang aktif (`sisa > 0`).
+
+### 6.2 POS Pembelian
+- `pembelian.list`:
+  - Akses: `owner`, `admin`
+  - Payload: `{ "q": "...", "supplier_id": "...", "status_bayar": "...", "dari": "YYYY-MM-DD", "sampai": "YYYY-MM-DD", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "no_faktur", "no_faktur_supplier", "tanggal", "supplier_id", "supplier_nama", "subtotal", "diskon", "total", "bayar", "status_bayar" } ], "total", "page", "limit" }`
+- `pembelian.detail`:
+  - Akses: `owner`, `admin`
+  - Payload: `{ "id": "..." }` atau `{ "no_faktur": "..." }`
+  - Response `data`: `{ "pembelian", "items", "supplier", "hutang" }`
+- `pembelian.create`:
+  - Akses: `owner`, `admin` (Tulis: Ya - Atomik LockService)
+  - Payload:
+    ```json
+    {
+      "supplier_id": "...",
+      "no_faktur_supplier": "...",
+      "tanggal": "YYYY-MM-DD HH:mm:ss",
+      "diskon": 0,
+      "bayar": 500000,
+      "jatuh_tempo": "YYYY-MM-DD",
+      "catatan": "...",
+      "items": [
+        {
+          "produk_id": "...",
+          "varian_id": "...",
+          "nama": "...",
+          "satuan": "sak",
+          "faktor": 1,
+          "qty": 10,
+          "harga_beli": 55000
+        }
+      ]
+    }
+    ```
+  - Efek:
+    - Menghasilkan nomor faktur berurutan `PB-YYYYMMDD-0001`.
+    - Alokasi diskon faktur proporsional ke setiap item untuk menghitung harga beli efektif.
+    - Menghitung ulang Moving Average HPP: `(stok_lama * hpp_lama + qty_dasar * harga_beli_dasar_efektif) / (stok_lama + qty_dasar)`.
+    - Menambah stok pada `Produk` / `Varian`.
+    - Mencatat mutasi di `Kartu_Stok` dengan tipe `beli`, saldo baru, dan snapshot HPP baru.
+    - Mencatat saldo hutang di `Hutang` bila `bayar < total` (status `belum` atau `sebagian`).
+    - Mencatat pembayaran DP di `Pembayaran` bila `bayar > 0`.
+    - Mencatat riwayat audit di `Log_Audit`.
+
+### 6.3 Kartu Stok
+- `kartuStok.list`:
+  - Akses: `owner`, `admin`
+  - Payload: `{ "produk_id": "...", "varian_id": "...", "tipe": "...", "dari": "YYYY-MM-DD", "sampai": "YYYY-MM-DD", "q": "...", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "created_at", "produk_id", "produk_nama", "produk_sku", "satuan_dasar", "varian_id", "varian_nama", "tipe", "qty", "saldo", "hpp", "ref_id", "petugas_nama", "keterangan" } ], "total", "page", "limit" }`
+
+### 6.4 Stok Opname
+- `opname.list`:
+  - Akses: `owner`, `admin`
+  - Payload: `{ "status": "disetujui|draft", "produk_id": "...", "dari": "...", "sampai": "...", "q": "...", "page": 1, "limit": 50 }`
+  - Response `data`: `{ "items": [ { "id", "no_opname", "tanggal", "produk_nama", "varian_nama", "qty_sistem", "qty_fisik", "selisih", "alasan", "status", "penyetuju_nama", "disetujui_at" } ], "total", "page", "limit" }`
+- `opname.create`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "produk_id": "...", "varian_id": "...", "qty_fisik": 45, "alasan": "...", "langsung_setuju": true|false }`
+  - Efek:
+    - Menghasilkan nomor dokumen `OP-YYYYMMDD-0001`.
+    - Jika `langsung_setuju === true`: langsung menyesuaikan stok master, mencatat `Kartu_Stok` tipe `opname`, mencatat `Log_Audit` (aksi sensitif), dan HPP tidak berubah (Aturan Bisnis #12).
+    - Jika `langsung_setuju === false`: tersimpan sebagai status `draft`.
+- `opname.approve`:
+  - Akses: `owner`, `admin` (Tulis: Ya)
+  - Payload: `{ "id": "..." }`
+  - Efek: Menyetujui dokumen draft, menyesuaikan stok master fisik, mencatat `Kartu_Stok` tipe `opname`, dan mencatat `Log_Audit`.
+
+---
+
+## 7. Peta Aksi Fase Selanjutnya (Roadmap)
+
 - **Fase 4 (Keuangan):**
   - `piutang.list`, `piutang.bayar`, `hutang.list`, `hutang.bayar`, `retur.create`, `retur.approve`
 - **Fase 5 (Loyalitas):**
