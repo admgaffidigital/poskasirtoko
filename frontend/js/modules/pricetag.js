@@ -319,8 +319,8 @@ export async function renderPriceTagModule(container) {
       const q = inputSearch.value.trim().toLowerCase();
       const filtered = semuaProduk.filter((p) => {
         return p.nama.toLowerCase().includes(q) ||
-               (p.sku && p.sku.toLowerCase().includes(q)) ||
-               (p.barcode && p.barcode.toLowerCase().includes(q));
+          (p.sku && p.sku.toLowerCase().includes(q)) ||
+          (p.barcode && p.barcode.toLowerCase().includes(q));
       });
       renderDaftarChecklist(filtered);
     });
