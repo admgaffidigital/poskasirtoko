@@ -169,25 +169,25 @@ async function muatProduk(container, canEdit, isKasir) {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
         html += `
           <tr>
-            <td>
+            <td data-label="Produk">
               <div class="fw-semibold">${escapeHtml(p.nama)}</div>
               ${p.punya_varian && p.varian && p.varian.length ? `<span class="badge badge-info" style="font-size: 11px;">${p.varian.length} Varian</span>` : ''}
               ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge" style="font-size: 11px;">+${p.satuan_konversi.length} Satuan</span>` : ''}
             </td>
-            <td>
+            <td data-label="SKU / Barcode">
               <div class="mono text-xs">${escapeHtml(p.sku || '-')}</div>
               <div class="text-xs text-muted">${escapeHtml(p.barcode || '')}</div>
             </td>
-            <td>${escapeHtml(p.satuan_dasar)}</td>
-            ${!isKasir ? `<td class="num">${formatRupiah(p.hpp)}</td>` : ''}
-            <td class="num fw-semibold">${formatRupiah(p.harga_ritel)}</td>
-            <td class="num text-muted">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</td>
-            <td style="text-align: center;">
+            <td data-label="Satuan">${escapeHtml(p.satuan_dasar)}</td>
+            ${!isKasir ? `<td class="num" data-label="HPP">${formatRupiah(p.hpp)}</td>` : ''}
+            <td class="num fw-semibold" data-label="Harga Ritel">${formatRupiah(p.harga_ritel)}</td>
+            <td class="num text-muted" data-label="Harga Grosir">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</td>
+            <td style="text-align: center;" data-label="Stok">
               <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
             </td>
             ${canEdit ? `
-              <td style="text-align: right;">
-                <div class="row" style="justify-content: flex-end; gap: var(--sp-1);">
+              <td style="text-align: right;" data-label="Aksi">
+                <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
                   <button type="button" class="btn btn-ghost btn-sm btn-edit-prd" data-id="${p.id}">Ubah</button>
                   <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}">Hapus</button>
                 </div>

@@ -13,6 +13,7 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 body {
@@ -27,12 +28,41 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Biarkan teks yang wajar dapat disalin oleh pengguna */
+p, td, th, dd, dt, code, pre, .selectable, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Scrollbar ramping & modern layaknya aplikasi native */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
   line-height: var(--lh-tight);
   font-weight: var(--fw-semibold);
+  letter-spacing: -0.015em;
 }
 h1 { font-size: var(--fs-2xl); }
 h2 { font-size: var(--fs-xl); }
@@ -41,7 +71,7 @@ h4 { font-size: var(--fs-md); }
 
 p { margin: 0; }
 ul, ol { margin: 0; padding: 0; }
-a { color: var(--primary); text-decoration: none; }
+a { color: var(--primary); text-decoration: none; touch-action: manipulation; }
 a:hover { text-decoration: underline; }
 
 img, svg { display: block; max-width: 100%; }
@@ -50,9 +80,25 @@ svg { flex-shrink: 0; }
 button, input, select, textarea {
   font: inherit;
   color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
+
+/* Hapus panah spinner bawaan browser pada input number agar lebih bersih */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 
 /* Fokus yang jelas hanya untuk navigasi keyboard */
 :focus { outline: none; }

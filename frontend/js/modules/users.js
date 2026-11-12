@@ -91,24 +91,24 @@ async function muatUsers(container) {
 
       html += `
         <tr>
-          <td>
+          <td data-label="Username">
             <div class="fw-semibold mono">${escapeHtml(u.username)}</div>
             ${isSaya ? '<span class="badge badge-success text-xs">Akun Anda</span>' : ''}
             ${u.wajib_ganti_pin ? '<span class="badge badge-warning text-xs">Wajib Ganti PIN</span>' : ''}
           </td>
-          <td>${escapeHtml(u.nama || '-')}</td>
-          <td>
+          <td data-label="Nama Lengkap">${escapeHtml(u.nama || '-')}</td>
+          <td data-label="Role">
             <span class="badge ${badgeRole}" style="text-transform: capitalize;">${escapeHtml(u.role)}</span>
           </td>
-          <td>
+          <td data-label="Status">
             ${u.aktif ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-danger">Nonaktif</span>'}
             ${u.kunci_sampai ? `<span class="badge badge-danger text-xs">Terkunci hingga ${escapeHtml(u.kunci_sampai)}</span>` : ''}
           </td>
-          <td class="text-xs text-muted">
+          <td class="text-xs text-muted" data-label="Login Terakhir">
             ${u.last_login ? formatTanggal(u.last_login, true) : 'Belum pernah'}
           </td>
-          <td style="text-align: right;">
-            <div class="row" style="justify-content: flex-end; gap: var(--sp-1);">
+          <td style="text-align: right;" data-label="Aksi">
+            <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
               <button type="button" class="btn btn-ghost btn-sm btn-edit-user" data-id="${u.id}">Ubah</button>
               <button type="button" class="btn btn-ghost btn-sm text-warning btn-reset-pin-user" data-id="${u.id}" data-user="${escapeHtml(u.username)}">Reset PIN</button>
             </div>

@@ -111,11 +111,11 @@ async function muatSupplierList(container, canEdit, query = '') {
       const waLink = s.hp ? `https://wa.me/${s.hp.replace(/^0/, '62').replace(/[^0-9]/g, '')}` : '';
       html += `
         <tr>
-          <td>
+          <td data-label="Supplier">
             <div class="fw-semibold">${escapeHtml(s.nama)}</div>
             ${s.catatan ? `<div class="text-xs text-muted">${escapeHtml(s.catatan)}</div>` : ''}
           </td>
-          <td>
+          <td data-label="Kontak PIC">
             <div>${escapeHtml(s.kontak || '-')}</div>
             ${s.hp ? `
               <a href="${waLink}" target="_blank" rel="noopener" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px;">
@@ -123,27 +123,27 @@ async function muatSupplierList(container, canEdit, query = '') {
               </a>
             ` : '<span class="text-xs text-muted">-</span>'}
           </td>
-          <td>
+          <td data-label="Alamat">
             <div class="text-sm text-muted" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               ${escapeHtml(s.alamat || '-')}
             </div>
           </td>
-          <td style="text-align: right;">
+          <td style="text-align: right;" data-label="Saldo Hutang">
             <div class="tabular fw-bold ${s.saldo_hutang > 0 ? 'text-danger' : 'text-muted'}">
               ${formatRupiah(s.saldo_hutang)}
             </div>
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center;" data-label="Faktur">
             <span class="badge ${s.total_pembelian > 0 ? 'badge-info' : ''}">${s.total_pembelian || 0}</span>
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center;" data-label="Status">
             <span class="badge ${s.aktif ? 'badge-success' : 'badge-warning'}">
               ${s.aktif ? 'Aktif' : 'Nonaktif'}
             </span>
           </td>
           ${canEdit ? `
-            <td style="text-align: right;">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-1);">
+            <td style="text-align: right;" data-label="Aksi">
+              <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
                 <button type="button" class="btn btn-ghost btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah">
                   Ubah
                 </button>

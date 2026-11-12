@@ -491,10 +491,10 @@ async function muatRiwayatPenukaran(container) {
           <tbody>
             ${items.map((it) => `
               <tr>
-                <td class="text-xs">${formatTanggal(it.created_at, true)}</td>
-                <td><span class="font-mono fw-semibold">${escapeHtml(it.ref_id || '-')}</span></td>
-                <td class="num fw-bold text-danger">${it.jumlah} Poin</td>
-                <td class="num font-mono fw-bold">${(it.saldo || 0).toLocaleString('id-ID')} Poin</td>
+                <td class="text-xs" data-label="Waktu">${formatTanggal(it.created_at, true)}</td>
+                <td data-label="Nomor Bukti"><span class="font-mono fw-semibold">${escapeHtml(it.ref_id || '-')}</span></td>
+                <td class="num fw-bold text-danger" data-label="Poin Dipotong">${it.jumlah} Poin</td>
+                <td class="num font-mono fw-bold" data-label="Sisa Poin">${(it.saldo || 0).toLocaleString('id-ID')} Poin</td>
               </tr>
             `).join('')}
           </tbody>

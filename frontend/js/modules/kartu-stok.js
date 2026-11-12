@@ -177,33 +177,33 @@ async function muatDataKartuStok(container) {
 
       html += `
         <tr>
-          <td class="text-xs text-muted">
+          <td class="text-xs text-muted" data-label="Waktu">
             ${formatTanggal(ks.created_at)}
           </td>
-          <td>
+          <td data-label="Produk & Varian">
             <div class="fw-semibold">${escapeHtml(ks.produk_nama)}</div>
             ${ks.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(ks.varian_nama)}</div>` : ''}
             <div class="text-xs text-muted">SKU: ${escapeHtml(ks.produk_sku || '-')}</div>
           </td>
-          <td>
+          <td data-label="Jenis">
             <span class="badge ${badgeClass}">${labelTipe}</span>
           </td>
-          <td>
+          <td data-label="No. Referensi">
             <span class="tabular fw-bold text-sm">${escapeHtml(ks.ref_id || '-')}</span>
           </td>
-          <td style="text-align: right;" class="tabular fw-bold ${isMasuk ? 'text-success' : 'text-danger'}">
+          <td style="text-align: right;" class="tabular fw-bold ${isMasuk ? 'text-success' : 'text-danger'}" data-label="Mutasi">
             ${isMasuk ? '+' : ''}${formatQty(ks.qty)} ${escapeHtml(ks.satuan_dasar)}
           </td>
-          <td style="text-align: right;" class="tabular fw-semibold">
+          <td style="text-align: right;" class="tabular fw-semibold" data-label="Saldo Akhir">
             ${formatQty(ks.saldo)} ${escapeHtml(ks.satuan_dasar)}
           </td>
-          <td style="text-align: right;" class="tabular">
+          <td style="text-align: right;" class="tabular" data-label="HPP Mutasi">
             ${formatRupiah(ks.hpp)}
           </td>
-          <td class="text-sm">
+          <td class="text-sm" data-label="Petugas">
             ${escapeHtml(ks.petugas_nama || '-')}
           </td>
-          <td class="text-xs text-muted" style="max-width: 200px;">
+          <td class="text-xs text-muted" style="max-width: 200px;" data-label="Keterangan">
             ${escapeHtml(ks.keterangan || '-')}
           </td>
         </tr>

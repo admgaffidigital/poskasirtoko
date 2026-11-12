@@ -131,36 +131,36 @@ async function muatDataOpname(container, canEdit) {
 
       html += `
         <tr>
-          <td>
+          <td data-label="No. Opname">
             <div class="tabular fw-bold text-sm">${escapeHtml(op.no_opname)}</div>
           </td>
-          <td class="text-xs text-muted">
+          <td class="text-xs text-muted" data-label="Tanggal">
             ${formatTanggal(op.tanggal)}
           </td>
-          <td>
+          <td data-label="Produk & Varian">
             <div class="fw-semibold">${escapeHtml(op.produk_nama)}</div>
             ${op.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(op.varian_nama)}</div>` : ''}
           </td>
-          <td style="text-align: right;" class="tabular">
+          <td style="text-align: right;" class="tabular" data-label="Stok Sistem">
             ${formatQty(op.qty_sistem)} ${escapeHtml(op.satuan_dasar)}
           </td>
-          <td style="text-align: right;" class="tabular fw-semibold">
+          <td style="text-align: right;" class="tabular fw-semibold" data-label="Hasil Fisik">
             ${formatQty(op.qty_fisik)} ${escapeHtml(op.satuan_dasar)}
           </td>
-          <td style="text-align: right;" class="tabular fw-bold ${isKurang ? 'text-danger' : (isLebih ? 'text-success' : 'text-muted')}">
+          <td style="text-align: right;" class="tabular fw-bold ${isKurang ? 'text-danger' : (isLebih ? 'text-success' : 'text-muted')}" data-label="Selisih">
             ${isLebih ? '+' : ''}${formatQty(op.selisih)}
           </td>
-          <td class="text-xs text-muted" style="max-width: 220px;">
+          <td class="text-xs text-muted" style="max-width: 220px;" data-label="Alasan Selisih">
             ${escapeHtml(op.alasan || '-')}
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center;" data-label="Status">
             <span class="badge ${badgeStatus}">
               ${op.status === 'disetujui' ? 'Disetujui' : 'Draft'}
             </span>
             ${op.penyetuju_nama ? `<div class="text-xs text-muted" style="margin-top: 2px;">oleh ${escapeHtml(op.penyetuju_nama)}</div>` : ''}
           </td>
           ${canEdit ? `
-            <td style="text-align: center;">
+            <td style="text-align: center;" data-label="Aksi">
               ${op.status === 'draft' ? `
                 <button type="button" class="btn btn-primary btn-sm btn-approve-opname" data-id="${op.id}" data-no="${escapeHtml(op.no_opname)}">
                   Setujui

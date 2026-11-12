@@ -421,19 +421,19 @@ export function renderPosModule(container) {
 
       html += `
         <tr class="pos-product-row" data-id="${p.id}" style="cursor: pointer;">
-          <td>
+          <td data-label="Produk">
             <div class="fw-bold">${escapeHtml(p.nama)}</div>
             <div class="text-xs text-muted mono">${escapeHtml(p.sku || p.barcode || '')}</div>
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center;" data-label="Stok">
             <span class="badge ${stok <= 0 ? 'badge-danger' : 'badge-success'}">
               ${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}
             </span>
           </td>
-          <td style="text-align: right;" class="mono fw-bold">
+          <td style="text-align: right;" class="mono fw-bold" data-label="Harga Ritel">
             ${formatRupiah(p.harga_ritel)}
           </td>
-          <td style="text-align: right;">
+          <td style="text-align: right;" data-label="Aksi">
             <button type="button" class="btn btn-secondary btn-sm btn-tambah-list" data-id="${p.id}">
               + Pilih
             </button>

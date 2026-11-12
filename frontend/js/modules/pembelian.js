@@ -508,18 +508,18 @@ function renderTabelKeranjangBeli(container) {
   keranjangBeli.forEach((it, idx) => {
     html += `
       <tr>
-        <td>
+        <td data-label="Barang">
           <div class="fw-semibold">${escapeHtml(it.nama)}</div>
           ${it.faktor > 1 ? `<div class="text-xs text-muted">1 ${escapeHtml(it.satuan)} = ${it.faktor} ${escapeHtml(it.satuan_dasar)}</div>` : ''}
         </td>
-        <td><span class="badge">${escapeHtml(it.satuan)}</span></td>
-        <td style="text-align: right;">
-          <div class="tabular fw-semibold">${formatQty(it.qty)}</div>
+        <td data-label="Satuan"><span class="badge">${escapeHtml(it.satuan)}</span></td>
+        <td style="text-align: right;" class="tabular" data-label="Qty Beli">
+          <div class="fw-semibold">${formatQty(it.qty)}</div>
           ${it.faktor > 1 ? `<div class="text-xs text-muted">(${formatQty(it.qty_dasar)} ${escapeHtml(it.satuan_dasar)})</div>` : ''}
         </td>
-        <td style="text-align: right;" class="tabular">${formatRupiah(it.harga_beli)}</td>
-        <td style="text-align: right;" class="tabular fw-bold">${formatRupiah(it.subtotal)}</td>
-        <td style="text-align: center;">
+        <td style="text-align: right;" class="tabular" data-label="Harga Satuan">${formatRupiah(it.harga_beli)}</td>
+        <td style="text-align: right;" class="tabular fw-bold" data-label="Subtotal">${formatRupiah(it.subtotal)}</td>
+        <td style="text-align: center;" data-label="Aksi">
           <button type="button" class="btn btn-ghost btn-sm text-danger btn-icon btn-hapus-item-beli" data-index="${idx}" title="Hapus">
             ${ICONS.x}
           </button>
@@ -713,26 +713,26 @@ async function muatRiwayatPembelian(container, query = '') {
 
       html += `
         <tr>
-          <td>
+          <td data-label="No Faktur">
             <div class="tabular fw-bold">${escapeHtml(pb.no_faktur)}</div>
             ${pb.no_faktur_supplier ? `<div class="text-xs text-muted">Faktur Asli: ${escapeHtml(pb.no_faktur_supplier)}</div>` : ''}
           </td>
-          <td>
+          <td data-label="Tanggal">
             <div class="text-sm">${formatTanggal(pb.tanggal)}</div>
           </td>
-          <td>
+          <td data-label="Supplier">
             <div class="fw-semibold">${escapeHtml(pb.supplier_nama || 'Supplier Umum')}</div>
           </td>
-          <td style="text-align: right;" class="tabular fw-bold">
+          <td style="text-align: right;" class="tabular fw-bold" data-label="Total Tagihan">
             ${formatRupiah(pb.total)}
           </td>
-          <td style="text-align: right;" class="tabular">
+          <td style="text-align: right;" class="tabular" data-label="Dibayar">
             ${formatRupiah(pb.bayar)}
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center;" data-label="Status Bayar">
             <span class="badge ${badgeClass}">${statusLabel}</span>
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center;" data-label="Aksi">
             <button type="button" class="btn btn-ghost btn-sm btn-detail-pembelian" data-id="${pb.id}">
               Detail
             </button>
@@ -783,13 +783,13 @@ async function bukaModalDetailPembelian(pembelianId) {
     items.forEach((it) => {
       itemHtml += `
         <tr>
-          <td>
+          <td data-label="Barang">
             <div class="fw-semibold">${escapeHtml(it.nama)}</div>
           </td>
-          <td>${escapeHtml(it.satuan)}</td>
-          <td style="text-align: right;" class="tabular">${formatQty(it.qty)}</td>
-          <td style="text-align: right;" class="tabular">${formatRupiah(it.harga_beli)}</td>
-          <td style="text-align: right;" class="tabular fw-bold">${formatRupiah(it.subtotal)}</td>
+          <td data-label="Satuan">${escapeHtml(it.satuan)}</td>
+          <td style="text-align: right;" class="tabular" data-label="Qty">${formatQty(it.qty)}</td>
+          <td style="text-align: right;" class="tabular" data-label="Harga Satuan">${formatRupiah(it.harga_beli)}</td>
+          <td style="text-align: right;" class="tabular fw-bold" data-label="Subtotal">${formatRupiah(it.subtotal)}</td>
         </tr>
       `;
     });

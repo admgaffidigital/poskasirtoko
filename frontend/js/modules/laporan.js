@@ -783,23 +783,23 @@ function renderTabPenjualan(container, data) {
                   <tr><td colspan="${isOwner ? 9 : 8}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data penjualan sesuai filter</td></tr>
                 ` : items.map((j) => `
                   <tr>
-                    <td><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(j.no_nota)}</span></td>
-                    <td style="font-size: var(--fs-xs); color: var(--text-muted);">${formatTanggal(j.tanggal)}</td>
-                    <td>${escapeHtml(j.kasir_nama || 'Kasir')}</td>
-                    <td>${escapeHtml(j.pelanggan_nama || 'Umum')}</td>
-                    <td><span class="badge badge-info">${escapeHtml(j.metode_bayar || 'tunai')}</span></td>
-                    <td>
+                    <td data-label="No Nota"><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(j.no_nota)}</span></td>
+                    <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(j.tanggal)}</td>
+                    <td data-label="Kasir">${escapeHtml(j.kasir_nama || 'Kasir')}</td>
+                    <td data-label="Pelanggan">${escapeHtml(j.pelanggan_nama || 'Umum')}</td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(j.metode_bayar || 'tunai')}</span></td>
+                    <td data-label="Status">
                       <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'tempo' || j.status_bayar === 'belum_lunas' ? 'badge-danger' : 'badge-warning')}">
                         ${escapeHtml(j.status_bayar)}
                       </span>
                     </td>
-                    <td style="text-align: right; font-weight: var(--fw-bold);">${formatRupiah(j.total)}</td>
+                    <td style="text-align: right; font-weight: var(--fw-bold);" data-label="Total Transaksi">${formatRupiah(j.total)}</td>
                     ${isOwner ? `
-                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);" data-label="Laba Kotor">
                         ${formatRupiah(j.laba_kotor || 0)}
                       </td>
                     ` : ''}
-                    <td class="no-print" style="text-align: center;">
+                    <td class="no-print" style="text-align: center;" data-label="Aksi">
                       <button type="button" class="btn btn-sm btn-ghost btn-detail-nota" data-id="${j.id}" title="Lihat Rincian Item">
                         ${ICONS.eye}
                       </button>
@@ -982,18 +982,18 @@ function renderTabPembelian(container, data) {
                   <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada faktur pembelian sesuai filter</td></tr>
                 ` : items.map((pb) => `
                   <tr>
-                    <td><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(pb.no_faktur)}</span></td>
-                    <td><span style="font-family: monospace; color: var(--text-muted);">${escapeHtml(pb.no_faktur_supplier || '-')}</span></td>
-                    <td style="font-size: var(--fs-xs); color: var(--text-muted);">${formatTanggal(pb.tanggal)}</td>
-                    <td style="font-weight: var(--fw-medium);">${escapeHtml(pb.supplier_nama)}</td>
-                    <td>
+                    <td data-label="No Faktur"><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(pb.no_faktur)}</span></td>
+                    <td data-label="Ref Supplier"><span style="font-family: monospace; color: var(--text-muted);">${escapeHtml(pb.no_faktur_supplier || '-')}</span></td>
+                    <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(pb.tanggal)}</td>
+                    <td style="font-weight: var(--fw-medium);" data-label="Supplier">${escapeHtml(pb.supplier_nama)}</td>
+                    <td data-label="Status">
                       <span class="badge ${pb.status_bayar === 'lunas' ? 'badge-success' : 'badge-danger'}">
                         ${escapeHtml(pb.status_bayar)}
                       </span>
                     </td>
-                    <td style="text-align: right; font-weight: var(--fw-bold);">${formatRupiah(pb.total)}</td>
-                    <td style="text-align: right; color: var(--success);">${formatRupiah(pb.bayar)}</td>
-                    <td style="text-align: right; font-weight: var(--fw-bold); color: ${pb.sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};">
+                    <td style="text-align: right; font-weight: var(--fw-bold);" data-label="Total Nilai">${formatRupiah(pb.total)}</td>
+                    <td style="text-align: right; color: var(--success);" data-label="Dibayar">${formatRupiah(pb.bayar)}</td>
+                    <td style="text-align: right; font-weight: var(--fw-bold); color: ${pb.sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};" data-label="Sisa Hutang">
                       ${formatRupiah(pb.sisa_hutang)}
                     </td>
                   </tr>
@@ -1061,7 +1061,7 @@ function renderTabArusKas(container, data) {
             <h3 class="card-title" style="color: var(--success);">${ICONS.arrowDownLeft || ICONS.wallet} Rincian Kas Masuk (Penerimaan)</h3>
           </div>
           <div class="card-body" style="padding: 0;">
-            <div class="table-wrap">
+            <div class="table-wrap keep-table">
               <table class="table">
                 <tbody>
                   <tr>
@@ -1100,7 +1100,7 @@ function renderTabArusKas(container, data) {
             <h3 class="card-title" style="color: var(--danger);">${ICONS.arrowUpRight || ICONS.wallet} Rincian Kas Keluar (Pengeluaran)</h3>
           </div>
           <div class="card-body" style="padding: 0;">
-            <div class="table-wrap">
+            <div class="table-wrap keep-table">
               <table class="table">
                 <tbody>
                   <tr>
@@ -1335,26 +1335,26 @@ function renderTabStokValuasi(container, data) {
                   <tr><td colspan="${isOwner ? 8 : 7}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data persediaan stok sesuai filter</td></tr>
                 ` : items.map((it) => `
                   <tr>
-                    <td>
+                    <td data-label="SKU / Barcode">
                       <div style="font-family: monospace; font-weight: var(--fw-medium);">${escapeHtml(it.sku || '-')}</div>
                       ${it.barcode ? `<div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.barcode)}</div>` : ''}
                     </td>
-                    <td style="font-weight: var(--fw-medium);">${escapeHtml(it.nama)}</td>
-                    <td><span class="badge badge-info">${escapeHtml(it.kategori)}</span></td>
-                    <td style="text-align: right; font-weight: var(--fw-bold); color: ${it.stok <= 0 ? 'var(--danger)' : (it.status === 'kritis' ? 'var(--warning)' : 'var(--text-main)')};">
+                    <td style="font-weight: var(--fw-medium);" data-label="Produk">${escapeHtml(it.nama)}</td>
+                    <td data-label="Kategori"><span class="badge badge-info">${escapeHtml(it.kategori)}</span></td>
+                    <td style="text-align: right; font-weight: var(--fw-bold); color: ${it.stok <= 0 ? 'var(--danger)' : (it.status === 'kritis' ? 'var(--warning)' : 'var(--text-main)')};" data-label="Stok Fisik">
                       ${formatAngka(it.stok)} ${escapeHtml(it.satuan)}
                     </td>
-                    <td style="text-align: right; color: var(--text-muted);">
+                    <td style="text-align: right; color: var(--text-muted);" data-label="Batas Min">
                       ${formatAngka(it.stok_min)} ${escapeHtml(it.satuan)}
                     </td>
-                    <td style="text-align: center;">
+                    <td style="text-align: center;" data-label="Status">
                       <span class="badge ${it.status === 'habis' ? 'badge-danger' : (it.status === 'kritis' ? 'badge-warning' : 'badge-success')}">
                         ${it.status.toUpperCase()}
                       </span>
                     </td>
-                    <td style="text-align: right;">${formatRupiah(it.hpp)}</td>
+                    <td style="text-align: right;" data-label="HPP Satuan">${formatRupiah(it.hpp)}</td>
                     ${isOwner ? `
-                      <td style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">
+                      <td style="text-align: right; font-weight: var(--fw-bold); color: var(--success);" data-label="Nilai Aset">
                         ${formatRupiah(it.nilai_aset || 0)}
                       </td>
                     ` : ''}

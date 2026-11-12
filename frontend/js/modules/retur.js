@@ -247,22 +247,22 @@ async function muatDataReturJual(container) {
 
               return `
                 <tr data-id="${escapeHtml(it.id)}">
-                  <td>
+                  <td data-label="No Retur & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_retur || '-')}</div>
                     <div class="text-xs text-muted">${formatTanggal(it.dibuat_at, true)}</div>
                   </td>
-                  <td>
+                  <td data-label="Nota Asal">
                     <span class="font-mono fw-semibold">${escapeHtml(it.no_transaksi_asal || '-')}</span>
                   </td>
-                  <td>
+                  <td data-label="Pelanggan">
                     <div class="fw-semibold">${escapeHtml(it.nama_pihak || 'Pelanggan Umum')}</div>
                   </td>
-                  <td class="num fw-bold text-danger">${formatRupiah(it.total)}</td>
-                  <td><span class="badge badge-info">${escapeHtml(metodeRefund)}</span></td>
-                  <td>${badgeStatus}</td>
-                  <td class="text-xs text-muted">${escapeHtml(it.nama_pembuat || '-')}</td>
-                  <td style="text-align: right;">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end;">
+                  <td class="num fw-bold text-danger" data-label="Nilai Retur">${formatRupiah(it.total)}</td>
+                  <td data-label="Refund"><span class="badge badge-info">${escapeHtml(metodeRefund)}</span></td>
+                  <td data-label="Status">${badgeStatus}</td>
+                  <td class="text-xs text-muted" data-label="Petugas">${escapeHtml(it.nama_pembuat || '-')}</td>
+                  <td style="text-align: right;" data-label="Aksi">
+                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
                       <button type="button" class="btn btn-sm btn-ghost btn-detail-rt" data-id="${escapeHtml(it.id)}" title="Lihat Rincian Retur">
                         Rincian
                       </button>
@@ -375,21 +375,21 @@ async function muatDataReturBeli(container) {
 
               return `
                 <tr data-id="${escapeHtml(it.id)}">
-                  <td>
+                  <td data-label="No Retur & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_retur || '-')}</div>
                     <div class="text-xs text-muted">${formatTanggal(it.dibuat_at, true)}</div>
                   </td>
-                  <td>
+                  <td data-label="Faktur Asal">
                     <span class="font-mono fw-semibold">${escapeHtml(it.no_transaksi_asal || '-')}</span>
                   </td>
-                  <td>
+                  <td data-label="Supplier">
                     <div class="fw-semibold">${escapeHtml(it.nama_pihak || 'Supplier Umum')}</div>
                   </td>
-                  <td class="num fw-bold text-success">${formatRupiah(it.total)}</td>
-                  <td><span class="badge badge-info">${escapeHtml(metodeRefund)}</span></td>
-                  <td>${badgeStatus}</td>
-                  <td class="text-xs text-muted">${escapeHtml(it.nama_pembuat || '-')}</td>
-                  <td style="text-align: right;">
+                  <td class="num fw-bold text-success" data-label="Nilai Retur">${formatRupiah(it.total)}</td>
+                  <td data-label="Refund"><span class="badge badge-info">${escapeHtml(metodeRefund)}</span></td>
+                  <td data-label="Status">${badgeStatus}</td>
+                  <td class="text-xs text-muted" data-label="Petugas">${escapeHtml(it.nama_pembuat || '-')}</td>
+                  <td style="text-align: right;" data-label="Aksi">
                     <button type="button" class="btn btn-sm btn-ghost btn-detail-rb" data-id="${escapeHtml(it.id)}" title="Lihat Rincian Retur">
                       Rincian
                     </button>
@@ -1079,13 +1079,13 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
             <tbody>
               ${items.map((it) => `
                 <tr>
-                  <td>
+                  <td data-label="Produk / Varian">
                     <div class="fw-semibold">${escapeHtml(it.nama_produk || 'Produk')}</div>
                     ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
                   </td>
-                  <td class="num font-mono">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
-                  <td class="num">${formatRupiah(it.harga)}</td>
-                  <td class="num fw-bold">${formatRupiah(it.total)}</td>
+                  <td class="num font-mono" data-label="Qty Retur">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
+                  <td class="num" data-label="Harga">${formatRupiah(it.harga)}</td>
+                  <td class="num fw-bold" data-label="Total">${formatRupiah(it.total)}</td>
                 </tr>
               `).join('')}
             </tbody>

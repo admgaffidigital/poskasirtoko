@@ -295,27 +295,27 @@ async function muatDataPiutang(container) {
 
               return `
                 <tr data-id="${escapeHtml(it.id)}">
-                  <td>
+                  <td data-label="No Nota & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_nota || '-')}</div>
                     <div class="text-xs text-muted">${formatTanggal(it.tanggal_nota, true)}</div>
                   </td>
-                  <td>
+                  <td data-label="Pelanggan">
                     <div class="fw-semibold">${escapeHtml(it.nama_pelanggan || 'Pelanggan Umum')}</div>
                     <div class="text-xs text-muted">${escapeHtml(it.hp_pelanggan || '-')}</div>
                   </td>
-                  <td class="num fw-semibold">${formatRupiah(it.total)}</td>
-                  <td class="num">
+                  <td class="num fw-semibold" data-label="Total Tagihan">${formatRupiah(it.total)}</td>
+                  <td class="num" data-label="Sisa Piutang">
                     <span class="fw-bold ${it.sisa > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(it.sisa)}</span>
                   </td>
-                  <td>${badgeStatus}</td>
-                  <td>
+                  <td data-label="Status">${badgeStatus}</td>
+                  <td data-label="Jatuh Tempo">
                     <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
                       ${tglJatuhTempo}
                     </div>
                     ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                   </td>
-                  <td style="text-align: right;">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end;">
+                  <td style="text-align: right;" data-label="Aksi">
+                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
                       ${it.sisa > 0 ? `
                         <button type="button" class="btn btn-sm btn-primary btn-bayar-pt" data-id="${escapeHtml(it.id)}" title="Bayar Cicilan / Pelunasan">
                           Bayar
@@ -446,30 +446,30 @@ async function muatDataHutang(container) {
 
               return `
                 <tr data-id="${escapeHtml(it.id)}">
-                  <td>
+                  <td data-label="No Faktur & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_faktur || '-')}</div>
                     <div class="text-xs text-muted">${formatTanggal(it.tanggal_faktur, true)}</div>
                   </td>
-                  <td>
+                  <td data-label="Supplier">
                     <div class="fw-semibold">${escapeHtml(it.nama_supplier || 'Supplier Umum')}</div>
                     <div class="text-xs text-muted">${escapeHtml(it.hp_supplier || '-')}</div>
                   </td>
-                  <td>
+                  <td data-label="No Faktur Vendor">
                     <span class="text-xs font-mono">${escapeHtml(it.no_faktur_supplier || '-')}</span>
                   </td>
-                  <td class="num fw-semibold">${formatRupiah(it.total)}</td>
-                  <td class="num">
+                  <td class="num fw-semibold" data-label="Total Faktur">${formatRupiah(it.total)}</td>
+                  <td class="num" data-label="Sisa Hutang">
                     <span class="fw-bold ${it.sisa > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(it.sisa)}</span>
                   </td>
-                  <td>${badgeStatus}</td>
-                  <td>
+                  <td data-label="Status">${badgeStatus}</td>
+                  <td data-label="Jatuh Tempo">
                     <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
                       ${tglJatuhTempo}
                     </div>
                     ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                   </td>
-                  <td style="text-align: right;">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end;">
+                  <td style="text-align: right;" data-label="Aksi">
+                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
                       ${it.sisa > 0 ? `
                         <button type="button" class="btn btn-sm btn-primary btn-bayar-ht" data-id="${escapeHtml(it.id)}" title="Bayar Hutang Supplier">
                           Bayar
@@ -837,11 +837,11 @@ async function bukaModalDetailPiutang(piutangId) {
               <tbody>
                 ${riwayat.map((rw) => `
                   <tr>
-                    <td class="text-xs">${formatTanggal(rw.created_at, true)}</td>
-                    <td><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
-                    <td class="text-xs">${escapeHtml(rw.nama_petugas || '-')}</td>
-                    <td class="num fw-bold text-success">${formatRupiah(rw.jumlah)}</td>
-                    <td class="text-xs text-muted">${escapeHtml(rw.catatan || '-')}</td>
+                    <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.created_at, true)}</td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
+                    <td class="text-xs" data-label="Petugas">${escapeHtml(rw.nama_petugas || '-')}</td>
+                    <td class="num fw-bold text-success" data-label="Nominal">${formatRupiah(rw.jumlah)}</td>
+                    <td class="text-xs text-muted" data-label="Catatan">${escapeHtml(rw.catatan || '-')}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -917,11 +917,11 @@ async function bukaModalDetailHutang(hutangId) {
               <tbody>
                 ${riwayat.map((rw) => `
                   <tr>
-                    <td class="text-xs">${formatTanggal(rw.created_at, true)}</td>
-                    <td><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
-                    <td class="text-xs">${escapeHtml(rw.nama_petugas || '-')}</td>
-                    <td class="num fw-bold text-success">${formatRupiah(rw.jumlah)}</td>
-                    <td class="text-xs text-muted">${escapeHtml(rw.catatan || '-')}</td>
+                    <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.created_at, true)}</td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
+                    <td class="text-xs" data-label="Petugas">${escapeHtml(rw.nama_petugas || '-')}</td>
+                    <td class="num fw-bold text-success" data-label="Nominal">${formatRupiah(rw.jumlah)}</td>
+                    <td class="text-xs text-muted" data-label="Catatan">${escapeHtml(rw.catatan || '-')}</td>
                   </tr>
                 `).join('')}
               </tbody>

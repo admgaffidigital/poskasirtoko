@@ -210,11 +210,11 @@ async function muatDataPelanggan(container) {
 
               return `
                 <tr data-id="${escapeHtml(it.id)}">
-                  <td>
+                  <td data-label="Pelanggan">
                     <div class="fw-semibold">${escapeHtml(it.nama)}</div>
                     <span class="text-xs font-mono text-muted">${escapeHtml(it.kode || '-')}</span>
                   </td>
-                  <td>
+                  <td data-label="Kontak & Alamat">
                     <div class="row" style="gap: var(--sp-1); align-items: center;">
                       <span class="text-xs">${escapeHtml(it.hp || '-')}</span>
                       ${it.hp ? `
@@ -227,20 +227,20 @@ async function muatDataPelanggan(container) {
                       ${escapeHtml(it.alamat || '-')}
                     </div>
                   </td>
-                  <td>${badgeTipe}</td>
-                  <td class="num font-mono">
+                  <td data-label="Tipe & Level">${badgeTipe}</td>
+                  <td class="num font-mono" data-label="Limit Kredit">
                     ${isMember ? formatRupiah(it.limit_kredit || 0) : '<span class="text-muted">-</span>'}
                     ${isMember && it.tempo_hari ? `<div class="text-xs text-muted">${it.tempo_hari} hari</div>` : ''}
                   </td>
-                  <td class="num">
+                  <td class="num" data-label="Sisa Piutang">
                     <span class="fw-bold ${piutangAktif > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(piutangAktif)}</span>
                   </td>
-                  <td class="num font-mono">
+                  <td class="num font-mono" data-label="Poin Member">
                     ${isMember ? `<span class="fw-bold text-warning">${(it.poin || 0).toLocaleString('id-ID')}</span>` : '<span class="text-muted">-</span>'}
                   </td>
-                  <td>${statusBadge}</td>
-                  <td style="text-align: right;">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end;">
+                  <td data-label="Status">${statusBadge}</td>
+                  <td style="text-align: right;" data-label="Aksi">
+                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
                       <button type="button" class="btn btn-sm btn-ghost btn-detail-pel" data-id="${escapeHtml(it.id)}" title="Rincian & Riwayat Belanja/Poin">
                         Rincian
                       </button>
@@ -591,13 +591,13 @@ async function bukaModalDetailPelanggan(pelangganId) {
               <tbody>
                 ${riwayatJual.map((pj) => `
                   <tr>
-                    <td>
+                    <td data-label="No Nota & Tgl">
                       <div class="fw-semibold font-mono text-xs">${escapeHtml(pj.no_nota)}</div>
                       <div class="text-xs text-muted">${formatTanggal(pj.created_at, true)}</div>
                     </td>
-                    <td class="num fw-bold">${formatRupiah(pj.total)}</td>
-                    <td><span class="badge badge-info">${escapeHtml(pj.metode_bayar)}</span></td>
-                    <td><span class="badge ${pj.status_bayar === 'lunas' ? 'badge-success' : 'badge-warning'}">${escapeHtml(pj.status_bayar)}</span></td>
+                    <td class="num fw-bold" data-label="Total Belanja">${formatRupiah(pj.total)}</td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(pj.metode_bayar)}</span></td>
+                    <td data-label="Status"><span class="badge ${pj.status_bayar === 'lunas' ? 'badge-success' : 'badge-warning'}">${escapeHtml(pj.status_bayar)}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -627,13 +627,13 @@ async function bukaModalDetailPelanggan(pelangganId) {
                 <tbody>
                   ${riwayatPoin.map((pl) => `
                     <tr>
-                      <td class="text-xs">${formatTanggal(pl.created_at, true)}</td>
-                      <td><span class="badge ${pl.jumlah > 0 ? 'badge-success' : 'badge-warning'}">${escapeHtml(pl.jenis)}</span></td>
-                      <td class="text-xs font-mono">${escapeHtml(pl.ref_id || '-')}</td>
-                      <td class="num fw-bold ${pl.jumlah > 0 ? 'text-success' : 'text-danger'}">
+                      <td class="text-xs" data-label="Waktu">${formatTanggal(pl.created_at, true)}</td>
+                      <td data-label="Jenis"><span class="badge ${pl.jumlah > 0 ? 'badge-success' : 'badge-warning'}">${escapeHtml(pl.jenis)}</span></td>
+                      <td class="text-xs font-mono" data-label="No Ref">${escapeHtml(pl.ref_id || '-')}</td>
+                      <td class="num fw-bold ${pl.jumlah > 0 ? 'text-success' : 'text-danger'}" data-label="Jumlah">
                         ${pl.jumlah > 0 ? `+${pl.jumlah}` : pl.jumlah}
                       </td>
-                      <td class="num font-mono fw-bold">${(pl.saldo || 0).toLocaleString('id-ID')}</td>
+                      <td class="num font-mono fw-bold" data-label="Saldo Akhir">${(pl.saldo || 0).toLocaleString('id-ID')}</td>
                     </tr>
                   `).join('')}
                 </tbody>

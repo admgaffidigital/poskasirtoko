@@ -84,16 +84,16 @@ async function muatKategori(container, canEdit) {
       const namaParent = k.parent_id && petaKategori[k.parent_id] ? petaKategori[k.parent_id] : '-';
       html += `
         <tr>
-          <td class="num">${k.urutan || 0}</td>
-          <td>
+          <td class="num" data-label="Urutan">${k.urutan || 0}</td>
+          <td data-label="Kategori">
             <div class="fw-semibold">${escapeHtml(k.nama)}</div>
           </td>
-          <td>
+          <td data-label="Kategori Induk">
             <span class="text-sm text-muted">${escapeHtml(namaParent)}</span>
           </td>
           ${canEdit ? `
-            <td style="text-align: right;">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-1);">
+            <td style="text-align: right;" data-label="Aksi">
+              <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
                 <button type="button" class="btn btn-ghost btn-sm btn-edit-kat" data-id="${k.id}" title="Ubah">
                   Ubah
                 </button>

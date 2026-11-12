@@ -123,16 +123,17 @@
   gap: var(--sp-2);
   height: calc(var(--topbar-h) + var(--safe-top));
   padding: var(--safe-top) var(--sp-2) 0 var(--sp-4);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: saturate(1.4) blur(10px);
-  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
 }
 .topbar-logo { display: grid; }
-.topbar-logo .brand-logo { width: 32px; height: 32px; }
+.topbar-logo .brand-logo { width: 34px; height: 34px; border-radius: var(--radius-md); }
 .topbar-logo .brand-logo svg { width: 20px; height: 20px; }
 @media (min-width: 768px) { .topbar-logo { display: none; } .topbar { padding-left: var(--sp-6); padding-right: var(--sp-4); } }
-.topbar-title { flex: 1; min-width: 0; font-size: var(--fs-lg); font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-title { flex: 1; min-width: 0; font-size: var(--fs-lg); font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.01em; }
 .topbar-actions { display: flex; align-items: center; gap: var(--sp-1); }
 
 /* Indikator koneksi */
@@ -164,9 +165,11 @@
   grid-auto-columns: 1fr;
   height: calc(var(--bottomnav-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
 }
 @media (min-width: 768px) { .bottomnav { display: none; } }
 .bottomnav-link {
@@ -174,7 +177,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   min-width: var(--touch);
   border: 0;
   background: transparent;
@@ -182,19 +185,22 @@
   font-size: 0.6875rem;
   font-weight: var(--fw-medium);
   position: relative;
+  touch-action: manipulation;
+  transition: color var(--dur-fast) var(--ease), transform 0.1s var(--ease);
 }
 .bottomnav-link:hover { text-decoration: none; }
+.bottomnav-link:active { transform: scale(0.92); }
 .bottomnav-link svg { width: 22px; height: 22px; }
 .bottomnav-link .ikon-wrap {
   display: grid;
   place-items: center;
   width: 56px;
-  height: 30px;
+  height: 32px;
   border-radius: var(--radius-full);
-  transition: background var(--dur-normal) var(--ease);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.bottomnav-link[aria-current="page"] { color: var(--primary); }
-.bottomnav-link[aria-current="page"] .ikon-wrap { background: var(--primary-soft); }
+.bottomnav-link[aria-current="page"] { color: var(--primary); font-weight: var(--fw-bold); }
+.bottomnav-link[aria-current="page"] .ikon-wrap { background: var(--primary-soft); transform: scale(1.06); }
 
 /* Menu "Lainnya" di bottom sheet */
 .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
