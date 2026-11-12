@@ -168,10 +168,10 @@
 }
 
 /* Utilitas visibilitas responsif */
-@media (max-width: 991px) {
+@media (max-width: 767px) {
   .d-none-mobile { display: none !important; }
 }
-@media (min-width: 992px) {
+@media (min-width: 768px) {
   .d-none-desktop { display: none !important; }
 }
 
@@ -227,10 +227,16 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-3);
-  padding-bottom: var(--sp-6);
+  padding-bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + var(--sp-12));
 }
 @media (min-width: 480px) {
   .menu-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 768px) {
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    padding-bottom: var(--sp-6);
+  }
 }
 .menu-tile {
   display: flex;
@@ -238,9 +244,9 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  min-height: 94px;
+  min-height: 104px;
   padding: var(--sp-3) var(--sp-2);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-xs);
@@ -250,14 +256,16 @@
   text-align: center;
   line-height: 1.25;
   touch-action: manipulation;
-  transition: transform 0.1s var(--ease), box-shadow var(--dur-fast);
+  transition: transform 0.12s var(--ease), box-shadow var(--dur-fast), background var(--dur-fast);
 }
 .menu-tile:hover {
   background: var(--surface-2);
+  border-color: var(--border-strong);
   text-decoration: none;
 }
 .menu-tile:active {
-  transform: scale(0.95);
+  transform: scale(0.94);
+  background: var(--surface-3);
 }
 .menu-tile[aria-current="page"] {
   background: var(--primary-soft);
@@ -265,13 +273,17 @@
   border-color: var(--primary);
 }
 .menu-tile .list-item-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-md);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
   background: var(--primary-soft);
   color: var(--primary);
   display: grid;
   place-items: center;
+  transition: transform 0.12s var(--ease);
+}
+.menu-tile:hover .list-item-icon {
+  transform: scale(1.05);
 }
 .menu-tile .list-item-icon svg {
   width: 24px;

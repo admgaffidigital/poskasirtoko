@@ -666,7 +666,7 @@ function buatSvgTrenChart(tren, isOwner) {
 
   return `
     <div style="width: 100%; overflow-x: auto;">
-      <svg viewBox="0 0 ${w} ${h}" style="width: 100%; min-width: ${w}px; height: ${h}px; display: block; font-family: inherit;">
+      <svg class="chart-svg" viewBox="0 0 ${w} ${h}" style="width: 100%; min-width: ${w}px; height: ${h}px; display: block; font-family: inherit;">
         ${gridHtml}
         ${barsHtml}
         ${labelsHtml}

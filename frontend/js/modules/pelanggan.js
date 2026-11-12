@@ -211,8 +211,18 @@ async function muatDataPelanggan(container) {
               return `
                 <tr data-id="${escapeHtml(it.id)}">
                   <td data-label="Pelanggan">
-                    <div class="fw-semibold">${escapeHtml(it.nama)}</div>
-                    <span class="text-xs font-mono text-muted">${escapeHtml(it.kode || '-')}</span>
+                    <div class="row" style="align-items: center; gap: var(--sp-2);">
+                      <div class="prd-table-avatar" style="width: 36px; height: 36px;">
+                        ${ICONS.users}
+                      </div>
+                      <div class="grow" style="min-width: 0;">
+                        <div class="fw-bold text-md">${escapeHtml(it.nama)}</div>
+                        <span class="text-xs font-mono text-muted">${escapeHtml(it.kode || '-')}</span>
+                      </div>
+                      <div class="d-none-desktop">
+                        ${badgeTipe}
+                      </div>
+                    </div>
                   </td>
                   <td data-label="Kontak & Alamat">
                     <div class="row" style="gap: var(--sp-1); align-items: center;">
@@ -227,7 +237,7 @@ async function muatDataPelanggan(container) {
                       ${escapeHtml(it.alamat || '-')}
                     </div>
                   </td>
-                  <td data-label="Tipe & Level">${badgeTipe}</td>
+                  <td data-label="Tipe & Level" class="d-none-mobile">${badgeTipe}</td>
                   <td class="num font-mono" data-label="Limit Kredit">
                     ${isMember ? formatRupiah(it.limit_kredit || 0) : '<span class="text-muted">-</span>'}
                     ${isMember && it.tempo_hari ? `<div class="text-xs text-muted">${it.tempo_hari} hari</div>` : ''}
@@ -240,15 +250,16 @@ async function muatDataPelanggan(container) {
                   </td>
                   <td data-label="Status">${statusBadge}</td>
                   <td style="text-align: right;" data-label="Aksi">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
-                      <button type="button" class="btn btn-sm btn-ghost btn-detail-pel" data-id="${escapeHtml(it.id)}" title="Rincian & Riwayat Belanja/Poin">
+                    <div class="row" style="gap: var(--sp-2); justify-content: flex-end; width: 100%;">
+                      <button type="button" class="btn btn-sm btn-ghost btn-detail-pel" data-id="${escapeHtml(it.id)}" title="Rincian & Riwayat Belanja/Poin" style="border-radius: var(--radius-full);">
                         Rincian
                       </button>
-                      <button type="button" class="btn btn-sm btn-secondary btn-edit-pel" data-id="${escapeHtml(it.id)}" title="Edit Pelanggan">
-                        Edit
+                      <button type="button" class="btn btn-sm btn-secondary btn-edit-pel" data-id="${escapeHtml(it.id)}" title="Edit Pelanggan" style="border-radius: var(--radius-full);">
+                        ${ICONS.settings}
+                        <span>Ubah</span>
                       </button>
                       ${isOwnerOrAdmin ? `
-                        <button type="button" class="btn btn-sm btn-danger btn-icon btn-hapus-pel" data-id="${escapeHtml(it.id)}" data-nama="${escapeHtml(it.nama)}" title="Hapus Pelanggan">
+                        <button type="button" class="btn btn-sm btn-danger btn-icon btn-hapus-pel" data-id="${escapeHtml(it.id)}" data-nama="${escapeHtml(it.nama)}" title="Hapus Pelanggan" style="border-radius: var(--radius-full);">
                           ${ICONS.x}
                         </button>
                       ` : ''}

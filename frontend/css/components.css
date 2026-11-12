@@ -91,10 +91,18 @@
 
 /* ---------- Form ---------- */
 .field { display: flex; flex-direction: column; gap: var(--sp-1); }
-.field-label { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text); }
-.field-label .wajib { color: var(--danger-text); margin-left: 2px; }
+.field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.field-label .wajib { color: var(--danger-text); margin-left: 2px; font-weight: var(--fw-bold); }
 .field-hint { font-size: var(--fs-xs); color: var(--text-muted); }
-.field-error { font-size: var(--fs-xs); color: var(--danger-text); }
+.field-error { font-size: var(--fs-xs); color: var(--danger-text); font-weight: var(--fw-medium); margin-top: 2px; }
 
 .input,
 .select,
@@ -102,13 +110,20 @@
 .form-input {
   width: 100%;
   min-height: var(--control-h);
-  padding: 0 var(--sp-3);
+  padding: 0 14px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
   color: var(--text);
   font-size: var(--fs-md); /* ≥16px mencegah zoom otomatis di iOS */
+  line-height: var(--lh-normal);
   transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast);
+}
+.input:hover:not(:disabled):not(:focus),
+.select:hover:not(:disabled):not(:focus),
+.textarea:hover:not(:disabled):not(:focus),
+.form-input:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong);
 }
 .select {
   cursor: pointer;
@@ -118,15 +133,27 @@
   background-repeat: no-repeat;
   background-position: right 14px center;
   background-size: 16px 16px;
-  padding-right: 40px;
+  padding-right: 42px;
 }
 [data-theme="dark"] .select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
-.textarea { padding: var(--sp-3); min-height: 96px; resize: vertical; line-height: var(--lh-normal); }
-.input::placeholder, .textarea::placeholder, .form-input::placeholder { color: var(--text-subtle); }
-.input:focus, .select:focus, .textarea:focus, .form-input:focus { border-color: var(--primary); box-shadow: var(--focus-ring); background: var(--surface); outline: none; }
-.input:disabled, .select:disabled, .textarea:disabled, .form-input:disabled { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; }
+.textarea,
+textarea.input,
+textarea.form-input {
+  padding: var(--sp-3) 14px;
+  min-height: 96px;
+  resize: vertical;
+  line-height: var(--lh-normal);
+}
+.input::placeholder, .textarea::placeholder, .form-input::placeholder { color: var(--text-subtle); font-size: var(--fs-sm); }
+.input:focus, .select:focus, .textarea:focus, .form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3.5px var(--primary-soft);
+  background: var(--surface);
+  outline: none;
+}
+.input:disabled, .select:disabled, .textarea:disabled, .form-input:disabled { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; opacity: 0.75; }
 .input.is-invalid, .select.is-invalid, .textarea.is-invalid, .form-input.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .input-num { text-align: right; font-variant-numeric: tabular-nums; }
 input[type="password"] {
@@ -379,10 +406,10 @@ input[type="password"] {
     flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    padding: var(--sp-3) var(--sp-4);
-    gap: var(--sp-2);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    padding: var(--sp-4);
+    gap: 6px;
     position: relative;
     transition: transform var(--dur-fast), box-shadow var(--dur-fast);
   }
@@ -395,21 +422,17 @@ input[type="password"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 0;
+    padding: 3px 0;
     border: 0;
-    border-bottom: 1px solid var(--surface-2);
     text-align: right;
-    min-height: 28px;
+    min-height: 24px;
     font-size: var(--fs-sm);
-  }
-  [data-theme="dark"] .table-wrap:not(.keep-table) .table td {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   /* Label sel di sisi kiri */
   .table-wrap:not(.keep-table) .table td[data-label]::before {
     content: attr(data-label);
-    font-size: 0.6875rem;
+    font-size: 0.72rem;
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
@@ -424,14 +447,28 @@ input[type="password"] {
     font-size: var(--fs-md);
     font-weight: var(--fw-bold);
     color: var(--text);
-    border-bottom: 1.5px solid var(--border);
+    border-bottom: 1px solid var(--border);
     padding-bottom: var(--sp-2);
-    margin-bottom: var(--sp-1);
+    margin-bottom: var(--sp-2);
     justify-content: space-between;
     text-align: left;
+    min-height: auto;
   }
   .table-wrap:not(.keep-table) .table td:first-child::before {
     display: none !important;
+  }
+
+  /* Penonjolan angka / harga ritel */
+  .table-wrap:not(.keep-table) .table td.num,
+  .table-wrap:not(.keep-table) .table td.tabular {
+    font-weight: var(--fw-bold);
+  }
+  .table-wrap:not(.keep-table) .table td[data-label*="Harga Ritel"],
+  .table-wrap:not(.keep-table) .table td[data-label*="Total Belanja"],
+  .table-wrap:not(.keep-table) .table td[data-label*="Sisa"] {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    color: var(--primary);
   }
 
   /* Baris aksi di footer kartu */
@@ -439,9 +476,10 @@ input[type="password"] {
     border-top: 1px solid var(--border);
     border-bottom: 0;
     padding-top: var(--sp-3);
-    margin-top: var(--sp-1);
+    margin-top: var(--sp-2);
     justify-content: stretch;
     width: 100%;
+    min-height: auto;
   }
   .table-wrap:not(.keep-table) .table td:last-child::before {
     display: none !important;
@@ -453,10 +491,11 @@ input[type="password"] {
   }
   .table-wrap:not(.keep-table) .table td:last-child .btn {
     flex: 1;
-    min-height: 38px;
+    min-height: 40px;
     justify-content: center;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
   }
 
   /* Baris kosong / tidak ada data */
@@ -469,6 +508,28 @@ input[type="password"] {
   .table-wrap:not(.keep-table) .table tbody tr td[colspan]::before {
     display: none;
   }
+}
+
+/* Avatar Ikon Produk dalam Tabel / List Data */
+.prd-table-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.prd-table-avatar svg {
+  width: 20px;
+  height: 20px;
+}
+.prd-table-nama {
+  line-height: 1.3;
+  color: var(--text);
+  word-break: break-word;
+}
 }
 
 /* Tabel khusus yang tetap mempertahankan scroll horizontal di mobile */
@@ -692,6 +753,12 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   -webkit-overflow-scrolling: touch;
 }
 .dialog-body:last-child {
+  padding-bottom: calc(var(--safe-bottom) + var(--sp-6));
+}
+.dialog-body form > .cluster:last-child,
+.dialog-body form > .row:last-child,
+.dialog-body > .cluster:last-child,
+.dialog-body > .row:last-child {
   padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
 }
 .dialog-footer {
@@ -707,6 +774,8 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   .dialog-footer > .btn {
     flex: 1;
     min-height: 44px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-md);
   }
 }
 
@@ -905,7 +974,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   min-height: calc(100vh - 120px);
 }
 
-@media (min-width: 992px) {
+@media (min-width: 768px) {
   .pos-wrapper {
     flex-direction: row;
     align-items: stretch;
@@ -920,13 +989,18 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     overflow: hidden;
   }
   .pos-cart-panel {
-    width: 380px;
+    width: 340px;
     flex-shrink: 0;
     height: 100%;
   }
 }
+@media (min-width: 1200px) {
+  .pos-cart-panel {
+    width: 390px;
+  }
+}
 
-@media (max-width: 991px) {
+@media (max-width: 767px) {
   .pos-mobile-nav {
     display: flex;
     width: 100%;
@@ -1263,6 +1337,42 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 @media (min-width: 640px) {
   .pos-checkout-grid {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Tata Letak Responsif POS Pembelian */
+.pembelian-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+  align-items: start;
+}
+@media (min-width: 992px) {
+  .pembelian-layout {
+    grid-template-columns: 1fr 340px;
+  }
+}
+
+.pembelian-header-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+}
+@media (min-width: 640px) {
+  .pembelian-header-grid {
+    grid-template-columns: 1fr 1fr 160px;
+  }
+}
+
+.beli-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+}
+@media (min-width: 640px) {
+  .beli-inputs-grid {
+    grid-template-columns: 1.2fr 1fr 1.5fr auto;
+    align-items: flex-end;
   }
 }
 

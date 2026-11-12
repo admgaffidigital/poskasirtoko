@@ -112,8 +112,15 @@ async function muatSupplierList(container, canEdit, query = '') {
       html += `
         <tr>
           <td data-label="Supplier">
-            <div class="fw-semibold">${escapeHtml(s.nama)}</div>
-            ${s.catatan ? `<div class="text-xs text-muted">${escapeHtml(s.catatan)}</div>` : ''}
+            <div class="row" style="align-items: center; gap: var(--sp-2);">
+              <div class="prd-table-avatar" style="width: 36px; height: 36px;">
+                ${ICONS.truck}
+              </div>
+              <div class="grow" style="min-width: 0;">
+                <div class="fw-bold text-md">${escapeHtml(s.nama)}</div>
+                ${s.kontak ? `<div class="text-xs text-muted">PIC: ${escapeHtml(s.kontak)}</div>` : ''}
+              </div>
+            </div>
           </td>
           <td data-label="Kontak PIC">
             <div>${escapeHtml(s.kontak || '-')}</div>
@@ -143,12 +150,14 @@ async function muatSupplierList(container, canEdit, query = '') {
           </td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
-                <button type="button" class="btn btn-ghost btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah">
-                  Ubah
+              <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
+                <button type="button" class="btn btn-secondary btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah" style="border-radius: var(--radius-full);">
+                  ${ICONS.settings}
+                  <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-supplier" data-id="${s.id}" data-nama="${escapeHtml(s.nama)}" title="Hapus">
-                  Hapus
+                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-supplier" data-id="${s.id}" data-nama="${escapeHtml(s.nama)}" title="Hapus" style="border-radius: var(--radius-full);">
+                  ${ICONS.x}
+                  <span>Hapus</span>
                 </button>
               </div>
             </td>

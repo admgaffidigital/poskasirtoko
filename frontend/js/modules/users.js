@@ -93,12 +93,24 @@ async function muatUsers(container) {
       html += `
         <tr>
           <td data-label="Username">
-            <div class="fw-semibold mono">${escapeHtml(u.username)}</div>
-            ${isSaya ? '<span class="badge badge-success text-xs">Akun Anda</span>' : ''}
-            ${u.wajib_ganti_pin ? '<span class="badge badge-warning text-xs">Wajib Ganti PIN</span>' : ''}
+            <div class="row" style="align-items: center; gap: var(--sp-2);">
+              <div class="prd-table-avatar" style="width: 36px; height: 36px;">
+                ${ICONS.userCheck || ICONS.users}
+              </div>
+              <div class="grow" style="min-width: 0;">
+                <div class="fw-bold text-md mono">${escapeHtml(u.username)}</div>
+                <div class="row" style="gap: 4px; margin-top: 2px; flex-wrap: wrap;">
+                  ${isSaya ? '<span class="badge badge-success text-xs">Akun Anda</span>' : ''}
+                  ${u.wajib_ganti_pin ? '<span class="badge badge-warning text-xs">Wajib Ganti PIN</span>' : ''}
+                </div>
+              </div>
+              <div class="d-none-desktop">
+                <span class="badge ${badgeRole}" style="text-transform: capitalize;">${escapeHtml(u.role)}</span>
+              </div>
+            </div>
           </td>
           <td data-label="Nama Lengkap">${escapeHtml(u.nama || '-')}</td>
-          <td data-label="Role">
+          <td data-label="Role" class="d-none-mobile">
             <span class="badge ${badgeRole}" style="text-transform: capitalize;">${escapeHtml(u.role)}</span>
           </td>
           <td data-label="Status">
@@ -109,9 +121,14 @@ async function muatUsers(container) {
             ${u.last_login ? formatTanggal(u.last_login, true) : 'Belum pernah'}
           </td>
           <td style="text-align: right;" data-label="Aksi">
-            <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
-              <button type="button" class="btn btn-ghost btn-sm btn-edit-user" data-id="${u.id}">Ubah</button>
-              <button type="button" class="btn btn-ghost btn-sm text-warning btn-reset-pin-user" data-id="${u.id}" data-user="${escapeHtml(u.username)}">Reset PIN</button>
+            <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
+              <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}" style="border-radius: var(--radius-full);">
+                ${ICONS.settings}
+                <span>Ubah</span>
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm text-warning btn-reset-pin-user" data-id="${u.id}" data-user="${escapeHtml(u.username)}" style="border-radius: var(--radius-full);">
+                Reset PIN
+              </button>
             </div>
           </td>
         </tr>

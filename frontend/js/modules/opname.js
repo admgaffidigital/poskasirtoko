@@ -255,7 +255,7 @@ async function bukaModalInputOpname(container) {
 
         <div class="field">
           <label class="field-label" for="op-alasan">Alasan Selisih / Catatan Pemeriksaan <span class="wajib">*</span></label>
-          <textarea class="input" id="op-alasan" rows="2" placeholder="Cth: Barang rusak / bocor di pojok gudang, susut, atau bonus belum tercatat" required></textarea>
+          <textarea class="textarea" id="op-alasan" rows="3" placeholder="Cth: Barang rusak / bocor di pojok gudang, susut, atau bonus belum tercatat" required></textarea>
         </div>
 
         <div class="field">

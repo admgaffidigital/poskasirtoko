@@ -16,7 +16,34 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
-## [1.0.7] - 2026-11-12
+## [1.0.8] - 2026-11-12
+
+### Changed & Enhanced
+- [UI] [UX] Penyelarasan Menyeluruh UI/UX Full Native App Profesional & Proporsional:
+  - **Tampilan List View & Transformasi Tabel ke Native Card di Mobile**:
+    - Menghilangkan tumpukan garis pemisah horizontal (`border-bottom`) berulang antar baris atribut yang sebelumnya membuat kartu tampak kaku dan penuh sekat.
+    - Mengubah baris pertama (`td:first-child`) menjadi Header Kartu Native yang elegan: dilengkapi avatar/ikon representatif (`.prd-table-avatar` 40x40px rounded), judul tebal, subtitle meta, dan badge status di pojok kanan atas.
+    - Menyembunyikan kolom redundan di mobile (`d-none-mobile`) seperti SKU dan Stok terpisah yang sudah terintegrasi rapi ke dalam header kartu.
+    - Menonjolkan angka dan harga ritel dalam warna brand tebal (`var(--primary)`).
+    - Menjadikan baris aksi (`td:last-child`) sebagai footer kartu native dengan tombol-tombol sentuh ber-radius penuh (`border-radius: var(--radius-full)`) dan tinggi 40px yang proporsional.
+    - Penyelarasan modul data master: `produk.js`, `kategori.js`, `supplier.js`, `pelanggan.js`, dan `users.js`.
+  - **Grid & Card Box System**:
+    - Memperbaiki jarak bawah menu aplikasi (`.menu-grid`) dengan safe bottom navigation clearance (`padding-bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + var(--sp-12));`) sehingga ubin menu paling bawah ("Status Sistem", "Design System") tidak lagi tertutup oleh `.bottomnav`.
+    - Memberikan ubin `.menu-tile` sudut membulat modern (`var(--radius-xl)` = 22px), efek sentuh `scale(0.94)`, dan perbesaran ikon yang halus saat interaksi.
+    - Meratakan breakpoint responsif tablet & mobile (768px) pada layout POS Kasir, mencegah konflik layout antara 768px dan 991px.
+  - **Bottom Sheet & Modal System**:
+    - Memastikan seluruh konten form dalam `.dialog-body` memiliki safe area bottom clearance yang cukup (`padding-bottom: calc(var(--safe-bottom) + var(--sp-6));`) sehingga tombol aksi tidak pernah terpotong oleh bezel layar HP atau home indicator.
+    - Memberikan tombol aksi pada `.dialog-footer` di mobile tinggi sentuh minimum 44px dengan radius modern.
+  - **Form Controls, Input, & Kolom Teks**:
+    - Memberikan tinggi sentuh 44px standar pada `.input`, `.select`, `.textarea`, `.form-input` dengan padding horizontal 14px dan radius 12px (`var(--radius-md)`).
+    - Menjaga ukuran font 16px di mobile untuk mencegah zoom otomatis yang mengganggu di Safari / Chrome seluler.
+    - Menambahkan focus ring glow modern (`0 0 0 3.5px var(--primary-soft)`).
+    - Mendukung selector otomatis `.textarea, textarea.input, textarea.form-input` untuk multiline input yang konsisten.
+    - Merapikan tata letak responsif formulir POS Pembelian (`.pembelian-layout`, `.pembelian-header-grid`, `.beli-inputs-grid`).
+  - **Defensive SVG Protection**:
+    - Menambahkan proteksi global pada `base.css`: `svg:not([width]):not([height]):not([style*="width"]):not([style*="height"]):not(.chart-svg):not(.chart-svg *) { width: 20px; height: 20px; }` untuk menjamin tidak ada ikon SVG yang meledak atau meregang tak terduga di seluruh penjuru aplikasi.
+    - Menambahkan kelas `chart-svg` pada generator grafik tren harian di `laporan.js`.
+  - File: `frontend/css/base.css`, `frontend/css/components.css`, `frontend/css/layout.css`, `frontend/js/modules/produk.js`, `frontend/js/modules/kategori.js`, `frontend/js/modules/supplier.js`, `frontend/js/modules/pelanggan.js`, `frontend/js/modules/users.js`, `frontend/js/modules/pembelian.js`, `frontend/js/modules/opname.js`, `frontend/js/modules/laporan.js`, `CHANGELOG.md`.
 
 ### Fixed
 - [ROUTER] [PRODUK] Solusi TypeError: Cannot set properties of null (setting 'innerHTML') di `produk.js`:

@@ -75,7 +75,17 @@ a { color: var(--primary); text-decoration: none; touch-action: manipulation; }
 a:hover { text-decoration: underline; }
 
 img { display: block; max-width: 100%; }
-svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Pengaman global: cegah SVG apapun meledak jika tidak memiliki dimensi eksplisit */
+svg:not([width]):not([height]):not([style*="width"]):not([style*="height"]):not(.chart-svg):not(.chart-svg *) {
+  width: 20px;
+  height: 20px;
+}
 
 button, input, select, textarea {
   font: inherit;

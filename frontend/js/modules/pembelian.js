@@ -101,23 +101,23 @@ export async function renderPembelianModule(container) {
 function renderFormInputBeli() {
   const tglHariIni = new Date().toISOString().substring(0, 10);
   return `
-    <div class="grid grid-2" style="grid-template-columns: 1fr 340px; gap: var(--sp-3); align-items: start;">
+    <div class="pembelian-layout">
       <!-- Kolom Kiri: Input Item & Keranjang Beli -->
       <div class="stack">
         <!-- Informasi Header Faktur -->
         <div class="card card-body stack">
-          <div class="row" style="gap: var(--sp-2);">
-            <div class="field grow">
+          <div class="pembelian-header-grid">
+            <div class="field">
               <label class="field-label" for="beli-supplier">Supplier <span class="wajib">*</span></label>
               <select class="input" id="beli-supplier" required>
                 <option value="">-- Pilih Supplier --</option>
               </select>
             </div>
-            <div class="field grow">
+            <div class="field">
               <label class="field-label" for="beli-no-faktur-sup">No. Faktur Asli Supplier</label>
               <input type="text" class="input" id="beli-no-faktur-sup" placeholder="Cth: INV/SP/2026/001">
             </div>
-            <div class="field" style="width: 160px;">
+            <div class="field">
               <label class="field-label" for="beli-tanggal">Tanggal Masuk</label>
               <input type="date" class="input" id="beli-tanggal" value="${tglHariIni}">
             </div>
@@ -145,7 +145,7 @@ function renderFormInputBeli() {
             <div id="beli-dropdown-produk" class="autocomplete-dropdown"></div>
           </div>
 
-          <div class="beli-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--sp-2); align-items: flex-end;">
+          <div class="beli-inputs-grid">
             <div class="field">
               <label class="field-label" for="beli-satuan">Satuan</label>
               <select class="input" id="beli-satuan" disabled>

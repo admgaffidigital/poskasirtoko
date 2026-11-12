@@ -72,9 +72,9 @@ async function muatKategori(container, canEdit) {
         <table class="table">
           <thead>
             <tr>
-              <th style="width: 60px;">Urutan</th>
               <th>Nama Kategori</th>
               <th>Kategori Induk</th>
+              <th style="width: 80px; text-align: right;">Urutan</th>
               ${canEdit ? '<th style="width: 140px; text-align: right;">Aksi</th>' : ''}
             </tr>
           </thead>
@@ -85,21 +85,30 @@ async function muatKategori(container, canEdit) {
       const namaParent = k.parent_id && petaKategori[k.parent_id] ? petaKategori[k.parent_id] : '-';
       html += `
         <tr>
-          <td class="num" data-label="Urutan">${k.urutan || 0}</td>
           <td data-label="Kategori">
-            <div class="fw-semibold">${escapeHtml(k.nama)}</div>
+            <div class="row" style="align-items: center; gap: var(--sp-2);">
+              <div class="prd-table-avatar" style="width: 34px; height: 34px;">
+                ${ICONS.tag}
+              </div>
+              <div class="grow">
+                <div class="fw-bold text-md">${escapeHtml(k.nama)}</div>
+              </div>
+            </div>
           </td>
           <td data-label="Kategori Induk">
             <span class="text-sm text-muted">${escapeHtml(namaParent)}</span>
           </td>
+          <td class="num" data-label="Urutan">${k.urutan || 0}</td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-1); width: 100%;">
-                <button type="button" class="btn btn-ghost btn-sm btn-edit-kat" data-id="${k.id}" title="Ubah">
-                  Ubah
+              <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
+                <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${k.id}" title="Ubah" style="border-radius: var(--radius-full);">
+                  ${ICONS.settings}
+                  <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-kat" data-id="${k.id}" data-nama="${escapeHtml(k.nama)}" title="Hapus">
-                  Hapus
+                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-kat" data-id="${k.id}" data-nama="${escapeHtml(k.nama)}" title="Hapus" style="border-radius: var(--radius-full);">
+                  ${ICONS.x}
+                  <span>Hapus</span>
                 </button>
               </div>
             </td>
