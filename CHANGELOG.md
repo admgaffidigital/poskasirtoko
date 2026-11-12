@@ -16,7 +16,47 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
-## [1.0.9] - 2026-11-13
+## [1.0.12] - 2026-11-13
+
+### Added
+- [BRANDING] [APK] [PWA] **Ikon Aplikasi Resmi Selaras dengan Logo Toko Bangunan**:
+  - Memperbarui `frontend/assets/icon.svg` dengan latar belakang squircle bersudut melengkung gradien oranye hangat (`#fb923c` ke `#ea580c`) dan lambang kanopi/etalase toko fisik (`ICONS.store`) berwarna putih bersih.
+  - Menghasilkan resolusi tinggi `icon-512.png` dan `icon-192.png` untuk PWA.
+  - Memperbarui seluruh ikon peluncur aplikasi Android native di `android/app/src/main/res/` (`mipmap-mdpi`, `mipmap-hdpi`, `mipmap-xhdpi`, `mipmap-xxhdpi`, `mipmap-xxxhdpi`) untuk `ic_launcher.png`, `ic_launcher_round.png`, dan `ic_launcher_foreground.png`.
+- [UI] [APK] [SW] **Sistem Deteksi Banner Pintar & In-App Auto-Update**:
+  - Menambahkan deteksi runtime `isAppInstalled()` (Capacitor Native Platform atau PWA Standalone).
+  - **Kondisi Belum Diinstal**: Menampilkan opsi unduh APK `poskasirtoko.apk` dan panduan pemasangan PWA.
+  - **Kondisi Sudah Terpasang**: Banner otomatis beralih menampilkan status aplikasi aktif ("POS Kasir Toko 🟢 Aktif v1.0.12") dan menghilangkan ajakan unduh APK yang tidak diperlukan.
+  - **In-App Auto-Update (Tanpa Unduh Ulang APK)**: Ketika ada versi baru yang terdeteksi oleh Service Worker di latar belakang, banner otomatis menampilkan tombol **"⚡ Perbarui & Restart Aplikasi"**. Saat diketuk, aplikasi membersihkan cache lama dan memuat ulang kode terbaru dalam waktu kurang dari 1 detik.
+  - Menambahkan tombol **"Periksa Pembaruan"** untuk pengecekan versi manual kapan saja.
+
+### Changed
+- [SW] Menaikkan cache statis Service Worker ke `pos-kasir-static-v1.0.13` dengan penambahan penanganan pesan `{ action: 'skipWaiting' }`.
+- [CONFIG] Memperbarui `CONFIG.VERSION` ke `1.0.12` pada `frontend/js/config.js` dan `package.json`.
+
+---
+
+## [1.0.11] - 2026-11-13
+
+### Fixed
+- [PRICETAG] **Perbaikan ReferenceError `formatQty is not defined`**:
+  - Menambahkan impor fungsi `formatQty` pada `frontend/js/modules/pricetag.js` dari `../utils/format.js` sehingga daftar produk pada menu Price Tag & Label Rak langsung tampil normal tanpa error.
+- [TESTS] **Suite Pengujian Otomatis Identifier (`tests/check_globals.js`)**:
+  - Menambahkan script pengujian otomatis yang memeriksa kelengkapan impor fungsi utilitas (`formatQty`, `formatRupiah`, `ICONS`, `showToast`, dll.) di seluruh file modul JavaScript.
+  - Memindahkan seluruh script pengujian dari folder lokal ke direktori terkelola `tests/` yang terlacak penuh oleh Git.
+
+---
+
+## [1.0.10] - 2026-11-13
+
+### Changed & Enhanced
+- [POS-JUAL] [UI] [UX] **Redesain Tampilan Card Grid & List View Katalog ala Native App Modern**:
+  - **Grid View (Kartu)**: Mengubah sistem kolom menjadi seimbang `repeat(2, minmax(0, 1fr))` pada layar smartphone sehingga kartu terbagi rata 50% layar tanpa menyisakan ruang kosong di kanan.
+  - **Visual Hero Banner**: Menambahkan banner atas kartu dengan gradien pastel lembut dan ikon produk 44×44px, status stok di pojok kanan atas, serta tombol sentuh bulat `+` di kanan bawah.
+  - **List View (Baris)**: Menggunakan avatar produk 48×48px, tata letak atribut horizontal (Stok, SKU, Varian, HPP), harga ritel tebal sans-serif (15px), dan tombol kapsul modern `+ Tambah`.
+  - **Toolbar Kompak**: Memisahkan baris pencarian dan scanner kamera (baris atas) dengan tombol toggle Grid/List bersanding rapi di sebelah chip kategori produk (baris bawah).
+
+---
 
 ### Added
 - [APK] **Build Native Android APK Langsung**:
