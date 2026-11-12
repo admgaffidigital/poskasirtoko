@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fd7e14" />
+      <stop offset="100%" stop-color="#d9480f" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#grad)" />
+  <path d="M120 220 L256 120 L392 220 L392 390 A18 18 0 0 1 374 408 L138 408 A18 18 0 0 1 120 390 Z" fill="#ffffff" fill-opacity="0.95" />
+  <path d="M220 408 L220 290 L292 290 L292 408" fill="#e8590c" />
+  <!-- Balok & Struktur Bangunan / Toko -->
+  <rect x="156" y="240" width="60" height="34" rx="4" fill="#0f172a" fill-opacity="0.15" />
+  <rect x="296" y="240" width="60" height="34" rx="4" fill="#0f172a" fill-opacity="0.15" />
+  <!-- Kasir / Cart Icon accent -->
+  <circle cx="360" cy="160" r="28" fill="#0f172a" />
+  <path d="M350 156 L355 156 L361 168 L372 168" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <circle cx="362" cy="172" r="2.5" fill="#ffffff" />
+  <circle cx="370" cy="172" r="2.5" fill="#ffffff" />
+</svg>
