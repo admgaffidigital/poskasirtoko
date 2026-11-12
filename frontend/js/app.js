@@ -19,12 +19,13 @@ import {
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
-// Modul-modul Fase 1
+// Modul-modul Fase 1 & 2
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin } from './modules/auth.js';
 import { renderKategoriModule } from './modules/kategori.js';
 import { renderProdukModule } from './modules/produk.js';
 import { renderPengaturanModule } from './modules/pengaturan.js';
 import { renderUsersModule } from './modules/users.js';
+import { renderPosModule } from './modules/pos.js';
 
 class App {
   constructor() {
@@ -377,7 +378,9 @@ class App {
     void content.offsetWidth;
     content.classList.add('masuk');
 
-    if (rute.id === 'sistem') {
+    if (rute.id === 'pos') {
+      renderPosModule(content);
+    } else if (rute.id === 'sistem') {
       this.renderHalamanSistem(content);
     } else if (rute.id === 'desainsistem') {
       this.renderHalamanDesainSistem(content);

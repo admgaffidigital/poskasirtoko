@@ -387,7 +387,7 @@ Sebuah modul dianggap selesai jika:
 
 - [x] **Fase 0 – Persiapan**: kerangka folder, design system, `kode.gs` dasar, `setupDatabase()`, PWA dasar *(Selesai)*
 - [x] **Fase 1 – Fondasi**: login multiuser, produk, kategori, varian, pengaturan, multi akun *(Selesai & diuji)*
-- [ ] **Fase 2 – POS Penjualan**: kasir, pending transaksi, nota Bluetooth
+- [x] **Fase 2 – POS Penjualan**: kasir, pending transaksi, nota Bluetooth *(Selesai & diuji)*
 - [ ] **Fase 3 – Stok & Pembelian**: supplier, POS pembelian, kartu stok, stok opname
 - [ ] **Fase 4 – Keuangan**: hutang & piutang, retur
 - [ ] **Fase 5 – Loyalitas**: pelanggan, membership, poin & hadiah, price tag

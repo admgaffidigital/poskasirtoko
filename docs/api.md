@@ -176,25 +176,100 @@ Dan struktur respons `data` adalah:
   - Payload: `{ "id": "...", "pin_baru": "654321" }`
   - Efek: Reset hash PIN dan otomatis membatalkan seluruh sesi aktif pengguna tersebut di perangkat lain.
 
+### 5.7 Pelanggan (`pelanggan.*`)
+- `pelanggan.list`:
+  - Akses: Semua role yang login (Owner, Admin, Kasir)
+  - Payload: `{ "q": "...", "tipe": "member", "semua": true }`
+  - Response `data`: `{ "items": [ { "id", "kode", "nama", "hp", "alamat", "tipe", "level", "limit_kredit", "tempo_hari", "poin", "total_belanja", "piutang_berjalan", "sisa_limit", "aktif" } ] }`
+  - Efek: Menghitung akumulasi piutang berjalan aktif dan sisa limit kredit pelanggan tempo secara real-time.
+
+### 5.8 POS Penjualan (`penjualan.*`)
+- `penjualan.create`:
+  - Akses: Semua role yang login (Owner, Admin, Kasir)
+  - Tulis / LockService: Ya (Atomik)
+  - Payload:
+    ```json
+    {
+      "pelanggan_id": "...",
+      "pengiriman": "ambil" | "dikirim",
+      "alamat_kirim": "...",
+      "catatan": "...",
+      "items": [
+        {
+          "produk_id": "...",
+          "varian_id": "...",
+          "satuan": "ZAK",
+          "faktor": 1,
+          "qty": 2,
+          "qty_dibawa": 2,
+          "tipe_harga": "ritel",
+          "harga": 65000,
+          "diskon_tipe": "persen",
+          "diskon_nilai": 5
+        }
+      ],
+      "diskon_tipe": "nominal",
+      "diskon_nilai": 0,
+      "pembayaran": [
+        { "metode": "tunai", "jumlah": 150000, "referensi": "" }
+      ],
+      "pending_id": "..."
+    }
+    ```
+  - Validasi:
+    - Stok cukup (bila `stok_minus === false`).
+    - Harga jual item dan total transaksi tidak boleh di bawah HPP (`HARGA_DI_BAWAH_HPP`).
+    - Diskon kasir tidak boleh melebihi batas `diskon_maks_kasir_persen` (default 10%).
+    - Pembayaran tempo HANYA diizinkan untuk pelanggan tipe `member` (`TEMPO_NON_MEMBER`).
+    - Total piutang berjalan + tempo baru tidak boleh melampaui limit kredit (`LIMIT_KREDIT`).
+  - Efek:
+    - Menghasilkan nomor nota resmi `INV-YYYYMMDD-0001` via sheet `Counter`.
+    - Menyimpan data ke `Penjualan`, `Penjualan_Item` (dengan snapshot HPP), dan `Penjualan_Bayar`.
+    - Mengurangi stok di `Produk`/`Varian` dan mencatat pengeluaran ke `Kartu_Stok` (tipe `jual`).
+    - Menambahkan `Piutang` jika ada pembayaran tempo.
+    - Menghitung dan menambahkan poin loyalitas + total belanja pelanggan member pada porsi pembayaran lunas (Aturan #7 & #16).
+    - Menghapus draft `pending` jika transaksi difinalkan dari antrean tahan.
+    - Mencatat aksi dan peringatan diskon tinggi ke `Log_Audit`.
+- `penjualan.pending.save`:
+  - Akses: Semua role yang login
+  - Tulis: Ya
+  - Payload: `{ "pelanggan_id", "pengiriman", "catatan", "items": [...] }`
+  - Efek: Menyimpan transaksi dengan status `pending` (draft) tanpa memotong stok dan tanpa nomor INV resmi.
+- `penjualan.pending.list`:
+  - Akses: Semua role yang login
+  - Response `data`: `{ "items": [ { "id", "no_nota", "total", "item_count", "pelanggan_nama", "created_at", "items" } ] }`
+- `penjualan.pending.delete`:
+  - Akses: Semua role yang login
+  - Payload: `{ "id": "..." }`
+  - Efek: Soft delete draft transaksi yang ditahan.
+- `penjualan.detail`:
+  - Akses: Semua role yang login
+  - Payload: `{ "id": "..." }` atau `{ "no_nota": "..." }`
+  - Response `data`: `{ "penjualan", "items", "pembayaran", "pelanggan", "kasir" }`
+- `penjualan.void`:
+  - Akses: Owner & Admin (Kasir ditolak `FORBIDDEN`)
+  - Tulis: Ya (Atomik)
+  - Payload: `{ "id": "...", "alasan": "..." }`
+  - Validasi:
+    - Admin hanya transaksi pada hari yang sama; Owner kapan saja.
+    - Menolak transaksi yang sudah memiliki riwayat retur atau cicilan piutang (`CONFLICT`).
+  - Efek:
+    - Membalikkan pengurangan stok ke `Produk`/`Varian` dan mencatat kartu stok masuk bertipe `void`.
+    - Membatalkan perolehan poin dan akumulasi belanja member terkait.
+    - Membatalkan catatan `Piutang` jika ada tempo.
+    - Mengubah status penjualan menjadi `void` dan mencatat alasan serta user ke `Log_Audit`.
+
 ---
 
 ## 6. Peta Aksi Fase Selanjutnya (Roadmap)
 
-- **Fase 2 (POS Penjualan):**
-  - `auth.login`, `auth.logout`, `auth.me`, `auth.gantiPin`
-  - `kategori.list`, `kategori.create`, `kategori.update`, `kategori.delete`
-  - `produk.list`, `produk.create`, `produk.update`, `produk.delete`
-  - `pengaturan.get`, `pengaturan.set`
-  - `user.list`, `user.create`, `user.update`, `user.resetPin`
-- **Fase 2 (POS Penjualan):**
-  - `penjualan.create`, `penjualan.pending.save`, `penjualan.pending.list`, `penjualan.void`
 - **Fase 3 (Stok & Pembelian):**
   - `supplier.list`, `supplier.create`, `supplier.update`
   - `pembelian.create`, `kartustok.list`, `opname.create`, `opname.approve`
 - **Fase 4 (Keuangan):**
   - `piutang.list`, `piutang.bayar`, `hutang.list`, `hutang.bayar`, `retur.create`, `retur.approve`
 - **Fase 5 (Loyalitas):**
-  - `pelanggan.list`, `pelanggan.create`, `pelanggan.update`
+  - `pelanggan.create`, `pelanggan.update`
   - `hadiah.list`, `hadiah.create`, `member.tukarPoin`
 - **Fase 6 (Laporan):**
   - `laporan.dashboard`, `laporan.penjualan`, `laporan.stok`

@@ -475,3 +475,240 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 .swatch-color { height: 56px; }
 .swatch-info { padding: var(--sp-2); background: var(--surface); }
 
+/* ========================================================================== */
+/* FASE 2: GAYA KHUSUS POS KASIR PENJUALAN                                   */
+/* ========================================================================== */
+
+.pos-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  width: 100%;
+  min-height: calc(100vh - 120px);
+}
+
+@media (min-width: 992px) {
+  .pos-wrapper {
+    flex-direction: row;
+    align-items: stretch;
+    height: calc(100vh - 84px);
+    overflow: hidden;
+  }
+  .pos-catalog-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pos-cart-panel {
+    width: 380px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    height: 100%;
+  }
+}
+
+@media (max-width: 991px) {
+  .pos-cart-panel {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-top: var(--sp-4);
+  }
+}
+
+.pos-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.pos-view-toggle {
+  display: flex;
+  background: var(--surface-3);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.pos-view-toggle .btn {
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+.pos-view-toggle .btn.active {
+  background: var(--surface);
+  color: var(--brand-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.pos-category-chips {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.pos-chip {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.pos-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.pos-chip.active {
+  background: var(--brand-primary);
+  color: #ffffff;
+  border-color: var(--brand-primary);
+  box-shadow: 0 2px 6px rgba(230, 81, 0, 0.25);
+}
+
+.pos-product-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.pos-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-4);
+}
+
+@media (min-width: 640px) {
+  .pos-grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+}
+
+.pos-product-card {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  user-select: none;
+}
+
+.pos-product-card:hover, .pos-product-card:focus {
+  transform: translateY(-2px);
+  border-color: var(--brand-primary);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+
+.pos-card-title {
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pos-card-price {
+  font-size: var(--fs-sm);
+  color: var(--brand-primary);
+}
+
+.pos-cart-header {
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pos-customer-pill {
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-2);
+  border: 1px dashed var(--border);
+}
+
+.pos-cart-items {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 180px;
+}
+
+.pos-cart-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-2) var(--sp-3);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.pos-cart-item:hover {
+  border-color: var(--border-strong);
+}
+
+.pos-cart-footer {
+  padding: var(--sp-3);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.pos-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.pos-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.pos-grand-total {
+  font-size: var(--fs-xl);
+  color: var(--brand-primary);
+}
+
+.pos-checkout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-4);
+}
+
+@media (min-width: 640px) {
+  .pos-checkout-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+

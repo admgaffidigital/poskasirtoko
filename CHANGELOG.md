@@ -17,6 +17,43 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- [POS-JUAL] Implementasi Lengkap POS Kasir Penjualan (Fase 2):
+  - Modul front end `frontend/js/modules/pos.js`: antarmuka kasir cepat dengan List & Grid view, filter chip kategori, pencarian instan (F2), dan integrasi pemindai barcode.
+  - Dukungan desimal kuantitas hingga 3 digit di belakang koma (cth: 2.5 kg, 0.75 m3).
+  - Auto-switch harga grosir otomatis saat qty mencapai `min_grosir_qty`.
+  - Fitur ubah harga satuan di kasir dengan penegakan Aturan Bisnis #1 (harga tidak boleh di bawah HPP snapshot).
+  - Modal diskon item & diskon transaksi (nominal / persen) dengan pembatasan kasir maksimal sesuai pengaturan (`diskon_maks_kasir_persen`).
+  - Fitur Tahan Transaksi (Hold Cart / F7) dan Daftar Transaksi Tahan (Pending List / F8) tanpa memotong stok atau membuat nomor faktur.
+  - Metode pembayaran: Tunai (dengan tombol cepat uang pas & hitung kembalian), QRIS, Transfer, Tempo/Kredit, dan Kombinasi/Split.
+  - Penegakan Aturan Bisnis #3: Pembayaran tempo HANYA diizinkan untuk Member terdaftar (`TEMPO_NON_MEMBER`); pembeli umum wajib non-tempo & lunas.
+  - Penegakan Aturan Bisnis #2: Total piutang aktif + tempo baru divalidasi tidak boleh melebihi limit kredit member (`LIMIT_KREDIT`).
+  - Pengiriman: Ambil di toko / Dikirim toko dengan status barang dibawa (`qty_dibawa`) dan penentuan status antar (selesai / sebagian / belum_dikirim).
+  - Penomoran faktur otomatis berurutan `INV-YYYYMMDD-0001` via sheet `Counter` di dalam `LockService`.
+  - Eksekusi backend atomik `penjualan.create`: simpan nota, simpan rincian item (dengan snapshot HPP), potong stok produk/varian, catat kartu stok tipe `jual`, buat record `Piutang`, dan catat poin loyalitas ke `Poin_Log`.
+  - Aksi `penjualan.void` untuk Owner & Admin dengan pembatalan atomik: membalikkan stok ke `Produk`/`Varian` + `Kartu_Stok` tipe `void`, mengurangi poin dan total belanja member, serta membatalkan piutang terkait.
+  - File: `backend/kode.gs`, `frontend/js/modules/pos.js`, `frontend/js/app.js`, `docs/api.md`
+  - Dampak: Inti transaksi operasional kasir, stok, piutang, dan loyalitas
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/pos.js backend/kode.gs`
+
+- [CETAK] Implementasi Mesin Cetak Struk ESC/POS Thermal:
+  - Modul `frontend/js/utils/printer.js` dengan generator biner ESC/POS untuk ukuran kertas 58mm (32 karakter) dan 80mm (48 karakter).
+  - Jalur cetak Web Bluetooth Direct (BLE) dengan transfer data terpecah (chunking 512 bytes) agar printer thermal tidak overflow.
+  - Jalur cetak RawBT Android via URL intent `rawbt:data:base64` untuk printer Bluetooth Classic.
+  - Jalur cetak Fallback Browser: modal pratinjau thermal interaktif + pencetakan rapi menggunakan iframe terisolasi.
+  - Fitur kirim struk digital instan melalui tautan WhatsApp Click-to-Chat (`wa.me/?text=...`).
+  - File: `frontend/js/utils/printer.js`
+  - Dampak: Pencetakan bukti transaksi fisik dan digital pelanggan
+  - Undo: `git checkout HEAD~1 -- frontend/js/utils/printer.js`
+
+- [UI] Barcode Scanner Helper & Shortcut Keyboard:
+  - Modul `frontend/js/utils/barcode.js`: pemindai kamera dengan `BarcodeDetector` API native, video stream, laser frame targeting, dan fallback input manual.
+  - Detektor input keyboard beruntun cepat (< 50ms) untuk scanner barcode fisik USB/Bluetooth.
+  - Synthesizer bunyi beep kasir via Web Audio API tanpa ketergantungan file suara eksternal.
+  - Gaya CSS responsif POS di `frontend/css/components.css` dan shortcut keyboard global (F2, F4, F7, F8).
+  - File: `frontend/js/utils/barcode.js`, `frontend/css/components.css`, `frontend/sw.js`
+  - Dampak: Kecepatan dan kenyamanan kasir dalam melayani pembeli
+  - Undo: `git checkout HEAD~1 -- frontend/js/utils/barcode.js`
+
 - [AUTH] Implementasi login multiuser lengkap:
   - Verifikasi PIN 6 digit dengan SHA-256 + salt per pengguna.
   - Sesi token 6 jam di sheet `Sesi` dan `CacheService`.
