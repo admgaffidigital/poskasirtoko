@@ -12,6 +12,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, parseRupiah, parseQty, formatTanggal } from '../utils/format.js';
+import { bukaKameraScanner } from '../utils/barcode.js';
 
 export async function renderPembelianModule(container) {
   const user = store.get('user');
@@ -124,30 +125,43 @@ function renderFormInputBeli() {
         </div>
 
         <!-- Pemilih Produk & Input Item -->
-        <div class="card card-body stack">
-          <div class="fw-semibold text-sm text-muted">Tambah Barang ke Faktur Pembelian</div>
-          <div class="row" style="gap: var(--sp-2); align-items: flex-end;">
-            <div class="field grow">
-              <label class="field-label" for="beli-cari-produk">Cari Produk / Barcode <span class="wajib">*</span></label>
-              <input type="text" class="input" id="beli-cari-produk" placeholder="Ketik nama produk, SKU, atau scan barcode..." autocomplete="off">
-              <div id="beli-dropdown-produk" class="card" style="display: none; position: absolute; z-index: 50; max-height: 240px; overflow-y: auto; width: 100%; box-shadow: var(--shadow-lg);"></div>
+        <div class="card card-body stack" style="gap: var(--sp-3);">
+          <div class="row-between">
+            <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: var(--primary);">${ICONS.package || ICONS.box}</span>
+              <span>Tambah Barang ke Faktur Pembelian</span>
             </div>
-            <div class="field" style="width: 130px;">
+            <button type="button" class="btn btn-ghost btn-sm btn-icon" id="btn-scan-barcode-beli" title="Pindai Barcode Kamera">
+              ${ICONS.scan || ICONS.box}
+            </button>
+          </div>
+
+          <div class="field autocomplete-field">
+            <label class="field-label" for="beli-cari-produk">Cari Produk / Barcode <span class="wajib">*</span></label>
+            <div class="input-group">
+              <span class="input-icon">${ICONS.search}</span>
+              <input type="text" class="input" id="beli-cari-produk" placeholder="Ketik nama produk, SKU, varian, atau scan barcode..." autocomplete="off">
+            </div>
+            <div id="beli-dropdown-produk" class="autocomplete-dropdown"></div>
+          </div>
+
+          <div class="beli-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--sp-2); align-items: flex-end;">
+            <div class="field">
               <label class="field-label" for="beli-satuan">Satuan</label>
               <select class="input" id="beli-satuan" disabled>
                 <option value="">-</option>
               </select>
             </div>
-            <div class="field" style="width: 110px;">
+            <div class="field">
               <label class="field-label" for="beli-qty">Qty Beli</label>
-              <input type="number" class="input tabular" id="beli-qty" min="0.001" step="any" value="1" disabled>
+              <input type="number" class="input tabular fw-bold" id="beli-qty" min="0.001" step="any" value="1" disabled>
             </div>
-            <div class="field" style="width: 140px;">
-              <label class="field-label" for="beli-harga">Harga Beli (Rp)</label>
-              <input type="text" class="input tabular" id="beli-harga" placeholder="0" disabled>
+            <div class="field">
+              <label class="field-label" for="beli-harga">Harga Beli Satuan (Rp)</label>
+              <input type="text" class="input tabular fw-bold" id="beli-harga" placeholder="0" disabled>
             </div>
-            <button type="button" class="btn btn-primary" id="btn-tambah-item-beli" disabled style="margin-bottom: 2px;">
-              <span>+ Tambah</span>
+            <button type="button" class="btn btn-primary" id="btn-tambah-item-beli" disabled style="min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>+ Tambah ke Faktur</span>
             </button>
           </div>
           <div id="beli-preview-konversi" class="text-xs text-muted" style="min-height: 16px;"></div>
@@ -260,10 +274,36 @@ async function initFormInputBeli(container) {
     console.warn('Gagal memuat supplier:', err);
   }
 
-  // 2. Pencarian Produk Autocomplete
+  // 2. Pencarian Produk Autocomplete & Barcode
   const inputCari = $('#beli-cari-produk', container);
   const dropdown = $('#beli-dropdown-produk', container);
   let timeoutCari = null;
+
+  // Scanner Barcode Kamera
+  $('#btn-scan-barcode-beli', container)?.addEventListener('click', () => {
+    bukaKameraScanner(async (kode) => {
+      inputCari.value = kode;
+      try {
+        const res = await apiCall('produk.list', { q: kode, limit: 1, aktif_saja: true });
+        const prods = res.items || [];
+        if (prods.length > 0) {
+          const p = prods[0];
+          inputCari.value = p.nama;
+          pilihProdukUntukBeli(container, {
+            id: p.id,
+            varian_id: '',
+            nama: p.nama,
+            satuan_dasar: p.satuan_dasar,
+            hpp: p.hpp || 0
+          });
+        } else {
+          showToast(`Produk dengan barcode "${kode}" tidak ditemukan`, 'warning');
+        }
+      } catch (e) {
+        showToast('Gagal memproses barcode: ' + e.message, 'error');
+      }
+    });
+  });
 
   inputCari?.addEventListener('input', () => {
     clearTimeout(timeoutCari);
@@ -277,37 +317,72 @@ async function initFormInputBeli(container) {
         const res = await apiCall('produk.list', { q, limit: 10, aktif_saja: true });
         const prods = res.items || [];
         if (!prods.length) {
-          dropdown.innerHTML = `<div class="p-2 text-sm text-muted">Produk "${escapeHtml(q)}" tidak ditemukan.</div>`;
+          dropdown.innerHTML = `<div class="p-3 text-sm text-muted text-center">Produk "${escapeHtml(q)}" tidak ditemukan.</div>`;
           dropdown.style.display = 'block';
           return;
         }
 
-        let html = '';
+        let html = `
+          <div class="autocomplete-header">
+            <span>Ditemukan ${prods.length} produk</span>
+            <span>Ketuk untuk memilih</span>
+          </div>
+        `;
         prods.forEach((p) => {
           if (p.punya_varian && p.varian && p.varian.length) {
             p.varian.forEach((v) => {
+              const skuText = v.sku || p.sku || '';
+              const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+              const stokVal = Number(v.stok || 0);
+              const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
+              const hppVal = v.hpp || p.hpp || 0;
+
               html += `
-                <div class="p-2 list-item-clickable row-between item-prod-select"
+                <div class="autocomplete-item item-prod-select"
                      data-prod-id="${p.id}" data-var-id="${v.id}" data-nama="${escapeHtml(p.nama + ' - ' + v.nama_varian)}"
-                     data-satuan="${escapeHtml(p.satuan_dasar)}" data-hpp="${v.hpp || p.hpp || 0}">
-                  <div>
-                    <div class="fw-semibold text-sm">${escapeHtml(p.nama)} - <span class="text-primary">${escapeHtml(v.nama_varian)}</span></div>
-                    <div class="text-xs text-muted">SKU: ${escapeHtml(v.sku || p.sku || '-')} | Stok: ${formatQty(v.stok)} ${escapeHtml(p.satuan_dasar)}</div>
+                     data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}" data-hpp="${hppVal}">
+                  <div class="autocomplete-item-icon">
+                    ${ICONS.box}
                   </div>
-                  <div class="tabular text-sm fw-semibold">${formatRupiah(v.hpp || p.hpp || 0)}</div>
+                  <div class="autocomplete-item-main">
+                    <div class="autocomplete-item-title">${escapeHtml(p.nama)} <span class="text-primary font-normal">• ${escapeHtml(v.nama_varian)}</span></div>
+                    <div class="autocomplete-item-meta">
+                      ${skuBadge}
+                      ${stokBadge}
+                    </div>
+                  </div>
+                  <div class="autocomplete-item-side">
+                    <div class="autocomplete-item-side-label">HPP / Beli</div>
+                    <div class="autocomplete-item-side-value">${formatRupiah(hppVal)}</div>
+                  </div>
                 </div>
               `;
             });
           } else {
+            const skuText = p.sku || '';
+            const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+            const stokVal = Number(p.stok || 0);
+            const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
+            const hppVal = p.hpp || 0;
+
             html += `
-              <div class="p-2 list-item-clickable row-between item-prod-select"
+              <div class="autocomplete-item item-prod-select"
                    data-prod-id="${p.id}" data-var-id="" data-nama="${escapeHtml(p.nama)}"
-                   data-satuan="${escapeHtml(p.satuan_dasar)}" data-hpp="${p.hpp || 0}">
-                <div>
-                  <div class="fw-semibold text-sm">${escapeHtml(p.nama)}</div>
-                  <div class="text-xs text-muted">SKU: ${escapeHtml(p.sku || '-')} | Stok: ${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</div>
+                   data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}" data-hpp="${hppVal}">
+                <div class="autocomplete-item-icon">
+                  ${ICONS.box}
                 </div>
-                <div class="tabular text-sm fw-semibold">${formatRupiah(p.hpp || 0)}</div>
+                <div class="autocomplete-item-main">
+                  <div class="autocomplete-item-title">${escapeHtml(p.nama)}</div>
+                  <div class="autocomplete-item-meta">
+                    ${skuBadge}
+                    ${stokBadge}
+                  </div>
+                </div>
+                <div class="autocomplete-item-side">
+                  <div class="autocomplete-item-side-label">HPP / Beli</div>
+                  <div class="autocomplete-item-side-value">${formatRupiah(hppVal)}</div>
+                </div>
               </div>
             `;
           }
@@ -346,6 +421,20 @@ async function initFormInputBeli(container) {
   // Tombol Tambah Item
   $('#btn-tambah-item-beli', container)?.addEventListener('click', () => {
     tambahItemKeKeranjangBeli(container);
+  });
+
+  $('#beli-qty', container)?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $('#beli-harga', container)?.focus();
+    }
+  });
+
+  $('#beli-harga', container)?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      tambahItemKeKeranjangBeli(container);
+    }
   });
 
   // Quick buttons pembayaran
@@ -487,6 +576,7 @@ function tambahItemKeKeranjangBeli(container) {
 
   renderTabelKeranjangBeli(container);
   renderRingkasanBeli(container);
+  $('#beli-cari-produk', container).focus();
 }
 
 function renderTabelKeranjangBeli(container) {

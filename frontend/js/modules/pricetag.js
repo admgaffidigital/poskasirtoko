@@ -293,7 +293,7 @@ export async function renderPriceTagModule(container) {
               <input type="checkbox" class="cb-ptag-item" data-id="${escapeHtml(p.id)}" ${isChecked ? 'checked' : ''}>
               <div>
                 <div class="fw-semibold">${escapeHtml(p.nama)}</div>
-                <div class="text-xs text-muted font-mono">${escapeHtml(p.sku || '-')} | ${escapeHtml(p.satuan_dasar || '')}</div>
+                <div class="text-xs text-muted">${(p.sku && p.sku !== '-') ? `<span class="badge badge-secondary" style="font-size: 10px; padding: 1px 5px; margin-right: 4px;">SKU: ${escapeHtml(p.sku)}</span>` : ''}${escapeHtml(p.satuan_dasar || '')}</div>
               </div>
             </div>
             <div class="fw-bold text-danger text-xs">${formatRupiah(p.harga_ritel)}</div>

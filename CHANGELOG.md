@@ -16,6 +16,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-12
+
+### Fixed & Enhanced
+- [UI] [OPNAME] [POS-BELI] Redesain Autocomplete Pemilihan Produk & Solusi Tuntas Footer Modal Terpotong di Mobile:
+  - Mengatasi bug tampilan pada modal "Input Stok Opname Fisik" (`opname.js`) dan halaman "POS Pembelian" (`pembelian.js`):
+    - Memberikan `position: relative` pada kontainer `.autocomplete-field` dan positioning absolut `top: calc(100% + 4px); left: 0; right: 0; z-index: 120;` pada dropdown autocomplete sehingga hasil pencarian tidak lagi menimpa atau menutupi input field pencarian.
+    - Menghilangkan pemotongan tombol aksi pada modal dialog bottom-sheet di layar perangkat mobile: Memindahkan tombol ke slot `footer` resmi pada `showModal({ title, body, footer })` dan memperbarui `components.css` (`.dialog` memiliki `padding-bottom: 0`, `.dialog-body` dengan `flex: 1 1 auto; min-height: 0; overflow-y: auto`, dan `.dialog-footer` pinned dengan `calc(var(--sp-3) + var(--safe-bottom))`).
+  - Redesain tampilan hasil pencarian produk ala Native App Row Card (`.autocomplete-item`):
+    - Dilengkapi kotak ikon 38x38px (`ICONS.package`), judul produk berbobot tegas, badge SKU terformat rapi (tanpa tanda strip `-` tunggal), badge indikator stok dinamis (`badge-success` jika tersedia, `badge-danger` jika habis), dan penanda HPP / Stok Sistem tebal di sisi kanan.
+    - Header ringkasan pencarian (`.autocomplete-header`) yang menginformasikan jumlah produk ditemukan dan panduan ketukan.
+  - Form Pemilih Item Faktur Pembelian Responsif: Mengubah tata letak input Satuan, Qty Beli, Harga Beli, dan tombol `+ Tambah ke Faktur` menggunakan grid responsif auto-fit (`.beli-inputs-grid`) sehingga tertata rapi dan simetris baik di layar ponsel maupun desktop.
+  - Integrasi Tombol Kamera Barcode Scanner (`#btn-scan-barcode-opname` dan `#btn-scan-barcode-beli`) via `bukaKameraScanner` untuk input produk cepat tanpa mengetik manual.
+  - File: `frontend/css/components.css`, `frontend/js/modules/opname.js`, `frontend/js/modules/pembelian.js`, `frontend/js/modules/pricetag.js`, `frontend/js/utils/ui.js`, `CHANGELOG.md`.
+  - Dampak: Pengalaman input dan pemilihan produk yang mulus, rapi, konsisten, dan menyerupai aplikasi mobile native sungguhan.
+
 ## [1.0.0] - 2026-11-12
 
 ### Added

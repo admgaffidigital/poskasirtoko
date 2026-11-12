@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatQty, parseQty, formatTanggal } from '../utils/format.js';
+import { bukaKameraScanner } from '../utils/barcode.js';
 
 export async function renderOpnameModule(container) {
   const user = store.get('user');
@@ -219,17 +220,23 @@ async function bukaModalInputOpname(container) {
   const modal = showModal({
     title: 'Input Stok Opname Fisik',
     body: `
-      <form id="form-input-opname" class="stack">
-        <div class="field">
+      <form id="form-input-opname" class="stack" style="gap: var(--sp-3);">
+        <div class="field autocomplete-field">
           <label class="field-label" for="op-cari-produk">Pilih Produk / Varian <span class="wajib">*</span></label>
-          <input type="text" class="input" id="op-cari-produk" placeholder="Ketik nama produk untuk memilih..." autocomplete="off" required>
-          <div id="op-dropdown-produk" class="card" style="display: none; position: absolute; z-index: 50; max-height: 200px; overflow-y: auto; width: 100%; box-shadow: var(--shadow-lg);"></div>
+          <div class="input-group">
+            <span class="input-icon">${ICONS.search}</span>
+            <input type="text" class="input" id="op-cari-produk" placeholder="Ketik nama produk, SKU, atau varian..." autocomplete="off" required>
+            <button type="button" class="btn btn-ghost btn-sm btn-icon" id="btn-scan-barcode-opname" title="Scan Barcode Kamera">
+              ${ICONS.scan || ICONS.box}
+            </button>
+          </div>
+          <div id="op-dropdown-produk" class="autocomplete-dropdown"></div>
         </div>
 
         <div class="row" style="gap: var(--sp-2);">
           <div class="field grow">
             <label class="field-label">Stok Sistem Saat Ini</label>
-            <input type="text" class="input tabular" id="op-stok-sistem" value="-" readonly style="background: var(--clr-surface-muted);">
+            <input type="text" class="input tabular" id="op-stok-sistem" value="-" readonly style="background: var(--surface-2); font-weight: 600;">
           </div>
           <div class="field grow">
             <label class="field-label" for="op-qty-fisik">Hasil Hitung Fisik <span class="wajib">*</span></label>
@@ -237,9 +244,11 @@ async function bukaModalInputOpname(container) {
           </div>
         </div>
 
-        <div class="row-between text-sm" style="padding: var(--sp-2) 0;">
-          <span class="text-muted">Kalkulasi Selisih (Fisik - Sistem):</span>
-          <span class="tabular fw-bold text-base" id="op-selisih-kalkulasi">-</span>
+        <div class="card" style="padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border);">
+          <div class="row-between text-sm">
+            <span class="text-muted fw-semibold">Kalkulasi Selisih (Fisik - Sistem):</span>
+            <span class="tabular fw-bold text-base" id="op-selisih-kalkulasi">-</span>
+          </div>
         </div>
 
         <div class="field">
@@ -250,15 +259,16 @@ async function bukaModalInputOpname(container) {
         <div class="field">
           <label class="checkbox-label" style="display: flex; align-items: center; gap: var(--sp-2); cursor: pointer;">
             <input type="checkbox" id="op-langsung-setuju" checked>
-            <span>Langsung terapkan & sesuaikan stok sistem saat disimpan</span>
+            <span class="text-sm">Langsung terapkan & sesuaikan stok sistem saat disimpan</span>
           </label>
         </div>
-
-        <div class="row" style="justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-2);">
-          <button type="button" class="btn btn-ghost" id="btn-batal-opname">Batal</button>
-          <button type="submit" class="btn btn-primary" id="btn-simpan-opname" disabled>Simpan Dokumen Opname</button>
-        </div>
       </form>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
+        <button type="button" class="btn btn-ghost" id="btn-batal-opname">Batal</button>
+        <button type="submit" form="form-input-opname" class="btn btn-primary" id="btn-simpan-opname" disabled>Simpan Dokumen Opname</button>
+      </div>
     `
   });
 
@@ -273,6 +283,37 @@ async function bukaModalInputOpname(container) {
   const btnSimpan = $('#btn-simpan-opname', modal.el);
   let timeoutCari = null;
 
+  // Scan Barcode Kamera
+  modal.el.querySelector('#btn-scan-barcode-opname')?.addEventListener('click', () => {
+    bukaKameraScanner(async (kode) => {
+      inputCari.value = kode;
+      try {
+        const res = await apiCall('produk.list', { q: kode, limit: 1, aktif_saja: true });
+        const prods = res.items || [];
+        if (prods.length > 0) {
+          pilihItemOpname(prods[0].id, '', prods[0].nama, prods[0].stok, prods[0].satuan_dasar);
+        } else {
+          showToast(`Produk dengan barcode "${kode}" tidak ditemukan`, 'warning');
+        }
+      } catch (e) {
+        showToast('Gagal memproses barcode: ' + e.message, 'error');
+      }
+    });
+  });
+
+  const pilihItemOpname = (prodId, varId, nama, stok, satuan) => {
+    targetProduk = { id: prodId, varian_id: varId, nama, stok: Number(stok) || 0, satuan };
+    inputCari.value = nama;
+    dropdown.style.display = 'none';
+
+    inputStokSistem.value = `${formatQty(stok)} ${satuan}`;
+    inputQtyFisik.disabled = false;
+    inputQtyFisik.value = stok;
+    btnSimpan.disabled = false;
+    updateSelisih();
+    inputQtyFisik.focus();
+  };
+
   inputCari?.addEventListener('input', () => {
     clearTimeout(timeoutCari);
     const q = inputCari.value.trim();
@@ -286,37 +327,70 @@ async function bukaModalInputOpname(container) {
         const res = await apiCall('produk.list', { q, limit: 10, aktif_saja: true });
         const prods = res.items || [];
         if (!prods.length) {
-          dropdown.innerHTML = `<div class="p-2 text-sm text-muted">Produk "${escapeHtml(q)}" tidak ditemukan.</div>`;
+          dropdown.innerHTML = `<div class="p-3 text-sm text-muted text-center">Produk "${escapeHtml(q)}" tidak ditemukan.</div>`;
           dropdown.style.display = 'block';
           return;
         }
 
-        let html = '';
+        let html = `
+          <div class="autocomplete-header">
+            <span>Ditemukan ${prods.length} produk</span>
+            <span>Ketuk untuk memilih</span>
+          </div>
+        `;
         prods.forEach((p) => {
           if (p.punya_varian && p.varian && p.varian.length) {
             p.varian.forEach((v) => {
+              const skuText = v.sku || p.sku || '';
+              const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+              const stokVal = Number(v.stok || 0);
+              const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
+
               html += `
-                <div class="p-2 list-item-clickable row-between item-op-select"
+                <div class="autocomplete-item item-op-select"
                      data-prod-id="${p.id}" data-var-id="${v.id}" data-nama="${escapeHtml(p.nama + ' - ' + v.nama_varian)}"
-                     data-stok="${v.stok}" data-satuan="${escapeHtml(p.satuan_dasar)}">
-                  <div>
-                    <div class="fw-semibold text-sm">${escapeHtml(p.nama)} - <span class="text-primary">${escapeHtml(v.nama_varian)}</span></div>
-                    <div class="text-xs text-muted">SKU: ${escapeHtml(v.sku || p.sku || '-')}</div>
+                     data-stok="${v.stok}" data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}">
+                  <div class="autocomplete-item-icon">
+                    ${ICONS.box}
                   </div>
-                  <div class="tabular text-sm fw-semibold">${formatQty(v.stok)} ${escapeHtml(p.satuan_dasar)}</div>
+                  <div class="autocomplete-item-main">
+                    <div class="autocomplete-item-title">${escapeHtml(p.nama)} <span class="text-primary font-normal">• ${escapeHtml(v.nama_varian)}</span></div>
+                    <div class="autocomplete-item-meta">
+                      ${skuBadge}
+                      ${stokBadge}
+                    </div>
+                  </div>
+                  <div class="autocomplete-item-side">
+                    <div class="autocomplete-item-side-label">Stok Sistem</div>
+                    <div class="autocomplete-item-side-value">${formatQty(v.stok)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</div>
+                  </div>
                 </div>
               `;
             });
           } else {
+            const skuText = p.sku || '';
+            const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+            const stokVal = Number(p.stok || 0);
+            const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
+
             html += `
-              <div class="p-2 list-item-clickable row-between item-op-select"
+              <div class="autocomplete-item item-op-select"
                    data-prod-id="${p.id}" data-var-id="" data-nama="${escapeHtml(p.nama)}"
-                   data-stok="${p.stok}" data-satuan="${escapeHtml(p.satuan_dasar)}">
-                <div>
-                  <div class="fw-semibold text-sm">${escapeHtml(p.nama)}</div>
-                  <div class="text-xs text-muted">SKU: ${escapeHtml(p.sku || '-')}</div>
+                   data-stok="${p.stok}" data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}">
+                <div class="autocomplete-item-icon">
+                  ${ICONS.box}
                 </div>
-                <div class="tabular text-sm fw-semibold">${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</div>
+                <div class="autocomplete-item-main">
+                  <div class="autocomplete-item-title">${escapeHtml(p.nama)}</div>
+                  <div class="autocomplete-item-meta">
+                    ${skuBadge}
+                    ${stokBadge}
+                  </div>
+                </div>
+                <div class="autocomplete-item-side">
+                  <div class="autocomplete-item-side-label">Stok Sistem</div>
+                  <div class="autocomplete-item-side-value">${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</div>
+                </div>
               </div>
             `;
           }
@@ -333,22 +407,20 @@ async function bukaModalInputOpname(container) {
             const stok = Number(el.getAttribute('data-stok')) || 0;
             const satuan = el.getAttribute('data-satuan');
 
-            targetProduk = { id: prodId, varian_id: varId, nama, stok, satuan };
-            inputCari.value = nama;
-            dropdown.style.display = 'none';
-
-            inputStokSistem.value = `${formatQty(stok)} ${satuan}`;
-            inputQtyFisik.disabled = false;
-            inputQtyFisik.value = stok;
-            btnSimpan.disabled = false;
-            updateSelisih();
-            inputQtyFisik.focus();
+            pilihItemOpname(prodId, varId, nama, stok, satuan);
           });
         });
       } catch (err) {
         console.warn('Gagal cari produk opname:', err);
       }
     }, 250);
+  });
+
+  // Sembunyikan dropdown bila klik di luar
+  modal.el.addEventListener('click', (e) => {
+    if (dropdown && !dropdown.contains(e.target) && e.target !== inputCari) {
+      dropdown.style.display = 'none';
+    }
   });
 
   const updateSelisih = () => {
@@ -405,6 +477,10 @@ async function bukaModalInputOpname(container) {
       btnSimpan.removeAttribute('aria-busy');
       btnSimpan.disabled = false;
     }
+  });
+
+  btnSimpan?.addEventListener('click', () => {
+    form?.requestSubmit();
   });
 }
 

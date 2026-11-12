@@ -650,7 +650,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   border: 1px solid var(--border);
   border-bottom: 0;
   box-shadow: var(--shadow-xl);
-  padding-bottom: calc(var(--safe-bottom) + var(--sp-2));
+  padding-bottom: 0;
   animation: geser-naik var(--dur-slow) var(--ease);
   overflow: hidden;
 }
@@ -681,9 +681,19 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-5) var(--sp-3);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .dialog-title { flex: 1; font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
-.dialog-body { padding: var(--sp-4) var(--sp-5); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--sp-4) var(--sp-5);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.dialog-body:last-child {
+  padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
+}
 .dialog-footer {
   display: flex;
   gap: var(--sp-3);
@@ -691,12 +701,149 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   padding: var(--sp-3) var(--sp-5) calc(var(--sp-3) + var(--safe-bottom));
   border-top: 1px solid var(--border);
   background: var(--surface);
+  flex-shrink: 0;
 }
 @media (max-width: 767px) {
   .dialog-footer > .btn {
     flex: 1;
     min-height: 44px;
   }
+}
+
+/* ---------- Native App Autocomplete & Product Selection Dropdown ---------- */
+.autocomplete-field {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 120;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.18), 0 6px 14px -4px rgba(0, 0, 0, 0.08);
+  max-height: 280px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: none;
+  animation: muncul var(--dur-fast) var(--ease);
+}
+
+.autocomplete-header {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+  user-select: none;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: 0;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item:active {
+  background: var(--surface-2);
+}
+
+.autocomplete-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--brand-primary-soft, var(--primary-soft));
+  color: var(--brand-primary, var(--primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.autocomplete-item-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.autocomplete-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.autocomplete-item-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.autocomplete-item-meta .badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  font-weight: var(--fw-semibold);
+}
+
+.autocomplete-item-side {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.autocomplete-item-side-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.autocomplete-item-side-value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  font-family: var(--font-mono);
+  color: var(--brand-primary, var(--primary));
+}
+
+.product-selected-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-md);
+  margin-top: var(--sp-2);
+  animation: muncul var(--dur-fast) var(--ease);
 }
 
 @keyframes pudar-masuk { from { opacity: 0; } }
