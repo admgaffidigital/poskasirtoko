@@ -69,7 +69,8 @@ export function renderPosModule(container) {
       <div class="pos-catalog-panel">
         <!-- Top Toolbar: Pencarian, Barcode, Kategori, Toggle View -->
         <div class="pos-toolbar">
-          <div class="row" style="gap: var(--sp-2); width: 100%; align-items: center;">
+          <!-- Baris 1: Pencarian & Tombol Scanner Kamera -->
+          <div class="pos-search-row">
             <div class="input-group grow" style="position: relative;">
               <span class="input-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
                 ${ICONS.search}
@@ -82,7 +83,11 @@ export function renderPosModule(container) {
             <button type="button" id="btn-scan-camera" class="btn btn-secondary btn-icon" style="border-radius: var(--radius-full); width: var(--control-h); height: var(--control-h); flex-shrink: 0;" title="Scan Barcode Kamera">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="6" x="7" y="9" rx="1"/></svg>
             </button>
-            <div class="pos-view-toggle segmented" style="border-radius: var(--radius-full); padding: 2px;">
+          </div>
+
+          <!-- Baris 2: Toggle Tampilan Grid/List & Kategori Filter Chips -->
+          <div class="pos-filter-row">
+            <div class="pos-view-toggle segmented" style="border-radius: var(--radius-full); padding: 2px; flex-shrink: 0;">
               <button type="button" id="btn-view-grid" class="btn btn-ghost btn-icon btn-sm ${state.viewMode === 'grid' ? 'active' : ''}" style="border-radius: var(--radius-full);" title="Tampilan Grid">
                 ${ICONS.grid}
               </button>
@@ -90,13 +95,13 @@ export function renderPosModule(container) {
                 ${ICONS.list}
               </button>
             </div>
-          </div>
 
-          <!-- Kategori Filter Chips -->
-          <div class="pos-category-chips" id="pos-category-bar">
-            <button type="button" class="pos-chip ${state.kategoriAktif === 'semua' ? 'active' : ''}" data-cat="semua">
-              Semua Produk
-            </button>
+            <!-- Kategori Filter Chips Bar -->
+            <div class="pos-category-chips" id="pos-category-bar">
+              <button type="button" class="pos-chip ${state.kategoriAktif === 'semua' ? 'active' : ''}" data-cat="semua">
+                Semua Produk
+              </button>
+            </div>
           </div>
         </div>
 
@@ -399,10 +404,10 @@ export function renderPosModule(container) {
 
     if (filtered.length === 0) {
       elProductArea.innerHTML = `
-        <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted); width: 100%;">
-          <div style="font-size: 28px; margin-bottom: var(--sp-2);">🔍</div>
-          <div>Tidak ada produk yang cocok</div>
-          <div class="text-xs text-muted">Coba ubah kata kunci atau pilih kategori lain</div>
+        <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted); width: 100%; border: 1px dashed var(--border); border-radius: var(--radius-xl); background: var(--surface);">
+          <div style="font-size: 32px; margin-bottom: var(--sp-2);">🔍</div>
+          <div class="fw-semibold text-base" style="color: var(--text);">Tidak ada produk yang cocok</div>
+          <div class="text-xs text-muted" style="margin-top: 4px;">Coba ubah kata kunci pencarian atau pilih kategori lain</div>
         </div>
       `;
       return;
@@ -421,7 +426,6 @@ export function renderPosModule(container) {
     items.forEach((p) => {
       const punyaVarian = p.punya_varian && (p.varian || []).length > 0;
       const punyaSatuanKonversi = (p.satuan_konversi || []).length > 0;
-      const adaOpsi = punyaVarian || punyaSatuanKonversi;
 
       let badgeStok = '';
       const stok = Number(p.stok || 0);
@@ -430,50 +434,65 @@ export function renderPosModule(container) {
       if (stok <= 0) {
         badgeStok = `<span class="badge badge-danger">Habis</span>`;
       } else if (stok <= stokMin) {
-        badgeStok = `<span class="badge badge-warning">${formatQty(stok)} ${p.satuan_dasar}</span>`;
+        badgeStok = `<span class="badge badge-warning">${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}</span>`;
       } else {
-        badgeStok = `<span class="badge badge-success">${formatQty(stok)} ${p.satuan_dasar}</span>`;
+        badgeStok = `<span class="badge badge-success">${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}</span>`;
       }
 
       let hppTag = '';
       if (isOwnerAtauAdmin && p.hpp) {
-        hppTag = `<span class="badge badge-info" style="font-size: 9px;">HPP ${formatRupiah(p.hpp)}</span>`;
+        hppTag = `<span class="badge badge-info" style="font-size: 9px; padding: 1px 5px;">HPP ${formatRupiah(p.hpp)}</span>`;
       }
 
       let infoOpsi = '';
       if (punyaVarian) {
-        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: var(--surface-3);">${p.varian.length} Varian</span>`;
+        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: rgba(255,255,255,0.85); color: var(--text);">${p.varian.length} Varian</span>`;
       } else if (punyaSatuanKonversi) {
-        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: var(--surface-3);">${p.satuan_konversi.length + 1} Satuan</span>`;
+        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: rgba(255,255,255,0.85); color: var(--text);">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
       const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
 
       html += `
-        <div class="pos-product-card card" data-id="${p.id}" tabindex="0">
-          <div class="card-body" style="padding: var(--sp-3); display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
-            <div>
-              <div class="row" style="justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
-                <span class="text-xs text-muted mono">${kodeItem}</span>
-                ${badgeStok}
-              </div>
-              <div class="fw-bold pos-card-title">${escapeHtml(p.nama)}</div>
-              <div class="row" style="gap: 4px; margin-top: 4px; flex-wrap: wrap;">
-                ${infoOpsi}
-                ${hppTag}
-              </div>
+        <div class="pos-product-card" data-id="${p.id}" tabindex="0">
+          <div class="pos-card-visual">
+            <div class="pos-card-icon-wrap">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </div>
+            <div class="pos-card-badges-top">
+              ${badgeStok}
+            </div>
+            ${infoOpsi ? `<div class="pos-card-badges-left">${infoOpsi}</div>` : ''}
+          </div>
+
+          <div class="pos-card-content">
+            <div class="pos-card-meta-row">
+              <span class="pos-card-sku">${kodeItem ? `SKU: ${kodeItem}` : ''}</span>
+              ${hppTag}
             </div>
 
-            <div style="margin-top: var(--sp-2); border-top: 1px solid var(--surface-2); padding-top: 6px;">
-              <div class="row" style="justify-content: space-between; align-items: baseline;">
-                <div class="text-xs text-muted">${escapeHtml(p.satuan_dasar)}</div>
-                <div class="fw-bold pos-card-price mono">${formatRupiah(p.harga_ritel)}</div>
-              </div>
-              ${p.harga_grosir && p.harga_grosir < p.harga_ritel ? `
-                <div class="text-right text-xs text-success mono" style="font-size: 11px;">
-                  Grosir: ${formatRupiah(p.harga_grosir)} (≥${formatQty(p.min_grosir_qty || 1)})
+            <div class="pos-card-title" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
+
+            <div class="pos-card-bottom">
+              <div class="pos-card-pricing">
+                <div class="pos-card-price-main">
+                  <span class="pos-card-price-val">${formatRupiah(p.harga_ritel)}</span>
+                  <span class="pos-card-price-unit">/${escapeHtml(p.satuan_dasar)}</span>
                 </div>
-              ` : ''}
+                ${p.harga_grosir && p.harga_grosir < p.harga_ritel ? `
+                  <div class="pos-card-grosir-tag">
+                    Grosir: ${formatRupiah(p.harga_grosir)} (≥${formatQty(p.min_grosir_qty || 1)})
+                  </div>
+                ` : ''}
+              </div>
+
+              <button type="button" class="pos-card-add-btn" data-id="${p.id}" title="Tambah" aria-label="Tambah">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
             </div>
           </div>
         </div>
@@ -498,14 +517,14 @@ export function renderPosModule(container) {
       if (stok <= 0) {
         badgeStok = `<span class="badge badge-danger">Habis</span>`;
       } else if (stok <= stokMin) {
-        badgeStok = `<span class="badge badge-warning">${formatQty(stok)} ${p.satuan_dasar}</span>`;
+        badgeStok = `<span class="badge badge-warning">${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}</span>`;
       } else {
-        badgeStok = `<span class="badge badge-success">${formatQty(stok)} ${p.satuan_dasar}</span>`;
+        badgeStok = `<span class="badge badge-success">${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}</span>`;
       }
 
       let hppTag = '';
       if (isOwnerAtauAdmin && p.hpp) {
-        hppTag = `<span class="badge badge-info" style="font-size: 9px;">HPP ${formatRupiah(p.hpp)}</span>`;
+        hppTag = `<span class="badge badge-info" style="font-size: 9px; padding: 1px 5px;">HPP ${formatRupiah(p.hpp)}</span>`;
       }
 
       let infoOpsi = '';
@@ -518,35 +537,38 @@ export function renderPosModule(container) {
       const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
 
       html += `
-        <div class="pos-list-item card" data-id="${p.id}" tabindex="0">
-          <div class="pos-list-icon">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="pos-list-item" data-id="${p.id}" tabindex="0">
+          <div class="pos-list-avatar">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
               <line x1="12" y1="22.08" x2="12" y2="12"></line>
             </svg>
           </div>
 
-          <div class="pos-list-info">
-            <div class="pos-list-nama">${escapeHtml(p.nama)}</div>
-            <div class="pos-list-meta">
+          <div class="pos-list-main">
+            <div class="pos-list-title" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
+            <div class="pos-list-badges-row">
               ${badgeStok}
-              ${kodeItem ? `<span class="mono text-xs text-muted">${kodeItem}</span>` : ''}
+              ${kodeItem ? `<span class="pos-badge-sku">SKU: ${kodeItem}</span>` : ''}
               ${infoOpsi}
               ${hppTag}
             </div>
             ${p.harga_grosir && p.harga_grosir < p.harga_ritel ? `
-              <div class="text-xs text-success mono" style="font-size: 11px;">
+              <div class="pos-list-grosir-tag">
                 Grosir: ${formatRupiah(p.harga_grosir)} (≥${formatQty(p.min_grosir_qty || 1)})
               </div>
             ` : ''}
           </div>
 
-          <div class="pos-list-right">
-            <div class="pos-list-price mono">${formatRupiah(p.harga_ritel)}</div>
-            <div class="text-xs text-muted" style="margin-top: -2px;">/${escapeHtml(p.satuan_dasar)}</div>
-            <button type="button" class="btn btn-primary btn-sm btn-tambah-list" data-id="${p.id}" style="margin-top: 4px; padding: 3px 10px; border-radius: var(--radius-full); font-size: 11px;">
-              + Tambah
+          <div class="pos-list-action-col">
+            <div class="pos-list-price-block">
+              <span class="pos-list-price-val">${formatRupiah(p.harga_ritel)}</span>
+              <span class="pos-list-unit">/${escapeHtml(p.satuan_dasar)}</span>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm pos-btn-tambah-pill" data-id="${p.id}">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Tambah</span>
             </button>
           </div>
         </div>
@@ -560,10 +582,18 @@ export function renderPosModule(container) {
 
   function pasangAksiKlikKatalog() {
     elProductArea.querySelectorAll('.pos-product-card, .pos-product-row, .pos-list-item').forEach((el) => {
-      el.addEventListener('click', (e) => {
+      el.addEventListener('click', () => {
         const id = el.getAttribute('data-id');
         const p = state.katalog.find((x) => x.id === id);
         if (p) pilihProduk(p);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const id = el.getAttribute('data-id');
+          const p = state.katalog.find((x) => x.id === id);
+          if (p) pilihProduk(p);
+        }
       });
     });
   }
