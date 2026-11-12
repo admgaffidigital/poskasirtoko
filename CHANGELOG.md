@@ -16,6 +16,26 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-11-13
+
+### Added
+- [APK] **Build Native Android APK Langsung**:
+  - Mengonfigurasi `android/settings.gradle`, `android/gradle.properties` (`android.useAndroidX=true`, `android.enableJetifier=true`), serta ikon aplikasi `mipmap` (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi).
+  - Berhasil mengompilasi file APK Android debug lengkap (`poskasirtoko.apk`, ~13.9 MB) langsung dari Gradle 8.14.3 dan Android SDK 34.
+  - Menyalin file APK ke direktori publik `frontend/download/poskasirtoko.apk` sehingga dapat diunduh langsung dari dalam aplikasi.
+- [UI] **Pusat Unduhan & Panduan Aplikasi Android**:
+  - Menambahkan tombol unduh langsung `poskasirtoko.apk` di modul Status Sistem (`#/sistem`).
+  - Menambahkan banner promosi aplikasi Android di bagian atas menu "Lainnya" (`#/lainnya`).
+  - Menyajikan panduan lengkap penanganan instalasi PWA pada Google Chrome Android ketika diakses via IP jaringan lokal (HTTP non-SSL).
+
+### Changed & Enhanced
+- [PWA] **Penyelarasan Manifest PWA Android Terbaru**:
+  - Memperbarui `frontend/manifest.json` dengan menambahkan properti `id: "./"`, `scope: "./"`, dan `prefer_related_applications: false`.
+  - Memisahkan definisi ikon untuk `purpose: "any"` dan `purpose: "maskable"` sesuai standar audit Web App Manifest Google Chrome.
+- [SW] **Pembaruan Service Worker (Anti-Cache Kadaluarsa)**:
+  - Menaikkan versi cache statis ke `pos-kasir-static-v1.0.9` agar browser di perangkat smartphone kasir/owner otomatis membersihkan cache lama dan memuat kode terbaru.
+  - Menambahkan pengecualian (*bypass*) pada Service Worker untuk berkas biner `.apk` agar pengunduhan berjalan langsung dari server tanpa gangguan cache.
+
 ## [1.0.8] - 2026-11-12
 
 ### Changed & Enhanced
