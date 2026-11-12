@@ -452,3 +452,4 @@ export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
   const encoded = encodeURIComponent(pesan);
   return hpBersih ? `https://wa.me/${hpBersih}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
 }
+

@@ -221,3 +221,4 @@ export function bukaKameraScanner(onScanCallback) {
     if (inputManual) inputManual.focus();
   });
 }
+

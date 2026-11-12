@@ -1959,3 +1959,4 @@ export function renderPosModule(container) {
     lepasScannerFisik();
   };
 }
+
