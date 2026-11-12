@@ -35,6 +35,7 @@ import { renderReturModule } from './modules/retur.js';
 import { renderPelangganModule } from './modules/pelanggan.js';
 import { renderLoyaltiModule } from './modules/loyalti.js';
 import { renderPriceTagModule } from './modules/pricetag.js';
+import { renderLaporanModule } from './modules/laporan.js';
 
 class App {
   constructor() {
@@ -399,6 +400,8 @@ class App {
 
     if (rute.id === 'pos') {
       renderPosModule(content);
+    } else if (rute.id === 'dashboard') {
+      renderLaporanModule(content);
     } else if (rute.id === 'sistem') {
       this.renderHalamanSistem(content);
     } else if (rute.id === 'desainsistem') {

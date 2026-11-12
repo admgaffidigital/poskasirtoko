@@ -358,3 +358,4 @@ export async function renderPriceTagModule(container) {
     areaList.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message || 'Gagal memuat katalog produk')}</div>`;
   }
 }
+

@@ -145,4 +145,12 @@ export const api = {
   }
 };
 
+/**
+ * Helper kirimRequest: Mengembalikan objek { ok, data, error, code } tanpa melempar exception.
+ */
+export async function kirimRequest(action, payload = {}, options = {}) {
+  return api.post(action, payload, options);
+}
+
+
 

@@ -495,11 +495,104 @@ Dan struktur respons `data` adalah:
 
 ---
 
-## 9. Peta Aksi Fase Selanjutnya (Roadmap)
+## 9. Modul Dashboard Eksekutif & Laporan Usaha (Fase 6)
 
-- **Fase 6 (Laporan & Dashboard):**
-  - `laporan.dashboard`, `laporan.penjualan`, `laporan.stok`
+### 9.1 Ringkasan Dashboard Eksekutif (`laporan.dashboard`)
+- **Akses:** `owner`, `admin`
+- **Payload:**
+  ```json
+  {
+    "dari": "2026-11-01",
+    "sampai": "2026-11-30",
+    "periode": "30_hari"
+  }
+  ```
+- **Catatan Hak Akses (Matriks Keamanan):**
+  - Bidang `laba_kotor`, `margin_persen`, dan `total_nilai_aset_stok` HANYA diberikan jika `role === 'owner'`.
+  - Jika diakses oleh `admin`, nilai ketiga bidang tersebut disembunyikan (`null`).
+- **Response `data`:**
+  ```json
+  {
+    "rentang": { "dari": "2026-11-01", "sampai": "2026-11-30" },
+    "ringkasan": {
+      "total_penjualan": 10500000,
+      "subtotal_penjualan": 10700000,
+      "diskon_penjualan": 200000,
+      "pajak_penjualan": 0,
+      "total_transaksi": 45,
+      "total_item_terjual": 320,
+      "total_pembelian": 8200000,
+      "total_faktur_beli": 6,
+      "total_piutang_aktif": 1500000,
+      "count_piutang_aktif": 3,
+      "total_hutang_aktif": 2400000,
+      "count_hutang_aktif": 2,
+      "total_nilai_aset_stok": 45000000,
+      "laba_kotor": 2300000,
+      "margin_persen": 21.9
+    },
+    "produk_terlaris": [
+      { "produk_id": "...", "nama": "Semen Tiga Roda 50kg", "satuan": "Sak", "qty_terjual": 120, "total_omset": 7800000 }
+    ],
+    "pelanggan_terbaik": [
+      { "pelanggan_id": "...", "nama": "Haji Agus Mandiri", "kode": "MBR-001", "tipe": "member", "level": "Gold", "total_transaksi": 8, "total_belanja": 4500000 }
+    ],
+    "stok_kritis": [
+      { "id": "...", "produk_id": "...", "nama": "Besi 10mm", "sku": "BSI-10", "satuan": "Batang", "stok": 0, "stok_min": 15, "status": "habis" }
+    ],
+    "metode_bayar": {
+      "tunai": { "total": 7500000, "count": 35 },
+      "transfer": { "total": 2000000, "count": 6 },
+      "qris": { "total": 500000, "count": 3 },
+      "tempo": { "total": 500000, "count": 1 }
+    },
+    "tren": [
+      { "tanggal": "2026-11-01", "penjualan": 1500000, "pembelian": 2000000, "transaksi": 5 }
+    ]
+  }
+  ```
+
+### 9.2 Laporan Penjualan (`laporan.penjualan`)
+- **Akses:** `owner`, `admin`
+- **Payload:** `{ "dari": "...", "sampai": "...", "kasir_id": "...", "pelanggan_id": "...", "metode_bayar": "...", "status_bayar": "...", "page": 1, "limit": 50 }`
+- **Response `data`:** `{ "rentang", "ringkasan": { "total_omset", "total_diskon", "total_pajak", "total_transaksi", "total_laba" }, "items": [ ... ], "total", "page", "limit" }`
+
+### 9.3 Laporan Pembelian (`laporan.pembelian`)
+- **Akses:** `owner`, `admin`
+- **Payload:** `{ "dari": "...", "sampai": "...", "supplier_id": "...", "status_bayar": "...", "page": 1, "limit": 50 }`
+- **Response `data`:** `{ "rentang", "ringkasan": { "total_pembelian", "total_diskon", "total_terbayar", "total_sisa_hutang", "total_faktur" }, "items": [ ... ], "total", "page", "limit" }`
+
+### 9.4 Laporan Laba Rugi Komprehensif (`laporan.labaRugi`)
+- **Akses:** `owner` (Khusus Pemilik Toko; role `admin` & `kasir` ditolak `FORBIDDEN`)
+- **Payload:** `{ "dari": "...", "sampai": "...", "periode": "..." }`
+- **Response `data`:**
+  - `ringkasan`: `{ "omset_kotor", "total_diskon", "omset_bersih", "total_hpp", "laba_kotor_sebelum_retur", "total_retur_penjualan", "laba_kotor_bersih", "margin_persen" }`
+  - `analisis_kategori`: `[ { "kategori_id", "kategori", "omset", "hpp", "laba", "margin_persen" } ]`
+  - `produk_margin_teratas`: `[ { "nama", "qty", "omset", "hpp", "laba", "margin_persen" } ]`
+
+### 9.5 Laporan Arus Kas Toko (`laporan.arusKas`)
+- **Akses:** `owner`, `admin`
+- **Payload:** `{ "dari": "...", "sampai": "...", "periode": "..." }`
+- **Response `data`:**
+  - `ringkasan`: `{ "total_kas_masuk", "total_kas_keluar", "arus_kas_bersih", "saldo_tunai_kasir", "saldo_bank_non_tunai" }`
+  - `rincian_masuk`: `{ "penjualan_tunai", "penjualan_transfer", "penjualan_qris", "piutang_tunai", "piutang_transfer", "piutang_qris", "subtotal_tunai", "subtotal_bank" }`
+  - `rincian_keluar`: `{ "pembelian_tunai", "pembelian_transfer", "hutang_tunai", "hutang_transfer", "refund_retur_tunai", "subtotal_tunai", "subtotal_bank" }`
+
+### 9.6 Laporan Valuasi Stok Persediaan (`laporan.stokValuasi`)
+- **Akses:** `owner`, `admin`
+- **Payload:** `{ "kategori_id": "...", "status_stok": "semua|kritis|habis|aman", "q": "...", "page": 1, "limit": 100 }`
+- **Response `data`:**
+  - `ringkasan`: `{ "total_item", "total_unit_stok", "total_nilai_aset", "total_habis", "total_kritis", "total_aman" }` (bidang `total_nilai_aset` bernilai `null` jika diakses oleh admin).
+  - `items`: `[ { "id", "produk_id", "sku", "barcode", "nama", "kategori", "satuan", "stok", "stok_min", "hpp", "nilai_aset", "status" } ]`
+
+---
+
+## 10. Peta Aksi Fase Selanjutnya (Roadmap)
+
 - **Fase 7 (Finalisasi):**
-  - Bungkus APK Android via Capacitor & optimasi akhir.
+  - Pembungkusan APK Android via Capacitor.
+  - Izin Bluetooth & Kamera Scan Barcode native.
+  - Backup otomatis terintegrasi Google Drive.
+  - Audit keamanan akhir dan rilis v1.0.0.
 
 

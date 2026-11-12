@@ -17,6 +17,23 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- [DASHBOARD] Implementasi Lengkap Modul Dashboard Eksekutif & Laporan Usaha (Fase 6):
+  - Modul front end `frontend/js/modules/laporan.js`: Arsitektur 6 tab komprehensif (Ringkasan Eksekutif, Laporan Penjualan, Laporan Pembelian, Buku Arus Kas, Laba Rugi & Margin, dan Valuasi Stok Persediaan).
+  - Kartu Ringkasan Realtime (Stat Cards): Omset Penjualan Bersih, Total Pembelian Barang Masuk, Piutang Pelanggan Berjalan, Hutang Supplier Berjalan, Estimasi Nilai Modal Aset Persediaan Stok (HPP), dan Laba Kotor Berjalan beserta Gross Profit Margin %.
+  - Grafik Tren Harian Visual Ringan Pure SVG: Bar chart interaktif responsif tanpa pustaka eksternal pihak ketiga (Zero Dependency, Lightweight, Retina/Mobile Ready).
+  - Analisis Produk Terlaris (Top 10) & Peringkat Pelanggan Terbaik (Top 10): Ranking kuantitas terjual, kontribusi omset per material, dan frekuensi belanja pelanggan member.
+  - Komposisi Metode Pembayaran: Diagram progress proporsional pembagian transaksi Tunai, Transfer Bank, QRIS, dan Tempo Kredit.
+  - Peringatan Stok Kritis & Kosong: Deteksi otomatis produk material dengan stok 0 (habis) atau di bawah batas minimum (kritis) beserta tombol langsung restock ke POS Pembelian.
+  - Penegakan Matriks Keamanan & Hak Akses (README Bagian 5):
+    - `laporan.dashboard`: Owner & Admin dapat mengakses ringkasan omset penjualan & pembelian, namun bidang `laba_kotor`, `margin_persen`, dan `total_nilai_aset_stok` disembunyikan/bernilai `null` bagi Admin.
+    - `laporan.labaRugi`: Dibatasi ketat khusus Pemilik Toko (Owner); Admin & Kasir ditolak dengan error `FORBIDDEN`.
+    - `laporan.stokValuasi`: Admin dapat melihat stok fisik dan HPP per item material, namun total nilai aset persediaan agregat hanya dapat dilihat oleh Owner.
+  - Laporan Buku Arus Kas (`laporan.arusKas`): Menghitung kas masuk (penjualan tunai langsung, pelunasan piutang transfer/tunai/qris) dan kas keluar (pembelian tunai, pembayaran hutang supplier, refund retur tunai), serta rekap saldo kas fisik kasir dan saldo bank toko.
+  - Fitur Ekspor CSV & Cetak PDF: Generator CSV instan dengan UTF-8 BOM untuk kompatibilitas sempurna dengan Microsoft Excel dan styling `@media print` presisi tinggi.
+  - Backend handler: `laporan.dashboard`, `laporan.penjualan`, `laporan.pembelian`, `laporan.labaRugi`, `laporan.arusKas`, `laporan.stokValuasi`.
+  - File: `backend/kode.gs`, `frontend/js/modules/laporan.js`, `frontend/js/api.js`, `frontend/js/app.js`, `frontend/js/utils/format.js`, `frontend/sw.js`, `docs/api.md`, `README.md`.
+  - Dampak: Visibilitas performa bisnis, analisa margin laba kotor, kendali persediaan gudang, dan pembukuan keuangan toko bangunan.
+  - Undo: `git checkout HEAD~1 -- frontend/js/modules/laporan.js`
 - [PELANGGAN] Implementasi Lengkap Modul Manajemen Pelanggan & Member (Fase 5):
   - Antarmuka `frontend/js/modules/pelanggan.js`: Kartu ringkasan statistik (Total Pelanggan, Total Member, Total Piutang Aktif, Total Poin Beredar).
   - Filter interaktif: Tipe pelanggan (Umum, Proyek, Toko, Kontraktor), Level Member (Reguler, Silver, Gold, Platinum), dan pencarian instan nama/kode/nomor HP.

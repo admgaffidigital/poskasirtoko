@@ -391,7 +391,7 @@ Sebuah modul dianggap selesai jika:
 - [x] **Fase 3 – Stok & Pembelian**: supplier, POS pembelian, kartu stok, stok opname *(Selesai & diuji)*
 - [x] **Fase 4 – Keuangan**: hutang & piutang, retur *(Selesai & diuji)*
 - [x] **Fase 5 – Loyalitas**: pelanggan, membership, poin & hadiah, price tag *(Selesai & diuji)*
-- [ ] **Fase 6 – Laporan**: dashboard lengkap
+- [x] **Fase 6 – Laporan**: dashboard lengkap *(Selesai & diuji)*
 - [ ] **Fase 7 – Finalisasi**: APK Capacitor, optimasi, uji menyeluruh, backup otomatis
 
 ## 18. Ide Inovasi

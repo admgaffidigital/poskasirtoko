@@ -123,3 +123,13 @@ export function formatPersen(val) {
   return `${n}%`;
 }
 
+/**
+ * Format angka umum (alias untuk formatQty)
+ * @param {number|string} val
+ * @returns {string}
+ */
+export function formatAngka(val) {
+  return formatQty(val);
+}
+
+

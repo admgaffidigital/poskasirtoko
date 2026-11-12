@@ -671,3 +671,4 @@ function bukaChatWhatsApp(hp, nama) {
   const url = `https://wa.me/${cleanHp}?text=${encodeURIComponent(pesan)}`;
   window.open(url, '_blank');
 }
+
