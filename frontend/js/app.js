@@ -375,10 +375,10 @@ class App {
     // Validasi Sesi & Hak Akses Rute
     const rutePublik = ['sistem', 'desainsistem'];
     if (!rutePublik.includes(rute.id)) {
-      const isLogged = pastikanLogin((user) => {
+      pastikanLogin((user) => {
         this.cekIzinDanRender(rute, user);
       });
-      if (!isLogged) return;
+      return;
     }
 
     const user = store.get('user');

@@ -52,6 +52,7 @@ export async function renderUsersModule(container) {
 
 async function muatUsers(container) {
   const area = $('#area-tabel-users', container);
+  if (!area) return;
   const userAktif = store.get('user');
 
   try {
@@ -142,12 +143,14 @@ async function muatUsers(container) {
       });
     });
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div><strong>Gagal Memuat Pengguna</strong>: ${escapeHtml(err.message)}</div>
-      </div>
-    `;
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div><strong>Gagal Memuat Pengguna</strong>: ${escapeHtml(err.message)}</div>
+        </div>
+      `;
+    }
   }
 }
 

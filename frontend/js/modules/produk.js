@@ -122,6 +122,7 @@ export async function renderProdukModule(container) {
 async function muatProduk(container, canEdit, isKasir) {
   const area = $('#area-daftar-produk', container);
   const areaPaginasi = $('#area-paginasi-produk', container);
+  if (!area) return;
 
   try {
     const res = await apiCall('produk.list', filterState);
@@ -306,12 +307,14 @@ async function muatProduk(container, canEdit, isKasir) {
       });
     }
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div><strong>Gagal Memuat Produk</strong>: ${escapeHtml(err.message)}</div>
-      </div>
-    `;
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div><strong>Gagal Memuat Produk</strong>: ${escapeHtml(err.message)}</div>
+        </div>
+      `;
+    }
   }
 }
 

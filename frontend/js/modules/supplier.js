@@ -198,12 +198,14 @@ async function muatSupplierList(container, canEdit, query = '') {
       });
     });
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div>Gagal memuat data supplier: ${escapeHtml(err.message)}</div>
-      </div>
-    `;
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div>Gagal memuat data supplier: ${escapeHtml(err.message)}</div>
+        </div>
+      `;
+    }
   }
 }
 

@@ -207,12 +207,14 @@ async function muatDataOpname(container, canEdit) {
       });
     });
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div>Gagal memuat data opname: ${escapeHtml(err.message)}</div>
-      </div>
-    `;
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div>Gagal memuat data opname: ${escapeHtml(err.message)}</div>
+        </div>
+      `;
+    }
   }
 }
 

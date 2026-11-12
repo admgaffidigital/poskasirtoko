@@ -364,15 +364,17 @@ async function muatDataPiutang(container) {
     });
 
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div>
-          <div class="fw-semibold">Gagal memuat daftar piutang</div>
-          <div class="text-xs">${escapeHtml(err.message || 'Terjadi kesalahan sistem')}</div>
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div>
+            <div class="fw-semibold">Gagal memuat daftar piutang</div>
+            <div class="text-xs">${escapeHtml(err.message || 'Terjadi kesalahan sistem')}</div>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
   }
 }
 
@@ -505,15 +507,17 @@ async function muatDataHutang(container) {
     });
 
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div>
-          <div class="fw-semibold">Gagal memuat data hutang</div>
-          <div class="text-xs">${escapeHtml(err.message || 'Terjadi kesalahan sistem')}</div>
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div>
+            <div class="fw-semibold">Gagal memuat data hutang</div>
+            <div class="text-xs">${escapeHtml(err.message || 'Terjadi kesalahan sistem')}</div>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
   }
 }
 

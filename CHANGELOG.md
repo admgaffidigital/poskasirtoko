@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-11-12
+
+### Fixed
+- [ROUTER] [PRODUK] Solusi TypeError: Cannot set properties of null (setting 'innerHTML') di `produk.js`:
+  - Mengatasi *race condition double-render* di `app.js` (`navigate`): Memastikan `cekIzinDanRender` hanya dieksekusi satu kali saat navigasi rute berautentikasi (sebelumnya `pastikanLogin` memanggil callback dan baris berikutnya memanggil ulang secara paralel).
+  - Menambahkan *null-check guard* (`if (!area) return;` dan `if (area) area.innerHTML = ...`) di `produk.js`, `kategori.js`, `supplier.js`, `users.js`, `hutang-piutang.js`, dan `opname.js` agar rendering aman dari unmounting atau transisi halaman asinkron.
+  - File: `frontend/js/app.js`, `frontend/js/modules/produk.js`, `frontend/js/modules/kategori.js`, `frontend/js/modules/supplier.js`, `frontend/js/modules/users.js`, `frontend/js/modules/hutang-piutang.js`, `frontend/js/modules/opname.js`, `CHANGELOG.md`.
+  - Dampak: Navigasi halaman produk dan seluruh modul stabil tanpa runtime exception.
+
 ## [1.0.6] - 2026-11-12
 
 ### Fixed & Enhanced

@@ -45,6 +45,7 @@ export async function renderKategoriModule(container) {
 
 async function muatKategori(container, canEdit) {
   const area = $('#area-kategori', container);
+  if (!area) return;
   try {
     const res = await apiCall('kategori.list', {});
     const items = res.items || [];
@@ -148,12 +149,14 @@ async function muatKategori(container, canEdit) {
       });
     }
   } catch (err) {
-    area.innerHTML = `
-      <div class="alert alert-danger">
-        ${ICONS.alertTriangle}
-        <div><strong>Gagal Memuat Kategori</strong>: ${escapeHtml(err.message)}</div>
-      </div>
-    `;
+    if (area) {
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ${ICONS.alertTriangle}
+          <div><strong>Gagal Memuat Kategori</strong>: ${escapeHtml(err.message)}</div>
+        </div>
+      `;
+    }
   }
 }
 
