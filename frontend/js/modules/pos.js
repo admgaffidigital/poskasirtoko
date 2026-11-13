@@ -166,7 +166,7 @@ export function renderPosModule(container) {
           <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted);">
             <div style="font-size: 32px; margin-bottom: var(--sp-2); opacity: 0.5;">🛒</div>
             <div>Keranjang masih kosong</div>
-            <div class="text-xs text-muted">Pilih produk dari katalog atau scan barcode (F2)</div>
+            <div class="text-xs text-muted">Pilih produk dari katalog atau scan barcode<span class="d-none-mobile"> (F2)</span></div>
           </div>
         </div>
 
@@ -209,10 +209,10 @@ export function renderPosModule(container) {
           <!-- Action Buttons: Hold & Pay -->
           <div class="row" style="gap: var(--sp-2); margin-top: var(--sp-3);">
             <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg" style="flex: 1;" title="Tahan Transaksi (F7)">
-              ${ICONS.clipboard} <span class="d-none-mobile">Tahan</span> (F7)
+              ${ICONS.clipboard} <span>Tahan</span><span class="d-none-mobile"> (F7)</span>
             </button>
             <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg" style="flex: 2; font-weight: 700; font-size: var(--fs-md);" title="Bayar Sekarang (F4)">
-              ${ICONS.wallet} BAYAR (F4)
+              ${ICONS.wallet} <span>BAYAR</span><span class="d-none-mobile"> (F4)</span>
             </button>
           </div>
         </div>

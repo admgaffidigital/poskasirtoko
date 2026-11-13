@@ -418,6 +418,22 @@ input[type="password"] {
     transform: scale(0.99);
   }
 
+  /* Indentasi kartu sub-kategori pada tampilan mobile ala native tree */
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub {
+    margin-left: 18px;
+    border-left: 3.5px solid var(--primary) !important;
+    background: var(--surface-2) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+    border-top-left-radius: var(--radius-sm);
+    border-bottom-left-radius: var(--radius-sm);
+  }
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub td:first-child .row {
+    padding-left: 0 !important;
+  }
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub td:first-child {
+    font-size: var(--fs-sm);
+  }
+
   .table-wrap:not(.keep-table) .table td {
     display: flex;
     align-items: center;
@@ -1052,6 +1068,11 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     animation: geser-naik var(--dur-normal) var(--ease);
+    touch-action: manipulation;
+    transition: transform 0.08s var(--ease), box-shadow var(--dur-fast);
+  }
+  .pos-mobile-floating-cart:active {
+    transform: scale(0.985);
   }
 }
 
@@ -1133,6 +1154,10 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 .pos-chip:hover {
   border-color: var(--primary);
   color: var(--text);
+}
+
+.pos-chip:active {
+  transform: scale(0.94);
 }
 
 .pos-chip.active {

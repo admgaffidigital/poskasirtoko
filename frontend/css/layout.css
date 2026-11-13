@@ -122,12 +122,17 @@
   align-items: center;
   gap: var(--sp-2);
   height: calc(var(--topbar-h) + var(--safe-top));
-  padding: var(--safe-top) var(--sp-2) 0 var(--sp-4);
+  padding: var(--safe-top) calc(var(--sp-2) + var(--safe-right)) 0 calc(var(--sp-4) + var(--safe-left));
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+[data-theme="dark"] .topbar {
+  background: rgba(15, 23, 42, 0.88);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 .topbar-logo { display: grid; }
 .topbar-logo .brand-logo { width: 34px; height: 34px; border-radius: var(--radius-md); }
@@ -147,6 +152,8 @@
   max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--sp-4);
+  padding-left: calc(var(--sp-4) + var(--safe-left));
+  padding-right: calc(var(--sp-4) + var(--safe-right));
 }
 @media (min-width: 768px) { .content { padding: var(--sp-6); } }
 .content.masuk { animation: halaman-masuk var(--dur-slow) var(--ease); }
@@ -190,6 +197,11 @@
   box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
+}
+[data-theme="dark"] .bottomnav {
+  background: rgba(15, 23, 42, 0.92);
+  border-top-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 }
 @media (min-width: 768px) { .bottomnav { display: none; } }
 .bottomnav-link {
