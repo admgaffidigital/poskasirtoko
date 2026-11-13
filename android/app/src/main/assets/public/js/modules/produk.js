@@ -145,7 +145,7 @@ export async function renderProdukModule(container) {
   $('#toggle-view', container)?.querySelectorAll('button').forEach((btn) => {
     btn.addEventListener('click', () => {
       filterState.view = btn.getAttribute('data-view');
-      try { localStorage.setItem('produk_view_mode', filterState.view); } catch (e) {}
+      try { localStorage.setItem('produk_view_mode', filterState.view); } catch (e) { }
       $('#toggle-view', container).querySelectorAll('button').forEach((b) => {
         b.setAttribute('aria-pressed', b.getAttribute('data-view') === filterState.view);
       });
@@ -176,11 +176,11 @@ async function muatProduk(container, canEdit, isKasir) {
       area.innerHTML = `
         <div class="card card-body">
           ${renderEmpty({
-            title: 'Produk Tidak Ditemukan',
-            text: filterState.q ? `Tidak ada barang yang cocok dengan kata kunci "${filterState.q}".` : 'Belum ada produk yang didaftarkan ke sistem.',
-            icon: ICONS.box,
-            actionButton: canEdit && !filterState.q ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Produk Pertama</button>` : ''
-          })}
+        title: 'Produk Tidak Ditemukan',
+        text: filterState.q ? `Tidak ada barang yang cocok dengan kata kunci "${filterState.q}".` : 'Belum ada produk yang didaftarkan ke sistem.',
+        icon: ICONS.box,
+        actionButton: canEdit && !filterState.q ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Produk Pertama</button>` : ''
+      })}
         </div>
       `;
       area.querySelector('.btn-tambah-pertama')?.addEventListener('click', () => {
@@ -279,7 +279,7 @@ async function muatProduk(container, canEdit, isKasir) {
         html += `
           <div class="card stack-sm" style="padding: var(--sp-4);">
             ${p.foto_url ? `
-              <div style="height: 110px; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); margin-bottom: var(--sp-2); border: 1px solid var(--border);">
+              <div style="aspect-ratio: 1 / 1; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); margin-bottom: var(--sp-2); border: 1px solid var(--border); position: relative;">
                 <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" onerror="this.parentElement.style.display='none';">
               </div>
             ` : ''}
@@ -491,7 +491,7 @@ async function bukaModalFormProduk(container, produk) {
   try {
     const kRes = await apiCall('kategori.list', {});
     daftarKategori = kRes.items || [];
-  } catch (e) {}
+  } catch (e) { }
 
   const optionsKat = susunOpsiKategoriHtml(daftarKategori, isEdit ? produk.kategori_id : '', '-- Tanpa Kategori --');
 
@@ -510,8 +510,8 @@ async function bukaModalFormProduk(container, produk) {
         <div class="field" style="margin-bottom: var(--sp-2);">
           <label class="field-label">Foto Produk (Google Drive)</label>
           <div class="row items-center" style="gap: var(--sp-3); flex-wrap: wrap;">
-            <!-- Box Preview Foto -->
-            <div id="prd-foto-preview-box" style="width: 80px; height: 80px; border-radius: var(--radius-lg); border: 2px dashed var(--border); display: grid; place-items: center; overflow: hidden; background: var(--surface-2); position: relative; flex-shrink: 0;">
+            <!-- Box Preview Foto (1:1 Square) -->
+            <div id="prd-foto-preview-box" style="width: 90px; height: 90px; border-radius: var(--radius-lg); border: 2px dashed var(--border); display: grid; place-items: center; overflow: hidden; background: var(--surface-2); position: relative; flex-shrink: 0;">
               <img src="${isEdit && produk.foto_url ? escapeHtml(produk.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${isEdit && produk.foto_url ? '' : 'display: none;'}">
               <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${isEdit && produk.foto_url ? 'display: none;' : ''}">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
