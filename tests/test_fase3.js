@@ -509,6 +509,48 @@ async function runTests() {
   const opnameFinal = env.cariById_('Opname', resOpnameDraft.id);
   assert(opnameFinal.status === 'disetujui', 'Status opname berubah menjadi "disetujui"');
 
+  // ==========================================
+  // [TEST 11] Diskon Persen Supplier Per Produk
+  // ==========================================
+  console.log('\n[TEST 11] Diskon Persen Supplier Per Produk');
+  // Semen stok 0 (setelah opname fisik kosong). Beli 10 sak @ 100.000 = 1.000.000.
+  // Diskon supplier 10% -> 900.000. Diskon faktur 50.000 -> tagihan 850.000.
+  // HPP efektif = 850.000 / 10 = 85.000 (stok lama 0).
+  const resBeliDiskon = env.aksiPembelianCreate_({
+    ...ctxOwner,
+    payload: {
+      supplier_id: supId,
+      diskon: 50000,
+      bayar: 850000,
+      items: [{
+        produk_id: semenId,
+        satuan: 'sak',
+        faktor: 1,
+        qty: 10,
+        harga_beli: 100000,
+        diskon_persen: 10
+      }]
+    }
+  });
+  const pbDiskon = env.cariById_('Pembelian', resBeliDiskon.id);
+  assert(pbDiskon.subtotal === 1000000, 'Subtotal kotor faktur Rp 1.000.000');
+  assert(pbDiskon.diskon_item === 100000, 'Total diskon supplier per barang Rp 100.000');
+  assert(pbDiskon.total === 850000, 'Total tagihan = 1.000.000 - 100.000 - 50.000 = Rp 850.000');
+  assert(resBeliDiskon.status_bayar === 'lunas', 'Status bayar lunas pada tagihan setelah diskon');
+  const itemDiskon = env.bacaSemua_('Pembelian_Item').filter(i => i.pembelian_id === pbDiskon.id)[0];
+  assert(itemDiskon.diskon_persen === 10 && itemDiskon.diskon_item === 100000, 'Item menyimpan diskon_persen 10% dan nilai Rp 100.000');
+  assert(itemDiskon.harga_beli === 100000 && itemDiskon.subtotal === 900000, 'Harga beli tetap kotor, subtotal item bersih Rp 900.000');
+  assert(env.cariById_('Produk', semenId).hpp === 85000, 'HPP dihitung dari harga bersih setelah diskon % dan diskon faktur: Rp 85.000');
+
+  let ditolakPersen = false;
+  try {
+    env.aksiPembelianCreate_({
+      ...ctxOwner,
+      payload: { supplier_id: supId, diskon: 0, bayar: 0, items: [{ produk_id: semenId, satuan: 'sak', faktor: 1, qty: 1, harga_beli: 1000, diskon_persen: 150 }] }
+    });
+  } catch (e) { ditolakPersen = true; }
+  assert(ditolakPersen, 'Diskon persen di atas 100% ditolak validasi');
+
   // Selesai
   console.log('\n=============================================');
   console.log(`TOTAL UJI FASE 3: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);

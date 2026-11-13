@@ -160,6 +160,10 @@ function renderFormInputBeli() {
               <label class="field-label" for="beli-harga">Harga Beli Satuan (Rp)</label>
               <input type="text" class="input tabular fw-bold" id="beli-harga" placeholder="0" disabled>
             </div>
+            <div class="field">
+              <label class="field-label" for="beli-diskon-persen">Diskon Supplier (%)</label>
+              <input type="number" class="input tabular fw-bold" id="beli-diskon-persen" min="0" max="100" step="any" placeholder="0" value="0" inputmode="decimal" disabled>
+            </div>
             <button type="button" class="btn btn-primary" id="btn-tambah-item-beli" disabled style="min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 6px;">
               <span>+ Tambah ke Faktur</span>
             </button>
@@ -168,7 +172,14 @@ function renderFormInputBeli() {
         </div>
 
         <!-- Tabel Daftar Item Masuk -->
-        <div class="card card-body">
+        <div class="card card-body stack" style="gap: var(--sp-2);">
+          <div class="beli-diskon-massal">
+            <label class="text-sm fw-semibold" for="beli-diskon-semua">Diskon supplier untuk semua barang (%)</label>
+            <div class="beli-diskon-massal-aksi">
+              <input type="number" class="input tabular" id="beli-diskon-semua" min="0" max="100" step="any" placeholder="cth: 5" inputmode="decimal">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-terapkan-diskon-semua">Terapkan ke Semua</button>
+            </div>
+          </div>
           <div class="table-wrap">
             <table class="table" id="tabel-keranjang-beli">
               <thead>
@@ -177,13 +188,14 @@ function renderFormInputBeli() {
                   <th>Satuan</th>
                   <th style="text-align: right;">Qty Beli</th>
                   <th style="text-align: right;">Harga Satuan</th>
+                  <th style="text-align: right;">Disk. (%)</th>
                   <th style="text-align: right;">Subtotal</th>
                   <th style="width: 40px;"></th>
                 </tr>
               </thead>
               <tbody id="tbody-keranjang-beli">
                 <tr>
-                  <td colspan="6" class="text-center text-muted" style="padding: var(--sp-4);">
+                  <td colspan="7" class="text-center text-muted" style="padding: var(--sp-4);">
                     Belum ada barang dimasukkan. Pilih produk di atas.
                   </td>
                 </tr>
@@ -205,6 +217,11 @@ function renderFormInputBeli() {
         <div class="row-between text-sm">
           <span class="text-muted">Subtotal Kotor</span>
           <span class="tabular fw-semibold" id="beli-ringkasan-subtotal">Rp 0</span>
+        </div>
+
+        <div class="row-between text-sm" id="row-beli-diskon-item" style="display: none;">
+          <span class="text-muted">Diskon Supplier (per barang)</span>
+          <span class="tabular fw-semibold text-danger" id="beli-ringkasan-diskon-item">- Rp 0</span>
         </div>
 
         <div class="field">
@@ -455,6 +472,22 @@ async function initFormInputBeli(container) {
     }
   });
 
+  // Terapkan diskon % supplier ke semua barang di faktur
+  $('#btn-terapkan-diskon-semua', container)?.addEventListener('click', () => {
+    if (!keranjangBeli.length) {
+      showToast('Belum ada barang di faktur.', 'warning');
+      return;
+    }
+    const persen = normalisasiPersen($('#beli-diskon-semua', container)?.value);
+    keranjangBeli.forEach((it) => {
+      it.diskon_persen = persen;
+      hitungUlangItemBeli(it);
+    });
+    renderTabelKeranjangBeli(container);
+    renderRingkasanBeli(container);
+    showToast(`Diskon ${persen}% diterapkan ke ${keranjangBeli.length} barang.`, 'success');
+  });
+
   // Input diskon & bayar listeners
   $('#beli-diskon-faktur', container)?.addEventListener('input', (e) => {
     e.target.value = formatRupiah(parseRupiah(e.target.value), false);
@@ -504,6 +537,11 @@ async function pilihProdukUntukBeli(container, item) {
   inputQty.disabled = false;
   inputHarga.disabled = false;
   btnTambah.disabled = false;
+  const inputDiskonPersen = $('#beli-diskon-persen', container);
+  if (inputDiskonPersen) {
+    inputDiskonPersen.disabled = false;
+    inputDiskonPersen.value = '0';
+  }
 
   inputHarga.value = formatRupiah(item.hpp, false);
 
@@ -524,6 +562,20 @@ async function pilihProdukUntukBeli(container, item) {
   inputQty.focus();
 }
 
+/** Normalisasi input persen: 0-100, maks 2 desimal. */
+function normalisasiPersen(val) {
+  const n = parseFloat(String(val ?? '').replace(',', '.'));
+  if (!isFinite(n) || n < 0) return 0;
+  return Math.round(Math.min(n, 100) * 100) / 100;
+}
+
+/** Hitung ulang kotor, diskon, dan subtotal bersih sebuah item keranjang. */
+function hitungUlangItemBeli(it) {
+  it.subtotal_kotor = Math.round(it.qty * it.harga_beli);
+  it.diskon_rp = Math.min(it.subtotal_kotor, Math.round(it.subtotal_kotor * (it.diskon_persen || 0) / 100));
+  it.subtotal = it.subtotal_kotor - it.diskon_rp;
+}
+
 function tambahItemKeKeranjangBeli(container) {
   if (!itemPilihan) return;
 
@@ -536,6 +588,8 @@ function tambahItemKeKeranjangBeli(container) {
   const faktor = Number(opt.getAttribute('data-faktor')) || 1;
   const qty = parseQty(inputQty.value);
   const hargaBeli = parseRupiah(inputHarga.value);
+  const inputDiskonPersen = $('#beli-diskon-persen', container);
+  const diskonPersen = normalisasiPersen(inputDiskonPersen?.value);
 
   if (qty <= 0) {
     showToast('Kuantitas beli harus lebih dari 0.', 'warning');
@@ -546,10 +600,9 @@ function tambahItemKeKeranjangBeli(container) {
     return;
   }
 
-  const subtotal = Math.round(qty * hargaBeli);
   const qtyDasar = Math.round(qty * faktor * 1000) / 1000;
 
-  keranjangBeli.push({
+  const itemBaru = {
     produk_id: itemPilihan.id,
     varian_id: itemPilihan.varian_id || '',
     nama: itemPilihan.nama,
@@ -559,8 +612,10 @@ function tambahItemKeKeranjangBeli(container) {
     qty: qty,
     qty_dasar: qtyDasar,
     harga_beli: hargaBeli,
-    subtotal: subtotal
-  });
+    diskon_persen: diskonPersen
+  };
+  hitungUlangItemBeli(itemBaru);
+  keranjangBeli.push(itemBaru);
 
   // Reset form pemilih item
   itemPilihan = null;
@@ -571,6 +626,10 @@ function tambahItemKeKeranjangBeli(container) {
   inputQty.disabled = true;
   inputHarga.value = '';
   inputHarga.disabled = true;
+  if (inputDiskonPersen) {
+    inputDiskonPersen.value = '0';
+    inputDiskonPersen.disabled = true;
+  }
   $('#btn-tambah-item-beli', container).disabled = true;
   $('#beli-preview-konversi', container).textContent = '';
 
@@ -586,7 +645,7 @@ function renderTabelKeranjangBeli(container) {
   if (!keranjangBeli.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center text-muted" style="padding: var(--sp-4);">
+        <td colspan="7" class="text-center text-muted" style="padding: var(--sp-4);">
           Belum ada barang dimasukkan. Pilih produk di atas.
         </td>
       </tr>
@@ -608,7 +667,14 @@ function renderTabelKeranjangBeli(container) {
           ${it.faktor > 1 ? `<div class="text-xs text-muted">(${formatQty(it.qty_dasar)} ${escapeHtml(it.satuan_dasar)})</div>` : ''}
         </td>
         <td style="text-align: right;" class="tabular" data-label="Harga Satuan">${formatRupiah(it.harga_beli)}</td>
-        <td style="text-align: right;" class="tabular fw-bold" data-label="Subtotal">${formatRupiah(it.subtotal)}</td>
+        <td style="text-align: right;" class="tabular" data-label="Disk. (%)">
+          <input type="number" class="input input-sm tabular input-diskon-item-beli" data-index="${idx}" min="0" max="100" step="any" value="${it.diskon_persen || 0}" inputmode="decimal" style="width: 72px; text-align: right;">
+          ${it.diskon_rp > 0 ? `<div class="text-xs text-danger">- ${formatRupiah(it.diskon_rp)}</div>` : ''}
+        </td>
+        <td style="text-align: right;" class="tabular fw-bold" data-label="Subtotal">
+          ${it.diskon_rp > 0 ? `<div class="text-xs text-muted" style="text-decoration: line-through;">${formatRupiah(it.subtotal_kotor)}</div>` : ''}
+          ${formatRupiah(it.subtotal)}
+        </td>
         <td style="text-align: center;" data-label="Aksi">
           <button type="button" class="btn btn-ghost btn-sm text-danger btn-icon btn-hapus-item-beli" data-index="${idx}" title="Hapus">
             ${ICONS.x}
@@ -619,6 +685,17 @@ function renderTabelKeranjangBeli(container) {
   });
 
   tbody.innerHTML = html;
+
+  tbody.querySelectorAll('.input-diskon-item-beli').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      const idx = Number(inp.getAttribute('data-index'));
+      if (!keranjangBeli[idx]) return;
+      keranjangBeli[idx].diskon_persen = normalisasiPersen(inp.value);
+      hitungUlangItemBeli(keranjangBeli[idx]);
+      renderTabelKeranjangBeli(container);
+      renderRingkasanBeli(container);
+    });
+  });
 
   tbody.querySelectorAll('.btn-hapus-item-beli').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -631,15 +708,23 @@ function renderTabelKeranjangBeli(container) {
 }
 
 function hitungTotalBeli(container) {
-  const subtotal = keranjangBeli.reduce((sum, it) => sum + it.subtotal, 0);
+  const subtotal = keranjangBeli.reduce((sum, it) => sum + it.subtotal, 0); // sudah setelah diskon item
   const diskon = parseRupiah($('#beli-diskon-faktur', container)?.value || 0);
   return Math.max(0, subtotal - diskon);
 }
 
 function renderRingkasanBeli(container) {
-  const subtotal = keranjangBeli.reduce((sum, it) => sum + it.subtotal, 0);
+  const subtotal = keranjangBeli.reduce((sum, it) => sum + it.subtotal_kotor, 0);
+  const diskonItem = keranjangBeli.reduce((sum, it) => sum + it.diskon_rp, 0);
   const diskon = parseRupiah($('#beli-diskon-faktur', container)?.value || 0);
-  const total = Math.max(0, subtotal - diskon);
+  const total = Math.max(0, subtotal - diskonItem - diskon);
+
+  const rowDiskonItem = $('#row-beli-diskon-item', container);
+  if (rowDiskonItem) {
+    rowDiskonItem.style.display = diskonItem > 0 ? '' : 'none';
+    const lbl = $('#beli-ringkasan-diskon-item', container);
+    if (lbl) lbl.textContent = `- ${formatRupiah(diskonItem)}`;
+  }
 
   const ringkasanItem = $('#beli-ringkasan-item', container);
   const ringkasanSubtotal = $('#beli-ringkasan-subtotal', container);
@@ -730,7 +815,8 @@ async function simpanPembelian(container) {
         satuan: it.satuan,
         faktor: it.faktor,
         qty: it.qty,
-        harga_beli: it.harga_beli
+        harga_beli: it.harga_beli,
+        diskon_persen: it.diskon_persen || 0
       }))
     };
 
@@ -882,6 +968,7 @@ async function bukaModalDetailPembelian(pembelianId) {
           <td data-label="Satuan">${escapeHtml(it.satuan)}</td>
           <td style="text-align: right;" class="tabular" data-label="Qty">${formatQty(it.qty)}</td>
           <td style="text-align: right;" class="tabular" data-label="Harga Satuan">${formatRupiah(it.harga_beli)}</td>
+          <td style="text-align: right;" class="tabular" data-label="Disk. (%)">${Number(it.diskon_persen) > 0 ? `${formatQty(it.diskon_persen)}%` : '-'}</td>
           <td style="text-align: right;" class="tabular fw-bold" data-label="Subtotal">${formatRupiah(it.subtotal)}</td>
         </tr>
       `;
@@ -910,6 +997,7 @@ async function bukaModalDetailPembelian(pembelianId) {
                 <th>Satuan</th>
                 <th style="text-align: right;">Qty</th>
                 <th style="text-align: right;">Harga Satuan</th>
+                <th style="text-align: right;">Disk. (%)</th>
                 <th style="text-align: right;">Subtotal</th>
               </tr>
             </thead>
@@ -924,6 +1012,11 @@ async function bukaModalDetailPembelian(pembelianId) {
             <span class="text-muted">Subtotal Kotor:</span>
             <span class="tabular fw-semibold">${formatRupiah(pb.subtotal)}</span>
           </div>
+          ${Number(pb.diskon_item) > 0 ? `
+          <div class="row-between text-sm">
+            <span class="text-muted">Diskon Supplier (per barang):</span>
+            <span class="tabular text-danger">- ${formatRupiah(pb.diskon_item)}</span>
+          </div>` : ''}
           <div class="row-between text-sm">
             <span class="text-muted">Diskon Faktur:</span>
             <span class="tabular text-danger">- ${formatRupiah(pb.diskon || 0)}</span>

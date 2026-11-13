@@ -123,9 +123,10 @@ const SKEMA = {
   Penjualan_Bayar: [['penjualan_id', 's'], ['metode', 's'], ['jumlah', 'n'], ['referensi', 's']],
   Pembelian: [['no_faktur', 's'], ['no_faktur_supplier', 's'], ['tanggal', 'd'], ['supplier_id', 's'],
     ['subtotal', 'n'], ['diskon', 'n'], ['total', 'n'], ['bayar', 'n'], ['status_bayar', 's'], ['jatuh_tempo', 'd'],
-    ['catatan', 's'], ['status', 's']],
+    ['catatan', 's'], ['status', 's'], ['diskon_item', 'n']],
   Pembelian_Item: [['pembelian_id', 's'], ['produk_id', 's'], ['varian_id', 's'], ['nama', 's'], ['satuan', 's'],
-    ['faktor', 'n'], ['qty', 'n'], ['qty_dasar', 'n'], ['harga_beli', 'n'], ['subtotal', 'n']],
+    ['faktor', 'n'], ['qty', 'n'], ['qty_dasar', 'n'], ['harga_beli', 'n'], ['subtotal', 'n'],
+    ['diskon_persen', 'n'], ['diskon_item', 'n']],
   Piutang: [['penjualan_id', 's'], ['pelanggan_id', 's'], ['total', 'n'], ['terbayar', 'n'], ['sisa', 'n'],
     ['jatuh_tempo', 'd'], ['status', 's']],
   Hutang: [['pembelian_id', 's'], ['supplier_id', 's'], ['total', 'n'], ['terbayar', 'n'], ['sisa', 'n'],
@@ -3054,7 +3055,9 @@ function aksiPembelianCreate_(ctx) {
 
   // Validasi dan normalisasi tiap item
   const itemsDiproses = [];
-  let subtotalKotor = 0;
+  let subtotalKotor = 0;      // sebelum diskon apa pun
+  let totalDiskonItem = 0;    // total diskon % per produk
+  let subtotalBersih = 0;     // setelah diskon item, sebelum diskon faktur
 
   for (let i = 0; i < rawItems.length; i++) {
     const it = rawItems[i];
@@ -3075,9 +3078,15 @@ function aksiPembelianCreate_(ctx) {
     const faktor = Math.max(1, Number(it.faktor) || 1);
     const qtyDasar = Math.round(qty * faktor * 1000) / 1000;
     const hargaBeli = V_.rupiah(it.harga_beli, 'Harga Beli (' + (it.nama || produk.nama) + ')', { wajib: true, min: 0 });
-    const itemSubtotal = Math.round(qty * hargaBeli);
+    // Diskon persen dari supplier per produk (0-100, maks 2 desimal)
+    const diskonPersen = Math.round(V_.angka(it.diskon_persen, 'Diskon % (' + (it.nama || produk.nama) + ')', { min: 0, max: 100 }) * 100) / 100;
+    const itemKotor = Math.round(qty * hargaBeli);
+    const diskonItem = Math.min(itemKotor, Math.round(itemKotor * diskonPersen / 100));
+    const itemSubtotal = itemKotor - diskonItem;
 
-    subtotalKotor += itemSubtotal;
+    subtotalKotor += itemKotor;
+    totalDiskonItem += diskonItem;
+    subtotalBersih += itemSubtotal;
 
     itemsDiproses.push({
       produk: produk,
@@ -3088,11 +3097,16 @@ function aksiPembelianCreate_(ctx) {
       qty: qty,
       qty_dasar: qtyDasar,
       harga_beli: hargaBeli,
+      diskon_persen: diskonPersen,
+      diskon_item: diskonItem,
       subtotal: itemSubtotal
     });
   }
 
-  const grandTotal = Math.max(0, subtotalKotor - diskonFaktur);
+  if (diskonFaktur > subtotalBersih) {
+    gagal_(KODE.VALIDATION, 'Diskon faktur tidak boleh melebihi subtotal setelah diskon item.');
+  }
+  const grandTotal = Math.max(0, subtotalBersih - diskonFaktur);
   const statusBayar = nominalBayar >= grandTotal ? 'lunas' : (nominalBayar > 0 ? 'sebagian' : 'hutang');
   const sisaHutang = Math.max(0, grandTotal - nominalBayar);
 
@@ -3106,6 +3120,7 @@ function aksiPembelianCreate_(ctx) {
     tanggal: tanggalBeli,
     supplier_id: supplier.id,
     subtotal: subtotalKotor,
+    diskon_item: totalDiskonItem,
     diskon: diskonFaktur,
     total: grandTotal,
     bayar: nominalBayar,
@@ -3126,8 +3141,8 @@ function aksiPembelianCreate_(ctx) {
   itemsDiproses.forEach(function (item) {
     // Alokasi diskon proporsional untuk harga beli efektif (Aturan Bisnis #10)
     let diskonItem = 0;
-    if (subtotalKotor > 0 && diskonFaktur > 0) {
-      diskonItem = Math.round(diskonFaktur * (item.subtotal / subtotalKotor));
+    if (subtotalBersih > 0 && diskonFaktur > 0) {
+      diskonItem = Math.round(diskonFaktur * (item.subtotal / subtotalBersih));
     }
     const itemNet = Math.max(0, item.subtotal - diskonItem);
     const hargaBeliEfektif = itemNet / item.qty;
@@ -3143,6 +3158,8 @@ function aksiPembelianCreate_(ctx) {
       qty: item.qty,
       qty_dasar: item.qty_dasar,
       harga_beli: item.harga_beli,
+      diskon_persen: item.diskon_persen,
+      diskon_item: item.diskon_item,
       subtotal: item.subtotal
     });
 

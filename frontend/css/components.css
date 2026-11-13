@@ -1998,9 +1998,22 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 @media (min-width: 640px) {
   .beli-inputs-grid {
-    grid-template-columns: 1.2fr 1fr 1.5fr auto;
+    grid-template-columns: 1.2fr 0.8fr 1.4fr 0.9fr auto;
     align-items: flex-end;
   }
+}
+.beli-diskon-massal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.beli-diskon-massal-aksi {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.beli-diskon-massal-aksi .input {
+  max-width: 120px;
 }
 
 /* ---------- Price Tag & Label Rak UI ---------- */
