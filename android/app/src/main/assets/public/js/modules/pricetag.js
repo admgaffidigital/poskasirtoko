@@ -295,9 +295,9 @@ export async function renderPriceTagModule(container) {
               <div style="min-width: 0;">
                 <div class="fw-semibold text-sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.nama)}</div>
                 <div class="text-xs text-muted" style="display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap;">
-                  ${(p.sku && p.sku !== '-') ? `<span class="badge badge-secondary" style="font-size: 10px; padding: 1px 5px;">SKU: ${escapeHtml(p.sku)}</span>` : ''}
+                  ${(p.sku && p.sku !== '-') ? `<span class="badge badge-secondary badge-sm">SKU: ${escapeHtml(p.sku)}</span>` : ''}
                   <span>${escapeHtml(p.satuan_dasar || '')}</span>
-                  <span class="badge ${stok > 0 ? 'badge-success' : 'badge-danger'}" style="font-size: 10px; padding: 1px 6px;">Stok: ${formatQty(stok)}</span>
+                  <span class="badge ${stok > 0 ? 'badge-success' : 'badge-danger'} badge-sm">Stok: ${formatQty(stok)}</span>
                 </div>
               </div>
             </div>

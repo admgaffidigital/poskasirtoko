@@ -177,8 +177,8 @@ async function muatProduk(container, canEdit, isKasir) {
                   <div class="fw-bold text-md prd-table-nama">${escapeHtml(p.nama)}</div>
                   <div class="row" style="gap: 4px; margin-top: 3px; flex-wrap: wrap;">
                     ${p.sku ? `<span class="mono text-xs text-muted">${escapeHtml(p.sku)}</span>` : ''}
-                    ${p.punya_varian && p.varian && p.varian.length ? `<span class="badge badge-info" style="font-size: 10px; padding: 1px 6px;">${p.varian.length} Varian</span>` : ''}
-                    ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge" style="font-size: 10px; padding: 1px 6px;">+${p.satuan_konversi.length} Satuan</span>` : ''}
+                    ${p.punya_varian && p.varian && p.varian.length ? `<span class="badge badge-info badge-sm">${p.varian.length} Varian</span>` : ''}
+                    ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge badge-sm">+${p.satuan_konversi.length} Satuan</span>` : ''}
                   </div>
                 </div>
                 <div class="d-none-desktop">

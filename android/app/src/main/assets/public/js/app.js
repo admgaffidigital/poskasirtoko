@@ -207,7 +207,7 @@ class App {
               <div>
                 <div class="row" style="gap: 6px; align-items: center;">
                   <span class="fw-bold" style="font-size: var(--fs-md);">Pembaruan Sistem Siap Diterapkan!</span>
-                  <span class="badge badge-warning" style="font-size: 10px; padding: 1px 6px;">Update Siap</span>
+                  <span class="badge badge-warning badge-sm">Update Siap</span>
                 </div>
                 <div class="text-xs text-muted" style="margin-top: 2px;">Versi baru telah diunduh di latar belakang. Ketuk tombol untuk memperbarui tanpa perlu instal ulang APK.</div>
               </div>
@@ -234,7 +234,7 @@ class App {
             <div>
               <div class="row" style="gap: 6px; align-items: center;">
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
-                <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">🟢 Aktif</span>
+                <span class="badge badge-success badge-sm">🟢 Aktif</span>
               </div>
               <div class="text-xs text-muted" style="margin-top: 2px;">Versi ${CONFIG.VERSION || 'v1.0.12'} • Berjalan offline dengan performa native</div>
             </div>
@@ -348,7 +348,7 @@ class App {
               ${ICONS.moon}
             </button>
             <button type="button" class="btn btn-sm btn-icon" id="btn-font-sidebar" title="Ukuran Font" aria-label="Ukuran Font">
-              <span class="fw-bold" style="font-size: 13px;">Aa</span>
+              <span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span>
             </button>
             <button type="button" class="btn btn-sm btn-ghost grow text-xs" id="btn-user-sidebar" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               Masuk
@@ -373,7 +373,7 @@ class App {
               </button>
 
               <button type="button" class="btn btn-ghost btn-icon btn-sm" id="btn-font-top" title="Ukuran Teks" aria-label="Ukuran Teks">
-                <span class="fw-bold" style="font-size: 13px;">Aa</span>
+                <span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span>
               </button>
 
               <a href="#/sistem" class="btn btn-ghost btn-icon btn-sm" title="Status Sistem" aria-label="Status Sistem">

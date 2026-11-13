@@ -559,7 +559,7 @@ async function bukaModalDetailPelanggan(pelangganId) {
           <div style="text-align: right;">
             <span class="badge ${isMember ? 'badge-primary' : 'badge-info'}">${escapeHtml(pel.tipe.toUpperCase())} ${isMember ? `(${pel.level || 'Reguler'})` : ''}</span>
             <div class="fw-bold text-warning" style="font-size: var(--fs-lg); margin-top: 4px;">
-              ${(pel.poin || 0).toLocaleString('id-ID')} <small style="font-size: 11px;">POIN</small>
+              ${(pel.poin || 0).toLocaleString('id-ID')} <small style="font-size: var(--fs-2xs);">POIN</small>
             </div>
             <div class="text-xs text-muted">Belanja Lunas: ${formatRupiah(pel.total_belanja || 0)}</div>
           </div>

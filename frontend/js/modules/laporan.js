@@ -80,7 +80,7 @@ export async function renderLaporanModule(container) {
             </div>
 
             <!-- Badge Tanggal Berjalan Aktif -->
-            <div class="badge badge-secondary" id="badge-periode-aktif" style="padding: 6px 12px; font-size: 11.5px; font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border);">
+            <div class="badge badge-secondary" id="badge-periode-aktif" style="padding: 6px 12px; font-size: var(--fs-xs); font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border);">
               📅 ${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}
             </div>
           </div>

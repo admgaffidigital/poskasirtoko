@@ -64,10 +64,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: var(--fw-semibold);
   letter-spacing: -0.015em;
 }
-h1 { font-size: var(--fs-2xl); }
-h2 { font-size: var(--fs-xl); }
-h3 { font-size: var(--fs-lg); }
-h4 { font-size: var(--fs-md); }
+h1 { font-size: clamp(1.4rem, 2.6vw, var(--fs-2xl)); font-weight: var(--fw-bold); }
+h2 { font-size: clamp(1.2rem, 2.1vw, var(--fs-xl)); font-weight: var(--fw-bold); }
+h3 { font-size: clamp(1.05rem, 1.6vw, var(--fs-lg)); font-weight: var(--fw-semibold); }
+h4 { font-size: var(--fs-md); font-weight: var(--fw-semibold); }
+h5 { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+h6 { font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
 
 p { margin: 0; }
 ul, ol { margin: 0; padding: 0; }
@@ -141,11 +143,17 @@ input[type="number"] {
 /* Utilitas teks */
 .text-muted { color: var(--text-muted); }
 .text-subtle { color: var(--text-subtle); }
-.text-sm { font-size: var(--fs-sm); }
+.text-2xs { font-size: var(--fs-2xs); }
 .text-xs { font-size: var(--fs-xs); }
+.text-sm { font-size: var(--fs-sm); }
+.text-md { font-size: var(--fs-md); }
 .text-lg { font-size: var(--fs-lg); }
+.text-xl { font-size: var(--fs-xl); }
+.text-2xl { font-size: var(--fs-2xl); }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
+.fw-normal { font-weight: var(--fw-normal); }
+.fw-medium { font-weight: var(--fw-medium); }
 .fw-semibold { font-weight: var(--fw-semibold); }
 .fw-bold { font-weight: var(--fw-bold); }
 .text-success { color: var(--success-text); }

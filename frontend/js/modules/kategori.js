@@ -183,7 +183,7 @@ async function muatKategori(container, canEdit) {
               </div>
             </td>
             <td data-label="Tipe & Hirarki">
-              <span class="badge" style="background: var(--surface-3); border: 1px solid var(--border); font-size: 11px;">Sub Kategori</span>
+              <span class="badge badge-sm" style="background: var(--surface-3); border: 1px solid var(--border);">Sub Kategori</span>
               <div class="text-xs text-muted" style="margin-top: 2px;">Induk: <strong>${escapeHtml(p.nama)}</strong></div>
             </td>
             <td class="num" data-label="Urutan">${c.urutan || 0}</td>

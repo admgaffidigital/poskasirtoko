@@ -249,7 +249,7 @@ async function muatDataHadiah(container) {
                   <div>
                     <span class="text-xs text-muted">Dibutuhkan:</span>
                     <div class="fw-bold text-warning font-mono" style="font-size: var(--fs-lg);">
-                      ${(h.poin_dibutuhkan || 0).toLocaleString('id-ID')} <small style="font-size: 11px;">POIN</small>
+                      ${(h.poin_dibutuhkan || 0).toLocaleString('id-ID')} <small style="font-size: var(--fs-2xs);">POIN</small>
                     </div>
                   </div>
                   <div style="text-align: right;">

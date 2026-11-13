@@ -137,7 +137,7 @@ export function renderPosModule(container) {
               <button type="button" id="btn-pending-list" class="btn btn-ghost btn-sm position-relative" title="Daftar Tahan / Pending (F8)">
                 ${ICONS.clipboard}
                 <span class="d-none-mobile">Tahan</span>
-                <span class="badge badge-warning" id="pending-badge" style="display: none; padding: 2px 6px; font-size: 10px;">0</span>
+                <span class="badge badge-warning badge-sm" id="pending-badge" style="display: none;">0</span>
               </button>
               <button type="button" id="btn-clear-cart" class="btn btn-ghost btn-icon btn-sm text-danger" title="Kosongkan Keranjang">
                 ${ICONS.rotateCcw}
@@ -182,7 +182,7 @@ export function renderPosModule(container) {
           <div class="pos-summary-row" id="row-diskon-transaksi" style="cursor: pointer;">
             <div class="row" style="gap: 4px; align-items: center;">
               <span class="text-muted text-sm">Diskon Transaksi</span>
-              <span class="badge badge-info" id="badge-diskon-trans" style="font-size: 10px; cursor: pointer;">+ Diskon</span>
+              <span class="badge badge-info badge-sm" id="badge-diskon-trans" style="cursor: pointer;">+ Diskon</span>
             </div>
             <span class="text-danger text-sm mono fw-medium" id="cart-diskon-trans">- Rp 0</span>
           </div>
@@ -507,14 +507,14 @@ export function renderPosModule(container) {
 
       let hppTag = '';
       if (isOwnerAtauAdmin && p.hpp) {
-        hppTag = `<span class="badge badge-info" style="font-size: 9px; padding: 1px 5px;">HPP ${formatRupiah(p.hpp)}</span>`;
+        hppTag = `<span class="badge badge-info badge-sm">HPP ${formatRupiah(p.hpp)}</span>`;
       }
 
       let infoOpsi = '';
       if (punyaVarian) {
-        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: rgba(255,255,255,0.85); color: var(--text);">${p.varian.length} Varian</span>`;
+        infoOpsi = `<span class="badge badge-dot badge-sm" style="background: rgba(255,255,255,0.85); color: var(--text);">${p.varian.length} Varian</span>`;
       } else if (punyaSatuanKonversi) {
-        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: rgba(255,255,255,0.85); color: var(--text);">${p.satuan_konversi.length + 1} Satuan</span>`;
+        infoOpsi = `<span class="badge badge-dot badge-sm" style="background: rgba(255,255,255,0.85); color: var(--text);">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
       const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
@@ -590,14 +590,14 @@ export function renderPosModule(container) {
 
       let hppTag = '';
       if (isOwnerAtauAdmin && p.hpp) {
-        hppTag = `<span class="badge badge-info" style="font-size: 9px; padding: 1px 5px;">HPP ${formatRupiah(p.hpp)}</span>`;
+        hppTag = `<span class="badge badge-info badge-sm">HPP ${formatRupiah(p.hpp)}</span>`;
       }
 
       let infoOpsi = '';
       if (punyaVarian) {
-        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: var(--surface-3);">${p.varian.length} Varian</span>`;
+        infoOpsi = `<span class="badge badge-dot badge-sm" style="background: var(--surface-3);">${p.varian.length} Varian</span>`;
       } else if (punyaSatuanKonversi) {
-        infoOpsi = `<span class="badge badge-dot" style="font-size: 10px; background: var(--surface-3);">${p.satuan_konversi.length + 1} Satuan</span>`;
+        infoOpsi = `<span class="badge badge-dot badge-sm" style="background: var(--surface-3);">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
       const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
@@ -963,9 +963,9 @@ export function renderPosModule(container) {
             <div style="flex: 1; padding-right: var(--sp-2);">
               <div class="fw-bold text-sm">${escapeHtml(it.nama)}</div>
               <div class="row" style="gap: 4px; align-items: center; margin-top: 2px;">
-                <span class="badge" style="background: var(--surface-3); font-size: 10px;">${escapeHtml(it.satuan)}</span>
+                <span class="badge badge-sm" style="background: var(--surface-3);">${escapeHtml(it.satuan)}</span>
                 ${labelTipeHarga}
-                ${it.diskon > 0 ? `<span class="badge badge-danger" style="font-size: 10px;">Hemat ${formatRupiah(it.diskon)}</span>` : ''}
+                ${it.diskon > 0 ? `<span class="badge badge-danger badge-sm">Hemat ${formatRupiah(it.diskon)}</span>` : ''}
               </div>
             </div>
             <button type="button" class="btn btn-ghost btn-icon btn-sm text-danger btn-hapus-item" data-idx="${idx}" title="Hapus Item" style="width: 24px; height: 24px;">
@@ -977,17 +977,17 @@ export function renderPosModule(container) {
             <!-- Qty Stepper -->
             <div class="row" style="gap: 2px; align-items: center;">
               <button type="button" class="btn btn-secondary btn-icon btn-sm btn-item-min" data-idx="${idx}" style="width: 28px; height: 28px;">-</button>
-              <input type="number" class="input text-center fw-bold input-item-qty" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" style="width: 65px; height: 28px; padding: 2px 4px; font-size: 12px;" />
+              <input type="number" class="input text-center fw-bold input-item-qty" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" style="width: 65px; height: 28px; padding: 2px 4px; font-size: var(--fs-xs);" />
               <button type="button" class="btn btn-secondary btn-icon btn-sm btn-item-plus" data-idx="${idx}" style="width: 28px; height: 28px;">+</button>
             </div>
 
             <!-- Harga & Diskon Button -->
             <div style="text-align: right;">
               <div class="row" style="gap: 4px; justify-content: flex-end; align-items: baseline;">
-                <button type="button" class="btn btn-ghost btn-sm btn-edit-harga" data-idx="${idx}" style="padding: 0 4px; font-size: 11px; text-decoration: underline;" title="Ubah Harga Satuan">
+                <button type="button" class="btn btn-ghost btn-sm btn-edit-harga" data-idx="${idx}" style="padding: 0 4px; font-size: var(--fs-2xs); text-decoration: underline;" title="Ubah Harga Satuan">
                   @${formatRupiah(it.harga, false)}
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm btn-item-diskon" data-idx="${idx}" style="padding: 0 4px; font-size: 11px; color: var(--danger-text);" title="Beri Diskon Item">
+                <button type="button" class="btn btn-ghost btn-sm btn-item-diskon" data-idx="${idx}" style="padding: 0 4px; font-size: var(--fs-2xs); color: var(--danger-text);" title="Beri Diskon Item">
                   % Diskon
                 </button>
               </div>

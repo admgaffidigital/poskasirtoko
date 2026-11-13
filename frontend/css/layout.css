@@ -49,7 +49,7 @@
 .sidebar-nav { flex: 1; overflow-y: auto; padding: var(--sp-2) var(--sp-3) var(--sp-4); scrollbar-width: thin; }
 .nav-group-title {
   padding: var(--sp-4) var(--sp-3) var(--sp-1);
-  font-size: 0.6875rem;
+  font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -81,7 +81,7 @@
   border-radius: 0 3px 3px 0;
   background: var(--primary);
 }
-.nav-link .nav-fase { margin-left: auto; font-size: 0.625rem; color: var(--slate-500); }
+.nav-link .nav-fase { margin-left: auto; font-size: var(--fs-2xs); color: var(--slate-500); }
 
 .sidebar-footer { padding: var(--sp-3); border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: var(--sp-2); }
 .sidebar-footer .btn { --btn-bg: transparent; --btn-border: rgba(255, 255, 255, 0.12); --btn-text: var(--nav-text); --btn-bg-hover: rgba(255, 255, 255, 0.06); }
@@ -138,7 +138,7 @@
 .topbar-logo .brand-logo { width: 34px; height: 34px; border-radius: var(--radius-md); }
 .topbar-logo .brand-logo svg { width: 20px; height: 20px; }
 @media (min-width: 768px) { .topbar-logo { display: none; } .topbar { padding-left: var(--sp-6); padding-right: var(--sp-4); } }
-.topbar-title { flex: 1; min-width: 0; font-size: var(--fs-lg); font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.01em; }
+.topbar-title { flex: 1; min-width: 0; font-size: clamp(1rem, 2vw, var(--fs-lg)); font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.01em; }
 .topbar-actions { display: flex; align-items: center; gap: var(--sp-1); }
 
 /* Indikator koneksi */
@@ -160,7 +160,8 @@
 @keyframes halaman-masuk { from { opacity: 0; transform: translateY(6px); } }
 
 .page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.page-header p { color: var(--text-muted); font-size: var(--fs-sm); margin-top: var(--sp-1); }
+.page-header h2 { font-size: clamp(1.2rem, 2.2vw, var(--fs-xl)); font-weight: var(--fw-bold); letter-spacing: -0.02em; }
+.page-header p { color: var(--text-muted); font-size: var(--fs-sm); margin-top: 3px; line-height: 1.4; }
 @media (max-width: 767px) {
   .page-header {
     margin-bottom: var(--sp-2);
@@ -214,7 +215,7 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
   position: relative;
   touch-action: manipulation;
@@ -393,7 +394,7 @@
 }
 
 .splash-title {
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -402,7 +403,7 @@
 }
 
 .splash-subtitle {
-  font-size: 13.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   font-weight: var(--fw-medium);
   margin: 0;
@@ -448,7 +449,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -470,7 +471,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   opacity: 0.8;
   letter-spacing: 0.02em;

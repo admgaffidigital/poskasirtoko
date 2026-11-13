@@ -72,7 +72,7 @@
   --btn-bg-hover: var(--green-600);
   box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
 }
-.btn-sm { min-height: var(--control-h-sm); padding: 0 var(--sp-3); font-size: var(--fs-xs); border-radius: var(--radius-sm); }
+.btn-sm { min-height: var(--control-h-sm); padding: 0 var(--sp-3); font-size: 0.8125rem; font-weight: var(--fw-semibold); border-radius: var(--radius-sm); }
 .btn-lg { min-height: var(--control-h-lg); padding: 0 var(--sp-6); font-size: var(--fs-md); border-radius: var(--radius-lg); }
 .btn-block { display: flex; width: 100%; }
 .btn-icon { padding: 0; width: var(--control-h); }
@@ -289,7 +289,7 @@ input[type="password"] {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: var(--fs-md);
+  font-size: clamp(1rem, 1.5vw, var(--fs-lg));
   font-weight: var(--fw-semibold);
   line-height: var(--lh-tight);
 }
@@ -320,8 +320,22 @@ input[type="password"] {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
-.stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: var(--fw-semibold); }
-.stat-value { font-size: var(--fs-2xl); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.stat-label {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--fw-semibold);
+  line-height: 1.25;
+}
+.stat-value {
+  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  word-break: break-word;
+}
 .stat-delta { font-size: var(--fs-xs); font-weight: var(--fw-semibold); margin-top: 2px; }
 
 /* ---------- Badge & chip ---------- */
@@ -338,6 +352,14 @@ input[type="password"] {
   color: var(--text-muted);
   white-space: nowrap;
   letter-spacing: 0.01em;
+  line-height: 1;
+}
+.badge-sm {
+  height: 20px;
+  padding: 0 7px;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  gap: 4px;
 }
 .badge-primary { background: var(--primary-soft); color: var(--primary-soft-text); }
 .badge-success { background: var(--success-soft); color: var(--success-text); }
@@ -453,7 +475,7 @@ input[type="password"] {
   /* Label sel di sisi kiri */
   .table-wrap:not(.keep-table) .table td[data-label]::before {
     content: attr(data-label);
-    font-size: 0.72rem;
+    font-size: var(--fs-2xs);
     font-weight: var(--fw-semibold);
     color: var(--text-muted);
     text-transform: uppercase;
@@ -900,8 +922,8 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .autocomplete-item-meta .badge {
-  font-size: 10px;
-  padding: 1px 6px;
+  font-size: var(--fs-2xs);
+  padding: 2px 7px;
   font-weight: var(--fw-semibold);
 }
 
@@ -911,7 +933,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .autocomplete-item-side-label {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 
@@ -1300,7 +1322,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .pos-card-sku {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-family: var(--font-mono);
   color: var(--text-muted);
   overflow: hidden;
@@ -1356,12 +1378,12 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .pos-card-price-unit {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 
 .pos-card-grosir-tag {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
   color: var(--success-text);
   line-height: 1.2;
@@ -1470,7 +1492,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .pos-badge-sku {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   font-family: var(--font-mono);
   color: var(--text-muted);
   background: var(--surface-2);
@@ -1480,7 +1502,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .pos-list-grosir-tag {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
   color: var(--success-text);
   line-height: 1.2;
@@ -1502,14 +1524,14 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 
 .pos-list-price-val {
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 800;
   color: var(--primary);
   letter-spacing: -0.01em;
 }
 
 .pos-list-unit {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 
@@ -1517,7 +1539,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   padding: 4px 12px;
   min-height: 30px;
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   display: inline-flex;
   align-items: center;
