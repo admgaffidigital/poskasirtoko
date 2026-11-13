@@ -716,7 +716,10 @@ function buatKomposisiMetodeBayar(metodeMap, totalOmset) {
 /* ========================================================================== */
 function renderTabPenjualan(container, data) {
   const user = store.get('user');
-  const isOwner = user && user.role === 'owner';
+  const role = user?.role;
+  const isOwner = role === 'owner';
+  const isAdmin = role === 'admin';
+  const canVoid = isOwner || isAdmin;
   const r = data.ringkasan || {};
   const items = data.items || [];
 
@@ -747,7 +750,7 @@ function renderTabPenjualan(container, data) {
 
       <!-- Tabel Transaksi Penjualan -->
       <div class="card">
-        <div class="card-header" style="justify-content: space-between; align-items: center;">
+        <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
           <h3 class="card-title">${ICONS.shoppingBag} Daftar Nota Penjualan (${items.length} data)</h3>
           <div class="cluster no-print" style="gap: var(--sp-2);">
             <select id="sel-filter-bayar-jual" class="input input-sm" style="width: 140px;">
@@ -779,37 +782,52 @@ function renderTabPenjualan(container, data) {
                   <th>Status</th>
                   <th style="text-align: right;">Total Transaksi</th>
                   ${isOwner ? `<th style="text-align: right;">Laba Kotor</th>` : ''}
-                  <th class="no-print" style="text-align: center; width: 60px;">Aksi</th>
+                  <th class="no-print" style="text-align: center; width: ${canVoid ? '100px' : '60px'};">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 ${items.length === 0 ? `
-                  <tr><td colspan="${isOwner ? 9 : 8}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data penjualan sesuai filter</td></tr>
-                ` : items.map((j) => `
-                  <tr>
-                    <td data-label="No Nota"><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(j.no_nota)}</span></td>
+                  <tr><td colspan="${isOwner ? (canVoid ? 9 : 9) : (canVoid ? 8 : 8)}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data penjualan sesuai filter</td></tr>
+                ` : items.map((j) => {
+                  const isVoided = j.status === 'void';
+                  return `
+                  <tr style="${isVoided ? 'opacity: 0.65; background: var(--bg-surface-variant);' : ''}">
+                    <td data-label="No Nota">
+                      <span style="font-family: monospace; font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</span>
+                    </td>
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(j.tanggal)}</td>
                     <td data-label="Kasir">${escapeHtml(j.kasir_nama || 'Kasir')}</td>
                     <td data-label="Pelanggan">${escapeHtml(j.pelanggan_nama || 'Umum')}</td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(j.metode_bayar || 'tunai')}</span></td>
                     <td data-label="Status">
-                      <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'tempo' || j.status_bayar === 'belum_lunas' ? 'badge-danger' : 'badge-warning')}">
-                        ${escapeHtml(j.status_bayar)}
-                      </span>
+                      ${isVoided ? `
+                        <span class="badge badge-danger" title="Transaksi Dibatalkan / Void">Dibatalkan</span>
+                      ` : `
+                        <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'tempo' || j.status_bayar === 'belum_lunas' ? 'badge-danger' : 'badge-warning')}">
+                          ${escapeHtml(j.status_bayar || 'lunas')}
+                        </span>
+                      `}
                     </td>
-                    <td style="text-align: right; font-weight: var(--fw-bold);" data-label="Total Transaksi">${formatRupiah(j.total)}</td>
+                    <td style="text-align: right; font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}" data-label="Total Transaksi">${formatRupiah(j.total)}</td>
                     ${isOwner ? `
-                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);" data-label="Laba Kotor">
-                        ${formatRupiah(j.laba_kotor || 0)}
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: ${isVoided ? 'var(--text-muted)' : 'var(--success)'};" data-label="Laba Kotor">
+                        ${isVoided ? '-' : formatRupiah(j.laba_kotor || 0)}
                       </td>
                     ` : ''}
-                    <td class="no-print" style="text-align: center;" data-label="Aksi">
-                      <button type="button" class="btn btn-sm btn-ghost btn-detail-nota" data-id="${j.id}" title="Lihat Rincian Item">
-                        ${ICONS.eye}
-                      </button>
+                    <td class="no-print" style="text-align: center; white-space: nowrap;" data-label="Aksi">
+                      <div class="cluster" style="justify-content: center; gap: 4px;">
+                        <button type="button" class="btn btn-sm btn-ghost btn-detail-nota" data-id="${j.id}" title="Lihat Rincian Item">
+                          ${ICONS.eye}
+                        </button>
+                        ${canVoid && !isVoided ? `
+                          <button type="button" class="btn btn-sm btn-ghost text-danger btn-void-nota" data-id="${j.id}" data-nonota="${escapeHtml(j.no_nota)}" data-total="${formatRupiah(j.total)}" title="Batalkan / Hapus Transaksi (Hanya Owner & Admin)">
+                            ${ICONS.trash}
+                          </button>
+                        ` : ''}
+                      </div>
                     </td>
                   </tr>
-                `).join('')}
+                `}).join('')}
               </tbody>
             </table>
           </div>
@@ -838,39 +856,182 @@ function renderTabPenjualan(container, data) {
   $$('.btn-detail-nota', container).forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id');
-      bukaModalDetailNota(id);
+      bukaModalDetailNota(id, () => {
+        muatDataTabAktif(container.closest('#modul-laporan-root'));
+      });
     });
   });
+
+  // Tombol Batalkan / Hapus Nota (Khusus Owner & Admin)
+  if (canVoid) {
+    $$('.btn-void-nota', container).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const noNota = btn.getAttribute('data-nonota');
+        const total = btn.getAttribute('data-total');
+        konfirmasiVoidNota(id, noNota, total, () => {
+          muatDataTabAktif(container.closest('#modul-laporan-root'));
+        });
+      });
+    });
+  }
+}
+
+/**
+ * Modal Konfirmasi & Eksekusi Pembatalan Nota (Void)
+ * Fitur Khusus: Hanya Owner dan Admin yang memiliki otorisasi
+ */
+function konfirmasiVoidNota(penjualanId, noNota, totalFormatted, onSelesai) {
+  const user = store.get('user');
+  const role = user?.role;
+  const isOwner = role === 'owner';
+  const isAdmin = role === 'admin';
+
+  if (!isOwner && !isAdmin) {
+    showToast('Akses ditolak: Hanya Pemilik (Owner) dan Admin yang dapat membatalkan pesanan.', 'error');
+    return;
+  }
+
+  const roleLabel = isOwner ? 'Pemilik Toko (Owner)' : 'Administrator';
+
+  const modalBody = `
+    <div class="stack" style="gap: var(--sp-3);">
+      <div class="alert alert-danger" style="display: flex; gap: var(--sp-2); align-items: flex-start;">
+        <span style="flex-shrink: 0; margin-top: 2px;">${ICONS.alertTriangle}</span>
+        <div style="font-size: var(--fs-sm);">
+          <strong>Otorisasi Pembatalan Nota (Void)</strong>
+          <p style="margin: 4px 0 0 0;">
+            Anda masuk sebagai <strong>${roleLabel}</strong>. Membatalkan nota <strong>${escapeHtml(noNota)}</strong> (${totalFormatted}) akan:
+          </p>
+          <ul style="margin: 6px 0 0 var(--sp-4); padding: 0; line-height: 1.5;">
+            <li>Mengembalikan seluruh stok barang pada transaksi ini ke master persediaan otomatis.</li>
+            <li>Mencatat riwayat mutasi balik ('void') pada kartu stok untuk audit barang.</li>
+            <li>Membatalkan jurnal arus kas masuk terkait transaksi ini.</li>
+          </ul>
+          ${isAdmin ? `
+            <div style="margin-top: 6px; padding: 4px 8px; background: rgba(0,0,0,0.06); border-radius: 4px; font-size: var(--fs-xs);">
+              ℹ️ Catatan Admin: Sesuai SOP, Admin hanya dapat membatalkan transaksi hari ini. Untuk transaksi tanggal lampau silakan hubungi Pemilik Toko.
+            </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="label" for="input-alasan-void" style="font-weight: var(--fw-semibold);">
+          Alasan Pembatalan (Wajib Diisi): <span style="color: var(--danger);">*</span>
+        </label>
+        <textarea id="input-alasan-void" class="input" rows="3" placeholder="Contoh: Pembeli keliru memilih varian / salah input kasir / pelanggan membatalkan pembelian" style="resize: vertical; font-size: var(--fs-sm);"></textarea>
+        <div style="font-size: var(--fs-xs); color: var(--text-muted); margin-top: 4px;">
+          Alasan akan tercatat permanen di riwayat audit pembatalan transaksi.
+        </div>
+      </div>
+    </div>
+  `;
+
+  const footerHtml = `
+    <div class="cluster" style="justify-content: flex-end; gap: var(--sp-2);">
+      <button type="button" class="btn btn-secondary btn-sm btn-batal-void">Batal</button>
+      <button type="button" class="btn btn-danger btn-sm btn-submit-void">
+        ${ICONS.trash}
+        <span>Ya, Batalkan Nota Ini</span>
+      </button>
+    </div>
+  `;
+
+  const modal = showModal({
+    title: `Batalkan Nota: ${escapeHtml(noNota)}`,
+    body: modalBody,
+    footer: footerHtml,
+    size: 'md'
+  });
+
+  const btnBatal = modal.el.querySelector('.btn-batal-void');
+  if (btnBatal) btnBatal.addEventListener('click', () => modal.close());
+
+  const btnSubmit = modal.el.querySelector('.btn-submit-void');
+  if (btnSubmit) {
+    btnSubmit.addEventListener('click', async () => {
+      const inputAlasan = modal.el.querySelector('#input-alasan-void');
+      const alasan = inputAlasan ? inputAlasan.value.trim() : '';
+
+      if (!alasan) {
+        showToast('Alasan pembatalan wajib diisi.', 'warning');
+        inputAlasan?.focus();
+        return;
+      }
+
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<span>Memproses...</span>';
+
+      try {
+        const res = await kirimRequest('penjualan.void', { id: penjualanId, alasan });
+        if (!res || !res.ok) {
+          showToast(res ? (res.error || res.message) : 'Gagal membatalkan transaksi', 'error');
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = `${ICONS.trash} <span>Ya, Batalkan Nota Ini</span>`;
+          return;
+        }
+
+        modal.close();
+        showToast(`Nota ${escapeHtml(noNota)} berhasil dibatalkan (void). Stok barang telah dikembalikan!`, 'success', 4000);
+        if (typeof onSelesai === 'function') onSelesai();
+      } catch (err) {
+        showToast(err.message || 'Terjadi kesalahan sistem saat membatalkan transaksi', 'error');
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = `${ICONS.trash} <span>Ya, Batalkan Nota Ini</span>`;
+      }
+    });
+  }
 }
 
 /** Modal Detail Nota Penjualan */
-async function bukaModalDetailNota(penjualanId) {
+async function bukaModalDetailNota(penjualanId, onUpdated) {
   try {
     const res = await kirimRequest('penjualan.detail', { id: penjualanId });
     if (!res || !res.ok) {
-      showToast(res ? res.error : 'Gagal mengambil detail nota', 'danger');
+      showToast(res ? (res.error || res.message) : 'Gagal mengambil detail nota', 'error');
       return;
     }
 
     const d = res.data;
     const j = d.penjualan;
     const items = d.items || [];
+    const user = store.get('user');
+    const role = user?.role;
+    const canVoid = role === 'owner' || role === 'admin';
+    const isVoided = j.status === 'void';
 
     const modalBody = `
       <div class="stack" style="gap: var(--sp-3);">
+        ${isVoided ? `
+          <div class="alert alert-danger" style="display: flex; gap: var(--sp-2); align-items: flex-start; margin-bottom: var(--sp-1);">
+            <span style="flex-shrink: 0; margin-top: 2px;">${ICONS.alertTriangle}</span>
+            <div style="font-size: var(--fs-sm);">
+              <strong>TRANSAKSI INI TELAH DIBATALKAN (VOID)</strong>
+              ${j.alasan_void ? `<div style="margin-top: 2px;"><strong>Alasan:</strong> ${escapeHtml(j.alasan_void)}</div>` : ''}
+              ${j.void_at ? `<div style="font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px;">Waktu Batal: ${formatTanggal(j.void_at)}</div>` : ''}
+            </div>
+          </div>
+        ` : ''}
+
         <div class="cluster" style="justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: var(--sp-2);">
           <div>
-            <div style="font-weight: var(--fw-bold); font-size: var(--fs-lg);">${escapeHtml(j.no_nota)}</div>
+            <div style="font-weight: var(--fw-bold); font-size: var(--fs-lg); font-family: monospace; ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</div>
             <div style="font-size: var(--fs-xs); color: var(--text-muted);">${formatTanggal(j.tanggal)}</div>
           </div>
           <div style="text-align: right;">
-            <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : 'badge-danger'}">${escapeHtml(j.status_bayar)}</span>
+            ${isVoided ? `
+              <span class="badge badge-danger">Dibatalkan (Void)</span>
+            ` : `
+              <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : 'badge-danger'}">${escapeHtml(j.status_bayar || 'lunas')}</span>
+            `}
           </div>
         </div>
 
-        <div style="font-size: var(--fs-sm);">
-          <div>Kasir: <strong>${escapeHtml(j.kasir_id || '-')}</strong></div>
-          <div>Pelanggan: <strong>${escapeHtml(j.pelanggan_id || 'Pelanggan Umum')}</strong></div>
+        <div style="font-size: var(--fs-sm); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-2);">
+          <div>Kasir: <strong>${escapeHtml(d.kasir?.nama || d.kasir?.username || j.kasir_id || '-')}</strong></div>
+          <div>Pelanggan: <strong>${escapeHtml(d.pelanggan?.nama || j.pelanggan_id || 'Pelanggan Umum')}</strong></div>
+          <div>Metode Bayar: <strong>${escapeHtml(j.metode_bayar || 'tunai').toUpperCase()}</strong></div>
         </div>
 
         <div class="table-wrap">
@@ -888,7 +1049,7 @@ async function bukaModalDetailNota(penjualanId) {
                 <tr>
                   <td>
                     <div style="font-weight: var(--fw-medium);">${escapeHtml(it.nama)}</div>
-                    <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.satuan)}</div>
+                    <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.satuan || '')}</div>
                   </td>
                   <td style="text-align: right;">${formatAngka(it.qty)}</td>
                   <td style="text-align: right;">${formatRupiah(it.harga)}</td>
@@ -908,19 +1069,50 @@ async function bukaModalDetailNota(penjualanId) {
               <span>Diskon:</span><span>- ${formatRupiah(j.diskon)}</span>
             </div>
           ` : ''}
+          ${j.pajak > 0 ? `
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-sm); color: var(--info);">
+              <span>PPN / Pajak:</span><span>+ ${formatRupiah(j.pajak)}</span>
+            </div>
+          ` : ''}
           <div class="cluster" style="justify-content: space-between; font-weight: var(--fw-bold); font-size: var(--fs-base); margin-top: 4px;">
-            <span>TOTAL BELANJA:</span><span style="color: var(--primary);">${formatRupiah(j.total)}</span>
+            <span>TOTAL TRANSAKSI:</span><span style="color: var(--primary);">${formatRupiah(j.total)}</span>
           </div>
         </div>
       </div>
     `;
 
-    showModal({
+    const footerHtml = `
+      <div class="cluster" style="justify-content: space-between; width: 100%; flex-wrap: wrap; gap: var(--sp-2);">
+        <div>
+          ${canVoid && !isVoided ? `
+            <button type="button" class="btn btn-danger btn-sm btn-modal-void-nota" title="Batalkan / Hapus Transaksi Ini">
+              ${ICONS.trash}
+              <span>Batalkan Transaksi (Void)</span>
+            </button>
+          ` : ''}
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm btn-modal-tutup">Tutup</button>
+      </div>
+    `;
+
+    const modal = showModal({
       title: 'Rincian Transaksi Penjualan',
-      body: modalBody
+      body: modalBody,
+      footer: footerHtml
     });
+
+    const btnTutup = modal.el.querySelector('.btn-modal-tutup');
+    if (btnTutup) btnTutup.addEventListener('click', () => modal.close());
+
+    const btnVoid = modal.el.querySelector('.btn-modal-void-nota');
+    if (btnVoid) {
+      btnVoid.addEventListener('click', () => {
+        modal.close();
+        konfirmasiVoidNota(j.id, j.no_nota, formatRupiah(j.total), onUpdated);
+      });
+    }
   } catch (err) {
-    showToast(err.message, 'danger');
+    showToast(err.message, 'error');
   }
 }
 
