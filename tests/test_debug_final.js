@@ -755,6 +755,84 @@ async function runAudit() {
     assert.strictEqual(resGet.data.versi, '1.0.0');
   });
 
+  test('12. Auto-Generate SKU, Barcode EAN-13, Kode Member, dan Normalisasi HP Member', () => {
+    function callApi(action, token, payload) {
+      return JSON.parse(app.doPost({
+        postData: { contents: JSON.stringify({ action: action, token: token, payload: payload }) }
+      }).content);
+    }
+
+    // 1. Produk tanpa SKU & Barcode otomatis dibuatkan oleh backend
+    const resPrdAuto = callApi('produk.create', tokenOwner, {
+      nama: 'Triplek Meranti 9mm Super',
+      kategori_id: '',
+      satuan_dasar: 'lembar',
+      hpp: 85000,
+      harga_ritel: 110000,
+      punya_varian: true,
+      varian: [
+        { nama_varian: 'Ukuran Standar 122x244', harga_ritel: 110000, stok: 20 }
+      ],
+      satuan_konversi: [
+        { satuan: 'Ikat (5 lbr)', faktor: 5, harga_ritel: 525000 }
+      ]
+    });
+    assert.strictEqual(resPrdAuto.ok, true, 'Produk auto-generate harus sukses dibuat');
+    const pData = resPrdAuto.data;
+    assert.ok(pData.sku && pData.sku.startsWith('SKU-'), 'SKU induk otomatis dibuat');
+    assert.strictEqual(pData.barcode.length, 13, 'Barcode EAN-13 induk 13 digit');
+    assert.ok(pData.barcode.startsWith('20'), 'Barcode in-house diawali 20');
+
+    // Cek varian & satuan di DB
+    const semuaVarian = app.bacaSemua_('Varian').filter(v => v.produk_id === pData.id);
+    assert.strictEqual(semuaVarian.length, 1);
+    assert.ok(semuaVarian[0].sku.startsWith(pData.sku + '-V'), 'SKU varian diturunkan dari SKU induk');
+    assert.strictEqual(semuaVarian[0].barcode.length, 13, 'Barcode varian 13 digit EAN-13');
+
+    const semuaSatuan = app.bacaSemua_('Satuan_Konversi').filter(s => s.produk_id === pData.id);
+    assert.strictEqual(semuaSatuan.length, 1);
+    assert.strictEqual(semuaSatuan[0].barcode.length, 13, 'Barcode satuan konversi 13 digit EAN-13');
+
+    // 2. Member Baru dengan HP format internasional (+62) dan tanpa kode member
+    const resMember1 = callApi('pelanggan.create', tokenOwner, {
+      nama: 'Pak Slamet Mandiri',
+      tipe: 'member',
+      hp: '+62 878-9988-7766',
+      limit_kredit: 10000000
+    });
+    assert.strictEqual(resMember1.ok, true, 'Member baru harus berhasil disimpan');
+    const m1 = resMember1.data.pelanggan;
+    assert.ok(m1.kode && m1.kode.startsWith('MBR-'), 'Kode member otomatis di-generate');
+    assert.strictEqual(m1.hp, '087899887766', 'Nomor HP dinormalisasi ke 08...');
+
+    // 3. Mendaftar nomor yang sama dengan format berbeda (62878... spasi) harus ditolak informatif
+    const resDuplikat = callApi('pelanggan.create', tokenOwner, {
+      nama: 'Slamet Palsu',
+      tipe: 'member',
+      hp: '62 878 9988 7766'
+    });
+    assert.strictEqual(resDuplikat.ok, false);
+    assert.strictEqual(resDuplikat.code, 'CONFLICT');
+    assert.ok(resDuplikat.error.includes('Pak Slamet Mandiri'), 'Pesan error menyebutkan nama member yang bentrok');
+    assert.ok(resDuplikat.error.includes(m1.kode), 'Pesan error menyebutkan kode member yang bentrok');
+
+    // 4. Nomor HP pada member nonaktif tidak memblokir pendaftaran member baru
+    const resMemberNonaktif = callApi('pelanggan.create', tokenOwner, {
+      nama: 'Member Inaktif Lama',
+      tipe: 'member',
+      hp: '085511223344',
+      aktif: false
+    });
+    assert.strictEqual(resMemberNonaktif.ok, true);
+
+    const resMemberBaruPakaiHpSama = callApi('pelanggan.create', tokenOwner, {
+      nama: 'Member Aktif Baru',
+      tipe: 'member',
+      hp: '+6285511223344'
+    });
+    assert.strictEqual(resMemberBaruPakaiHpSama.ok, true, 'Nomor dari member nonaktif tidak memblokir member baru');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

@@ -333,6 +333,7 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
   const isEdit = Boolean(pelanggan && pelanggan.id);
   const user = store.get('user');
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin');
+  let isSubmitting = false;
 
   const modalBody = document.createElement('div');
   modalBody.className = 'stack';
@@ -361,12 +362,16 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
         <div class="field grow">
           <label class="field-label" for="pel-hp">Nomor HP / WhatsApp *</label>
           <input type="tel" class="input" id="pel-hp" value="${escapeHtml(pelanggan ? pelanggan.hp : '')}" placeholder="Contoh: 081234567890">
-          <span class="text-xs text-muted" id="ket-hp">Wajib diisi untuk pendaftaran member loyalitas</span>
+          <span class="text-xs text-muted" id="ket-hp">Wajib diisi (min 7 digit) untuk member loyalitas</span>
         </div>
 
-        <div class="field" style="width: 160px;">
-          <label class="field-label" for="pel-kode">Kode Member</label>
+        <div class="field" style="width: 170px;">
+          <div class="row items-center justify-between" style="margin-bottom: 4px;">
+            <label class="field-label" for="pel-kode" style="margin-bottom: 0;">Kode Member</label>
+            ${!isEdit ? '<button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-kode-pel" title="Generate kode otomatis" style="padding: 1px 6px; font-size: 11px;">🎲 Auto</button>' : ''}
+          </div>
           <input type="text" class="input font-mono uppercase" id="pel-kode" value="${escapeHtml(pelanggan ? pelanggan.kode : '')}" placeholder="Auto (MBR-...)" ${!isOwnerOrAdmin && isEdit ? 'disabled' : ''}>
+          <span class="text-xs text-muted">Dibuat otomatis bila kosong</span>
         </div>
       </div>
 
@@ -427,6 +432,7 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
   const sectionMember = $('#section-member-options', modalBody);
   const inputHp = $('#pel-hp', modalBody);
   const inputLimit = $('#pel-limit', modalBody);
+  const inputKode = $('#pel-kode', modalBody);
 
   const sesuaikanTampilanTipe = () => {
     if (inputTipe.value === 'member') {
@@ -440,6 +446,29 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
 
   inputTipe?.addEventListener('change', sesuaikanTampilanTipe);
   sesuaikanTampilanTipe();
+
+  // Generator instan Kode Member
+  $('#btn-auto-kode-pel', modalBody)?.addEventListener('click', () => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const rnd = Math.floor(1000 + Math.random() * 9000);
+    const prefix = inputTipe.value === 'member' ? 'MBR' : 'PLG';
+    if (inputKode) {
+      inputKode.value = `${prefix}-${y}${m}${d}-${rnd}`;
+      showToast(`Kode otomatis dibuat: ${inputKode.value}`, 'info', 2000);
+    }
+  });
+
+  // Normalisasi otomatis nomor HP saat input/blur
+  inputHp?.addEventListener('blur', () => {
+    let val = inputHp.value.trim().replace(/[^\d+]/g, '');
+    if (val.startsWith('+62')) val = '0' + val.slice(3);
+    else if (val.startsWith('62')) val = '0' + val.slice(2);
+    else if (val.length > 0 && val.startsWith('8')) val = '0' + val;
+    inputHp.value = val.replace(/\D/g, '');
+  });
 
   inputLimit?.addEventListener('input', () => {
     const n = parseRupiah(inputLimit.value);
@@ -456,23 +485,33 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
 
   $('#form-pelanggan', modalBody)?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     const nama = $('#pel-nama', modalBody)?.value.trim();
     const tipe = inputTipe?.value;
-    const hp = inputHp?.value.trim();
+    let hp = inputHp?.value.trim();
     const alamat = $('#pel-alamat', modalBody)?.value.trim();
-    const kode = $('#pel-kode', modalBody)?.value.trim();
+    const kode = inputKode?.value.trim();
     const level = $('#pel-level', modalBody)?.value;
     const limit_kredit = parseRupiah(inputLimit ? inputLimit.value : 0);
     const tempo_hari = parseInt($('#pel-tempo', modalBody)?.value || 30, 10);
     const aktif = $('#pel-aktif', modalBody)?.checked;
 
+    // Normalisasi HP
+    if (hp) {
+      let clean = hp.replace(/[^\d+]/g, '');
+      if (clean.startsWith('+62')) clean = '0' + clean.slice(3);
+      else if (clean.startsWith('62')) clean = '0' + clean.slice(2);
+      else if (clean.length > 0 && clean.startsWith('8')) clean = '0' + clean;
+      hp = clean.replace(/\D/g, '');
+    }
+
     if (!nama) {
       showToast('Nama pelanggan wajib diisi', 'warning');
       return;
     }
-    if (tipe === 'member' && !hp) {
-      showToast('Nomor HP wajib diisi untuk pendaftaran Member', 'warning');
+    if (tipe === 'member' && (!hp || hp.length < 7)) {
+      showToast('Nomor HP wajib diisi (minimal 7 digit) untuk pendaftaran Member', 'warning');
       return;
     }
 
@@ -481,6 +520,7 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
       btnSimpan.disabled = true;
       btnSimpan.innerHTML = '<span class="spinner spinner-sm"></span> Menyimpan...';
     }
+    isSubmitting = true;
 
     try {
       if (isEdit) {
@@ -515,11 +555,13 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
       modalInstance.close();
       if (onSaved) onSaved();
     } catch (err) {
-      showToast(err.message || 'Gagal menyimpan data pelanggan', 'error');
+      showToast(err.message || 'Gagal menyimpan data pelanggan', 'error', 5000);
       if (btnSimpan) {
         btnSimpan.disabled = false;
         btnSimpan.innerHTML = `${ICONS.check} <span>${isEdit ? 'Simpan Perubahan' : 'Tambah Pelanggan'}</span>`;
       }
+    } finally {
+      isSubmitting = false;
     }
   });
 }

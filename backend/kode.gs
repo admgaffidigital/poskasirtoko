@@ -763,7 +763,7 @@ function cacheHapus_(key) {
  * WAJIB dipanggil di dalam denganKunci_ agar tidak ada nomor ganda.
  */
 function nomorBerikut_(prefix) {
-  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR'];
+  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG'];
   if (valid.indexOf(prefix) === -1) gagal_(KODE.SERVER, 'Prefix nomor tidak dikenal: ' + prefix);
   const key = prefix + '-' + Utilities.formatDate(new Date(), APP.TZ, 'yyyyMMdd');
   const baris = bacaSemua_('Counter').filter(function (c) { return c.key === key; })[0];
@@ -776,6 +776,42 @@ function nomorBerikut_(prefix) {
     tambahBaris_('Counter', [{ key: key, nilai: nilai }], 'sistem');
   }
   return key + '-' + ('000' + nilai).slice(-4);
+}
+
+/**
+ * Hitung digit checksum EAN-13 (modulo 10).
+ * Digit posisi genap (0-based indeks ganjil) dikali 3, posisi ganjil dikali 1.
+ */
+function hitungChecksumEan13_(str12) {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const digit = parseInt(str12.charAt(i), 10) || 0;
+    sum += (i % 2 === 0) ? digit : digit * 3;
+  }
+  const rem = sum % 10;
+  return rem === 0 ? 0 : 10 - rem;
+}
+
+/**
+ * Generate barcode 13-digit EAN-13 in-house retail GS1 (Prefix 20 + yyMMdd + 4-digit seq + check digit).
+ * Format numerik murni 13 digit, 100% kompatibel dengan scanner USB/Bluetooth & kamera.
+ */
+function barcodeBerikut_() {
+  const tglStr = Utilities.formatDate(new Date(), APP.TZ, 'yyMMdd');
+  const key = 'BC-' + tglStr;
+  const baris = bacaSemua_('Counter').filter(function (c) { return c.key === key; })[0];
+  let nilai;
+  if (baris) {
+    nilai = baris.nilai + 1;
+    ubahBaris_('Counter', [{ id: baris.id, data: { nilai: nilai } }], 'sistem');
+  } else {
+    nilai = 1;
+    tambahBaris_('Counter', [{ key: key, nilai: nilai }], 'sistem');
+  }
+  const seq = ('000' + nilai).slice(-4);
+  const raw12 = '20' + tglStr + seq;
+  const checksum = hitungChecksumEan13_(raw12);
+  return raw12 + String(checksum);
 }
 
 /** Catat aksi sensitif ke Log_Audit. Tidak pernah menggagalkan aksi utama. */
@@ -1236,8 +1272,17 @@ function aksiProdukList_(ctx) {
 function aksiProdukCreate_(ctx) {
   const p = ctx.payload || {};
   const nama = V_.teks(p.nama, 'Nama Produk', { wajib: true, maks: 200 });
-  const sku = V_.teks(p.sku, 'SKU Produk', { maks: 50 });
-  const barcode = V_.teks(p.barcode, 'Barcode', { maks: 50 });
+
+  // Auto-generate SKU & Barcode jika tidak diisi manual
+  let sku = V_.teks(p.sku, 'SKU Produk', { maks: 50 });
+  if (!sku) {
+    sku = nomorBerikut_('SKU');
+  }
+  let barcode = V_.teks(p.barcode, 'Barcode', { maks: 50 });
+  if (!barcode) {
+    barcode = barcodeBerikut_();
+  }
+
   const kategoriId = p.kategori_id ? String(p.kategori_id).trim() : '';
   const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 });
   const hpp = V_.rupiah(p.hpp, 'HPP', { bawaan: 0 });
@@ -1280,7 +1325,7 @@ function aksiProdukCreate_(ctx) {
   const varianInput = Array.isArray(p.varian) ? p.varian : [];
   let totalStokVarian = 0;
   if (punyaVarian && varianInput.length) {
-    const barisVarian = varianInput.map(function (v) {
+    const barisVarian = varianInput.map(function (v, idx) {
       const vHpp = V_.rupiah(v.hpp || hpp, 'HPP Varian', { bawaan: hpp });
       const vRitel = V_.rupiah(v.harga_ritel || hargaRitel, 'Harga Ritel Varian', { wajib: true });
       const vGrosir = V_.rupiah(v.harga_grosir || hargaGrosir, 'Harga Grosir Varian', { bawaan: vRitel });
@@ -1288,11 +1333,21 @@ function aksiProdukCreate_(ctx) {
       if (vGrosir < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga grosir varian tidak boleh di bawah HPP.');
       const vStok = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
       totalStokVarian += vStok;
+
+      let vSku = V_.teks(v.sku, 'SKU Varian', { maks: 50 });
+      if (!vSku) {
+        vSku = sku + '-V' + (idx + 1);
+      }
+      let vBarcode = V_.teks(v.barcode, 'Barcode Varian', { maks: 50 });
+      if (!vBarcode) {
+        vBarcode = barcodeBerikut_();
+      }
+
       return {
         produk_id: produkBaru.id,
         nama_varian: V_.teks(v.nama_varian, 'Nama Varian', { wajib: true }),
-        sku: V_.teks(v.sku, 'SKU Varian', { maks: 50 }),
-        barcode: V_.teks(v.barcode, 'Barcode Varian', { maks: 50 }),
+        sku: vSku,
+        barcode: vBarcode,
         hpp: vHpp,
         harga_ritel: vRitel,
         harga_grosir: vGrosir,
@@ -1317,11 +1372,17 @@ function aksiProdukCreate_(ctx) {
       const sRitel = V_.rupiah(s.harga_ritel, 'Harga Ritel Satuan (' + s.satuan + ')', { wajib: true });
       const sGrosir = V_.rupiah(s.harga_grosir, 'Harga Grosir Satuan', { bawaan: sRitel });
       if (sRitel < hppSatuan) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga konversi satuan ' + s.satuan + ' tidak boleh di bawah HPP konversi (' + hppSatuan + ').');
+
+      let sBarcode = V_.teks(s.barcode, 'Barcode Satuan', { maks: 50 });
+      if (!sBarcode) {
+        sBarcode = barcodeBerikut_();
+      }
+
       return {
         produk_id: produkBaru.id,
         satuan: V_.teks(s.satuan, 'Nama Satuan Konversi', { wajib: true }),
         faktor: faktor,
-        barcode: V_.teks(s.barcode, 'Barcode Satuan', { maks: 50 }),
+        barcode: sBarcode,
         harga_ritel: sRitel,
         harga_grosir: sGrosir
       };
@@ -1357,8 +1418,14 @@ function aksiProdukUpdate_(ctx) {
   if (!lama || lama.deleted) gagal_(KODE.NOT_FOUND, 'Produk tidak ditemukan.');
 
   const nama = V_.teks(p.nama, 'Nama Produk', { wajib: true, maks: 200 });
-  const sku = V_.teks(p.sku, 'SKU Produk', { maks: 50 });
-  const barcode = V_.teks(p.barcode, 'Barcode', { maks: 50 });
+  let sku = V_.teks(p.sku, 'SKU Produk', { maks: 50 });
+  if (!sku) {
+    sku = lama.sku || nomorBerikut_('SKU');
+  }
+  let barcode = V_.teks(p.barcode, 'Barcode', { maks: 50 });
+  if (!barcode) {
+    barcode = lama.barcode || barcodeBerikut_();
+  }
   const kategoriId = p.kategori_id ? String(p.kategori_id).trim() : '';
   const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 });
   const hpp = V_.rupiah(p.hpp, 'HPP', { bawaan: lama.hpp });
@@ -1399,7 +1466,7 @@ function aksiProdukUpdate_(ctx) {
     const idBaru = {};
     let totalStokVarian = 0;
 
-    p.varian.forEach(function (v) {
+    p.varian.forEach(function (v, idx) {
       const vHpp = V_.rupiah(v.hpp || hpp, 'HPP Varian', { bawaan: hpp });
       const vRitel = V_.rupiah(v.harga_ritel || hargaRitel, 'Harga Ritel Varian', { wajib: true });
       const vGrosir = V_.rupiah(v.harga_grosir || hargaGrosir, 'Harga Grosir Varian', { bawaan: vRitel });
@@ -1407,14 +1474,23 @@ function aksiProdukUpdate_(ctx) {
       const vStok = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
       totalStokVarian += vStok;
 
+      let vSku = V_.teks(v.sku, 'SKU Varian', { maks: 50 });
+      if (!vSku) {
+        vSku = (sku || lama.sku) + '-V' + (idx + 1);
+      }
+      let vBarcode = V_.teks(v.barcode, 'Barcode Varian', { maks: 50 });
+      if (!vBarcode) {
+        vBarcode = barcodeBerikut_();
+      }
+
       if (v.id) {
         idBaru[v.id] = true;
         ubahBaris_('Varian', [{
           id: v.id,
           data: {
             nama_varian: V_.teks(v.nama_varian, 'Nama Varian', { wajib: true }),
-            sku: V_.teks(v.sku, 'SKU Varian', { maks: 50 }),
-            barcode: V_.teks(v.barcode, 'Barcode Varian', { maks: 50 }),
+            sku: vSku,
+            barcode: vBarcode,
             hpp: vHpp,
             harga_ritel: vRitel,
             harga_grosir: vGrosir,
@@ -1427,8 +1503,8 @@ function aksiProdukUpdate_(ctx) {
         const vBaru = tambahBaris_('Varian', [{
           produk_id: id,
           nama_varian: V_.teks(v.nama_varian, 'Nama Varian', { wajib: true }),
-          sku: V_.teks(v.sku, 'SKU Varian', { maks: 50 }),
-          barcode: V_.teks(v.barcode, 'Barcode Varian', { maks: 50 }),
+          sku: vSku,
+          barcode: vBarcode,
           hpp: vHpp,
           harga_ritel: vRitel,
           harga_grosir: vGrosir,
@@ -1462,11 +1538,17 @@ function aksiProdukUpdate_(ctx) {
       const sRitel = V_.rupiah(s.harga_ritel, 'Harga Ritel Satuan', { wajib: true });
       const sGrosir = V_.rupiah(s.harga_grosir, 'Harga Grosir Satuan', { bawaan: sRitel });
       if (sRitel < hppSatuan) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga konversi satuan ' + s.satuan + ' tidak boleh di bawah HPP.');
+
+      let sBarcode = V_.teks(s.barcode, 'Barcode Satuan', { maks: 50 });
+      if (!sBarcode) {
+        sBarcode = barcodeBerikut_();
+      }
+
       return {
         produk_id: id,
         satuan: V_.teks(s.satuan, 'Nama Satuan', { wajib: true }),
         faktor: faktor,
-        barcode: V_.teks(s.barcode, 'Barcode Satuan', { maks: 50 }),
+        barcode: sBarcode,
         harga_ritel: sRitel,
         harga_grosir: sGrosir
       };
@@ -4309,6 +4391,25 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
 /* 9.5 FASE 5: PELANGGAN, MEMBER, KATALOG HADIAH, & PENUKARAN POIN            */
 /* ========================================================================== */
 
+/**
+ * Normalisasi nomor HP Indonesia:
+ * - Menghapus karakter non-digit selain tanda tambah.
+ * - Mengubah format "+62..." atau "62..." menjadi "0...".
+ * - Mengubah format tanpa nol awalan "8..." menjadi "08...".
+ */
+function bersihkanHp_(hp) {
+  if (hp === null || hp === undefined) return '';
+  let str = String(hp).trim().replace(/[^\d+]/g, '');
+  if (str.indexOf('+62') === 0) {
+    str = '0' + str.slice(3);
+  } else if (str.indexOf('62') === 0) {
+    str = '0' + str.slice(2);
+  } else if (str.length > 0 && str.indexOf('8') === 0) {
+    str = '0' + str;
+  }
+  return str.replace(/\D/g, '');
+}
+
 /** pelanggan.detail — Rincian pelanggan, piutang aktif, riwayat transaksi & mutasi poin. */
 function aksiPelangganDetail_(ctx) {
   const p = ctx.payload || {};
@@ -4376,32 +4477,38 @@ function aksiPelangganCreate_(ctx) {
   const p = ctx.payload || {};
   const nama = V_.teks(p.nama, 'Nama Pelanggan', { min: 2, maks: 100 });
   const tipe = p.tipe === 'member' ? 'member' : 'umum';
-  const hp = String(p.hp || '').trim();
+  const hpRaw = String(p.hp || '').trim();
+  const hpBersih = bersihkanHp_(hpRaw);
 
-  if (tipe === 'member' && !hp) {
-    gagal_(KODE.VALIDATION, 'Nomor HP wajib diisi untuk pelanggan berstatus Member.');
+  if (tipe === 'member' && (!hpBersih || hpBersih.length < 7)) {
+    gagal_(KODE.VALIDATION, 'Nomor HP wajib diisi (minimal 7 digit) untuk pelanggan berstatus Member.');
   }
 
   const semuaPelanggan = bacaSemua_('Pelanggan');
 
   // Validasi keunikan nomor HP untuk member aktif
-  if (tipe === 'member' && hp) {
-    const hpSudahAda = semuaPelanggan.some(function (pel) {
-      return !pel.deleted && pel.tipe === 'member' && pel.hp === hp;
-    });
-    if (hpSudahAda) {
-      gagal_(KODE.CONFLICT, 'Nomor HP "' + hp + '" sudah terdaftar untuk member lain.');
+  if (tipe === 'member' && hpBersih) {
+    let memberBentrok = null;
+    for (let i = 0; i < semuaPelanggan.length; i++) {
+      const pel = semuaPelanggan[i];
+      if (pel.deleted || pel.aktif === false || pel.tipe !== 'member') continue;
+      const pelHp = bersihkanHp_(pel.hp);
+      if (pelHp && pelHp === hpBersih) {
+        memberBentrok = pel;
+        break;
+      }
+    }
+    if (memberBentrok) {
+      gagal_(KODE.CONFLICT, 'Nomor HP ' + hpBersih + ' sudah terdaftar untuk member: "' + memberBentrok.nama + '" (Kode: ' + (memberBentrok.kode || '-') + ').');
     }
   }
 
-  // Kode Member: jika tidak diberikan, auto-generate via Counter MBR
+  // Kode Member: jika tidak diberikan, auto-generate via Counter MBR / PLG
   let kode = String(p.kode || '').trim().toUpperCase();
   if (tipe === 'member' && !kode) {
-    kode = denganKunci_(function () {
-      return nomorBerikut_('MBR');
-    });
+    kode = nomorBerikut_('MBR');
   } else if (!kode) {
-    kode = 'PLG-' + Date.now().toString(36).toUpperCase();
+    kode = nomorBerikut_('PLG');
   }
 
   const limitKredit = V_.nonNegatif(p.limit_kredit, 'Limit Kredit') || 0;
@@ -4411,7 +4518,7 @@ function aksiPelangganCreate_(ctx) {
   const barisBaru = {
     kode: kode,
     nama: nama,
-    hp: hp,
+    hp: hpBersih || hpRaw,
     alamat: String(p.alamat || '').trim(),
     tipe: tipe,
     level: level,
@@ -4449,18 +4556,29 @@ function aksiPelangganUpdate_(ctx) {
 
   if (p.nama !== undefined) dataUbah.nama = V_.teks(p.nama, 'Nama Pelanggan', { min: 2, maks: 100 });
   if (p.hp !== undefined) {
-    const hpBaru = String(p.hp || '').trim();
-    if (pel.tipe === 'member' && !hpBaru) {
-      gagal_(KODE.VALIDATION, 'Nomor HP tidak boleh dikosongkan untuk member.');
+    const hpBaruRaw = String(p.hp || '').trim();
+    const hpBaruBersih = bersihkanHp_(hpBaruRaw);
+    if (pel.tipe === 'member' && (!hpBaruBersih || hpBaruBersih.length < 7)) {
+      gagal_(KODE.VALIDATION, 'Nomor HP tidak boleh dikosongkan (minimal 7 digit) untuk member.');
     }
-    if (pel.tipe === 'member' && hpBaru && hpBaru !== pel.hp) {
+    const pelHpBersih = bersihkanHp_(pel.hp);
+    if (pel.tipe === 'member' && hpBaruBersih && hpBaruBersih !== pelHpBersih) {
       const semuaPelanggan = bacaSemua_('Pelanggan');
-      const duplikat = semuaPelanggan.some(function (x) {
-        return x.id !== pel.id && !x.deleted && x.tipe === 'member' && x.hp === hpBaru;
-      });
-      if (duplikat) gagal_(KODE.CONFLICT, 'Nomor HP "' + hpBaru + '" sudah digunakan oleh member lain.');
+      let memberBentrok = null;
+      for (let i = 0; i < semuaPelanggan.length; i++) {
+        const x = semuaPelanggan[i];
+        if (x.id === pel.id || x.deleted || x.aktif === false || x.tipe !== 'member') continue;
+        const xHp = bersihkanHp_(x.hp);
+        if (xHp && xHp === hpBaruBersih) {
+          memberBentrok = x;
+          break;
+        }
+      }
+      if (memberBentrok) {
+        gagal_(KODE.CONFLICT, 'Nomor HP ' + hpBaruBersih + ' sudah digunakan oleh member: "' + memberBentrok.nama + '" (Kode: ' + (memberBentrok.kode || '-') + ').');
+      }
     }
-    dataUbah.hp = hpBaru;
+    dataUbah.hp = hpBaruBersih || hpBaruRaw;
   }
   if (p.alamat !== undefined) dataUbah.alamat = String(p.alamat || '').trim();
   if (p.aktif !== undefined) dataUbah.aktif = Boolean(p.aktif);

@@ -389,10 +389,50 @@ function susunOpsiKategoriHtml(daftarKategori, selectedId = '', placeholder = '-
 }
 
 /**
+ * Hitung digit checksum EAN-13 (modulo 10).
+ */
+function hitungChecksumEan13(str12) {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const digit = parseInt(str12.charAt(i), 10) || 0;
+    sum += (i % 2 === 0) ? digit : digit * 3;
+  }
+  const rem = sum % 10;
+  return rem === 0 ? 0 : 10 - rem;
+}
+
+/**
+ * Generate barcode 13-digit EAN-13 in-house retail (Prefix 20 + yyMMdd + 4-digit random + check digit).
+ */
+function generateEan13Barcode() {
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const rnd4 = String(Math.floor(1000 + Math.random() * 9000));
+  const raw12 = '20' + yy + mm + dd + rnd4;
+  const checksum = hitungChecksumEan13(raw12);
+  return raw12 + String(checksum);
+}
+
+/**
+ * Generate kode SKU otomatis: SKU-YYYYMMDD-XXXX
+ */
+function generateSkuCode(prefix = 'SKU') {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const rnd4 = String(Math.floor(1000 + Math.random() * 9000));
+  return `${prefix}-${y}${m}${day}-${rnd4}`;
+}
+
+/**
  * Modal Form Tambah / Edit Produk Lengkap
  */
 async function bukaModalFormProduk(container, produk) {
   const isEdit = !!produk;
+  let isSubmitting = false;
   let daftarKategori = [];
   try {
     const kRes = await apiCall('kategori.list', {});
@@ -419,12 +459,20 @@ async function bukaModalFormProduk(container, produk) {
 
         <div class="form-grid cols-2">
           <div class="field">
-            <label class="field-label" for="prd-sku">Kode SKU</label>
-            <input type="text" class="input mono" id="prd-sku" value="${isEdit ? escapeHtml(produk.sku || '') : ''}" placeholder="Cth: SMN-PDG-50">
+            <div class="row items-center justify-between" style="margin-bottom: 4px;">
+              <label class="field-label" for="prd-sku" style="margin-bottom: 0;">Kode SKU</label>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 1px 6px; font-size: 11px;">🎲 Auto</button>
+            </div>
+            <input type="text" class="input mono uppercase" id="prd-sku" value="${isEdit ? escapeHtml(produk.sku || '') : ''}" placeholder="Auto (cth: SKU-20261113-0001)">
+            <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
           </div>
           <div class="field">
-            <label class="field-label" for="prd-barcode">Barcode</label>
-            <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(produk.barcode || '') : ''}" placeholder="Scan atau input barcode">
+            <div class="row items-center justify-between" style="margin-bottom: 4px;">
+              <label class="field-label" for="prd-barcode" style="margin-bottom: 0;">Barcode</label>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 1px 6px; font-size: 11px;">🎲 Auto</button>
+            </div>
+            <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(produk.barcode || '') : ''}" placeholder="Auto (13 digit EAN-13)">
+            <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
           </div>
         </div>
 
@@ -580,6 +628,23 @@ async function bukaModalFormProduk(container, produk) {
   formatInputRp($('#prd-ritel', form));
   formatInputRp($('#prd-grosir', form));
 
+  // Quick generator SKU & Barcode induk
+  $('#btn-auto-sku', form)?.addEventListener('click', () => {
+    const input = $('#prd-sku', form);
+    if (input) {
+      input.value = generateSkuCode('SKU');
+      showToast(`Kode SKU dibuat: ${input.value}`, 'info', 2000);
+    }
+  });
+
+  $('#btn-auto-barcode', form)?.addEventListener('click', () => {
+    const input = $('#prd-barcode', form);
+    if (input) {
+      input.value = generateEan13Barcode();
+      showToast(`Barcode EAN-13 dibuat: ${input.value}`, 'info', 2000);
+    }
+  });
+
   // Render Varian Awal
   const wadahVarian = $('#wadah-varian', form);
   const renderBarisVarian = (v = {}) => {
@@ -590,8 +655,8 @@ async function bukaModalFormProduk(container, produk) {
       <input type="hidden" class="var-id" value="${v.id || ''}">
       <div class="form-grid cols-3" style="gap: var(--sp-2);">
         <input type="text" class="input var-nama" placeholder="Nama Varian (cth: Putih 5kg)" value="${escapeHtml(v.nama_varian || '')}" required>
-        <input type="text" class="input mono var-sku" placeholder="SKU Varian" value="${escapeHtml(v.sku || '')}">
-        <input type="text" class="input mono var-barcode" placeholder="Barcode" value="${escapeHtml(v.barcode || '')}">
+        <input type="text" class="input mono uppercase var-sku" placeholder="Auto SKU Varian" value="${escapeHtml(v.sku || '')}" title="Kosongkan jika ingin dibuat otomatis">
+        <input type="text" class="input mono var-barcode" placeholder="Auto Barcode Varian" value="${escapeHtml(v.barcode || '')}" title="Kosongkan jika ingin dibuat otomatis">
       </div>
       <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-2);">
         <div class="input-prefix grow">
@@ -620,10 +685,11 @@ async function bukaModalFormProduk(container, produk) {
     row.style.padding = 'var(--sp-3)';
     row.innerHTML = `
       <div class="row" style="gap: var(--sp-2);">
-        <input type="text" class="input sat-nama" placeholder="Satuan (cth: Dus)" value="${escapeHtml(s.satuan || '')}" style="max-width: 140px;" required>
+        <input type="text" class="input sat-nama" placeholder="Satuan (cth: Dus)" value="${escapeHtml(s.satuan || '')}" style="max-width: 130px;" required>
         <span class="text-sm">=</span>
-        <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Faktor (cth: 24)" value="${s.faktor || ''}" style="max-width: 110px;" required>
+        <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Faktor (cth: 24)" value="${s.faktor || ''}" style="max-width: 90px;" required>
         <span class="text-xs text-muted satuan-dasar-label">${escapeHtml($('#prd-satuan', form).value || 'pcs')}</span>
+        <input type="text" class="input mono sat-barcode" placeholder="Auto Barcode Satuan" value="${escapeHtml(s.barcode || '')}" style="max-width: 150px;" title="Kosongkan jika ingin dibuat otomatis">
         <div class="input-prefix grow">
           <span>Rp</span>
           <input type="text" class="input input-num sat-ritel" placeholder="Harga Jual per Satuan" value="${formatRupiah(s.harga_ritel || 0, false)}" required>
@@ -644,9 +710,22 @@ async function bukaModalFormProduk(container, produk) {
   // Submit Handler Form Produk
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const nama = $('#prd-nama', form).value.trim();
-    const sku = $('#prd-sku', form).value.trim();
-    const barcode = $('#prd-barcode', form).value.trim();
+    let sku = $('#prd-sku', form).value.trim();
+    let barcode = $('#prd-barcode', form).value.trim();
+
+    // Auto-generate SKU & Barcode jika kosong
+    if (!sku) {
+      sku = generateSkuCode('SKU');
+      $('#prd-sku', form).value = sku;
+    }
+    if (!barcode) {
+      barcode = generateEan13Barcode();
+      $('#prd-barcode', form).value = barcode;
+    }
+
     const kategori_id = $('#prd-kategori', form).value;
     const satuan_dasar = $('#prd-satuan', form).value.trim();
     const hpp = parseRupiah($('#prd-hpp', form).value);
@@ -680,11 +759,17 @@ async function bukaModalFormProduk(container, produk) {
           showToast(`Harga varian "${vNama}" tidak boleh di bawah HPP!`, 'error');
           return;
         }
+
+        let vSku = b.querySelector('.var-sku').value.trim();
+        if (!vSku) vSku = `${sku}-V${varian.length + 1}`;
+        let vBarcode = b.querySelector('.var-barcode').value.trim();
+        if (!vBarcode) vBarcode = generateEan13Barcode();
+
         varian.push({
           id: b.querySelector('.var-id').value || undefined,
           nama_varian: vNama,
-          sku: b.querySelector('.var-sku').value.trim(),
-          barcode: b.querySelector('.var-barcode').value.trim(),
+          sku: vSku,
+          barcode: vBarcode,
           hpp: hpp,
           harga_ritel: vRitel,
           harga_grosir: vRitel,
@@ -701,9 +786,14 @@ async function bukaModalFormProduk(container, produk) {
       const sFaktor = parseFloat(s.querySelector('.sat-faktor').value);
       const sRitel = parseRupiah(s.querySelector('.sat-ritel').value);
       if (!sNama || !sFaktor) continue;
+
+      let sBarcode = (s.querySelector('.sat-barcode')?.value || '').trim();
+      if (!sBarcode) sBarcode = generateEan13Barcode();
+
       satuan_konversi.push({
         satuan: sNama,
         faktor: sFaktor,
+        barcode: sBarcode,
         harga_ritel: sRitel,
         harga_grosir: sRitel
       });
@@ -720,6 +810,7 @@ async function bukaModalFormProduk(container, produk) {
     const btnSimpan = $('#btn-simpan-produk', form);
     btnSimpan.setAttribute('aria-busy', 'true');
     btnSimpan.disabled = true;
+    isSubmitting = true;
 
     try {
       if (isEdit) {
@@ -736,6 +827,7 @@ async function bukaModalFormProduk(container, produk) {
     } finally {
       btnSimpan.removeAttribute('aria-busy');
       btnSimpan.disabled = false;
+      isSubmitting = false;
     }
   });
 }
