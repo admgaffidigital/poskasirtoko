@@ -16,6 +16,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.13] - 2026-11-13
+
+### Changed & Enhanced
+- [UI] [UX] **Redesain Splash Screen Awal ala Native App Modern**:
+  - Menggantikan tampilan teks polos kaku sebelumnya dengan layar pembuka (*splash screen*) modern berstandar aplikasi profesional.
+  - **Logo Resmi Beranimasi**: Menampilkan lencana squircle 84×84px bergradien oranye dengan logo toko putih, disertai animasi detak halus (*breathing pulse*) dan cincin aura berpendar (*glow ripple ring*).
+  - **Loading Bar Shimmer**: Menambahkan progress bar kapsul dengan animasi gelombang gradien halus dan indikator titik status ("Menyiapkan sistem & database...").
+  - **Critical CSS Inlined**: Memasang CSS splash screen langsung secara inline di `index.html` dan `layout.css` untuk mencegah kedipan tampilan (*zero FOUC*), serta mendukung mode gelap (*Dark Mode*).
+  - **Penyesuaian Service Worker & APK**: Cache Service Worker dinaikkan ke `pos-kasir-static-v1.0.14` dan APK Android dikompilasi ulang ke versi `1.0.13`.
+
+---
+
 ## [1.0.12] - 2026-11-13
 
 ### Added

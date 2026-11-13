@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.13';
+const CACHE_NAME = 'pos-kasir-static-v1.0.14';
 
 const ASSETS = [
   './',
@@ -104,7 +104,7 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(req, networkResponse));
           }
-        }).catch(() => {/* offline, abaikan */});
+        }).catch(() => {/* offline, abaikan */ });
 
         return cachedResponse;
       }

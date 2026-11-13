@@ -295,7 +295,7 @@ class App {
 
     // Perbarui & Restart
     bannerContainer.querySelector('#btn-inapp-update-restart')?.addEventListener('click', async () => {
-      showLoading('Menerapkan pembaruan aplikasi & memuat ulang...');
+      showToast('Menerapkan pembaruan aplikasi & memuat ulang...', 'info');
       try {
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.getRegistration();
@@ -917,16 +917,16 @@ class App {
 
         <div class="card card-body">
           ${renderEmpty({
-            title: `Modul ${rute.title}`,
-            text: `Modul ini merupakan bagian dari roadmap pengembangan ${rute.fase}. Fitur akan dibangun lengkap sesuai standar arsitektur dan aturan bisnis README.md.`,
-            icon: rute.icon,
-            actionButton: `
+      title: `Modul ${rute.title}`,
+      text: `Modul ini merupakan bagian dari roadmap pengembangan ${rute.fase}. Fitur akan dibangun lengkap sesuai standar arsitektur dan aturan bisnis README.md.`,
+      icon: rute.icon,
+      actionButton: `
               <div class="row">
                 <a href="#/produk" class="btn btn-primary">${ICONS.box} Kelola Produk</a>
                 <a href="#/sistem" class="btn btn-secondary">${ICONS.database} Cek Koneksi Backend</a>
               </div>
             `
-          })}
+    })}
         </div>
       </div>
     `;
