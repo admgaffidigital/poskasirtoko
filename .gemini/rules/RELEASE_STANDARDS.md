@@ -37,3 +37,4 @@ Setiap kali ada pembaruan atau rilis versi:
    ```
 
 DILARANG HANYA MENGUBAH SATU FILE VERSI TANPA MENJALANKAN `npm run release`.
+
