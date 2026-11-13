@@ -132,4 +132,21 @@ export function formatAngka(val) {
   return formatQty(val);
 }
 
+/**
+ * Format label SKU pintar agar tidak menghasilkan teks ganda seperti 'SKU: SKU-...'
+ * @param {string} kode
+ * @returns {string}
+ */
+export function formatSkuLabel(kode) {
+  if (!kode) return '';
+  let str = String(kode).trim();
+  if (!str || str === '-') return '';
+  // Bersihkan jika string sudah diawali duplikasi 'SKU: SKU-...' atau sejenisnya
+  str = str.replace(/^sku[\s:-]+sku[\s:-]*/i, 'SKU-');
+  if (/^sku[\s:-]/i.test(str)) {
+    return str;
+  }
+  return `SKU: ${str}`;
+}
+
 

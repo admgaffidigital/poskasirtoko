@@ -21,7 +21,7 @@
 
 import { api } from '../api.js';
 import { store } from '../state.js';
-import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml } from '../utils/format.js';
+import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
@@ -594,7 +594,8 @@ export function renderPosModule(container) {
         infoOpsi = `<span class="badge badge-dot badge-sm" style="background: rgba(255,255,255,0.85); color: var(--text);">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
-      const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
+      const rawKode = p.sku || p.barcode || '';
+      const skuLabel = formatSkuLabel(rawKode);
 
       html += `
         <div class="pos-product-card" data-id="${p.id}" tabindex="0">
@@ -625,7 +626,7 @@ export function renderPosModule(container) {
 
           <div class="pos-card-content">
             <div class="pos-card-meta-row">
-              <span class="pos-card-sku">${kodeItem ? `SKU: ${kodeItem}` : ''}</span>
+              <span class="pos-card-sku">${skuLabel ? escapeHtml(skuLabel) : ''}</span>
               ${hppTag}
             </div>
 
@@ -706,7 +707,8 @@ export function renderPosModule(container) {
         infoOpsi = `<span class="badge badge-dot badge-sm" style="background: var(--surface-3);">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
-      const kodeItem = (p.sku || p.barcode) ? escapeHtml(p.sku || p.barcode) : '';
+      const rawKode = p.sku || p.barcode || '';
+      const skuLabel = formatSkuLabel(rawKode);
 
       html += `
         <div class="pos-list-item" data-id="${p.id}" tabindex="0">
@@ -731,7 +733,7 @@ export function renderPosModule(container) {
             <div class="pos-list-title" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
             <div class="pos-list-badges-row">
               ${badgeStok}
-              ${kodeItem ? `<span class="pos-badge-sku">SKU: ${kodeItem}</span>` : ''}
+              ${skuLabel ? `<span class="pos-badge-sku">${escapeHtml(skuLabel)}</span>` : ''}
               ${infoOpsi}
               ${hppTag}
             </div>

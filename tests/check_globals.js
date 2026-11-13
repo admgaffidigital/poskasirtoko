@@ -3,7 +3,7 @@ const path = require('path');
 
 // Common utility exports to check
 const utilExports = {
-  '../utils/format.js': ['escapeHtml', 'formatRupiah', 'formatTanggal', 'formatWaktuRelatif', 'formatQty', 'formatAngka', 'parseNumber', 'formatPersen', 'potongTeks', 'formatHpIndonesia'],
+  '../utils/format.js': ['escapeHtml', 'formatRupiah', 'formatTanggal', 'formatWaktuRelatif', 'formatQty', 'formatAngka', 'parseNumber', 'formatPersen', 'potongTeks', 'formatHpIndonesia', 'formatSkuLabel'],
   '../utils/ui.js': ['ICONS', 'showToast', 'showConfirm', 'showModal', 'closeModal', 'showLoading', 'closeLoading', 'showPrompt'],
   '../utils/dom.js': ['$', '$$', 'on', 'renderSkeleton', 'renderEmpty', 'renderError'],
   '../utils/barcode.js': ['generateBarcodeSvg', 'validateBarcode'],

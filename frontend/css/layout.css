@@ -331,18 +331,16 @@
 }
 
 .content.masuk {
-  animation: halaman-masuk var(--dur-normal) var(--ease) both;
+  animation: halaman-masuk var(--dur-normal) var(--ease);
 }
 
 @keyframes halaman-masuk {
   from {
     opacity: 0;
-    transform: translate3d(0, 6px, 0);
   }
 
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
   }
 }
 
