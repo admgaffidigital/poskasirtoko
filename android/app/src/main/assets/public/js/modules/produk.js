@@ -64,6 +64,8 @@ let filterState = {
   limit: 20
 };
 
+let cacheDaftarProduk = [];
+
 export async function renderProdukModule(container) {
   const user = store.get('user');
   const canEdit = user && (user.role === 'owner' || user.role === 'admin');
@@ -162,15 +164,30 @@ export async function renderProdukModule(container) {
   await muatProduk(container, canEdit, isKasir);
 }
 
-async function muatProduk(container, canEdit, isKasir) {
+async function muatProduk(container, canEdit, isKasir, isAppend = false) {
   const area = $('#area-daftar-produk', container);
   const areaPaginasi = $('#area-paginasi-produk', container);
   if (!area) return;
 
   try {
-    const res = await apiCall('produk.list', filterState);
-    const items = res.items || [];
-    const total = res.total || 0;
+    if (!isAppend) {
+      const res = await apiCall('produk.list', filterState);
+      cacheDaftarProduk = res.items || [];
+      window._totalProdukTerakhir = res.total || 0;
+    } else {
+      filterState.page++;
+      const res = await apiCall('produk.list', filterState);
+      const itemsBaru = res.items || [];
+      itemsBaru.forEach((p) => {
+        if (!cacheDaftarProduk.some((x) => x.id === p.id)) {
+          cacheDaftarProduk.push(p);
+        }
+      });
+      window._totalProdukTerakhir = res.total || 0;
+    }
+
+    const items = cacheDaftarProduk;
+    const total = window._totalProdukTerakhir || items.length;
 
     if (!items.length) {
       area.innerHTML = `
@@ -351,28 +368,42 @@ async function muatProduk(container, canEdit, isKasir) {
       });
     }
 
-    // Render kontrol paginasi
+    // Render kontrol paginasi & tombol Muat Lebih Banyak (Load More)
     if (areaPaginasi) {
       const totalHal = Math.ceil(total / filterState.limit) || 1;
+      const sisaProduk = total - items.length;
       areaPaginasi.innerHTML = `
         <div class="text-sm text-muted">Menampilkan ${items.length} dari ${total} barang</div>
-        <div class="row" style="gap: var(--sp-2);">
+        <div class="row items-center" style="gap: var(--sp-2); flex-wrap: wrap;">
+          ${sisaProduk > 0 ? `
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-load-more-prd" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Muat Lebih Banyak (+${Math.min(filterState.limit, sisaProduk)})</span>
+            </button>
+          ` : ''}
           <button type="button" class="btn btn-ghost btn-sm" id="btn-hal-sebelum" ${filterState.page <= 1 ? 'disabled' : ''}>← Sebelumnya</button>
           <span class="text-sm fw-medium">${filterState.page} / ${totalHal}</span>
           <button type="button" class="btn btn-ghost btn-sm" id="btn-hal-berikut" ${filterState.page >= totalHal ? 'disabled' : ''}>Berikutnya →</button>
         </div>
       `;
 
+      $('#btn-load-more-prd', areaPaginasi)?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-sm" style="border-color: currentColor; border-top-color: transparent; margin-right: 6px;"></span> Memuat...`;
+        await muatProduk(container, canEdit, isKasir, true);
+      });
+
       $('#btn-hal-sebelum', areaPaginasi)?.addEventListener('click', () => {
         if (filterState.page > 1) {
           filterState.page--;
-          muatProduk(container, canEdit, isKasir);
+          muatProduk(container, canEdit, isKasir, false);
         }
       });
       $('#btn-hal-berikut', areaPaginasi)?.addEventListener('click', () => {
         if (filterState.page < totalHal) {
           filterState.page++;
-          muatProduk(container, canEdit, isKasir);
+          muatProduk(container, canEdit, isKasir, false);
         }
       });
     }

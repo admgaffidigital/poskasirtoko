@@ -45,7 +45,12 @@ export function renderPosModule(container) {
     pendingCount: 0,
     pengaturan: store.get('pengaturan') || {},
     user: store.get('user') || {},
-    isLoading: true
+    isLoading: true,
+    page: 1,
+    pageSize: 30,
+    totalProduk: 0,
+    hasMore: false,
+    isLoadingMore: false
   };
 
   const isOwnerAtauAdmin = state.user.role === 'owner' || state.user.role === 'admin';
@@ -326,43 +331,95 @@ export function renderPosModule(container) {
     setMobileView('catalog');
   });
 
-  // ---------- Inisialisasi Data ----------
-  async function muatDataKatalog() {
-    state.isLoading = true;
+  // ---------- Inisialisasi Data & Load More ----------
+  async function muatDataKatalog(reset = true) {
+    if (reset) {
+      state.page = 1;
+      state.isLoading = true;
+    }
     try {
-      // Ambil kategori & produk aktif
-      const [resKat, resProd, resPeng, resPending] = await Promise.all([
-        api.post('kategori.list', { aktif_saja: true }),
-        api.post('produk.list', { aktif_saja: true, limit: 300 }),
-        api.post('pengaturan.get'),
-        api.post('penjualan.pending.list')
-      ]);
-
-      if (resKat.ok) state.kategori = resKat.data.items || [];
-      if (resProd.ok) state.katalog = resProd.data.items || [];
-      if (resPeng.ok) {
-        state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
-        store.set('pengaturan', state.pengaturan);
-        store.setToko({
-          nama: state.pengaturan.toko_nama,
-          alamat: state.pengaturan.toko_alamat,
-          hp: state.pengaturan.toko_hp,
-          nota_footer: state.pengaturan.nota_footer
-        });
+      const payloadPrd = {
+        aktif_saja: true,
+        page: state.page,
+        limit: state.pageSize
+      };
+      if (state.kategoriAktif && state.kategoriAktif !== 'semua') {
+        payloadPrd.kategori_id = state.kategoriAktif;
       }
-      if (resPending.ok) {
-        state.pendingCount = (resPending.data.items || []).length;
-        perbaruiBadgePending();
+      if (state.kataKunci) {
+        payloadPrd.q = state.kataKunci;
       }
 
-      renderKategoriBar();
-      renderKatalog();
+      if (reset) {
+        // Ambil kategori & produk aktif (batch pertama)
+        const [resKat, resProd, resPeng, resPending] = await Promise.all([
+          api.post('kategori.list', { aktif_saja: true }),
+          api.post('produk.list', payloadPrd),
+          api.post('pengaturan.get'),
+          api.post('penjualan.pending.list')
+        ]);
+
+        if (resKat.ok) state.kategori = resKat.data.items || [];
+        if (resProd.ok) {
+          state.katalog = resProd.data.items || [];
+          state.totalProduk = resProd.data.total ?? state.katalog.length;
+          state.hasMore = resProd.data.has_more ?? (state.katalog.length < state.totalProduk);
+        }
+        if (resPeng.ok) {
+          state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
+          store.set('pengaturan', state.pengaturan);
+          store.setToko({
+            nama: state.pengaturan.toko_nama,
+            alamat: state.pengaturan.toko_alamat,
+            hp: state.pengaturan.toko_hp,
+            nota_footer: state.pengaturan.nota_footer
+          });
+        }
+        if (resPending.ok) {
+          state.pendingCount = (resPending.data.items || []).length;
+          perbaruiBadgePending();
+        }
+
+        renderKategoriBar();
+        renderKatalog();
+      } else {
+        // Ambil produk halaman berikutnya (Load More)
+        const resProd = await api.post('produk.list', payloadPrd);
+        if (resProd.ok) {
+          const itemsBaru = resProd.data.items || [];
+          itemsBaru.forEach((p) => {
+            if (!state.katalog.some((x) => x.id === p.id)) {
+              state.katalog.push(p);
+            }
+          });
+          state.totalProduk = resProd.data.total ?? state.katalog.length;
+          state.hasMore = resProd.data.has_more ?? (state.katalog.length < state.totalProduk);
+          renderKategoriBar();
+          renderKatalog();
+        }
+      }
     } catch (err) {
       console.error('Gagal memuat katalog POS:', err);
       showToast('Gagal memuat data katalog: ' + err.message, 'error');
     } finally {
       state.isLoading = false;
+      state.isLoadingMore = false;
     }
+  }
+
+  async function muatLebihBanyakKatalog() {
+    if (state.isLoadingMore || !state.hasMore) return;
+    state.isLoadingMore = true;
+    const btnLoad = elProductArea?.querySelector('#btn-load-more-pos');
+    if (btnLoad) {
+      btnLoad.disabled = true;
+      btnLoad.innerHTML = `
+        <span class="spinner-sm" style="border-color: currentColor; border-top-color: transparent; margin-right: 8px;"></span>
+        <span>Memuat produk...</span>
+      `;
+    }
+    state.page++;
+    await muatDataKatalog(false);
   }
 
   function perbaruiBadgePending() {
@@ -378,7 +435,7 @@ export function renderPosModule(container) {
   function renderKategoriBar() {
     let html = `
       <button type="button" class="pos-chip ${state.kategoriAktif === 'semua' ? 'active' : ''}" data-cat="semua">
-        Semua (${state.katalog.length})
+        Semua (${state.katalog.length}${state.hasMore ? '+' : ''})
       </button>
     `;
 
@@ -441,9 +498,12 @@ export function renderPosModule(container) {
 
     elCategoryBar.querySelectorAll('.pos-chip').forEach((btn) => {
       btn.addEventListener('click', () => {
-        state.kategoriAktif = btn.getAttribute('data-cat');
+        const cat = btn.getAttribute('data-cat');
+        if (state.kategoriAktif === cat) return;
+        state.kategoriAktif = cat;
+        state.page = 1;
         renderKategoriBar();
-        renderKatalog();
+        muatDataKatalog(true);
       });
     });
   }
@@ -582,6 +642,24 @@ export function renderPosModule(container) {
       `;
     });
 
+    // Tombol Load More (Muat Lebih Banyak)
+    if (state.hasMore) {
+      html += `
+        <div class="pos-load-more-wrap" style="grid-column: 1 / -1; width: 100%; text-align: center; padding: var(--sp-4) var(--sp-2);">
+          <button type="button" class="btn btn-secondary btn-pos-load-more" id="btn-load-more-pos" style="min-width: 250px; font-weight: 600; padding: 12px 24px; border-radius: var(--radius-lg); gap: 8px; box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Muat Lebih Banyak (${items.length} dari ${state.totalProduk || items.length} produk)</span>
+          </button>
+        </div>
+      `;
+    } else if (items.length > 0 && state.totalProduk > state.pageSize) {
+      html += `
+        <div class="pos-load-all-wrap text-center text-xs text-muted" style="grid-column: 1 / -1; width: 100%; padding: var(--sp-3);">
+          ✓ Semua ${items.length} produk telah dimuat
+        </div>
+      `;
+    }
+
     html += `</div>`;
     elProductArea.innerHTML = html;
     pasangAksiKlikKatalog();
@@ -667,6 +745,24 @@ export function renderPosModule(container) {
       `;
     });
 
+    // Tombol Load More (Muat Lebih Banyak)
+    if (state.hasMore) {
+      html += `
+        <div class="pos-load-more-wrap" style="width: 100%; text-align: center; padding: var(--sp-4) var(--sp-2);">
+          <button type="button" class="btn btn-secondary btn-pos-load-more" id="btn-load-more-pos" style="min-width: 250px; font-weight: 600; padding: 12px 24px; border-radius: var(--radius-lg); gap: 8px; box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Muat Lebih Banyak (${items.length} dari ${state.totalProduk || items.length} produk)</span>
+          </button>
+        </div>
+      `;
+    } else if (items.length > 0 && state.totalProduk > state.pageSize) {
+      html += `
+        <div class="pos-load-all-wrap text-center text-xs text-muted" style="width: 100%; padding: var(--sp-3);">
+          ✓ Semua ${items.length} produk telah dimuat
+        </div>
+      `;
+    }
+
     html += `</div>`;
     elProductArea.innerHTML = html;
     pasangAksiKlikKatalog();
@@ -679,6 +775,10 @@ export function renderPosModule(container) {
     klikDelegasiDipasang = true;
 
     elProductArea.addEventListener('click', (e) => {
+      if (e.target.closest('#btn-load-more-pos')) {
+        muatLebihBanyakKatalog();
+        return;
+      }
       const el = e.target.closest('.pos-product-card, .pos-product-row, .pos-list-item');
       if (!el) return;
       const id = el.getAttribute('data-id');
@@ -2094,11 +2194,11 @@ export function renderPosModule(container) {
     });
   });
 
-  function cariDanTambahBarcode(code) {
+  async function cariDanTambahBarcode(code) {
     const codeClean = String(code || '').trim().toLowerCase();
     if (!codeClean) return;
 
-    // Cari produk dengan barcode atau SKU yang cocok
+    // 1. Cari dulu pada katalog lokal yang sudah dimuat
     let matchProd = null;
     let matchVar = null;
 
@@ -2116,6 +2216,34 @@ export function renderPosModule(container) {
         matchVar = vFound;
         break;
       }
+    }
+
+    // 2. Jika belum ditemukan di memori lokal, cari ke server database
+    if (!matchProd) {
+      try {
+        const cariRes = await api.post('produk.list', { q: codeClean, limit: 10, aktif_saja: true });
+        if (cariRes.ok && cariRes.data && cariRes.data.items && cariRes.data.items.length > 0) {
+          const itemsBaru = cariRes.data.items;
+          itemsBaru.forEach((p) => {
+            if (!state.katalog.some((x) => x.id === p.id)) state.katalog.push(p);
+          });
+          for (let i = 0; i < itemsBaru.length; i++) {
+            const p = itemsBaru[i];
+            if (String(p.barcode || '').toLowerCase() === codeClean || String(p.sku || '').toLowerCase() === codeClean) {
+              matchProd = p;
+              break;
+            }
+            const vFound = (p.varian || []).find((v) =>
+              String(v.barcode || '').toLowerCase() === codeClean || String(v.sku || '').toLowerCase() === codeClean
+            );
+            if (vFound) {
+              matchProd = p;
+              matchVar = vFound;
+              break;
+            }
+          }
+        }
+      } catch (err) {}
     }
 
     if (matchProd) {
@@ -2157,15 +2285,20 @@ export function renderPosModule(container) {
     cariDanTambahBarcode(code);
   });
 
-  // ---------- Toolbar Pencarian & Toggle View (dengan Debouncing) ----------
+  // ---------- Toolbar Pencarian & Toggle View (dengan Debouncing & Server Search) ----------
   let searchDebounceTimer = null;
   elSearch?.addEventListener('input', (e) => {
-    state.kataKunci = e.target.value;
+    state.kataKunci = e.target.value.trim();
     elSearchClear.style.display = state.kataKunci ? 'block' : 'none';
+    // 1. Filter instan memori lokal (respons 0ms)
+    renderKatalog();
+
+    // 2. Jika ada query pencarian, cari ke database server dengan debounce
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
-      renderKatalog();
-    }, 120);
+      state.page = 1;
+      muatDataKatalog(true);
+    }, 320);
   });
 
   elSearchClear?.addEventListener('click', () => {
@@ -2173,7 +2306,8 @@ export function renderPosModule(container) {
     state.kataKunci = '';
     elSearch.value = '';
     elSearchClear.style.display = 'none';
-    renderKatalog();
+    state.page = 1;
+    muatDataKatalog(true);
     elSearch.focus();
   });
 

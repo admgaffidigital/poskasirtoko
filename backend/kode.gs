@@ -40,7 +40,7 @@ const APP = Object.freeze({
   BACKUP_FOLDER: 'Backup POS',
   BACKUP_SIMPAN: 30,
   PAGE_LIMIT_DEFAULT: 50,
-  PAGE_LIMIT_MAKS: 200
+  PAGE_LIMIT_MAKS: 500
 });
 
 const ROLE = Object.freeze({ OWNER: 'owner', ADMIN: 'admin', KASIR: 'kasir' });
@@ -1282,7 +1282,8 @@ function aksiProdukList_(ctx) {
     items: tersaring.slice(mulai, mulai + limit),
     total: tersaring.length,
     page: page,
-    limit: limit
+    limit: limit,
+    has_more: (mulai + limit) < tersaring.length
   };
 }
 
