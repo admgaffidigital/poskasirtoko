@@ -25,7 +25,7 @@ export async function renderKategoriModule(container) {
           <div>
             <button type="button" class="btn btn-primary" id="btn-tambah-kategori">
               ${ICONS.plus || ''}
-              <span>+ Tambah Kategori</span>
+              <span>Tambah Kategori</span>
             </button>
           </div>
         ` : ''}
@@ -76,7 +76,7 @@ async function muatKategori(container, canEdit) {
         title: 'Kategori Belum Ada',
         text: 'Mulai dengan menambahkan kategori utama seperti "Bahan Bangunan", "Cat & Pelapis", dsb.',
         icon: ICONS.tag,
-        actionButton: canEdit ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Kategori</button>` : ''
+        actionButton: canEdit ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">${ICONS.plus || ''}<span>Tambah Kategori</span></button>` : ''
       });
       area.querySelector('.btn-tambah-pertama')?.addEventListener('click', () => {
         bukaModalFormKategori(container, null, kategoriCache);
@@ -151,7 +151,7 @@ async function muatKategori(container, canEdit) {
               <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
                 <button type="button" class="btn btn-primary btn-sm btn-tambah-sub" data-parent-id="${p.id}" data-parent-nama="${escapeHtml(p.nama)}" title="Tambah Sub Kategori di bawah ${escapeHtml(p.nama)}" style="border-radius: var(--radius-full);">
                   ${ICONS.plus || ''}
-                  <span>+ Sub</span>
+                  <span>Sub</span>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${p.id}" title="Ubah" style="border-radius: var(--radius-full);">
                   ${ICONS.settings}
