@@ -822,10 +822,13 @@ async function muatRiwayatPembelian(container, query = '') {
           <td style="text-align: center;" data-label="Status Bayar">
             <span class="badge ${badgeClass}">${statusLabel}</span>
           </td>
-          <td style="text-align: center;" data-label="Aksi">
-            <button type="button" class="btn btn-ghost btn-sm btn-detail-pembelian" data-id="${pb.id}">
-              Detail
-            </button>
+          <td style="text-align: right;" data-label="Aksi">
+            <div class="table-actions">
+              <button type="button" class="btn btn-secondary btn-sm btn-detail-pembelian" data-id="${pb.id}" title="Lihat Rincian Faktur">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Rincian</span>
+              </button>
+            </div>
           </td>
         </tr>
       `;

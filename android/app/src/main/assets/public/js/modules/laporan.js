@@ -846,14 +846,16 @@ function renderTabPenjualan(container, data) {
                         ${isVoided ? '-' : formatRupiah(j.laba_kotor || 0)}
                       </td>
                     ` : ''}
-                    <td class="no-print" style="text-align: center; white-space: nowrap;" data-label="Aksi">
-                      <div class="cluster" style="justify-content: center; gap: 4px;">
-                        <button type="button" class="btn btn-sm btn-ghost btn-detail-nota" data-id="${j.id}" title="Lihat Rincian Item">
+                    <td class="no-print" style="text-align: right;" data-label="Aksi">
+                      <div class="table-actions">
+                        <button type="button" class="btn btn-sm btn-secondary btn-detail-nota" data-id="${j.id}" title="Lihat Rincian Item">
                           ${ICONS.eye}
+                          <span>Rincian</span>
                         </button>
                         ${canVoid && !isVoided ? `
-                          <button type="button" class="btn btn-sm btn-ghost text-danger btn-void-nota" data-id="${j.id}" data-nonota="${escapeHtml(j.no_nota)}" data-total="${formatRupiah(j.total)}" title="Batalkan / Hapus Transaksi (Hanya Owner & Admin)">
+                          <button type="button" class="btn btn-sm btn-outline-danger btn-void-nota" data-id="${j.id}" data-nonota="${escapeHtml(j.no_nota)}" data-total="${formatRupiah(j.total)}" title="Batalkan / Void Transaksi">
                             ${ICONS.trash}
+                            <span>Void</span>
                           </button>
                         ` : ''}
                       </div>

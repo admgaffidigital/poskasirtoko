@@ -315,7 +315,7 @@ async function muatDataPiutang(container) {
                     ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                   </td>
                   <td style="text-align: right;" data-label="Aksi">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
+                    <div class="table-actions">
                       ${it.sisa > 0 ? `
                         <button type="button" class="btn btn-sm btn-primary btn-bayar-pt" data-id="${escapeHtml(it.id)}" title="Bayar Cicilan / Pelunasan">
                           Bayar
@@ -326,7 +326,7 @@ async function muatDataPiutang(container) {
                           WA
                         </button>
                       ` : ''}
-                      <button type="button" class="btn btn-sm btn-ghost btn-detail-pt" data-id="${escapeHtml(it.id)}" title="Lihat Rincian & Riwayat Cicilan">
+                      <button type="button" class="btn btn-sm btn-secondary btn-detail-pt" data-id="${escapeHtml(it.id)}" title="Lihat Rincian & Riwayat Cicilan">
                         Rincian
                       </button>
                     </div>
@@ -471,13 +471,13 @@ async function muatDataHutang(container) {
                     ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                   </td>
                   <td style="text-align: right;" data-label="Aksi">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
+                    <div class="table-actions">
                       ${it.sisa > 0 ? `
                         <button type="button" class="btn btn-sm btn-primary btn-bayar-ht" data-id="${escapeHtml(it.id)}" title="Bayar Hutang Supplier">
                           Bayar
                         </button>
                       ` : ''}
-                      <button type="button" class="btn btn-sm btn-ghost btn-detail-ht" data-id="${escapeHtml(it.id)}" title="Lihat Rincian & Riwayat Pembayaran">
+                      <button type="button" class="btn btn-sm btn-secondary btn-detail-ht" data-id="${escapeHtml(it.id)}" title="Lihat Rincian & Riwayat Pembayaran">
                         Rincian
                       </button>
                     </div>

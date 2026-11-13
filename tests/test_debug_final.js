@@ -202,6 +202,9 @@ async function runAudit() {
   }
 
   const app = setupMockEnv();
+  const callApi = (action, token, payload) => JSON.parse(app.doPost({
+    postData: { contents: JSON.stringify({ action: action, token: token, payload: payload }) }
+  }).content);
 
   // Test Skenario 1: Database Setup
   test('1. Setup Database Baru Berjalan Mulus', () => {
@@ -756,12 +759,6 @@ async function runAudit() {
   });
 
   test('12. Auto-Generate SKU, Barcode EAN-13, Kode Member, dan Normalisasi HP Member', () => {
-    function callApi(action, token, payload) {
-      return JSON.parse(app.doPost({
-        postData: { contents: JSON.stringify({ action: action, token: token, payload: payload }) }
-      }).content);
-    }
-
     // 1. Produk tanpa SKU & Barcode otomatis dibuatkan oleh backend
     const resPrdAuto = callApi('produk.create', tokenOwner, {
       nama: 'Triplek Meranti 9mm Super',
@@ -831,6 +828,43 @@ async function runAudit() {
       hp: '+6285511223344'
     });
     assert.strictEqual(resMemberBaruPakaiHpSama.ok, true, 'Nomor dari member nonaktif tidak memblokir member baru');
+  });
+
+  test('13. Kustomisasi Identitas Toko Dinamis (Pengaturan, Struk, Sesi Login, & Penjualan)', () => {
+    // 1. Owner mengubah identitas toko di Pengaturan
+    const resSetPengaturan = callApi('pengaturan.set', tokenOwner, {
+      toko_nama: 'TB BINTANG TIMUR JAYA',
+      toko_alamat: 'Jl. Ahmad Yani No. 99, Surabaya',
+      toko_hp: '081299887766',
+      nota_footer: 'Barang yang sudah dibeli tidak dapat ditukar kecuali perjanjian awal.'
+    });
+    assert.strictEqual(resSetPengaturan.ok, true, 'Pengaturan identitas toko berhasil diubah');
+    assert.strictEqual(resSetPengaturan.data.pengaturan.toko_nama, 'TB BINTANG TIMUR JAYA');
+    assert.strictEqual(resSetPengaturan.data.toko.nama, 'TB BINTANG TIMUR JAYA');
+
+    // 2. pengaturan.get harus mengembalikan identitas toko terbaru
+    const resGetPengaturan = callApi('pengaturan.get', tokenOwner, {});
+    assert.strictEqual(resGetPengaturan.ok, true);
+    assert.strictEqual(resGetPengaturan.data.toko.nama, 'TB BINTANG TIMUR JAYA');
+    assert.strictEqual(resGetPengaturan.data.toko.hp, '081299887766');
+
+    // 3. auth.me dan auth.login mengembalikan toko identitas terbaru
+    const resMe = callApi('auth.me', tokenOwner, {});
+    assert.strictEqual(resMe.ok, true);
+    assert.strictEqual(resMe.data.toko.nama, 'TB BINTANG TIMUR JAYA');
+
+    // 4. Transaksi penjualan baru otomatis menyertakan identitas toko yang telah diubah
+    const resJual = callApi('penjualan.create', tokenKasir, {
+      items: [{ produk_id: produkSemenId, qty: 1, harga: 60000 }],
+      pembayaran: [{ metode: 'tunai', jumlah: 60000 }]
+    });
+    assert.strictEqual(resJual.ok, true);
+    assert.strictEqual(resJual.data.toko.nama, 'TB BINTANG TIMUR JAYA', 'Struk penjualan baru harus memuat nama toko kustom');
+
+    // 5. penjualan.detail untuk cetak ulang juga menyertakan identitas toko terbaru
+    const resDetailJual = callApi('penjualan.detail', tokenKasir, { id: resJual.data.penjualan.id });
+    assert.strictEqual(resDetailJual.ok, true);
+    assert.strictEqual(resDetailJual.data.toko.nama, 'TB BINTANG TIMUR JAYA', 'Detail nota untuk cetak ulang memuat identitas toko kustom');
   });
 
   console.log('\n=============================================');

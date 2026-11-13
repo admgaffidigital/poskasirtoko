@@ -161,14 +161,16 @@ async function muatDataOpname(container, canEdit) {
             ${op.penyetuju_nama ? `<div class="text-xs text-muted" style="margin-top: 2px;">oleh ${escapeHtml(op.penyetuju_nama)}</div>` : ''}
           </td>
           ${canEdit ? `
-            <td style="text-align: center;" data-label="Aksi">
-              ${op.status === 'draft' ? `
-                <button type="button" class="btn btn-primary btn-sm btn-approve-opname" data-id="${op.id}" data-no="${escapeHtml(op.no_opname)}">
-                  Setujui
-                </button>
-              ` : `
-                <span class="text-xs text-muted">Tuntas</span>
-              `}
+            <td style="text-align: right;" data-label="Aksi">
+              <div class="table-actions">
+                ${op.status === 'draft' ? `
+                  <button type="button" class="btn btn-primary btn-sm btn-approve-opname" data-id="${op.id}" data-no="${escapeHtml(op.no_opname)}" title="Setujui dan sesuaikan stok">
+                    Setujui
+                  </button>
+                ` : `
+                  <span class="badge badge-success text-2xs">Selesai</span>
+                `}
+              </div>
             </td>
           ` : ''}
         </tr>

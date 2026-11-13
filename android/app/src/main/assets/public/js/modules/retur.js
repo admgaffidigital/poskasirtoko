@@ -262,15 +262,15 @@ async function muatDataReturJual(container) {
                   <td data-label="Status">${badgeStatus}</td>
                   <td class="text-xs text-muted" data-label="Petugas">${escapeHtml(it.nama_pembuat || '-')}</td>
                   <td style="text-align: right;" data-label="Aksi">
-                    <div class="row" style="gap: var(--sp-1); justify-content: flex-end; width: 100%;">
-                      <button type="button" class="btn btn-sm btn-ghost btn-detail-rt" data-id="${escapeHtml(it.id)}" title="Lihat Rincian Retur">
+                    <div class="table-actions">
+                      <button type="button" class="btn btn-sm btn-secondary btn-detail-rt" data-id="${escapeHtml(it.id)}" title="Lihat Rincian Retur">
                         Rincian
                       </button>
                       ${it.status === 'diajukan' && isOwnerOrAdmin ? `
                         <button type="button" class="btn btn-sm btn-success btn-setujui-rt" data-id="${escapeHtml(it.id)}" title="Setujui Retur">
                           Setujui
                         </button>
-                        <button type="button" class="btn btn-sm btn-danger btn-tolak-rt" data-id="${escapeHtml(it.id)}" title="Tolak Retur">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-tolak-rt" data-id="${escapeHtml(it.id)}" title="Tolak Retur">
                           Tolak
                         </button>
                       ` : ''}
@@ -390,9 +390,11 @@ async function muatDataReturBeli(container) {
                   <td data-label="Status">${badgeStatus}</td>
                   <td class="text-xs text-muted" data-label="Petugas">${escapeHtml(it.nama_pembuat || '-')}</td>
                   <td style="text-align: right;" data-label="Aksi">
-                    <button type="button" class="btn btn-sm btn-ghost btn-detail-rb" data-id="${escapeHtml(it.id)}" title="Lihat Rincian Retur">
-                      Rincian
-                    </button>
+                    <div class="table-actions">
+                      <button type="button" class="btn btn-sm btn-secondary btn-detail-rb" data-id="${escapeHtml(it.id)}" title="Lihat Rincian Retur">
+                        Rincian
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `;
