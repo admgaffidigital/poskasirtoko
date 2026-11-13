@@ -29,22 +29,55 @@
   height: var(--topbar-h);
   padding: 0 var(--sp-4);
   color: #fff;
-  font-weight: var(--fw-bold);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .brand-logo {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #ea580c 100%);
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
   color: #fff;
   flex-shrink: 0;
 }
-.brand-logo svg { width: 24px; height: 24px; }
-.brand-text { line-height: 1.15; overflow: hidden; }
-.brand-text small { display: block; font-weight: var(--fw-normal); font-size: var(--fs-xs); color: var(--nav-text); }
+.brand-logo svg { width: 20px; height: 20px; }
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  gap: 2px;
+}
+.brand-text span {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.brand-text small {
+  display: block;
+  font-weight: var(--fw-normal);
+  font-size: 11px;
+  color: var(--nav-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  opacity: 0.75;
+  letter-spacing: 0.01em;
+}
 
 .sidebar-nav { flex: 1; overflow-y: auto; padding: var(--sp-2) var(--sp-3) var(--sp-4); scrollbar-width: thin; }
 .nav-group-title {
@@ -134,12 +167,18 @@
   border-bottom-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
-.topbar-logo { display: grid; }
+.topbar-logo { display: grid; flex-shrink: 0; }
 .topbar-logo .brand-logo { width: 34px; height: 34px; border-radius: var(--radius-md); }
-.topbar-logo .brand-logo svg { width: 20px; height: 20px; }
+.topbar-logo .brand-logo svg { width: 18px; height: 18px; }
 @media (min-width: 768px) { .topbar-logo { display: none; } .topbar { padding-left: var(--sp-6); padding-right: var(--sp-4); } }
 .topbar-title { flex: 1; min-width: 0; font-size: clamp(1rem, 2vw, var(--fs-lg)); font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.01em; }
-.topbar-actions { display: flex; align-items: center; gap: var(--sp-1); }
+.topbar-actions { display: flex; align-items: center; gap: var(--sp-1); flex-shrink: 0; }
+
+@media (max-width: 767px) {
+  #label-user-top { display: none; }
+  #btn-user-top { padding: 0 6px !important; min-width: 32px; justify-content: center; }
+  .topbar-actions { gap: 2px; }
+}
 
 /* Indikator koneksi */
 .net-pill { display: none; }

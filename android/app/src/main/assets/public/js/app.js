@@ -125,14 +125,20 @@ class App {
     const t = toko || store.get('toko') || {};
     const peng = store.get('pengaturan') || {};
     const nama = (t.nama || peng.toko_nama || 'POS Toko').trim();
-    const alamat = (t.alamat || peng.toko_alamat || '').trim();
-    const sub = alamat ? alamat.split('\n')[0] : 'Sistem Kasir & POS';
+    // Subtitle ringkas & proporsional untuk header brand navigasi aplikasi (bukan alamat jalan yang panjang)
+    const sub = (nama && nama !== 'POS Toko') ? 'POS Kasir Toko' : 'Sistem Kasir & Stok';
 
     const elNama = $('#brand-nama-toko');
-    if (elNama) elNama.textContent = nama;
+    if (elNama) {
+      elNama.textContent = nama;
+      elNama.title = nama;
+    }
 
     const elSub = $('#brand-sub-toko');
-    if (elSub) elSub.textContent = sub;
+    if (elSub) {
+      elSub.textContent = sub;
+      elSub.title = sub;
+    }
 
     // Perbarui judul tab/browser secara dinamis
     if (this.currentRoute && this.currentRoute.title) {
@@ -384,8 +390,8 @@ class App {
           <div class="sidebar-brand">
             <div class="brand-logo">${ICONS.store}</div>
             <div class="brand-text">
-              <span id="brand-nama-toko">${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')}</span>
-              <small id="brand-sub-toko">${escapeHtml(store.get('toko')?.alamat ? store.get('toko').alamat.split('\n')[0] : 'Sistem Kasir & POS')}</small>
+              <span id="brand-nama-toko" title="${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')}">${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')}</span>
+              <small id="brand-sub-toko">POS Kasir Toko</small>
             </div>
           </div>
 
