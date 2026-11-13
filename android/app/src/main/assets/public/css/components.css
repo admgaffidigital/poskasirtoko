@@ -903,6 +903,12 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 }
 @keyframes putar { to { transform: rotate(360deg); } }
 
+/* Animasi Putar Tombol Sinkronisasi Data */
+.is-spinning svg,
+.btn-sync.is-spinning svg {
+  animation: putar 0.8s linear infinite !important;
+}
+
 .skeleton {
   display: block;
   border-radius: var(--radius-sm);

@@ -148,6 +148,72 @@ class App {
     }
   }
 
+  /**
+   * Fitur Sinkronisasi Data Global (Reload / Refresh Aplikasi)
+   * Menyinkronkan identitas toko, pengaturan dinamis, sesi user, dan me-render ulang modul aktif
+   */
+  async sinkronkanDataGlobal() {
+    if (this._isSyncing) return;
+    this._isSyncing = true;
+
+    const btnTop = $('#btn-sync-top');
+    const btnSidebar = $('#btn-sync-sidebar');
+    const btnTile = $('#btn-sync-tile');
+    const btnSistem = $('#btn-sync-sistem');
+
+    [btnTop, btnSidebar, btnTile, btnSistem].forEach((b) => b?.classList.add('is-spinning'));
+
+    haptic.medium();
+    showToast('Menyinkronkan data dari server...', 'info', 2000);
+
+    try {
+      if (!navigator.onLine) {
+        showToast('Sedang mode offline. Memuat data dari cache lokal...', 'warning', 3000);
+        if (this.currentRoute) this.renderPage(this.currentRoute);
+        return;
+      }
+
+      // 1. Periksa pembaruan Service Worker PWA di latar belakang
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {});
+      }
+
+      // 2. Ambil identitas toko & pengaturan terbaru dari server
+      await this.muatPengaturanToko();
+
+      // 3. Verifikasi & sinkronkan profil user jika sedang login
+      const token = store.get('token');
+      if (token) {
+        try {
+          const res = await apiCall('auth.me', {});
+          if (res && res.user) {
+            store.set('user', res.user);
+            if (res.pengaturan) store.set('pengaturan', res.pengaturan);
+            if (res.toko) store.setToko(res.toko);
+            this.updateUserUI(res.user);
+            this.updateBrandUI();
+          }
+        } catch (authErr) {
+          console.warn('Sync auth error:', authErr);
+        }
+      }
+
+      // 4. Render ulang halaman aktif agar data baru segera tampil
+      if (this.currentRoute) {
+        this.renderPage(this.currentRoute);
+      }
+
+      haptic.success();
+      showToast('Sinkronisasi data berhasil! Data terbaru telah dimuat.', 'success', 2500);
+    } catch (err) {
+      console.error('Gagal sinkronisasi data global:', err);
+      showToast('Gagal sinkronisasi: ' + (err.message || 'Koneksi terganggu'), 'error', 3500);
+    } finally {
+      this._isSyncing = false;
+      [btnTop, btnSidebar, btnTile, btnSistem].forEach((b) => b?.classList.remove('is-spinning'));
+    }
+  }
+
   registerServiceWorker() {
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('./sw.js').then((registration) => {
@@ -292,7 +358,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm">🟢 Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.23'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.24'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -345,7 +411,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.23'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.24'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -400,6 +466,9 @@ class App {
           </nav>
 
           <div class="sidebar-footer">
+            <button type="button" class="btn btn-sm btn-icon btn-sync" id="btn-sync-sidebar" title="Sinkronisasi Data Global (F5)" aria-label="Sinkronisasi Data">
+              ${ICONS.refresh}
+            </button>
             <button type="button" class="btn btn-sm btn-icon" id="btn-theme-sidebar" title="Ubah Tema" aria-label="Ubah Tema">
               ${ICONS.moon}
             </button>
@@ -423,6 +492,11 @@ class App {
 
             <div class="topbar-actions">
               <span class="badge badge-warning net-pill ${typeof navigator !== 'undefined' && navigator.onLine ? '' : 'is-offline'}" id="net-pill">Offline</span>
+
+              <!-- Tombol Sinkronisasi Data Global (Reload/Refresh) -->
+              <button type="button" class="btn btn-ghost btn-icon btn-sm btn-sync" id="btn-sync-top" title="Sinkronisasi & Segarkan Data (F5)" aria-label="Sinkronisasi Data">
+                ${ICONS.refresh}
+              </button>
 
               <button type="button" class="btn btn-ghost btn-icon btn-sm" id="btn-theme-top" title="Ubah Tema" aria-label="Ubah Tema">
                 ${ICONS.moon}
@@ -557,6 +631,21 @@ class App {
     $('#btn-theme-sidebar')?.addEventListener('click', toggleTemaHandler);
     $('#btn-font-top')?.addEventListener('click', toggleFontHandler);
     $('#btn-font-sidebar')?.addEventListener('click', toggleFontHandler);
+
+    const triggerSyncHandler = () => {
+      this.sinkronkanDataGlobal();
+    };
+
+    $('#btn-sync-top')?.addEventListener('click', triggerSyncHandler);
+    $('#btn-sync-sidebar')?.addEventListener('click', triggerSyncHandler);
+
+    // Keyboard shortcut global: F5 atau Ctrl+R untuk reload / sinkronisasi data in-app
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
+        e.preventDefault();
+        this.sinkronkanDataGlobal();
+      }
+    });
 
     // Tangkap prompt instalasi PWA untuk tombol pasang aplikasi di HP
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -761,9 +850,13 @@ class App {
             <h2>Status & Diagnostik Sistem</h2>
             <p>Pemeriksaan konektivitas Google Apps Script Web App dan database spreadsheet</p>
           </div>
-          <div>
-            <button type="button" class="btn btn-primary" id="btn-ping-sistem">
+          <div class="row" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sync" id="btn-sync-sistem">
               ${ICONS.refresh}
+              <span>Sinkron Data Global</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-ping-sistem">
+              ${ICONS.database}
               <span>Uji Koneksi Server</span>
             </button>
           </div>
@@ -804,7 +897,12 @@ class App {
     const inputUrl = $('#cfg-api-url', container);
     const btnSimpan = $('#btn-simpan-api-url', container);
     const btnPing = $('#btn-ping-sistem', container);
+    const btnSync = $('#btn-sync-sistem', container);
     const hasilDiv = $('#hasil-diagnostik', container);
+
+    btnSync?.addEventListener('click', () => {
+      this.sinkronkanDataGlobal();
+    });
 
     btnSimpan?.addEventListener('click', () => {
       const urlBaru = inputUrl.value.trim();
@@ -955,6 +1053,13 @@ class App {
         ${this.renderBannerAppHtml(false)}
 
         <div class="menu-grid">
+          <!-- Tombol Cepat Sinkronisasi Data Global -->
+          <button type="button" class="menu-tile btn-sync" id="btn-sync-tile" style="border-color: var(--primary); background: var(--surface);">
+            <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary);">
+              ${ICONS.refresh}
+            </div>
+            <span>Sinkron Data</span>
+          </button>
     `;
 
     listRoutes.forEach((r) => {
@@ -973,6 +1078,9 @@ class App {
 
     container.innerHTML = html;
     this.pasangEventBanner(container.querySelector('#banner-app-install-update'));
+    container.querySelector('#btn-sync-tile')?.addEventListener('click', () => {
+      this.sinkronkanDataGlobal();
+    });
   }
 
   /* ======================================================================== */

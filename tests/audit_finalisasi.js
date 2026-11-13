@@ -63,16 +63,20 @@ assert.ok(compCss.includes('both'), 'animasi overlay & dialog wajib menggunakan 
 assert.ok(layCss.includes('transform: translate3d(0, 0, 0)'), 'bottomnav wajib diisolasi pada GPU composited layer');
 console.log('  ✔ LULUS: Bottom sheet dan overlay terakselerasi GPU 60fps tanpa flicker/berkedip.');
 
-// 6. Audit Anti-Double SKU & Viewport Anchoring Floating Cart
-console.log('\n[6/7] Memeriksa pencegahan teks SKU ganda & viewport positioning floating cart...');
+// 6. Audit Anti-Double SKU, Viewport Anchoring Floating Cart, & Global Data Sync
+console.log('\n[6/7] Memeriksa pencegahan teks SKU ganda, floating cart viewport, & fitur sinkronisasi global...');
 const { formatSkuLabel } = require('../frontend/js/utils/format.js');
+const appJs = fs.readFileSync('frontend/js/app.js', 'utf8');
 assert.strictEqual(formatSkuLabel('SKU-20261113-0001'), 'SKU-20261113-0001', 'SKU- tidak boleh ditambah SKU: ganda');
 assert.strictEqual(formatSkuLabel('SKU: SKU-20261113-0001'), 'SKU-20261113-0001', 'SKU ganda di database wajib dinormalisasi');
 assert.strictEqual(formatSkuLabel('BRG-001'), 'SKU: BRG-001', 'Kode tanpa prefix SKU wajib diberi label SKU:');
 assert.strictEqual(formatSkuLabel(''), '', 'Kode kosong menghasilkan string kosong');
 assert.ok(!layCss.includes('transform: translate3d(0, 6px, 0)'), 'halaman-masuk tidak boleh memakai transform agar tidak merusak position: fixed');
 assert.ok(compCss.includes('z-index: calc(var(--z-nav) + 10)'), 'Floating cart harus berada di atas bottom nav');
-console.log('  ✔ LULUS: Label SKU bersih tanpa duplikasi dan floating cart ter-pinning kokoh di viewport.');
+assert.ok(appJs.includes('sinkronkanDataGlobal'), 'Aplikasi wajib memiliki fungsi sinkronkanDataGlobal');
+assert.ok(appJs.includes('btn-sync-top'), 'Topbar wajib memiliki tombol btn-sync-top');
+assert.ok(appJs.includes('btn-sync-sidebar'), 'Sidebar wajib memiliki tombol btn-sync-sidebar');
+console.log('  ✔ LULUS: Label SKU bersih, floating cart fixed di viewport, dan fitur sinkronisasi global aktif.');
 
 // 7. Audit Sinkronisasi Versi & Build APK
 console.log('\n[7/7] Memeriksa konsistensi versi dan kesiapan file APK Android...');
