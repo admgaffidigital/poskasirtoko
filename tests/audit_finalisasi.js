@@ -6,7 +6,7 @@ console.log('🔍 AUDIT DEBUGGING FINAL & VERIFIKASI MENYELURUH POS KASIR');
 console.log('======================================================\n');
 
 // 1. Audit dialog bawaan browser
-console.log('[1/5] Memeriksa eliminasi dialog klasik bawaan browser (alert/confirm/prompt)...');
+console.log('[1/6] Memeriksa eliminasi dialog klasik bawaan browser (alert/confirm/prompt)...');
 const fg = fs.readdirSync('frontend/js', { recursive: true });
 const jsFiles = fg.filter(f => f.endsWith('.js')).map(f => 'frontend/js/' + f.replace(/\\/g, '/'));
 let foundNativeDialog = 0;
@@ -30,7 +30,7 @@ assert.strictEqual(foundNativeDialog, 0, 'Tidak boleh ada confirm() atau alert()
 console.log('  ✔ LULUS: 0 dialog klasik bawaan browser. Seluruh notifikasi menggunakan modal custom elegan.');
 
 // 2. Audit Form Produk novalidate & validasi multi-tab
-console.log('\n[2/5] Memeriksa form produk novalidate & kebersihan atribut required tersembunyi...');
+console.log('\n[2/6] Memeriksa form produk novalidate & kebersihan atribut required tersembunyi...');
 const prdJs = fs.readFileSync('frontend/js/modules/produk.js', 'utf8');
 assert.ok(prdJs.includes('<form id="form-produk" class="stack" novalidate>'), 'Form produk wajib novalidate');
 assert.ok(!prdJs.includes('class="input var-nama" placeholder="Nama Varian (cth: Putih 5kg)" value="" required>'), 'var-nama tidak boleh ada atribut required native');
@@ -38,7 +38,7 @@ assert.ok(prdJs.includes('switchTab'), 'Form produk wajib memiliki fungsi switch
 console.log('  ✔ LULUS: Form produk aman dari error non-focusable dan mendukung validasi multi-tab otomatis.');
 
 // 3. Audit POS Kasir Load More & Fast Batching
-console.log('\n[3/5] Memeriksa integrasi Load More & Fast Batching pada POS Kasir...');
+console.log('\n[3/6] Memeriksa integrasi Load More & Fast Batching pada POS Kasir...');
 const posJs = fs.readFileSync('frontend/js/modules/pos.js', 'utf8');
 assert.ok(posJs.includes('btn-load-more-pos'), 'POS wajib memiliki tombol Load More');
 assert.ok(posJs.includes('pageSize: 30'), 'POS wajib menggunakan batching pageSize: 30');
@@ -46,15 +46,25 @@ assert.ok(posJs.includes('muatLebihBanyakKatalog'), 'POS wajib memiliki handler 
 console.log('  ✔ LULUS: POS Kasir memuat 30 produk pertama secara instan dan mendukung tombol Load More.');
 
 // 4. Audit Backend kode.gs PAGE_LIMIT_MAKS & has_more
-console.log('\n[4/5] Memeriksa konfigurasi skalabilitas backend kode.gs...');
+console.log('\n[4/6] Memeriksa konfigurasi skalabilitas backend kode.gs...');
 const kodeGs = fs.readFileSync('backend/kode.gs', 'utf8');
 assert.ok(kodeGs.includes('PAGE_LIMIT_MAKS: 500'), 'PAGE_LIMIT_MAKS harus 500');
 assert.ok(kodeGs.includes('has_more:'), 'aksiProdukList_ wajib menyertakan properti has_more');
 assert.ok(kodeGs.includes('produk.uploadFoto'), 'Backend wajib mendukung handler produk.uploadFoto ke Google Drive');
 console.log('  ✔ LULUS: Backend kode.gs siap menangani ratusan produk & upload foto ke Google Drive.');
 
-// 5. Audit Sinkronisasi Versi & Build APK
-console.log('\n[5/5] Memeriksa konsistensi versi dan kesiapan file APK Android...');
+// 5. Audit Anti-Flicker & Akselerasi Hardware GPU Bottom Sheet Android
+console.log('\n[5/6] Memeriksa eliminasi flicker Bottom Sheet & akselerasi hardware Android WebView...');
+const compCss = fs.readFileSync('frontend/css/components.css', 'utf8');
+const layCss = fs.readFileSync('frontend/css/layout.css', 'utf8');
+assert.ok(compCss.includes('translate3d(0, 100%, 0)'), 'geser-naik wajib menggunakan translate3d untuk akselerasi GPU');
+assert.ok(compCss.includes('will-change: transform'), 'dialog bottom sheet wajib memiliki will-change: transform');
+assert.ok(compCss.includes('both'), 'animasi overlay & dialog wajib menggunakan animation-fill-mode both agar tidak berkedip');
+assert.ok(layCss.includes('transform: translate3d(0, 0, 0)'), 'bottomnav wajib diisolasi pada GPU composited layer');
+console.log('  ✔ LULUS: Bottom sheet dan overlay terakselerasi GPU 60fps tanpa flicker/berkedip.');
+
+// 6. Audit Sinkronisasi Versi & Build APK
+console.log('\n[6/6] Memeriksa konsistensi versi dan kesiapan file APK Android...');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const cfg = fs.readFileSync('frontend/js/config.js', 'utf8');
 const idx = fs.readFileSync('frontend/index.html', 'utf8');

@@ -160,7 +160,11 @@ export function showModal({
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 
+  let isClosing = false;
   const close = () => {
+    if (isClosing) return;
+    isClosing = true;
+    window.removeEventListener('keydown', handleKey);
     overlay.classList.add('keluar');
     setTimeout(() => {
       if (overlay.parentElement) overlay.remove();
@@ -179,7 +183,6 @@ export function showModal({
   const handleKey = (e) => {
     if (e.key === 'Escape') {
       close();
-      window.removeEventListener('keydown', handleKey);
     }
   };
   window.addEventListener('keydown', handleKey);

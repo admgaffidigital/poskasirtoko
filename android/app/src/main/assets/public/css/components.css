@@ -975,8 +975,14 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
 .toast-warning svg { color: #fbbf24; }
 .toast-info svg { color: #60a5fa; }
 .toast.keluar { animation: toast-keluar var(--dur-normal) var(--ease) forwards; }
-@keyframes toast-masuk { from { opacity: 0; transform: translateY(8px); } }
-@keyframes toast-keluar { to { opacity: 0; transform: translateY(8px); } }
+@keyframes toast-masuk {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes toast-keluar {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 0; transform: translate3d(0, 8px, 0); }
+}
 
 /* ---------- Modal & bottom sheet ---------- */
 .overlay {
@@ -987,17 +993,28 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   align-items: flex-end;
   justify-content: center;
   background: var(--overlay);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  animation: pudar-masuk var(--dur-normal) var(--ease);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: opacity;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  animation: pudar-masuk 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @media (min-width: 768px) {
+  .overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
   .overlay.is-modal {
     align-items: center;
     padding: var(--sp-6);
   }
 }
-.overlay.keluar { animation: pudar-keluar var(--dur-normal) var(--ease) forwards; }
+.overlay.keluar {
+  animation: pudar-keluar 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
 
 .dialog {
   display: flex;
@@ -1010,8 +1027,13 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   border-bottom: 0;
   box-shadow: var(--shadow-xl);
   padding-bottom: 0;
-  animation: geser-naik var(--dur-slow) var(--ease);
   overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  overscroll-behavior: contain;
+  animation: geser-naik 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @media (min-width: 768px) {
   .is-modal .dialog {
@@ -1019,14 +1041,16 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     border-radius: var(--radius-xl);
     border-bottom: 1px solid var(--border);
     padding-bottom: 0;
-    animation: muncul var(--dur-normal) var(--ease);
+    animation: muncul 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .is-modal .dialog.dialog-sm { max-width: 440px; }
   .is-modal .dialog.dialog-md { max-width: 620px; }
   .is-modal .dialog.dialog-lg { max-width: 800px; }
   .is-sheet .dialog { max-width: 560px; }
 }
-.overlay.keluar .dialog { animation: geser-turun var(--dur-normal) var(--ease) forwards; }
+.overlay.keluar .dialog {
+  animation: geser-turun 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 .dialog-handle {
   width: 44px;
   height: 5px;
@@ -1224,11 +1248,26 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   animation: muncul var(--dur-fast) var(--ease);
 }
 
-@keyframes pudar-masuk { from { opacity: 0; } }
-@keyframes pudar-keluar { to { opacity: 0; } }
-@keyframes geser-naik { from { transform: translateY(100%); } }
-@keyframes geser-turun { to { transform: translateY(100%); } }
-@keyframes muncul { from { opacity: 0; transform: scale(0.96); } }
+@keyframes pudar-masuk {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pudar-keluar {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes geser-naik {
+  from { transform: translate3d(0, 100%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes geser-turun {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 100%, 0); }
+}
+@keyframes muncul {
+  from { opacity: 0; transform: scale3d(0.96, 0.96, 1); }
+  to { opacity: 1; transform: scale3d(1, 1, 1); }
+}
 
 /* ---------- Pemisah ---------- */
 .divider { height: 1px; background: var(--border); border: 0; margin: var(--sp-4) 0; }
@@ -1361,9 +1400,10 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     padding: 8px 14px;
     justify-content: space-between;
     align-items: center;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    animation: geser-naik var(--dur-normal) var(--ease);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    animation: geser-naik 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
     touch-action: manipulation;
     cursor: pointer;
     transition: transform 0.08s var(--ease), box-shadow var(--dur-fast);
