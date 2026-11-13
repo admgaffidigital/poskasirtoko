@@ -341,8 +341,14 @@ export function renderPosModule(container) {
       if (resKat.ok) state.kategori = resKat.data.items || [];
       if (resProd.ok) state.katalog = resProd.data.items || [];
       if (resPeng.ok) {
-        state.pengaturan = resPeng.data || {};
+        state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
         store.set('pengaturan', state.pengaturan);
+        store.setToko({
+          nama: state.pengaturan.toko_nama,
+          alamat: state.pengaturan.toko_alamat,
+          hp: state.pengaturan.toko_hp,
+          nota_footer: state.pengaturan.nota_footer
+        });
       }
       if (resPending.ok) {
         state.pendingCount = (resPending.data.items || []).length;
@@ -1816,6 +1822,12 @@ export function renderPosModule(container) {
 
   // ---------- Modal Struk Sukses & Cetak ----------
   function bukaModalStrukSukses(dataStruk) {
+    dataStruk.toko = dataStruk.toko || store.get('toko') || {
+      nama: state.pengaturan?.toko_nama || 'TOKO',
+      alamat: state.pengaturan?.toko_alamat || '',
+      hp: state.pengaturan?.toko_hp || '',
+      nota_footer: state.pengaturan?.nota_footer || ''
+    };
     const pj = dataStruk.penjualan || {};
     const kembalian = pj.kembalian || 0;
     const ukuranPrinter = state.pengaturan.printer_ukuran || '58';

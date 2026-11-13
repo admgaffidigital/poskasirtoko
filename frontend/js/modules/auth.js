@@ -59,13 +59,14 @@ export function pastikanLogin(onSuccess) {
 export function tampilkanModalLogin(onSuccess) {
   if (modalLoginRef) return;
 
-  const formHtml = `
+    const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir';
+    const formHtml = `
     <form id="form-login" class="stack" autocomplete="off">
       <div class="text-center" style="margin-bottom: var(--sp-2)">
         <div class="brand-logo" style="margin: 0 auto var(--sp-2); width: 48px; height: 48px;">
           ${ICONS.store}
         </div>
-        <h3>Masuk ke POS Kasir</h3>
+        <h3>Masuk ke ${escapeHtml(namaToko)}</h3>
         <p class="text-xs text-muted">Masukkan username dan PIN 6 digit Anda</p>
       </div>
 
@@ -125,6 +126,8 @@ export function tampilkanModalLogin(onSuccess) {
     try {
       const res = await apiCall('auth.login', { username, pin });
       store.setUserSession(res.token, res.user);
+      if (res.pengaturan) store.set('pengaturan', res.pengaturan);
+      if (res.toko) store.setToko(res.toko);
 
       showToast(`Selamat datang, ${res.user.nama || res.user.username}!`, 'success');
 

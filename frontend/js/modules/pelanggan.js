@@ -747,7 +747,8 @@ function bukaChatWhatsApp(hp, nama) {
   if (cleanHp.startsWith('0')) cleanHp = '62' + cleanHp.substring(1);
   else if (!cleanHp.startsWith('62')) cleanHp = '62' + cleanHp;
 
-  const pesan = `Halo Bpk/Ibu *${nama || ''}*, salam dari Toko Bangunan. Ada yang dapat kami bantu seputar kebutuhan material bangunan proyek Anda?`;
+  const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
+  const pesan = `Halo Bpk/Ibu *${nama || ''}*, salam dari *${namaToko}*. Ada yang dapat kami bantu seputar kebutuhan belanja / pesanan Anda?`;
   const url = `https://wa.me/${cleanHp}?text=${encodeURIComponent(pesan)}`;
   window.open(url, '_blank');
 }

@@ -6,20 +6,28 @@
 const STORAGE_KEYS = {
   TOKEN: 'pos_token',
   USER: 'pos_user',
-  CART: 'pos_active_cart'
+  CART: 'pos_active_cart',
+  PENGATURAN: 'pos_pengaturan',
+  TOKO: 'pos_toko'
 };
 
 class Store {
   constructor() {
     this.listeners = new Map();
 
-    // Inisialisasi state awal
+    // Inisialisasi state awal (dengan fallback cache lokal persisten)
     this.state = {
       token: this.load(STORAGE_KEYS.TOKEN, ''),
       user: this.load(STORAGE_KEYS.USER, null),
       cart: this.load(STORAGE_KEYS.CART, []),
       isOnline: navigator.onLine,
-      pengaturan: null
+      pengaturan: this.load(STORAGE_KEYS.PENGATURAN, null),
+      toko: this.load(STORAGE_KEYS.TOKO, {
+        nama: 'POS Toko',
+        alamat: '',
+        hp: '',
+        nota_footer: ''
+      })
     };
 
     // Pantau status online/offline
@@ -68,11 +76,27 @@ class Store {
     if (key === 'token') this.save(STORAGE_KEYS.TOKEN, val);
     if (key === 'user') this.save(STORAGE_KEYS.USER, val);
     if (key === 'cart') this.save(STORAGE_KEYS.CART, val);
+    if (key === 'pengaturan') this.save(STORAGE_KEYS.PENGATURAN, val);
+    if (key === 'toko') this.save(STORAGE_KEYS.TOKO, val);
 
     // Beritahu observer
     if (this.listeners.has(key)) {
       this.listeners.get(key).forEach((fn) => fn(val));
     }
+  }
+
+  getNamaToko() {
+    return this.state.toko?.nama || this.state.pengaturan?.toko_nama || 'POS Toko';
+  }
+
+  setToko(toko) {
+    const tokoBersih = {
+      nama: (toko && toko.nama) ? String(toko.nama).trim() : (this.state.pengaturan?.toko_nama || 'POS Toko'),
+      alamat: (toko && toko.alamat) ? String(toko.alamat).trim() : (this.state.pengaturan?.toko_alamat || ''),
+      hp: (toko && toko.hp) ? String(toko.hp).trim() : (this.state.pengaturan?.toko_hp || ''),
+      nota_footer: (toko && toko.nota_footer) ? String(toko.nota_footer).trim() : (this.state.pengaturan?.nota_footer || '')
+    };
+    this.set('toko', tokoBersih);
   }
 
   subscribe(key, callback) {

@@ -54,6 +54,15 @@ async function muatPengaturan(container) {
     const res = await apiCall('pengaturan.get', {});
     const cfg = res.pengaturan || {};
 
+    // Sinkronkan ke store lokal
+    store.set('pengaturan', cfg);
+    store.setToko({
+      nama: cfg.toko_nama,
+      alamat: cfg.toko_alamat,
+      hp: cfg.toko_hp,
+      nota_footer: cfg.nota_footer
+    });
+
     area.innerHTML = `
       <form id="form-pengaturan" class="stack">
         <!-- 1. Profil Toko -->
@@ -87,7 +96,7 @@ async function muatPengaturan(container) {
                 <option value="58" ${cfg.printer_ukuran === '58' ? 'selected' : ''}>58 mm (32 Karakter per Baris)</option>
                 <option value="80" ${cfg.printer_ukuran === '80' ? 'selected' : ''}>80 mm (48 Karakter per Baris)</option>
               </select>
-              <span class="field-hint">Standar kertas mini printer kasir toko bangunan.</span>
+              <span class="field-hint">Standar kertas mini printer kasir toko.</span>
             </div>
 
             <div class="field">
@@ -183,8 +192,17 @@ async function muatPengaturan(container) {
       };
 
       try {
-        await apiCall('pengaturan.set', payload);
-        showToast('Pengaturan toko berhasil disimpan!', 'success');
+        const res = await apiCall('pengaturan.set', payload);
+        const cfgBaru = res.pengaturan || payload;
+        store.set('pengaturan', cfgBaru);
+        const tokoBaru = {
+          nama: cfgBaru.toko_nama,
+          alamat: cfgBaru.toko_alamat,
+          hp: cfgBaru.toko_hp,
+          nota_footer: cfgBaru.nota_footer
+        };
+        store.setToko(tokoBaru);
+        showToast(`Identitas toko "${tokoBaru.nama}" berhasil diperbarui di seluruh sistem!`, 'success');
       } catch (err) {
         showToast(err.message, 'error');
       } finally {

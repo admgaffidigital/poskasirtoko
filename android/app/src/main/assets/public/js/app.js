@@ -48,10 +48,15 @@ class App {
     syncStatusBarWithTheme();
     setupHardwareBackButton();
     this.renderShell();
+    this.updateBrandUI();
     this.bindGlobalEvents();
     this.initRouter();
     this.registerServiceWorker();
     hideNativeSplashScreen();
+
+    // Pantau perubahan identitas toko & pengaturan secara reaktif
+    store.subscribe('toko', (toko) => this.updateBrandUI(toko));
+    store.subscribe('pengaturan', () => this.updateBrandUI());
 
     // Sinkronkan status koneksi online/offline pada badge net-pill
     const pill = $('#net-pill');
@@ -63,13 +68,19 @@ class App {
       }
     }
 
+    // Ambil identitas toko & pengaturan dari server
+    this.muatPengaturanToko();
+
     // Verifikasi sesi saat aplikasi dimuat
     const token = store.get('token');
     if (token) {
       apiCall('auth.me', {})
         .then((res) => {
           store.set('user', res.user);
+          if (res.pengaturan) store.set('pengaturan', res.pengaturan);
+          if (res.toko) store.setToko(res.toko);
           this.updateUserUI(res.user);
+          this.updateBrandUI();
           if (res.user.wajib_ganti_pin) {
             tampilkanDialogWajibGantiPin(token, (u) => {
               this.cekIzinDanRender(this.currentRoute, u);
@@ -89,6 +100,45 @@ class App {
         });
     } else {
       this.updateUserUI(null);
+    }
+  }
+
+  async muatPengaturanToko() {
+    try {
+      const res = await apiCall('pengaturan.get', {});
+      if (res && res.pengaturan) {
+        store.set('pengaturan', res.pengaturan);
+        store.setToko({
+          nama: res.pengaturan.toko_nama,
+          alamat: res.pengaturan.toko_alamat,
+          hp: res.pengaturan.toko_hp,
+          nota_footer: res.pengaturan.nota_footer
+        });
+        this.updateBrandUI();
+      }
+    } catch (e) {
+      // Jika offline atau belum login, gunakan identitas dari cache lokal
+    }
+  }
+
+  updateBrandUI(toko) {
+    const t = toko || store.get('toko') || {};
+    const peng = store.get('pengaturan') || {};
+    const nama = (t.nama || peng.toko_nama || 'POS Toko').trim();
+    const alamat = (t.alamat || peng.toko_alamat || '').trim();
+    const sub = alamat ? alamat.split('\n')[0] : 'Sistem Kasir & POS';
+
+    const elNama = $('#brand-nama-toko');
+    if (elNama) elNama.textContent = nama;
+
+    const elSub = $('#brand-sub-toko');
+    if (elSub) elSub.textContent = sub;
+
+    // Perbarui judul tab/browser secara dinamis
+    if (this.currentRoute && this.currentRoute.title) {
+      document.title = `${this.currentRoute.title} | ${nama}`;
+    } else {
+      document.title = `${nama} - POS Kasir`;
     }
   }
 
@@ -334,8 +384,8 @@ class App {
           <div class="sidebar-brand">
             <div class="brand-logo">${ICONS.store}</div>
             <div class="brand-text">
-              <span>POS Toko</span>
-              <small>Toko Bangunan</small>
+              <span id="brand-nama-toko">${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')}</span>
+              <small id="brand-sub-toko">${escapeHtml(store.get('toko')?.alamat ? store.get('toko').alamat.split('\n')[0] : 'Sistem Kasir & POS')}</small>
             </div>
           </div>
 
@@ -605,6 +655,10 @@ class App {
 
     const titleEl = $('#topbar-title');
     if (titleEl) titleEl.textContent = rute.title;
+
+    // Perbarui judul tab/browser secara dinamis sesuai identitas toko
+    const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Toko';
+    document.title = `${rute.title} | ${namaToko}`;
 
     $$('.nav-link, .bottomnav-link').forEach((link) => {
       if (link.getAttribute('data-path') === rute.path) {
@@ -888,7 +942,7 @@ class App {
         <div class="page-header d-none-mobile">
           <div>
             <h2>Semua Menu Aplikasi</h2>
-            <p>Daftar seluruh modul dan fitur POS Toko Bangunan sesuai peran Anda</p>
+            <p>Daftar seluruh modul dan fitur ${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')} sesuai peran Anda</p>
           </div>
         </div>
 

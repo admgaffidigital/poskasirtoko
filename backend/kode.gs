@@ -1052,7 +1052,14 @@ function aksiAuthLogin_(ctx) {
 
   return {
     token: token,
-    user: userAman
+    user: userAman,
+    pengaturan: peng,
+    toko: {
+      nama: peng.toko_nama || 'Toko',
+      alamat: peng.toko_alamat || '',
+      hp: peng.toko_hp || '',
+      nota_footer: peng.nota_footer || ''
+    }
   };
 }
 
@@ -1073,9 +1080,19 @@ function aksiAuthLogout_(ctx) {
   return { pesan: 'Logout berhasil.' };
 }
 
-/** auth.me — Mengambil data profil sesi pengguna yang sedang aktif. */
+/** auth.me — Mengambil data profil sesi pengguna yang sedang aktif & identitas toko. */
 function aksiAuthMe_(ctx) {
-  return { user: ctx.user };
+  const peng = ambilPengaturan_();
+  return {
+    user: ctx.user,
+    pengaturan: peng,
+    toko: {
+      nama: peng.toko_nama || 'Toko',
+      alamat: peng.toko_alamat || '',
+      hp: peng.toko_hp || '',
+      nota_footer: peng.nota_footer || ''
+    }
+  };
 }
 
 /** auth.gantiPin — Mengganti PIN user sendiri. */
@@ -1583,7 +1600,16 @@ function aksiProdukDelete_(ctx) {
 
 /** pengaturan.get — Membaca konfigurasi operasional toko. */
 function aksiPengaturanGet_() {
-  return { pengaturan: ambilPengaturan_() };
+  const p = ambilPengaturan_();
+  return {
+    pengaturan: p,
+    toko: {
+      nama: p.toko_nama || 'Toko',
+      alamat: p.toko_alamat || '',
+      hp: p.toko_hp || '',
+      nota_footer: p.nota_footer || ''
+    }
+  };
 }
 
 /** pengaturan.set — Mengubah konfigurasi operasional toko (Khusus Owner). */
@@ -1618,7 +1644,16 @@ function aksiPengaturanSet_(ctx) {
   cacheHapus_('pengaturan');
   catatAudit_(ctx.user.id, 'pengaturan_ubah', 'SETTING', '', { perubahan: p });
 
-  return { pengaturan: ambilPengaturan_() };
+  const hasilPengaturan = ambilPengaturan_();
+  return {
+    pengaturan: hasilPengaturan,
+    toko: {
+      nama: hasilPengaturan.toko_nama || 'Toko',
+      alamat: hasilPengaturan.toko_alamat || '',
+      hp: hasilPengaturan.toko_hp || '',
+      nota_footer: hasilPengaturan.nota_footer || ''
+    }
+  };
 }
 
 /* ---------- 9.5 MANAJEMEN MULTI AKUN PENGGUNA ---------- */
@@ -2322,6 +2357,12 @@ function aksiPenjualanCreate_(ctx) {
     kasir: {
       id: ctx.user.id,
       nama: ctx.user.nama || ctx.user.username
+    },
+    toko: {
+      nama: pengaturan.toko_nama || 'Toko',
+      alamat: pengaturan.toko_alamat || '',
+      hp: pengaturan.toko_hp || '',
+      nota_footer: pengaturan.nota_footer || ''
     }
   };
 }
@@ -2493,13 +2534,20 @@ function aksiPenjualanDetail_(ctx) {
 
   const pelanggan = penjualan.pelanggan_id ? cariById_('Pelanggan', penjualan.pelanggan_id) : null;
   const kasir = penjualan.kasir_id ? cariById_('Users', penjualan.kasir_id) : null;
+  const peng = ambilPengaturan_();
 
   return {
     penjualan: penjualan,
     items: items,
     pembayaran: pembayaran,
     pelanggan: pelanggan,
-    kasir: kasir ? { id: kasir.id, nama: kasir.nama || kasir.username } : null
+    kasir: kasir ? { id: kasir.id, nama: kasir.nama || kasir.username } : null,
+    toko: {
+      nama: peng.toko_nama || 'Toko',
+      alamat: peng.toko_alamat || '',
+      hp: peng.toko_hp || '',
+      nota_footer: peng.nota_footer || ''
+    }
   };
 }
 

@@ -72,14 +72,20 @@ export function susunTeksStruk(data, ukuran = '58') {
   const pj = data.penjualan || {};
   const items = data.items || [];
   const pembayaran = data.pembayaran || [];
-  const toko = data.toko || store.get('toko') || { nama: 'TOKO BANGUNAN', alamat: '', hp: '', nota_footer: '' };
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO';
+  const toko = data.toko || store.get('toko') || {
+    nama: namaFallback,
+    alamat: store.get('pengaturan')?.toko_alamat || '',
+    hp: store.get('pengaturan')?.toko_hp || '',
+    nota_footer: store.get('pengaturan')?.nota_footer || ''
+  };
   const kasir = data.kasir || { nama: 'Kasir' };
   const pelanggan = data.pelanggan || null;
 
   const baris = [];
 
   // Header Toko
-  baris.push(formatTengah(toko.nama || 'TOKO BANGUNAN', lebar));
+  baris.push(formatTengah((toko.nama || namaFallback).toUpperCase(), lebar));
   if (toko.alamat) {
     const alamatPecah = toko.alamat.split('\n');
     alamatPecah.forEach((al) => baris.push(formatTengah(al, lebar)));
@@ -423,10 +429,11 @@ export function cetakBrowser(dataStruk, ukuran = '58') {
  */
 export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
   const pj = dataStruk.penjualan || {};
-  const toko = dataStruk.toko || store.get('toko') || { nama: 'Toko Bangunan' };
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO';
+  const toko = dataStruk.toko || store.get('toko') || { nama: namaFallback };
   const items = dataStruk.items || [];
 
-  let pesan = `*STRUK PENJUALAN - ${toko.nama || 'TOKO BANGUNAN'}*\n`;
+  let pesan = `*STRUK PENJUALAN - ${(toko.nama || namaFallback).toUpperCase()}*\n`;
   pesan += `No. Nota: *${pj.no_nota || '-'}*\n`;
   pesan += `Tanggal : ${formatTanggal(pj.tanggal, true)}\n`;
   pesan += `--------------------------------\n`;

@@ -18,7 +18,7 @@ export async function renderLoyaltiModule(container) {
       <div class="page-header">
         <div>
           <h2>Poin & Hadiah Loyalitas Member</h2>
-          <p>Katalog reward toko bangunan, formulir penukaran poin pelanggan, dan riwayat penukaran</p>
+          <p>Katalog reward loyalitas pelanggan, formulir penukaran poin, dan riwayat penukaran</p>
         </div>
         <div class="row" style="gap: var(--sp-2);">
           <div class="segmented" id="tabs-loyalti" role="tablist">
@@ -243,7 +243,7 @@ async function muatDataHadiah(container) {
                 </div>
 
                 <div class="fw-bold" style="font-size: var(--fs-base); margin-top: var(--sp-1);">${escapeHtml(h.nama)}</div>
-                <div class="text-xs text-muted" style="min-height: 36px;">${escapeHtml(h.deskripsi || 'Merchandise resmi Toko Bangunan')}</div>
+                <div class="text-xs text-muted" style="min-height: 36px;">${escapeHtml(h.deskripsi || 'Merchandise reward ' + (store.getNamaToko ? store.getNamaToko() : 'Toko'))}</div>
 
                 <div class="row" style="justify-content: space-between; align-items: baseline; margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--border);">
                   <div>

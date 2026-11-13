@@ -966,7 +966,8 @@ function kirimPesanWhatsAppTagihan(piutang) {
   }
 
   const tglJatuhTempo = piutang.jatuh_tempo ? formatTanggal(piutang.jatuh_tempo) : 'segera';
-  const pesan = `Halo Bpk/Ibu *${piutang.nama_pelanggan || 'Pelanggan'}*,\n\nKami dari Toko Bangunan ingin menginformasikan tagihan transaksi belanja tempo dengan rincian berikut:\n- No Nota: *${piutang.no_nota || '-'}*\n- Total Belanja: *${formatRupiah(piutang.total)}*\n- Sisa Tagihan: *${formatRupiah(piutang.sisa)}*\n- Jatuh Tempo: *${tglJatuhTempo}*\n\nPembayaran dapat dilakukan melalui kasir toko kami atau transfer bank. Mohon konfirmasi apabila pembayaran telah dilakukan.\n\nTerima kasih banyak atas kerja sama dan kepercayaan Anda! 🙏`;
+  const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
+  const pesan = `Halo Bpk/Ibu *${piutang.nama_pelanggan || 'Pelanggan'}*,\n\nKami dari *${namaToko}* ingin menginformasikan tagihan transaksi belanja tempo dengan rincian berikut:\n- No Nota: *${piutang.no_nota || '-'}*\n- Total Belanja: *${formatRupiah(piutang.total)}*\n- Sisa Tagihan: *${formatRupiah(piutang.sisa)}*\n- Jatuh Tempo: *${tglJatuhTempo}*\n\nPembayaran dapat dilakukan melalui kasir toko kami atau transfer bank. Mohon konfirmasi apabila pembayaran telah dilakukan.\n\nTerima kasih banyak atas kerja sama dan kepercayaan Anda! 🙏`;
 
   const url = `https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`;
   window.open(url, '_blank');

@@ -179,9 +179,9 @@ export async function renderPriceTagModule(container) {
     const showToko = chkToko.checked;
     const salinan = Math.max(1, parseInt(inputSalinan.value || 1, 10));
 
-    // Nama toko dari state/pengaturan
+    // Nama toko dinamis dari identitas toko/pengaturan
     const user = store.get('user');
-    const namaToko = 'TOKO BANGUNAN';
+    const namaToko = (store.getNamaToko ? store.getNamaToko() : (store.get('toko')?.nama || 'TOKO')).toUpperCase();
     const tglHariIni = formatTanggal(new Date());
 
     let cardWidth = '240px';
