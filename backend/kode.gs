@@ -926,6 +926,14 @@ const V_ = {
     }
     return bulatQty_(n);
   },
+  /** Qty boleh nol: >= 0, maks 3 digit desimal (cth: stok opname fisik kosong). */
+  qtyNol: function (nilai, label, opsi) {
+    const n = V_.angka(nilai, label, Object.assign({ wajib: true, min: 0 }, opsi || {}));
+    if (Math.abs(n * 1000 - Math.round(n * 1000)) > 1e-6) {
+      gagal_(KODE.VALIDATION, label + ' maksimal 3 angka di belakang koma.');
+    }
+    return bulatQty_(n);
+  },
   pilihan: function (nilai, label, daftar) {
     if (daftar.indexOf(nilai) === -1) gagal_(KODE.VALIDATION, label + ' harus salah satu dari: ' + daftar.join(', ') + '.');
     return nilai;
@@ -3443,7 +3451,7 @@ function aksiOpnameCreate_(ctx) {
 
   const stokSistemSaatIni = varian ? Number(varian.stok || 0) : Number(produk.stok || 0);
   const hppSaatIni = varian ? Number(varian.hpp || 0) : Number(produk.hpp || 0);
-  const qtyFisik = V_.qty(p.qty_fisik, 'Kuantitas Fisik Riil');
+  const qtyFisik = V_.qtyNol(p.qty_fisik, 'Kuantitas Fisik Riil');
   const selisih = Math.round((qtyFisik - stokSistemSaatIni) * 1000) / 1000;
   const alasan = V_.teks(p.alasan, 'Alasan Selisih', { wajib: true, maks: 300 });
 

@@ -463,6 +463,21 @@ async function runTests() {
   const auditOpname = env.bacaSemua_('Log_Audit').filter(a => a.modul === 'STOK');
   assert(auditOpname.length >= 1, 'Aturan Bisnis #8 terpenuhi: Opname dicatat di Log_Audit');
 
+  // Regresi: fisik KOSONG (0) harus bisa disesuaikan, stok sistem menjadi 0
+  const resOpnameNol = env.aksiOpnameCreate_({
+    ...ctxOwner,
+    payload: {
+      produk_id: semenId,
+      qty_fisik: 0,
+      alasan: 'Fisik kosong, stok sistem salah catat',
+      langsung_setuju: true
+    }
+  });
+  assert(resOpnameNol.status === 'disetujui', 'Opname dengan fisik 0 berhasil disetujui');
+  assert(env.cariById_('Produk', semenId).stok === 0, 'Stok sistem disesuaikan menjadi 0 (fisik kosong)');
+  const ksNol = env.bacaSemua_('Kartu_Stok').filter(k => k.ref_id === resOpnameNol.no_opname);
+  assert(ksNol.length === 1 && ksNol[0].qty === -38 && ksNol[0].saldo === 0, 'Kartu_Stok opname fisik 0: qty -38, saldo 0');
+
   // ==========================================
   // [TEST 10] Stok Opname Alur Draft -> Approve
   // ==========================================

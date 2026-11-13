@@ -1,6 +1,6 @@
 {
   "name": "pos-kasir-toko-bangunan",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "Aplikasi Point of Sale (POS) Kasir Toko Bangunan Modern & Responsif (PWA + Android Capacitor)",
   "main": "frontend/js/app.js",
   "scripts": {
