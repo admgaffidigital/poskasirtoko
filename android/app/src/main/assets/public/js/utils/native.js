@@ -174,3 +174,4 @@ export function setupHardwareBackButton() {
     console.warn('Gagal menginisialisasi listener backButton Capacitor:', err);
   }
 }
+
