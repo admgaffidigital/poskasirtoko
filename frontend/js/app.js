@@ -358,7 +358,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm">🟢 Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.24'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.25'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -411,7 +411,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.24'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.25'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1049,9 +1049,6 @@ class App {
           </div>
         </div>
 
-        <!-- Banner Pintar Status Aplikasi / Update / Unduh -->
-        ${this.renderBannerAppHtml(false)}
-
         <div class="menu-grid">
           <!-- Tombol Cepat Sinkronisasi Data Global -->
           <button type="button" class="menu-tile btn-sync" id="btn-sync-tile" style="border-color: var(--primary); background: var(--surface);">
@@ -1077,7 +1074,6 @@ class App {
     `;
 
     container.innerHTML = html;
-    this.pasangEventBanner(container.querySelector('#banner-app-install-update'));
     container.querySelector('#btn-sync-tile')?.addEventListener('click', () => {
       this.sinkronkanDataGlobal();
     });
