@@ -36,6 +36,7 @@ import { renderPelangganModule } from './modules/pelanggan.js';
 import { renderLoyaltiModule } from './modules/loyalti.js';
 import { renderPriceTagModule } from './modules/pricetag.js';
 import { renderLaporanModule } from './modules/laporan.js';
+import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton } from './utils/native.js';
 
 class App {
   constructor() {
@@ -44,10 +45,13 @@ class App {
 
   init() {
     initTheme();
+    syncStatusBarWithTheme();
+    setupHardwareBackButton();
     this.renderShell();
     this.bindGlobalEvents();
     this.initRouter();
     this.registerServiceWorker();
+    hideNativeSplashScreen();
 
     // Sinkronkan status koneksi online/offline pada badge net-pill
     const pill = $('#net-pill');
@@ -472,16 +476,25 @@ class App {
     });
 
     navEl.innerHTML = html;
+
+    $$('.bottomnav-link', navEl).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        haptic.light();
+      });
+    });
   }
 
   bindGlobalEvents() {
     const toggleTemaHandler = () => {
       const mode = toggleTheme();
+      syncStatusBarWithTheme(mode);
+      haptic.light();
       showToast(`Tema beralih ke mode ${mode === 'dark' ? 'Gelap' : 'Terang'}`, 'info', 1800);
     };
 
     const toggleFontHandler = () => {
       const mode = toggleFontSize();
+      haptic.light();
       showToast(`Ukuran teks: ${mode === 'besar' ? 'Besar' : 'Normal'}`, 'info', 1800);
     };
 

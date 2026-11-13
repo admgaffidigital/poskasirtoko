@@ -480,7 +480,7 @@ input[type="password"] {
     font-weight: var(--fw-bold);
   }
   .table-wrap:not(.keep-table) .table td[data-label*="Harga Ritel"],
-  .table-wrap:not(.keep-table) .table td[data-label*="Total Belanja"],
+  .table-wrap:not(.keep-table) .table td[data-label*="Total"],
   .table-wrap:not(.keep-table) .table td[data-label*="Sisa"] {
     font-size: var(--fs-md);
     font-weight: var(--fw-bold);

@@ -25,6 +25,7 @@ import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHt
 import { showToast, showModal, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
+import { haptic } from '../utils/native.js';
 
 export function renderPosModule(container) {
   // POS State
@@ -303,10 +304,27 @@ export function renderPosModule(container) {
     }
   }
 
-  elTabCatalog?.addEventListener('click', () => setMobileView('catalog'));
-  elTabCart?.addEventListener('click', () => setMobileView('cart'));
-  elBtnFloatingCart?.addEventListener('click', () => setMobileView('cart'));
-  elBtnBackToCatalog?.addEventListener('click', () => setMobileView('catalog'));
+  elTabCatalog?.addEventListener('click', () => {
+    haptic.light();
+    setMobileView('catalog');
+  });
+  elTabCart?.addEventListener('click', () => {
+    haptic.light();
+    setMobileView('cart');
+  });
+  elFloatingCart?.addEventListener('click', () => {
+    haptic.medium();
+    setMobileView('cart');
+  });
+  elBtnFloatingCart?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    haptic.medium();
+    setMobileView('cart');
+  });
+  elBtnBackToCatalog?.addEventListener('click', () => {
+    haptic.light();
+    setMobileView('catalog');
+  });
 
   // ---------- Inisialisasi Data ----------
   async function muatDataKatalog() {
@@ -858,6 +876,7 @@ export function renderPosModule(container) {
 
   // ---------- Manajemen Keranjang Belanja ----------
   function tambahItemKeKeranjang(itemBaru) {
+    haptic.medium();
     // Cari apakah item persis (produk_id, varian_id, satuan) sudah ada di keranjang
     const idx = state.keranjang.findIndex((it) =>
       it.produk_id === itemBaru.produk_id &&
@@ -990,6 +1009,7 @@ export function renderPosModule(container) {
     // Hapus Item
     elCartItems.querySelectorAll('.btn-hapus-item').forEach((btn) => {
       btn.addEventListener('click', () => {
+        haptic.delete();
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         state.keranjang.splice(idx, 1);
         renderKeranjang();
@@ -999,6 +1019,7 @@ export function renderPosModule(container) {
     // Min Qty
     elCartItems.querySelectorAll('.btn-item-min').forEach((btn) => {
       btn.addEventListener('click', () => {
+        haptic.light();
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const it = state.keranjang[idx];
         if (it.qty > 1) {
@@ -1016,6 +1037,7 @@ export function renderPosModule(container) {
     // Plus Qty
     elCartItems.querySelectorAll('.btn-item-plus').forEach((btn) => {
       btn.addEventListener('click', () => {
+        haptic.light();
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const it = state.keranjang[idx];
         it.qty = bulatQty(it.qty + 1);
@@ -1768,6 +1790,7 @@ export function renderPosModule(container) {
 
         // Transaksi Sukses!
         bunyikanBeep();
+        haptic.success();
         modal.close();
 
         // Tampilkan modal struk sukses
@@ -1783,6 +1806,7 @@ export function renderPosModule(container) {
         muatDataKatalog();
       } catch (err) {
         console.error('Error simpan penjualan:', err);
+        haptic.warning();
         showToast(err.message, 'error', 4500);
         btnProses.disabled = false;
         btnProses.textContent = 'Konfirmasi & Simpan Transaksi';

@@ -9,6 +9,7 @@ import { store } from '../state.js';
 import { $, $$, escapeHtml } from '../utils/dom.js';
 import { formatRupiah, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal } from '../utils/ui.js';
+import { haptic } from '../utils/native.js';
 
 // State lokal modul laporan
 let stateLaporan = {
@@ -973,6 +974,7 @@ function konfirmasiVoidNota(penjualanId, noNota, totalFormatted, onSelesai) {
         }
 
         modal.close();
+        haptic.delete();
         showToast(`Nota ${escapeHtml(noNota)} berhasil dibatalkan (void). Stok barang telah dikembalikan!`, 'success', 4000);
         if (typeof onSelesai === 'function') onSelesai();
       } catch (err) {
