@@ -76,7 +76,21 @@ assert.ok(compCss.includes('z-index: calc(var(--z-nav) + 10)'), 'Floating cart h
 assert.ok(appJs.includes('sinkronkanDataGlobal'), 'Aplikasi wajib memiliki fungsi sinkronkanDataGlobal');
 assert.ok(appJs.includes('btn-sync-top'), 'Topbar wajib memiliki tombol btn-sync-top');
 assert.ok(appJs.includes('btn-sync-sidebar'), 'Sidebar wajib memiliki tombol btn-sync-sidebar');
+
+// Audit Fitur Koneksi Printer Bluetooth (RawBT)
+const printerJs = fs.readFileSync('frontend/js/utils/printer.js', 'utf8');
+const pengJs = fs.readFileSync('frontend/js/modules/pengaturan.js', 'utf8');
+const manifestXml = fs.readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
+assert.ok(printerJs.includes('bukaAplikasiRawBT'), 'printer.js wajib memiliki fungsi bukaAplikasiRawBT');
+assert.ok(printerJs.includes('tampilkanModalKoneksiPrinter'), 'printer.js wajib memiliki fungsi tampilkanModalKoneksiPrinter');
+assert.ok(printerJs.includes('ru.a402d.rawbtprinter'), 'printer.js wajib mendukung package intent RawBT');
+assert.ok(manifestXml.includes('ru.a402d.rawbtprinter'), 'AndroidManifest.xml wajib mendeklarasikan queries package RawBT');
+assert.ok(pengJs.includes('cfg-printer-jalur'), 'Pengaturan wajib memiliki pilihan jalur cetak printer');
+assert.ok(posJs.includes('btn-pos-panduan-printer'), 'POS Kasir wajib memiliki tombol panduan koneksi printer');
+assert.ok(appJs.includes('btn-printer-tile'), 'Menu Lainnya wajib memiliki tile cepat Printer Bluetooth');
+
 console.log('  ✔ LULUS: Label SKU bersih, floating cart fixed di viewport, dan fitur sinkronisasi global aktif.');
+console.log('  ✔ LULUS: Fitur koneksi & uji printer Bluetooth RawBT terintegrasi lengkap di seluruh modul.');
 
 // 7. Audit Sinkronisasi Versi & Build APK
 console.log('\n[7/7] Memeriksa konsistensi versi dan kesiapan file APK Android...');

@@ -23,7 +23,7 @@ import { api } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
-import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp } from '../utils/printer.js';
+import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
 
@@ -1964,6 +1964,8 @@ export function renderPosModule(container) {
     const pj = dataStruk.penjualan || {};
     const kembalian = pj.kembalian || 0;
     const ukuranPrinter = state.pengaturan.printer_ukuran || '58';
+    const jalurUtama = state.pengaturan?.printer_jalur || 'rawbt';
+    const isRawBtUtama = jalurUtama === 'rawbt' || jalurUtama === 'otomatis';
 
     const modal = showModal({
       title: 'Transaksi Berhasil!',
@@ -1981,13 +1983,18 @@ export function renderPosModule(container) {
           <div class="divider"></div>
 
           <div class="stack" style="gap: var(--sp-2);">
-            <div class="fw-bold text-xs text-muted" style="text-align: left;">PILIHAN CETAK STRUK:</div>
-            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-              <button type="button" class="btn btn-primary btn-sm" id="btn-print-bt" style="flex: 1;">
-                ${ICONS.printer} Cetak Bluetooth (${ukuranPrinter}mm)
+            <div class="row-between">
+              <span class="fw-bold text-xs text-muted">PILIHAN CETAK STRUK:</span>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-pos-panduan-printer" style="padding: 2px 6px;">
+                ⚙️ Atur Printer Bluetooth
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-print-rawbt" style="flex: 1;">
-                📱 RawBT Android
+            </div>
+            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+              <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm" id="btn-print-rawbt" style="flex: 1;">
+                📱 RawBT Android (${ukuranPrinter}mm)
+              </button>
+              <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm" id="btn-print-bt" style="flex: 1;">
+                ${ICONS.printer} Cetak Bluetooth
               </button>
             </div>
             <div class="row" style="gap: var(--sp-2);">
@@ -2020,6 +2027,10 @@ export function renderPosModule(container) {
 
     modal.el.querySelector('#btn-print-browser')?.addEventListener('click', () => {
       cetakBrowser(dataStruk, ukuranPrinter);
+    });
+
+    modal.el.querySelector('#btn-pos-panduan-printer')?.addEventListener('click', () => {
+      tampilkanModalKoneksiPrinter();
     });
 
     modal.el.querySelector('#btn-share-wa')?.addEventListener('click', () => {

@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast } from '../utils/ui.js';
 import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
+import { tampilkanModalKoneksiPrinter, bukaAplikasiRawBT, cetakUjiStruk } from '../utils/printer.js';
 
 export async function renderPengaturanModule(container) {
   const user = store.get('user');
@@ -100,9 +101,47 @@ async function muatPengaturan(container) {
             </div>
 
             <div class="field">
+              <label class="field-label" for="cfg-printer-jalur">Jalur Cetak Struk Utama</label>
+              <select class="select" id="cfg-printer-jalur">
+                <option value="rawbt" ${cfg.printer_jalur === 'rawbt' ? 'selected' : ''}>📱 RawBT Android (Printer Bluetooth Thermal)</option>
+                <option value="webbluetooth" ${cfg.printer_jalur === 'webbluetooth' ? 'selected' : ''}>📶 Web Bluetooth Direct (BLE Browser)</option>
+                <option value="browser" ${cfg.printer_jalur === 'browser' ? 'selected' : ''}>🖨️ Cetak / Pratinjau Browser (Semua Perangkat / PDF)</option>
+                <option value="otomatis" ${(!cfg.printer_jalur || cfg.printer_jalur === 'otomatis') ? 'selected' : ''}>⚡ Otomatis (RawBT di Android / Browser di PC)</option>
+              </select>
+              <span class="field-hint">Metode cetak default yang aktif otomatis saat transaksi kasir selesai.</span>
+            </div>
+          </div>
+
+          <div class="form-grid cols-2" style="margin-top: var(--sp-2);">
+            <div class="field">
               <label class="field-label" for="cfg-diskon-kasir">Batas Diskon Maksimal Kasir (%)</label>
               <input type="number" class="input input-num" id="cfg-diskon-kasir" value="${cfg.diskon_maks_kasir_persen || 10}" min="0" max="100">
               <span class="field-hint">Diskon di atas persentase ini memerlukan persetujuan Owner/Admin.</span>
+            </div>
+          </div>
+
+          <div class="card card-body stack-sm" style="margin-top: var(--sp-3); background: var(--surface-2); border: 1.5px solid var(--border);">
+            <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-2);">
+              <div>
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--primary);">${ICONS.printer}</span>
+                  <span>Koneksi Printer Bluetooth Thermal via RawBT</span>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 2px;">
+                  Sambungkan printer thermal kasir (58/80mm) ke HP/tablet melalui RawBT dan uji cetak nota.
+                </div>
+              </div>
+              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cfg-buka-rawbt">
+                  📱 Buka RawBT
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cfg-uji-rawbt">
+                  🧪 Uji Cetak
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-cfg-panduan-printer">
+                  ⚙️ Panduan Sambungkan
+                </button>
+              </div>
             </div>
           </div>
 
@@ -182,6 +221,7 @@ async function muatPengaturan(container) {
         toko_hp: $('#cfg-toko-hp', form).value.trim(),
         toko_alamat: $('#cfg-toko-alamat', form).value.trim(),
         printer_ukuran: $('#cfg-printer-ukuran', form).value,
+        printer_jalur: $('#cfg-printer-jalur', form).value,
         diskon_maks_kasir_persen: parseFloat($('#cfg-diskon-kasir', form).value) || 10,
         nota_footer: $('#cfg-nota-footer', form).value.trim(),
         pajak_aktif: $('#cfg-pajak-aktif', form).checked,
@@ -209,6 +249,22 @@ async function muatPengaturan(container) {
         btnSimpan.removeAttribute('aria-busy');
         btnSimpan.disabled = false;
       }
+    });
+
+    // Listener Aksi Cepat Koneksi & Uji Printer Bluetooth RawBT
+    $('#btn-cfg-buka-rawbt', container)?.addEventListener('click', () => {
+      bukaAplikasiRawBT();
+    });
+
+    $('#btn-cfg-uji-rawbt', container)?.addEventListener('click', () => {
+      const ukuran = $('#cfg-printer-ukuran', form)?.value || '58';
+      const jalur = $('#cfg-printer-jalur', form)?.value || 'rawbt';
+      const targetJalur = jalur === 'webbluetooth' ? 'bluetooth' : (jalur === 'browser' ? 'browser' : 'rawbt');
+      cetakUjiStruk(targetJalur, ukuran);
+    });
+
+    $('#btn-cfg-panduan-printer', container)?.addEventListener('click', () => {
+      tampilkanModalKoneksiPrinter();
     });
   } catch (err) {
     area.innerHTML = `

@@ -1707,6 +1707,7 @@ function aksiPengaturanSet_(ctx) {
       if (k === 'diskon_maks_kasir_persen') val = V_.angka(val, 'Maks Diskon Kasir', { min: 0, max: 100 });
       if (k === 'pajak_persen') val = V_.angka(val, 'Pajak Persen', { min: 0, max: 100 });
       if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
+      if (k === 'printer_jalur') val = ['otomatis', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
 
       if (petaId[k]) {
         diubah.push({ id: petaId[k], data: { value: val } });

@@ -37,6 +37,7 @@ import { renderLoyaltiModule } from './modules/loyalti.js';
 import { renderPriceTagModule } from './modules/pricetag.js';
 import { renderLaporanModule } from './modules/laporan.js';
 import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton } from './utils/native.js';
+import { tampilkanModalKoneksiPrinter } from './utils/printer.js';
 
 class App {
   constructor() {
@@ -53,6 +54,7 @@ class App {
     this.initRouter();
     this.registerServiceWorker();
     hideNativeSplashScreen();
+    window.bukaKoneksiPrinter = tampilkanModalKoneksiPrinter;
 
     // Pantau perubahan identitas toko & pengaturan secara reaktif
     store.subscribe('toko', (toko) => this.updateBrandUI(toko));
@@ -358,7 +360,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm">🟢 Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.27'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.28'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -411,7 +413,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.27'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.28'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1057,6 +1059,14 @@ class App {
             </div>
             <span>Sinkron Data</span>
           </button>
+
+          <!-- Tombol Cepat Koneksi Printer Bluetooth (RawBT) -->
+          <button type="button" class="menu-tile" id="btn-printer-tile" style="background: var(--surface);">
+            <div class="list-item-icon" style="background: var(--surface-3); color: var(--primary);">
+              ${ICONS.printer}
+            </div>
+            <span>Printer Bluetooth</span>
+          </button>
     `;
 
     listRoutes.forEach((r) => {
@@ -1076,6 +1086,9 @@ class App {
     container.innerHTML = html;
     container.querySelector('#btn-sync-tile')?.addEventListener('click', () => {
       this.sinkronkanDataGlobal();
+    });
+    container.querySelector('#btn-printer-tile')?.addEventListener('click', () => {
+      tampilkanModalKoneksiPrinter();
     });
   }
 
