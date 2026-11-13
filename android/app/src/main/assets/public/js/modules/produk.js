@@ -496,7 +496,7 @@ async function bukaModalFormProduk(container, produk) {
   const optionsKat = susunOpsiKategoriHtml(daftarKategori, isEdit ? produk.kategori_id : '', '-- Tanpa Kategori --');
 
   const bodyHtml = `
-    <form id="form-produk" class="stack">
+    <form id="form-produk" class="stack" novalidate>
       <!-- Navigasi Tab Form -->
       <div class="segmented" id="tab-form-produk" style="width: 100%;">
         <button type="button" class="grow" data-tab="dasar" aria-pressed="true">Informasi Dasar</button>
@@ -548,7 +548,7 @@ async function bukaModalFormProduk(container, produk) {
 
         <div class="field">
           <label class="field-label" for="prd-nama">Nama Produk <span class="wajib">*</span></label>
-          <input type="text" class="input" id="prd-nama" value="${isEdit ? escapeHtml(produk.nama) : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" required autofocus>
+          <input type="text" class="input" id="prd-nama" value="${isEdit ? escapeHtml(produk.nama) : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" autofocus>
         </div>
 
         <div class="form-grid cols-2">
@@ -577,7 +577,7 @@ async function bukaModalFormProduk(container, produk) {
           </div>
           <div class="field">
             <label class="field-label" for="prd-satuan">Satuan Dasar <span class="wajib">*</span></label>
-            <input type="text" class="input" id="prd-satuan" value="${isEdit ? escapeHtml(produk.satuan_dasar) : 'pcs'}" placeholder="Cth: sak, kg, dus, batang, meter" required>
+            <input type="text" class="input" id="prd-satuan" value="${isEdit ? escapeHtml(produk.satuan_dasar) : 'pcs'}" placeholder="Cth: sak, kg, dus, batang, meter">
           </div>
         </div>
 
@@ -599,7 +599,7 @@ async function bukaModalFormProduk(container, produk) {
           </label>
           <div class="input-prefix" style="max-width: 320px;">
             <span>Rp</span>
-            <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${isEdit ? formatRupiah(produk.hpp, false) : '0'}" required placeholder="0">
+            <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${isEdit ? formatRupiah(produk.hpp, false) : '0'}" placeholder="0">
           </div>
           <span class="field-hint">Dasar acuan perhitungan persentase margin keuntungan ritel dan grosir.</span>
         </div>
@@ -644,7 +644,7 @@ async function bukaModalFormProduk(container, produk) {
               </label>
               <div class="input-prefix">
                 <span>Rp</span>
-                <input type="text" class="input input-num fw-bold text-md" id="prd-ritel" value="${isEdit ? formatRupiah(produk.harga_ritel, false) : '0'}" required>
+                <input type="text" class="input input-num fw-bold text-md" id="prd-ritel" value="${isEdit ? formatRupiah(produk.harga_ritel, false) : '0'}">
               </div>
               <span class="field-hint">Ketik harga langsung atau tentukan persen di sebelah kiri.</span>
             </div>
@@ -768,16 +768,20 @@ async function bukaModalFormProduk(container, produk) {
 
   const form = $('#form-produk', modal.el);
 
-  // Tab switching
+  // Tab switching helper
+  const switchTab = (target) => {
+    $('#tab-form-produk', modal.el)?.querySelectorAll('button').forEach((b) => {
+      b.setAttribute('aria-pressed', b.getAttribute('data-tab') === target);
+    });
+    $('.tab-pane#pane-dasar', modal.el)?.classList.toggle('hidden', target !== 'dasar');
+    $('.tab-pane#pane-harga', modal.el)?.classList.toggle('hidden', target !== 'harga');
+    $('.tab-pane#pane-varian', modal.el)?.classList.toggle('hidden', target !== 'varian');
+  };
+
   $('#tab-form-produk', modal.el)?.querySelectorAll('button').forEach((btn) => {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-tab');
-      $('#tab-form-produk', modal.el).querySelectorAll('button').forEach((b) => {
-        b.setAttribute('aria-pressed', b.getAttribute('data-tab') === target);
-      });
-      $('.tab-pane#pane-dasar', modal.el).classList.toggle('hidden', target !== 'dasar');
-      $('.tab-pane#pane-harga', modal.el).classList.toggle('hidden', target !== 'harga');
-      $('.tab-pane#pane-varian', modal.el).classList.toggle('hidden', target !== 'varian');
+      switchTab(target);
     });
   });
 
@@ -997,14 +1001,14 @@ async function bukaModalFormProduk(container, produk) {
     row.innerHTML = `
       <input type="hidden" class="var-id" value="${v.id || ''}">
       <div class="form-grid cols-3" style="gap: var(--sp-2);">
-        <input type="text" class="input var-nama" placeholder="Nama Varian (cth: Putih 5kg)" value="${escapeHtml(v.nama_varian || '')}" required>
+        <input type="text" class="input var-nama" placeholder="Nama Varian (cth: Putih 5kg)" value="${escapeHtml(v.nama_varian || '')}">
         <input type="text" class="input mono uppercase var-sku" placeholder="Auto SKU Varian" value="${escapeHtml(v.sku || '')}" title="Kosongkan jika ingin dibuat otomatis">
         <input type="text" class="input mono var-barcode" placeholder="Auto Barcode Varian" value="${escapeHtml(v.barcode || '')}" title="Kosongkan jika ingin dibuat otomatis">
       </div>
       <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-2);">
         <div class="input-prefix grow">
           <span>Rp</span>
-          <input type="text" class="input input-num var-ritel" placeholder="Harga Ritel" value="${formatRupiah(v.harga_ritel || 0, false)}" required>
+          <input type="text" class="input input-num var-ritel" placeholder="Harga Ritel" value="${formatRupiah(v.harga_ritel || 0, false)}">
         </div>
         <input type="number" class="input input-num var-stok" placeholder="Stok" value="${v.stok || 0}" style="max-width: 110px;">
         <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-varian">Hapus</button>
@@ -1028,14 +1032,14 @@ async function bukaModalFormProduk(container, produk) {
     row.style.padding = 'var(--sp-3)';
     row.innerHTML = `
       <div class="row" style="gap: var(--sp-2);">
-        <input type="text" class="input sat-nama" placeholder="Satuan (cth: Dus)" value="${escapeHtml(s.satuan || '')}" style="max-width: 130px;" required>
+        <input type="text" class="input sat-nama" placeholder="Satuan (cth: Dus)" value="${escapeHtml(s.satuan || '')}" style="max-width: 130px;">
         <span class="text-sm">=</span>
-        <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Faktor (cth: 24)" value="${s.faktor || ''}" style="max-width: 90px;" required>
+        <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Faktor (cth: 24)" value="${s.faktor || ''}" style="max-width: 90px;">
         <span class="text-xs text-muted satuan-dasar-label">${escapeHtml($('#prd-satuan', form).value || 'pcs')}</span>
         <input type="text" class="input mono sat-barcode" placeholder="Auto Barcode Satuan" value="${escapeHtml(s.barcode || '')}" style="max-width: 150px;" title="Kosongkan jika ingin dibuat otomatis">
         <div class="input-prefix grow">
           <span>Rp</span>
-          <input type="text" class="input input-num sat-ritel" placeholder="Harga Jual per Satuan" value="${formatRupiah(s.harga_ritel || 0, false)}" required>
+          <input type="text" class="input input-num sat-ritel" placeholder="Harga Jual per Satuan" value="${formatRupiah(s.harga_ritel || 0, false)}">
         </div>
         <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-satuan">Hapus</button>
       </div>
@@ -1056,6 +1060,40 @@ async function bukaModalFormProduk(container, produk) {
     if (isSubmitting) return;
 
     const nama = $('#prd-nama', form).value.trim();
+    if (!nama) {
+      switchTab('dasar');
+      $('#prd-nama', form)?.focus();
+      showToast('Nama produk wajib diisi!', 'error');
+      return;
+    }
+
+    const satuan_dasar = ($('#prd-satuan', form).value || '').trim() || 'pcs';
+    const hpp = parseRupiah($('#prd-hpp', form).value);
+    const harga_ritel = parseRupiah($('#prd-ritel', form).value);
+
+    if (harga_ritel <= 0) {
+      switchTab('harga');
+      $('#prd-ritel', form)?.focus();
+      showToast('Harga jual ritel wajib diisi dan harus lebih dari 0!', 'error');
+      return;
+    }
+
+    // Validasi harga >= HPP
+    if (hpp > 0 && harga_ritel < hpp) {
+      switchTab('harga');
+      $('#prd-ritel', form)?.focus();
+      showToast(`Harga ritel (Rp ${formatRupiah(harga_ritel, false)}) tidak boleh di bawah HPP (Rp ${formatRupiah(hpp, false)})!`, 'error', 4500);
+      return;
+    }
+
+    const harga_grosir = parseRupiah($('#prd-grosir', form).value) || harga_ritel;
+    if (hpp > 0 && harga_grosir < hpp) {
+      switchTab('harga');
+      $('#prd-grosir', form)?.focus();
+      showToast(`Harga grosir tidak boleh di bawah HPP!`, 'error', 4500);
+      return;
+    }
+
     let sku = $('#prd-sku', form).value.trim();
     let barcode = $('#prd-barcode', form).value.trim();
 
@@ -1070,35 +1108,39 @@ async function bukaModalFormProduk(container, produk) {
     }
 
     const kategori_id = $('#prd-kategori', form).value;
-    const satuan_dasar = $('#prd-satuan', form).value.trim();
-    const hpp = parseRupiah($('#prd-hpp', form).value);
-    const harga_ritel = parseRupiah($('#prd-ritel', form).value);
-    const harga_grosir = parseRupiah($('#prd-grosir', form).value) || harga_ritel;
     const min_grosir_qty = parseFloat($('#prd-min-grosir', form).value) || 1;
     const stok = parseFloat($('#prd-stok', form).value) || 0;
     const stok_min = parseFloat($('#prd-stok-min', form).value) || 0;
     const aktif = $('#prd-aktif', form).checked;
     const punya_varian = checkVarian.checked;
 
-    // Validasi harga >= HPP
-    if (harga_ritel < hpp) {
-      showToast(`Harga ritel (Rp ${formatRupiah(harga_ritel, false)}) tidak boleh di bawah HPP (Rp ${formatRupiah(hpp, false)})!`, 'error', 4500);
-      return;
-    }
-    if (harga_grosir < hpp) {
-      showToast(`Harga grosir tidak boleh di bawah HPP!`, 'error', 4500);
-      return;
-    }
-
     // Susun data varian
     const varian = [];
     if (punya_varian) {
       const barisVarian = form.querySelectorAll('.baris-varian');
+      if (barisVarian.length === 0) {
+        switchTab('varian');
+        showToast('Tambahkan minimal 1 varian atau matikan opsi varian!', 'error');
+        return;
+      }
       for (const b of barisVarian) {
         const vNama = b.querySelector('.var-nama').value.trim();
         const vRitel = parseRupiah(b.querySelector('.var-ritel').value);
-        if (!vNama) continue;
-        if (vRitel < hpp) {
+        if (!vNama) {
+          switchTab('varian');
+          b.querySelector('.var-nama').focus();
+          showToast('Nama varian tidak boleh kosong!', 'error');
+          return;
+        }
+        if (vRitel <= 0) {
+          switchTab('varian');
+          b.querySelector('.var-ritel').focus();
+          showToast(`Harga ritel varian "${vNama}" wajib diisi!`, 'error');
+          return;
+        }
+        if (hpp > 0 && vRitel < hpp) {
+          switchTab('varian');
+          b.querySelector('.var-ritel').focus();
           showToast(`Harga varian "${vNama}" tidak boleh di bawah HPP!`, 'error');
           return;
         }
@@ -1128,7 +1170,25 @@ async function bukaModalFormProduk(container, produk) {
       const sNama = s.querySelector('.sat-nama').value.trim();
       const sFaktor = parseFloat(s.querySelector('.sat-faktor').value);
       const sRitel = parseRupiah(s.querySelector('.sat-ritel').value);
-      if (!sNama || !sFaktor) continue;
+      if (!sNama && isNaN(sFaktor) && sRitel === 0) continue;
+      if (!sNama) {
+        switchTab('varian');
+        s.querySelector('.sat-nama').focus();
+        showToast('Nama satuan kemasan wajib diisi!', 'error');
+        return;
+      }
+      if (!sFaktor || sFaktor <= 0) {
+        switchTab('varian');
+        s.querySelector('.sat-faktor').focus();
+        showToast(`Faktor konversi satuan "${sNama}" harus lebih dari 0!`, 'error');
+        return;
+      }
+      if (sRitel <= 0) {
+        switchTab('varian');
+        s.querySelector('.sat-ritel').focus();
+        showToast(`Harga jual ritel untuk satuan "${sNama}" wajib diisi!`, 'error');
+        return;
+      }
 
       let sBarcode = (s.querySelector('.sat-barcode')?.value || '').trim();
       if (!sBarcode) sBarcode = generateEan13Barcode();
