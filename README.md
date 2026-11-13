@@ -416,4 +416,26 @@ Sebuah modul dianggap selesai jika:
 
 ---
 
+## 20. Prosedur Mutlak Simpan & Rilis Versi (`npm run release`)
+
+Untuk memastikan versi aplikasi selalu mutakhir di seluruh platform (Web, PWA, dan Android APK) tanpa ada yang tertinggal atau terlupakan:
+
+```bash
+# Sinkronkan versi, jalankan seluruh uji audit, dan buat ulang file APK Android:
+npm run release
+
+# Atau jika ingin menaikkan versi patch secara otomatis (misal 1.0.17 -> 1.0.18):
+npm run release -- patch
+```
+
+Perintah di atas secara otomatis mengeksekusi urutan terpadu:
+1. Menyelaraskan nomor versi di `package.json`, `frontend/js/config.js`, `frontend/index.html`, `frontend/sw.js`, `frontend/js/app.js`, dan `android/app/build.gradle`.
+2. Menjalankan seluruh pengujian unit & audit (13 skenario wajib 100% PASS).
+3. Menyinkronkan aset web modern ke Android via `npx cap sync android`.
+4. Mengompilasi paket binary APK terbaru via Gradle (`.\gradlew.bat assembleDebug`).
+5. Menyalin APK hasil kompilasi ke `frontend/download/poskasirtoko.apk` (sehingga tombol download selalu menyediakan APK paling mutakhir).
+6. Menyinkronkan ulang ke folder Android dan siap di-push ke GitHub.
+
+---
+
 _Dokumen ini adalah panduan utama proyek. Setiap perubahan fitur atau aturan wajib diperbarui di sini dan di `CHANGELOG.md`._

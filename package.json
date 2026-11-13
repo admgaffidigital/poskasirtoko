@@ -8,6 +8,8 @@
     "test:syntax": "node tests/check_syntax.js && node tests/check_imports.js && node tests/check_globals.js",
     "test:audit": "node tests/test_debug_final.js",
     "test:all": "node tests/check_syntax.js && node tests/check_imports.js && node tests/check_globals.js && node tests/test_fase3.js && node tests/test_fase4.js && node tests/test_fase5.js && node tests/test_fase6.js && node tests/test_debug_final.js",
+    "release": "node scripts/release.js",
+    "release:quick": "node scripts/release.js --no-apk",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android",
     "cap:build": "cap build android"
@@ -37,4 +39,3 @@
     "@capacitor/cli": "^6.2.0"
   }
 }
-
