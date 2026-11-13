@@ -65,6 +65,23 @@
   --btn-bg-hover: var(--danger-hover);
   box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
 }
+.btn-outline-danger {
+  --btn-bg: transparent;
+  --btn-text: var(--danger);
+  --btn-border: rgba(220, 38, 38, 0.4);
+  --btn-bg-hover: rgba(220, 38, 38, 0.12);
+}
+[data-theme="dark"] .btn-outline-danger {
+  --btn-text: #f87171;
+  --btn-border: rgba(248, 113, 113, 0.45);
+  --btn-bg-hover: rgba(248, 113, 113, 0.16);
+}
+.btn-outline {
+  --btn-bg: transparent;
+  --btn-text: var(--text);
+  --btn-border: var(--border);
+  --btn-bg-hover: var(--surface-2);
+}
 .btn-success {
   --btn-bg: var(--success);
   --btn-text: #fff;
@@ -402,6 +419,37 @@ input[type="password"] {
 .table tbody tr:hover { background: var(--surface-2); }
 .table .num { text-align: right; }
 
+/* Container nilai sel bertumpuk di sebelah kanan (misal HP + badge WA + alamat) */
+.pel-cell-val {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 3px;
+  min-width: 0;
+}
+
+/* Toolbar tombol aksi tabel yang seragam dan rapi */
+.pel-actions-row,
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.pel-actions-row .btn,
+.table-actions .btn {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-md);
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
 /* Transformasi Tabel ke Native Card di Layar Mobile (< 768px) */
 @media (max-width: 767px) {
   .table-wrap:not(.keep-table) {
@@ -534,9 +582,26 @@ input[type="password"] {
   }
   .table-wrap:not(.keep-table) .table td:last-child .btn {
     flex: 1;
+    min-height: 38px;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+  }
+
+  /* Toolbar tombol aksi kartu pada tampilan mobile */
+  .pel-actions-row,
+  .table-actions {
+    display: flex;
+    width: 100%;
+    gap: var(--sp-2);
+  }
+  .pel-actions-row .btn,
+  .table-actions .btn {
+    flex: 1;
     min-height: 40px;
     justify-content: center;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
   }
@@ -572,7 +637,6 @@ input[type="password"] {
   line-height: 1.3;
   color: var(--text);
   word-break: break-word;
-}
 }
 
 /* Tabel khusus yang tetap mempertahankan scroll horizontal di mobile */
@@ -766,6 +830,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     padding-bottom: 0;
     animation: muncul var(--dur-normal) var(--ease);
   }
+  .is-modal .dialog.dialog-md { max-width: 620px; }
   .is-modal .dialog.dialog-lg { max-width: 800px; }
   .is-sheet .dialog { max-width: 560px; }
 }

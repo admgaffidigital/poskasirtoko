@@ -121,12 +121,12 @@ async function muatUsers(container) {
             ${u.last_login ? formatTanggal(u.last_login, true) : 'Belum pernah'}
           </td>
           <td style="text-align: right;" data-label="Aksi">
-            <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
-              <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}" style="border-radius: var(--radius-full);">
+            <div class="table-actions">
+              <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}" title="Ubah Pengguna">
                 ${ICONS.settings}
                 <span>Ubah</span>
               </button>
-              <button type="button" class="btn btn-ghost btn-sm text-warning btn-reset-pin-user" data-id="${u.id}" data-user="${escapeHtml(u.username)}" style="border-radius: var(--radius-full);">
+              <button type="button" class="btn btn-secondary btn-sm text-warning btn-reset-pin-user" data-id="${u.id}" data-user="${escapeHtml(u.username)}" title="Reset PIN Pengguna">
                 Reset PIN
               </button>
             </div>

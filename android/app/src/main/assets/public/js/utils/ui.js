@@ -125,7 +125,7 @@ export function showModal({
   overlay.className = `overlay ${isSheet ? 'is-sheet' : 'is-modal'}`;
 
   const dialog = document.createElement('div');
-  dialog.className = `dialog ${size === 'lg' ? 'dialog-lg' : ''}`;
+  dialog.className = `dialog ${size === 'lg' ? 'dialog-lg' : size === 'md' ? 'dialog-md' : ''}`;
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
 

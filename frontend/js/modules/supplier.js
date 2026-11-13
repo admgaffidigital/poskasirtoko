@@ -150,12 +150,12 @@ async function muatSupplierList(container, canEdit, query = '') {
           </td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
-                <button type="button" class="btn btn-secondary btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah" style="border-radius: var(--radius-full);">
+              <div class="table-actions">
+                <button type="button" class="btn btn-secondary btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah">
                   ${ICONS.settings}
                   <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-supplier" data-id="${s.id}" data-nama="${escapeHtml(s.nama)}" title="Hapus" style="border-radius: var(--radius-full);">
+                <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-supplier" data-id="${s.id}" data-nama="${escapeHtml(s.nama)}" title="Hapus">
                   ${ICONS.x}
                   <span>Hapus</span>
                 </button>

@@ -148,16 +148,16 @@ async function muatKategori(container, canEdit) {
           <td class="num" data-label="Urutan">${p.urutan || 0}</td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="cluster" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap;">
-                <button type="button" class="btn btn-primary btn-sm btn-tambah-sub" data-parent-id="${p.id}" data-parent-nama="${escapeHtml(p.nama)}" title="Tambah Sub Kategori di bawah ${escapeHtml(p.nama)}" style="border-radius: var(--radius-full);">
+              <div class="table-actions">
+                <button type="button" class="btn btn-primary btn-sm btn-tambah-sub" data-parent-id="${p.id}" data-parent-nama="${escapeHtml(p.nama)}" title="Tambah Sub Kategori di bawah ${escapeHtml(p.nama)}">
                   ${ICONS.plus || ''}
                   <span>Sub</span>
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${p.id}" title="Ubah" style="border-radius: var(--radius-full);">
+                <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${p.id}" title="Ubah">
                   ${ICONS.settings}
                   <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-kat" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" data-sub-count="${subs.length}" title="Hapus" style="border-radius: var(--radius-full);">
+                <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-kat" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" data-sub-count="${subs.length}" title="Hapus">
                   ${ICONS.x}
                   <span>Hapus</span>
                 </button>
@@ -189,12 +189,12 @@ async function muatKategori(container, canEdit) {
             <td class="num" data-label="Urutan">${c.urutan || 0}</td>
             ${canEdit ? `
               <td style="text-align: right;" data-label="Aksi">
-                <div class="cluster" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap;">
-                  <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${c.id}" title="Ubah" style="border-radius: var(--radius-full);">
+                <div class="table-actions">
+                  <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${c.id}" title="Ubah">
                     ${ICONS.settings}
                     <span>Ubah</span>
                   </button>
-                  <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-kat" data-id="${c.id}" data-nama="${escapeHtml(c.nama)}" data-sub-count="0" title="Hapus" style="border-radius: var(--radius-full);">
+                  <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-kat" data-id="${c.id}" data-nama="${escapeHtml(c.nama)}" data-sub-count="0" title="Hapus">
                     ${ICONS.x}
                     <span>Hapus</span>
                   </button>
@@ -222,12 +222,12 @@ async function muatKategori(container, canEdit) {
           <td class="num" data-label="Urutan">${o.urutan || 0}</td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="cluster" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap;">
+              <div class="table-actions">
                 <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${o.id}" title="Ubah">
                   ${ICONS.settings}
                   <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-kat" data-id="${o.id}" data-nama="${escapeHtml(o.nama)}" data-sub-count="0" title="Hapus">
+                <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-kat" data-id="${o.id}" data-nama="${escapeHtml(o.nama)}" data-sub-count="0" title="Hapus">
                   ${ICONS.x}
                   <span>Hapus</span>
                 </button>

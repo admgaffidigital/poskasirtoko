@@ -34,8 +34,8 @@ export async function renderHutangPiutangModule(container) {
 
       <!-- Konten Tab 1: Piutang Pelanggan -->
       <div id="panel-piutang" class="stack">
-        <!-- Stat Cards Piutang -->
-        <div class="grid grid-3" style="gap: var(--sp-3);" id="stat-cards-piutang">
+        <!-- Stat Cards Piutang (Responsif Proporsional) -->
+        <div class="stat-grid-3" id="stat-cards-piutang">
           <div class="card card-body stat-card">
             <span class="text-xs text-muted fw-semibold">TOTAL SISA PIUTANG</span>
             <div class="stat-value text-primary" id="stat-piutang-total">Rp 0</div>
@@ -104,8 +104,8 @@ export async function renderHutangPiutangModule(container) {
             </p>
           </div>
         ` : `
-          <!-- Stat Cards Hutang -->
-          <div class="grid grid-3" style="gap: var(--sp-3);" id="stat-cards-hutang">
+          <!-- Stat Cards Hutang (Responsif Proporsional) -->
+          <div class="stat-grid-3" id="stat-cards-hutang">
             <div class="card card-body stat-card">
               <span class="text-xs text-muted fw-semibold">TOTAL SISA HUTANG SUPPLIER</span>
               <div class="stat-value text-danger" id="stat-hutang-total">Rp 0</div>

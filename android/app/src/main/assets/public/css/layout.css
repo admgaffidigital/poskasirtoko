@@ -493,4 +493,75 @@
   .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* Stat Cards 2x2 Grid on Mobile, 4 Cols on Desktop */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+@media (min-width: 768px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+}
+
+/* Stat Cards 3 Kolom Responsif */
+.stat-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--sp-2);
+}
+@media (min-width: 768px) {
+  .stat-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+}
+@media (max-width: 767px) {
+  .stat-card {
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .stat-card .stat-value {
+    font-size: 1.15rem;
+    line-height: 1.25;
+  }
+  .stat-card .stat-label,
+  .stat-card span.fw-semibold {
+    font-size: 10px;
+  }
+}
+
+/* Responsive Filter Bar */
+.filter-bar-responsive {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  width: 100%;
+}
+.filter-bar-responsive .filter-search-wrap {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+}
+@media (min-width: 768px) {
+  .filter-bar-responsive {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-2);
+  }
+  .filter-bar-responsive .filter-tipe {
+    width: 140px;
+  }
+  .filter-bar-responsive .filter-level {
+    width: 150px;
+  }
+  .filter-bar-responsive .filter-search-wrap {
+    flex: 1;
+    grid-column: auto;
+  }
+}
+
 

@@ -199,13 +199,13 @@ async function muatProduk(container, canEdit, isKasir) {
             </td>
             ${canEdit ? `
               <td style="text-align: right;" data-label="Aksi">
-                <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
-                  <button type="button" class="btn btn-secondary btn-sm btn-edit-prd" data-id="${p.id}" style="border-radius: var(--radius-full);">
-                    ${ICONS.settings}
+                <div class="table-actions">
+                  <button type="button" class="btn btn-secondary btn-sm btn-edit-prd" data-id="${p.id}" title="Edit Produk">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     <span>Ubah</span>
                   </button>
-                  <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" style="border-radius: var(--radius-full);">
-                    ${ICONS.x}
+                  <button type="button" class="btn btn-outline-danger btn-sm btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span>Hapus</span>
                   </button>
                 </div>
