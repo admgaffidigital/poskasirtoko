@@ -633,8 +633,9 @@ class App {
     if (!content) return;
 
     content.classList.remove('masuk');
-    void content.offsetWidth;
-    content.classList.add('masuk');
+    requestAnimationFrame(() => {
+      content.classList.add('masuk');
+    });
 
     if (rute.id === 'pos') {
       renderPosModule(content);

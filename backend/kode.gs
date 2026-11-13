@@ -306,8 +306,12 @@ const RUTE = {
   'laporan.stokValuasi': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiLaporanStokValuasi_ }
 };
 
+/** Cache pembacaan per-request untuk optimasi performa sheet. */
+var _CACHE_BACA_REQ = {};
+
 /** Entry point Web App (semua aksi). */
 function doPost(e) {
+  _CACHE_BACA_REQ = {};
   let action = '';
   try {
     const req = parseRequest_(e);
@@ -536,10 +540,18 @@ function dariSel_(nilai, tipe) {
  */
 function bacaSemua_(namaSheet, opsi) {
   opsi = opsi || {};
+  const cacheKey = namaSheet + (opsi.termasukTerhapus ? '_semua' : '_aktif');
+  if (_CACHE_BACA_REQ && _CACHE_BACA_REQ[cacheKey]) {
+    return _CACHE_BACA_REQ[cacheKey];
+  }
+
   const sh = sheet_(namaSheet);
   const lastRow = sh.getLastRow();
   const lastCol = sh.getLastColumn();
-  if (lastRow < 2 || lastCol < 1) return [];
+  if (lastRow < 2 || lastCol < 1) {
+    if (_CACHE_BACA_REQ) _CACHE_BACA_REQ[cacheKey] = [];
+    return [];
+  }
   const nilai = sh.getRange(1, 1, lastRow, lastCol).getValues();
   const header = nilai[0].map(String);
   const tipe = tipeKolom_(namaSheet);
@@ -557,6 +569,7 @@ function bacaSemua_(namaSheet, opsi) {
     Object.defineProperty(obj, '_baris', { value: r + 1, enumerable: false });
     hasil.push(obj);
   }
+  if (_CACHE_BACA_REQ) _CACHE_BACA_REQ[cacheKey] = hasil;
   return hasil;
 }
 
@@ -574,6 +587,7 @@ function cariById_(namaSheet, id, opsi) {
  * @return {Object[]} objek yang tersimpan (dengan id).
  */
 function tambahBaris_(namaSheet, daftar, userId) {
+  _CACHE_BACA_REQ = {};
   if (!daftar || !daftar.length) return [];
   const sh = sheet_(namaSheet);
   const header = petaHeader_(sh);
@@ -614,6 +628,7 @@ function pastikanBaris_(sh, barisDibutuhkan) {
  * @return {Object[]} objek setelah diubah.
  */
 function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-unused-vars
+  _CACHE_BACA_REQ = {};
   if (!perubahan || !perubahan.length) return [];
   const sh = sheet_(namaSheet);
   const header = petaHeader_(sh);

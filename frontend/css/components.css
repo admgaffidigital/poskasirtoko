@@ -1184,6 +1184,9 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   user-select: none;
   touch-action: manipulation;
   height: 100%;
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 260px;
 }
 
 .pos-product-card:hover {
@@ -1382,6 +1385,9 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
   transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
   user-select: none;
   touch-action: manipulation;
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 72px;
 }
 
 .pos-list-item:hover {

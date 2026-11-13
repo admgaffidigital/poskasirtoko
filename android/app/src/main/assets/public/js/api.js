@@ -18,11 +18,51 @@ export class ApiError extends Error {
   }
 }
 
+// Cache respons in-memory di sisi klien untuk query baca (read queries)
+const memoryApiCache = new Map();
+
+// Aksi yang dapat di-cache dengan aman (TTL dalam milidetik)
+const CACHE_CONFIG = {
+  'kategori.list': 60000,    // 1 menit
+  'pengaturan.get': 120000,  // 2 menit
+  'satuan.list': 120000,     // 2 menit
+  'user.list': 30000,        // 30 detik
+  'supplier.list': 45000,    // 45 detik
+  'auth.me': 15000           // 15 detik
+};
+
+// Pola mutasi data yang otomatis mengosongkan cache terkait
+const MUTATION_PATTERNS = [
+  { trigger: 'kategori.', target: 'kategori.list' },
+  { trigger: 'pengaturan.', target: 'pengaturan.get' },
+  { trigger: 'satuan.', target: 'satuan.list' },
+  { trigger: 'user.', target: 'user.list' },
+  { trigger: 'supplier.', target: 'supplier.list' },
+  { trigger: 'auth.logout', target: 'auth.me' },
+  { trigger: 'auth.login', target: 'auth.me' }
+];
+
+/**
+ * Hapus entri cache API (semua atau berdasarkan awalan aksi)
+ * @param {string} [prefix=null]
+ */
+export function invalidateApiCache(prefix = null) {
+  if (!prefix) {
+    memoryApiCache.clear();
+    return;
+  }
+  for (const key of memoryApiCache.keys()) {
+    if (key.startsWith(prefix)) {
+      memoryApiCache.delete(key);
+    }
+  }
+}
+
 /**
  * Panggil aksi backend Apps Script
  * @param {string} action Nama aksi (cth: "sistem.ping", "auth.login", "produk.list")
  * @param {Object} [payload={}] Data yang dikirim
- * @param {Object} [options={}] Opsi tambahan (timeoutMs, token)
+ * @param {Object} [options={}] Opsi tambahan (timeoutMs, token, skipCache)
  * @returns {Promise<any>} Data hasil dari respons backend
  */
 export async function apiCall(action, payload = {}, options = {}) {
@@ -33,6 +73,13 @@ export async function apiCall(action, payload = {}, options = {}) {
       'CONFIG_MISSING'
     );
   }
+
+  // Jika ini aksi mutasi (create/update/delete), hapus cache terkait seketika
+  MUTATION_PATTERNS.forEach(({ trigger, target }) => {
+    if (action.startsWith(trigger) && !action.endsWith('.list') && !action.endsWith('.get')) {
+      invalidateApiCache(target);
+    }
+  });
 
   if (!navigator.onLine) {
     throw new ApiError(
@@ -52,6 +99,19 @@ export async function apiCall(action, payload = {}, options = {}) {
     }
   }
   token = (token || '').trim();
+
+  // Periksa cache in-memory untuk aksi baca aman (read queries)
+  const isCacheable = !options.skipCache && CACHE_CONFIG[action] && (!payload || Object.keys(payload).length === 0);
+  const cacheKey = isCacheable ? `${action}:${token}` : null;
+
+  if (isCacheable && memoryApiCache.has(cacheKey)) {
+    const entry = memoryApiCache.get(cacheKey);
+    if (Date.now() < entry.expiry) {
+      return entry.data;
+    }
+    memoryApiCache.delete(cacheKey);
+  }
+
   const timeoutMs = options.timeoutMs || CONFIG.API_TIMEOUT_MS || 30000;
 
   const controller = new AbortController();
@@ -101,6 +161,12 @@ export async function apiCall(action, payload = {}, options = {}) {
     }
 
     if (data.ok === true) {
+      if (isCacheable) {
+        memoryApiCache.set(cacheKey, {
+          data: data.data,
+          expiry: Date.now() + CACHE_CONFIG[action]
+        });
+      }
       return data.data;
     } else {
       // Lempar error terkontrol dari backend

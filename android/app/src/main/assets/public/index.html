@@ -11,6 +11,19 @@
 
   <title>POS Kasir Toko Bangunan</title>
 
+  <!-- Preconnect & DNS Prefetch ke Backend Google Script untuk pangkas latensi TLS/DNS -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="dns-prefetch" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+
+  <!-- Module Preload Critical Scripts -->
+  <link rel="modulepreload" href="./js/app.js">
+  <link rel="modulepreload" href="./js/api.js">
+  <link rel="modulepreload" href="./js/state.js">
+  <link rel="modulepreload" href="./js/routes.js">
+  <link rel="modulepreload" href="./js/config.js">
+
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
@@ -203,7 +216,7 @@
 
       <!-- Versi di Bagian Bawah -->
       <div class="splash-footer">
-        <span>v1.0.12 • Terenkripsi &amp; Siap Offline</span>
+        <span>v1.0.14 • Terenkripsi &amp; Siap Offline</span>
       </div>
     </div>
   </div>

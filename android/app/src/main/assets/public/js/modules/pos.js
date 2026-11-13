@@ -628,21 +628,29 @@ export function renderPosModule(container) {
     pasangAksiKlikKatalog();
   }
 
+  // Delegasi event tunggal pada elProductArea untuk performa tinggi & hemat memori
+  let klikDelegasiDipasang = false;
   function pasangAksiKlikKatalog() {
-    elProductArea.querySelectorAll('.pos-product-card, .pos-product-row, .pos-list-item').forEach((el) => {
-      el.addEventListener('click', () => {
+    if (klikDelegasiDipasang || !elProductArea) return;
+    klikDelegasiDipasang = true;
+
+    elProductArea.addEventListener('click', (e) => {
+      const el = e.target.closest('.pos-product-card, .pos-product-row, .pos-list-item');
+      if (!el) return;
+      const id = el.getAttribute('data-id');
+      const p = state.katalog.find((x) => x.id === id);
+      if (p) pilihProduk(p);
+    });
+
+    elProductArea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const el = e.target.closest('.pos-product-card, .pos-product-row, .pos-list-item');
+        if (!el) return;
+        e.preventDefault();
         const id = el.getAttribute('data-id');
         const p = state.katalog.find((x) => x.id === id);
         if (p) pilihProduk(p);
-      });
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          const id = el.getAttribute('data-id');
-          const p = state.katalog.find((x) => x.id === id);
-          if (p) pilihProduk(p);
-        }
-      });
+      }
     });
   }
 
@@ -2093,14 +2101,19 @@ export function renderPosModule(container) {
     cariDanTambahBarcode(code);
   });
 
-  // ---------- Toolbar Pencarian & Toggle View ----------
+  // ---------- Toolbar Pencarian & Toggle View (dengan Debouncing) ----------
+  let searchDebounceTimer = null;
   elSearch?.addEventListener('input', (e) => {
     state.kataKunci = e.target.value;
     elSearchClear.style.display = state.kataKunci ? 'block' : 'none';
-    renderKatalog();
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      renderKatalog();
+    }, 120);
   });
 
   elSearchClear?.addEventListener('click', () => {
+    clearTimeout(searchDebounceTimer);
     state.kataKunci = '';
     elSearch.value = '';
     elSearchClear.style.display = 'none';
