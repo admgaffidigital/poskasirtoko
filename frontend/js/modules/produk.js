@@ -498,37 +498,114 @@ async function bukaModalFormProduk(container, produk) {
 
       <!-- Tab 2: Harga & Stok -->
       <div class="tab-pane stack hidden" id="pane-harga">
-        <div class="form-grid cols-2">
-          <div class="field">
-            <label class="field-label" for="prd-hpp">HPP (Harga Beli Pokok) <span class="wajib">*</span></label>
-            <div class="input-prefix">
-              <span>Rp</span>
-              <input type="text" class="input input-num" id="prd-hpp" value="${isEdit ? formatRupiah(produk.hpp, false) : '0'}" required>
+        <!-- Input HPP (Harga Modal Acuan) -->
+        <div class="field">
+          <label class="field-label" for="prd-hpp">
+            <span>HPP (Harga Beli Pokok / Modal) <span class="wajib">*</span></span>
+          </label>
+          <div class="input-prefix" style="max-width: 320px;">
+            <span>Rp</span>
+            <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${isEdit ? formatRupiah(produk.hpp, false) : '0'}" required placeholder="0">
+          </div>
+          <span class="field-hint">Dasar acuan perhitungan persentase margin keuntungan ritel dan grosir.</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 1. Kalkulator Otomatis Margin & Harga Ritel (Eceran) -->
+        <div class="card card-body stack" style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); gap: var(--sp-2);">
+          <div class="row-between items-center" style="flex-wrap: wrap; gap: var(--sp-1);">
+            <div>
+              <span class="fw-bold text-sm" style="color: var(--primary);">1. Harga Jual Ritel (Eceran)</span>
+              <div class="text-xs text-muted">Penjualan umum per satuan dasar ke konsumen</div>
             </div>
-            <span class="field-hint">Harga jual di bawah HPP tidak diizinkan.</span>
+            <div id="badge-margin-ritel" class="badge badge-success text-xs font-mono">
+              Margin: 0% | Laba: Rp 0
+            </div>
           </div>
 
-          <div class="field">
-            <label class="field-label" for="prd-ritel">Harga Jual Ritel (Eceran) <span class="wajib">*</span></label>
-            <div class="input-prefix">
-              <span>Rp</span>
-              <input type="text" class="input input-num fw-bold" id="prd-ritel" value="${isEdit ? formatRupiah(produk.harga_ritel, false) : '0'}" required>
+          <div class="form-grid cols-2" style="gap: var(--sp-3); margin-top: 4px;">
+            <div class="field">
+              <label class="field-label" for="prd-margin-ritel">
+                <span>Margin Keuntungan Ritel (%)</span>
+              </label>
+              <div class="input-prefix">
+                <span>%</span>
+                <input type="number" step="0.1" class="input input-num fw-semibold" id="prd-margin-ritel" placeholder="Cth: 20">
+              </div>
+              <!-- Chip Preset Cepat Margin Ritel -->
+              <div class="cluster" style="gap: 4px; margin-top: 4px;">
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-ritel" data-margin="10">+10%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-ritel" data-margin="15">+15%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-ritel" data-margin="20">+20%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-ritel" data-margin="25">+25%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-ritel" data-margin="30">+30%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-ritel" data-margin="50">+50%</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="prd-ritel">
+                <span>Harga Jual Ritel (Rp) <span class="wajib">*</span></span>
+              </label>
+              <div class="input-prefix">
+                <span>Rp</span>
+                <input type="text" class="input input-num fw-bold text-md" id="prd-ritel" value="${isEdit ? formatRupiah(produk.harga_ritel, false) : '0'}" required>
+              </div>
+              <span class="field-hint">Ketik harga langsung atau tentukan persen di sebelah kiri.</span>
             </div>
           </div>
         </div>
 
-        <div class="form-grid cols-2">
-          <div class="field">
-            <label class="field-label" for="prd-grosir">Harga Grosir (Opsional)</label>
-            <div class="input-prefix">
-              <span>Rp</span>
-              <input type="text" class="input input-num" id="prd-grosir" value="${isEdit && produk.harga_grosir ? formatRupiah(produk.harga_grosir, false) : ''}" placeholder="Sama dengan ritel jika kosong">
+        <!-- 2. Kalkulator Otomatis Margin & Harga Grosir (Partai / Tukang) -->
+        <div class="card card-body stack" style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); gap: var(--sp-2); margin-top: var(--sp-1);">
+          <div class="row-between items-center" style="flex-wrap: wrap; gap: var(--sp-1);">
+            <div>
+              <span class="fw-bold text-sm" style="color: var(--amber-600, #d97706);">2. Harga Jual Grosir (Partai / Tukang)</span>
+              <div class="text-xs text-muted">Harga khusus belanja borongan proyek atau mitra rekanan</div>
+            </div>
+            <div id="badge-margin-grosir" class="badge badge-warning text-xs font-mono">
+              Margin: 0% | Laba: Rp 0
             </div>
           </div>
 
-          <div class="field">
-            <label class="field-label" for="prd-min-grosir">Minimal Qty Grosir</label>
-            <input type="number" class="input input-num" id="prd-min-grosir" value="${isEdit ? produk.min_grosir_qty || 1 : 1}" min="1">
+          <div class="form-grid cols-2" style="gap: var(--sp-3); margin-top: 4px;">
+            <div class="field">
+              <label class="field-label" for="prd-margin-grosir">
+                <span>Margin Keuntungan Grosir (%)</span>
+              </label>
+              <div class="input-prefix">
+                <span>%</span>
+                <input type="number" step="0.1" class="input input-num fw-semibold" id="prd-margin-grosir" placeholder="Cth: 10">
+              </div>
+              <!-- Chip Preset Cepat Margin Grosir -->
+              <div class="cluster" style="gap: 4px; margin-top: 4px;">
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-grosir" data-margin="5">+5%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-grosir" data-margin="8">+8%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-grosir" data-margin="10">+10%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-grosir" data-margin="12">+12%</button>
+                <button type="button" class="btn btn-xs btn-outline btn-chip-margin-grosir" data-margin="15">+15%</button>
+              </div>
+            </div>
+
+            <div class="form-grid cols-2" style="gap: var(--sp-2);">
+              <div class="field">
+                <label class="field-label" for="prd-grosir">
+                  <span>Harga Grosir (Rp)</span>
+                </label>
+                <div class="input-prefix">
+                  <span>Rp</span>
+                  <input type="text" class="input input-num fw-semibold" id="prd-grosir" value="${isEdit && produk.harga_grosir ? formatRupiah(produk.harga_grosir, false) : ''}" placeholder="Sama dg ritel">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="prd-min-grosir">
+                  <span>Min. Qty Grosir</span>
+                </label>
+                <input type="number" class="input input-num" id="prd-min-grosir" value="${isEdit ? produk.min_grosir_qty || 1 : 1}" min="1">
+              </div>
+            </div>
           </div>
         </div>
 
@@ -627,6 +704,122 @@ async function bukaModalFormProduk(container, produk) {
   formatInputRp($('#prd-hpp', form));
   formatInputRp($('#prd-ritel', form));
   formatInputRp($('#prd-grosir', form));
+
+  // -------------------------------------------------------------
+  // Kalkulator Otomatis Persentase Margin & Laba (2-Arah)
+  // -------------------------------------------------------------
+  const inpHpp = $('#prd-hpp', form);
+  const inpRitel = $('#prd-ritel', form);
+  const inpMarginRitel = $('#prd-margin-ritel', form);
+  const badgeMarginRitel = $('#badge-margin-ritel', form);
+
+  const inpGrosir = $('#prd-grosir', form);
+  const inpMarginGrosir = $('#prd-margin-grosir', form);
+  const badgeMarginGrosir = $('#badge-margin-grosir', form);
+
+  const updateBadgeMargin = (badge, hpp, harga, isGrosir = false) => {
+    if (!badge) return;
+    if (hpp <= 0 && harga <= 0) {
+      badge.className = 'badge text-xs font-mono';
+      badge.style.background = 'var(--surface-3)';
+      badge.style.color = 'var(--text-muted)';
+      badge.textContent = 'Margin: 0% | Laba: Rp 0';
+      return;
+    }
+    const laba = harga - hpp;
+    const marginPct = hpp > 0 ? ((laba / hpp) * 100) : 0;
+    const pctStr = (marginPct >= 0 ? '+' : '') + marginPct.toFixed(1) + '%';
+
+    if (laba < 0) {
+      badge.className = 'badge badge-danger text-xs font-mono';
+      badge.textContent = `RUGI ${formatRupiah(Math.abs(laba))} (${pctStr})`;
+    } else if (laba === 0) {
+      badge.className = 'badge badge-warning text-xs font-mono';
+      badge.textContent = `Balik Modal (Rp 0 / 0%)`;
+    } else {
+      badge.className = isGrosir ? 'badge badge-warning text-xs font-mono' : 'badge badge-success text-xs font-mono';
+      badge.textContent = `Margin: ${pctStr} | Laba: ${formatRupiah(laba)}`;
+    }
+  };
+
+  const syncDariHarga = (target) => {
+    const hpp = parseRupiah(inpHpp.value) || 0;
+    if (target === 'ritel') {
+      const harga = parseRupiah(inpRitel.value) || 0;
+      if (hpp > 0 && harga > 0) {
+        const pct = ((harga - hpp) / hpp) * 100;
+        inpMarginRitel.value = pct.toFixed(1);
+      } else {
+        inpMarginRitel.value = '';
+      }
+      updateBadgeMargin(badgeMarginRitel, hpp, harga, false);
+    } else if (target === 'grosir') {
+      const harga = parseRupiah(inpGrosir.value) || 0;
+      if (hpp > 0 && harga > 0) {
+        const pct = ((harga - hpp) / hpp) * 100;
+        inpMarginGrosir.value = pct.toFixed(1);
+      } else {
+        inpMarginGrosir.value = '';
+      }
+      updateBadgeMargin(badgeMarginGrosir, hpp, harga, true);
+    }
+  };
+
+  const syncDariMargin = (target) => {
+    const hpp = parseRupiah(inpHpp.value) || 0;
+    if (target === 'ritel') {
+      const pct = parseFloat(inpMarginRitel.value);
+      if (hpp > 0 && !isNaN(pct)) {
+        const hitungan = hpp * (1 + pct / 100);
+        const bulat = Math.round(hitungan / 100) * 100;
+        inpRitel.value = formatRupiah(bulat, false);
+        updateBadgeMargin(badgeMarginRitel, hpp, bulat, false);
+      }
+    } else if (target === 'grosir') {
+      const pct = parseFloat(inpMarginGrosir.value);
+      if (hpp > 0 && !isNaN(pct)) {
+        const hitungan = hpp * (1 + pct / 100);
+        const bulat = Math.round(hitungan / 100) * 100;
+        inpGrosir.value = formatRupiah(bulat, false);
+        updateBadgeMargin(badgeMarginGrosir, hpp, bulat, true);
+      }
+    }
+  };
+
+  inpHpp?.addEventListener('input', () => {
+    if (inpMarginRitel?.value !== '') syncDariMargin('ritel');
+    else syncDariHarga('ritel');
+
+    if (inpMarginGrosir?.value !== '') syncDariMargin('grosir');
+    else if (inpGrosir?.value) syncDariHarga('grosir');
+  });
+
+  inpRitel?.addEventListener('input', () => syncDariHarga('ritel'));
+  inpMarginRitel?.addEventListener('input', () => syncDariMargin('ritel'));
+
+  inpGrosir?.addEventListener('input', () => syncDariHarga('grosir'));
+  inpMarginGrosir?.addEventListener('input', () => syncDariMargin('grosir'));
+
+  // Tombol Preset Margin Cepat
+  form.querySelectorAll('.btn-chip-margin-ritel').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const pct = parseFloat(chip.getAttribute('data-margin'));
+      inpMarginRitel.value = pct;
+      syncDariMargin('ritel');
+    });
+  });
+
+  form.querySelectorAll('.btn-chip-margin-grosir').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const pct = parseFloat(chip.getAttribute('data-margin'));
+      inpMarginGrosir.value = pct;
+      syncDariMargin('grosir');
+    });
+  });
+
+  // Hitung awal saat form dibuka
+  syncDariHarga('ritel');
+  if (inpGrosir?.value) syncDariHarga('grosir');
 
   // Quick generator SKU & Barcode induk
   $('#btn-auto-sku', form)?.addEventListener('click', () => {
