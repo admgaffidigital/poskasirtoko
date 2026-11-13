@@ -140,12 +140,30 @@ function setupMockEnv() {
       flush: () => {},
       getUi: () => { throw new Error('no ui'); }
     },
+    DriveApp: {
+      getFolderById: (id) => ({
+        createFile: (blob) => ({
+          getId: () => 'mock-drive-id-12345',
+          getUrl: () => 'https://drive.google.com/file/d/mock-drive-id-12345/view',
+          getName: () => blob.getName ? blob.getName() : 'foto.jpg',
+          setSharing: () => {}
+        })
+      }),
+      Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' },
+      Permission: { VIEW: 'VIEW' }
+    },
     Utilities: {
       getUuid: () => crypto.randomUUID(),
       formatDate: fmtDate,
       computeDigest: (_, s) => Array.from(crypto.createHash('sha256').update(s, 'utf8').digest()).map(b => b > 127 ? b - 256 : b),
       DigestAlgorithm: { SHA_256: 'sha256' },
-      Charset: { UTF_8: 'utf8' }
+      Charset: { UTF_8: 'utf8' },
+      base64Decode: (str) => Buffer.from(str, 'base64'),
+      newBlob: (bytes, mime, name) => ({
+        getBytes: () => bytes,
+        getContentType: () => mime,
+        getName: () => name
+      })
     },
     LockService: {
       getScriptLock: () => lock
@@ -865,6 +883,37 @@ async function runAudit() {
     const resDetailJual = callApi('penjualan.detail', tokenKasir, { id: resJual.data.penjualan.id });
     assert.strictEqual(resDetailJual.ok, true);
     assert.strictEqual(resDetailJual.data.toko.nama, 'TB BINTANG TIMUR JAYA', 'Detail nota untuk cetak ulang memuat identitas toko kustom');
+  });
+
+  test('14. Integrasi Upload Foto Produk ke Google Drive & Penyimpanan Foto URL Produk', () => {
+    // 1. Upload foto produk base64 ke Google Drive
+    const mockBase64 = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
+    const resUpload = callApi('produk.uploadFoto', tokenOwner, {
+      nama_file: 'semen_tiga_roda_50kg.jpg',
+      base64: mockBase64
+    });
+    assert.strictEqual(resUpload.ok, true, 'Upload foto produk ke Google Drive berhasil');
+    assert.strictEqual(resUpload.data.file_id, 'mock-drive-id-12345');
+    assert.strictEqual(resUpload.data.foto_url, 'https://lh3.googleusercontent.com/d/mock-drive-id-12345');
+
+    // 2. Buat produk baru dengan foto_url dari Google Drive
+    const resPrdFoto = callApi('produk.create', tokenOwner, {
+      nama: 'Semen Tiga Roda 50kg Berfoto',
+      kategori_id: '',
+      satuan_dasar: 'sak',
+      hpp: 55000,
+      harga_ritel: 68000,
+      stok: 100,
+      foto_url: resUpload.data.foto_url
+    });
+    assert.strictEqual(resPrdFoto.ok, true, 'Produk berfoto berhasil dibuat');
+    assert.strictEqual(resPrdFoto.data.foto_url, 'https://lh3.googleusercontent.com/d/mock-drive-id-12345');
+
+    // 3. Pastikan produk.list mengembalikan foto_url untuk kasir & katalog
+    const resListPrd = callApi('produk.list', tokenKasir, { q: 'Berfoto' });
+    assert.strictEqual(resListPrd.ok, true);
+    assert.ok(resListPrd.data.items.length > 0);
+    assert.strictEqual(resListPrd.data.items[0].foto_url, 'https://lh3.googleusercontent.com/d/mock-drive-id-12345');
   });
 
   console.log('\n=============================================');

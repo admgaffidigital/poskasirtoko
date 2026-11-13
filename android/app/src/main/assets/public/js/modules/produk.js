@@ -9,6 +9,52 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { formatRupiah, formatQty, parseRupiah, escapeHtml } from '../utils/format.js';
 
+/**
+ * Kompres file gambar ke format JPEG Base64 (maks 800px, kualitas 0.8)
+ * Mengubah foto kamera/galeri 3-8 MB menjadi ~80-120 KB agar upload ke Google Drive super cepat & hemat kuota
+ */
+function kompresGambar(file, maxDimension = 800, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      return reject(new Error('File yang dipilih bukan gambar valid.'));
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({
+          dataUrl: dataUrl,
+          width: width,
+          height: height,
+          mimeType: 'image/jpeg',
+          namaFile: (file.name || 'foto_produk').replace(/\.[^.]+$/, '') + '.jpg'
+        });
+      };
+      img.onerror = () => reject(new Error('Gagal membaca data gambar.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 let filterState = {
   q: '',
   kategori_id: '',
@@ -171,7 +217,10 @@ async function muatProduk(container, canEdit, isKasir) {
             <td data-label="Produk">
               <div class="row" style="align-items: center; gap: var(--sp-3); width: 100%;">
                 <div class="prd-table-avatar">
-                  ${ICONS.package}
+                  ${p.foto_url ? `
+                    <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" loading="lazy" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
+                    <div style="display: none; width: 100%; height: 100%; place-items: center;">${ICONS.package}</div>
+                  ` : ICONS.package}
                 </div>
                 <div class="grow" style="min-width: 0;">
                   <div class="fw-bold text-md prd-table-nama">${escapeHtml(p.nama)}</div>
@@ -229,6 +278,11 @@ async function muatProduk(container, canEdit, isKasir) {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
         html += `
           <div class="card stack-sm" style="padding: var(--sp-4);">
+            ${p.foto_url ? `
+              <div style="height: 110px; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); margin-bottom: var(--sp-2); border: 1px solid var(--border);">
+                <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" onerror="this.parentElement.style.display='none';">
+              </div>
+            ` : ''}
             <div class="row-between">
               <span class="badge ${stokBadge.kelas}">Stok: ${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
               ${p.sku ? `<span class="mono text-xs text-muted">${escapeHtml(p.sku)}</span>` : ''}
@@ -452,6 +506,46 @@ async function bukaModalFormProduk(container, produk) {
 
       <!-- Tab 1: Dasar -->
       <div class="tab-pane stack" id="pane-dasar">
+        <!-- Foto Produk (Google Drive) -->
+        <div class="field" style="margin-bottom: var(--sp-2);">
+          <label class="field-label">Foto Produk (Google Drive)</label>
+          <div class="row items-center" style="gap: var(--sp-3); flex-wrap: wrap;">
+            <!-- Box Preview Foto -->
+            <div id="prd-foto-preview-box" style="width: 80px; height: 80px; border-radius: var(--radius-lg); border: 2px dashed var(--border); display: grid; place-items: center; overflow: hidden; background: var(--surface-2); position: relative; flex-shrink: 0;">
+              <img src="${isEdit && produk.foto_url ? escapeHtml(produk.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${isEdit && produk.foto_url ? '' : 'display: none;'}">
+              <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${isEdit && produk.foto_url ? 'display: none;' : ''}">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                <div style="font-size: 9px; margin-top: 2px;">Belum Ada</div>
+              </div>
+              <div id="prd-foto-loading" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.65); place-items: center; color: #fff; font-size: 11px; font-weight: 500;">
+                <span class="spinner-sm" style="border-color: #fff; border-top-color: transparent;"></span>
+              </div>
+            </div>
+
+            <!-- Tombol Aksi Upload & Input Tersembunyi -->
+            <div class="stack" style="gap: var(--sp-1); flex: 1; min-width: 200px;">
+              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-pilih-foto" style="display: inline-flex; align-items: center; gap: 6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  <span>Pilih Galeri</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-kamera-foto" style="display: inline-flex; align-items: center; gap: 6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                  <span>Kamera</span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-hapus-foto" style="${isEdit && produk.foto_url ? '' : 'display: none;'} display: inline-flex; align-items: center; gap: 4px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span>Hapus</span>
+                </button>
+              </div>
+              <input type="file" id="input-file-foto" accept="image/*" style="display: none;">
+              <input type="file" id="input-kamera-foto" accept="image/*" capture="environment" style="display: none;">
+              <input type="hidden" id="prd-foto-url" value="${isEdit && produk.foto_url ? escapeHtml(produk.foto_url) : ''}">
+              <span class="field-hint" id="prd-foto-hint">Tersimpan di Google Drive Toko Anda (otomatis dikompres &lt; 150 KB).</span>
+            </div>
+          </div>
+        </div>
+
         <div class="field">
           <label class="field-label" for="prd-nama">Nama Produk <span class="wajib">*</span></label>
           <input type="text" class="input" id="prd-nama" value="${isEdit ? escapeHtml(produk.nama) : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" required autofocus>
@@ -838,6 +932,62 @@ async function bukaModalFormProduk(container, produk) {
     }
   });
 
+  // Upload & Manajemen Foto Produk ke Google Drive
+  const imgPreview = $('#prd-foto-img-preview', form);
+  const placeholderPreview = $('#prd-foto-placeholder', form);
+  const loadingPreview = $('#prd-foto-loading', form);
+  const inputUrl = $('#prd-foto-url', form);
+  const btnHapusFoto = $('#btn-hapus-foto', form);
+  const inputFile = $('#input-file-foto', form);
+  const inputCam = $('#input-kamera-foto', form);
+
+  const prosesUploadFoto = async (file) => {
+    if (!file) return;
+    try {
+      if (loadingPreview) loadingPreview.style.display = 'grid';
+      showToast('Mengompresi & mengunggah foto ke Google Drive...', 'info', 3000);
+      const kompresi = await kompresGambar(file, 800, 0.8);
+      const res = await apiCall('produk.uploadFoto', {
+        nama_file: kompresi.namaFile,
+        mime_type: kompresi.mimeType,
+        base64: kompresi.dataUrl
+      });
+      if (inputUrl) inputUrl.value = res.foto_url;
+      if (imgPreview) {
+        imgPreview.src = res.foto_url;
+        imgPreview.style.display = 'block';
+      }
+      if (placeholderPreview) placeholderPreview.style.display = 'none';
+      if (btnHapusFoto) btnHapusFoto.style.display = 'inline-flex';
+      showToast('Foto produk berhasil disimpan di Google Drive!', 'success');
+    } catch (err) {
+      showToast('Gagal upload foto: ' + err.message, 'error', 4500);
+    } finally {
+      if (loadingPreview) loadingPreview.style.display = 'none';
+      if (inputFile) inputFile.value = '';
+      if (inputCam) inputCam.value = '';
+    }
+  };
+
+  $('#btn-pilih-foto', form)?.addEventListener('click', () => inputFile?.click());
+  $('#btn-kamera-foto', form)?.addEventListener('click', () => inputCam?.click());
+  inputFile?.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) prosesUploadFoto(e.target.files[0]);
+  });
+  inputCam?.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) prosesUploadFoto(e.target.files[0]);
+  });
+  btnHapusFoto?.addEventListener('click', () => {
+    if (inputUrl) inputUrl.value = '';
+    if (imgPreview) {
+      imgPreview.src = '';
+      imgPreview.style.display = 'none';
+    }
+    if (placeholderPreview) placeholderPreview.style.display = 'block';
+    if (btnHapusFoto) btnHapusFoto.style.display = 'none';
+    showToast('Foto produk dihapus dari formulir.', 'info');
+  });
+
   // Render Varian Awal
   const wadahVarian = $('#wadah-varian', form);
   const renderBarisVarian = (v = {}) => {
@@ -992,11 +1142,14 @@ async function bukaModalFormProduk(container, produk) {
       });
     }
 
+    const foto_url = ($('#prd-foto-url', form)?.value || '').trim();
+
     const payload = {
       id: isEdit ? produk.id : undefined,
       nama, sku, barcode, kategori_id, satuan_dasar,
       hpp, harga_ritel, harga_grosir, min_grosir_qty,
       stok, stok_min, aktif, punya_varian,
+      foto_url,
       varian, satuan_konversi
     };
 

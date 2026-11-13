@@ -229,6 +229,7 @@ const RUTE = {
   'produk.create': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukCreate_ },
   'produk.update': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukUpdate_ },
   'produk.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukDelete_ },
+  'produk.uploadFoto': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukUploadFoto_ },
 
   // Pengaturan (Fase 1)
   'pengaturan.get': { publik: false, roles: SEMUA_ROLE, handler: aksiPengaturanGet_ },
@@ -1594,6 +1595,73 @@ function aksiProdukDelete_(ctx) {
 
   catatAudit_(ctx.user.id, 'produk_hapus', 'PRODUK', id, {});
   return { pesan: 'Produk berhasil dihapus.' };
+}
+
+/**
+ * produk.uploadFoto — Unggah foto produk ke Google Drive (Owner & Admin).
+ * File disimpan langsung ke folder Google Drive pengguna:
+ * ID Folder: 1qE_KTzzT1wHJ9SFb5dEnPuz_OoUcheeM
+ */
+function aksiProdukUploadFoto_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.base64) gagal_(KODE.VALIDATION, 'Data gambar (base64) wajib disertakan.');
+
+  const FOLDER_DEFAULT_ID = '1qE_KTzzT1wHJ9SFb5dEnPuz_OoUcheeM';
+  const folderId = (p.folder_id && String(p.folder_id).trim()) || FOLDER_DEFAULT_ID;
+
+  let folder;
+  try {
+    folder = DriveApp.getFolderById(folderId);
+  } catch (err) {
+    gagal_(KODE.VALIDATION, 'Folder Google Drive tidak ditemukan atau izin akses belum diberikan: ' + err.message);
+  }
+
+  let rawBase64 = String(p.base64).trim();
+  let mimeType = p.mime_type || 'image/jpeg';
+  if (rawBase64.indexOf(',') !== -1) {
+    const parts = rawBase64.split(',');
+    const matchMime = parts[0].match(/:(.*?);/);
+    if (matchMime && matchMime[1]) {
+      mimeType = matchMime[1];
+    }
+    rawBase64 = parts[1];
+  }
+
+  let decodedBytes;
+  try {
+    decodedBytes = Utilities.base64Decode(rawBase64);
+  } catch (errDec) {
+    gagal_(KODE.VALIDATION, 'Format data base64 gambar tidak valid.');
+  }
+
+  const ext = mimeType.indexOf('png') !== -1 ? 'png' : (mimeType.indexOf('webp') !== -1 ? 'webp' : 'jpg');
+  const timestamp = Utilities.formatDate(new Date(), APP.TZ, 'yyyyMMdd_HHmmss');
+  const namaFileBersih = (p.nama_file ? String(p.nama_file).replace(/[^a-zA-Z0-9_\-\.]/g, '_') : 'produk_' + timestamp) + '.' + ext;
+
+  const blob = Utilities.newBlob(decodedBytes, mimeType, namaFileBersih);
+  const file = folder.createFile(blob);
+
+  // Buat file dapat dilihat publik dengan tautan
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (eShare) {
+    // Abaikan jika setSharing gagal pada domain Workspace terisolasi
+  }
+
+  const fileId = file.getId();
+  // URL CDN Google kecepatan tinggi tanpa hambatan CORS
+  const fotoUrl = 'https://lh3.googleusercontent.com/d/' + fileId;
+  const webViewUrl = file.getUrl();
+
+  catatAudit_(ctx.user.id, 'produk_upload_foto', 'PRODUK', fileId, { nama_file: namaFileBersih, file_id: fileId });
+
+  return {
+    pesan: 'Foto produk berhasil diunggah ke Google Drive.',
+    file_id: fileId,
+    foto_url: fotoUrl,
+    view_url: webViewUrl,
+    nama_file: file.getName()
+  };
 }
 
 /* ---------- 9.4 PENGATURAN UMUM ---------- */
