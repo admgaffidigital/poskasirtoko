@@ -62,13 +62,14 @@ export async function renderLaporanModule(container) {
         </div>
       </div>
 
-      <!-- Baris Filter Periode Cepat -->
-      <div class="card no-print" style="margin-bottom: var(--sp-2);">
+      <!-- Baris Filter Periode Cepat & Rentang Tanggal -->
+      <div class="card no-print" style="margin-bottom: var(--sp-3);">
         <div class="card-body" style="padding: var(--sp-3) var(--sp-4);">
+          <!-- Baris Utama: Preset & Badge Indikator -->
           <div class="cluster" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-3);">
             <div class="cluster" style="align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
-              <span style="font-weight: var(--fw-semibold); font-size: var(--fs-sm); color: var(--text-muted);">Periode:</span>
-              <div class="segmented" id="seg-periode" role="group">
+              <span style="font-weight: var(--fw-semibold); font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
+              <div class="segmented" id="seg-periode" role="group" style="overflow-x: auto; max-width: 100%;">
                 <button type="button" class="btn btn-sm ${stateLaporan.periode === 'hari_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="hari_ini">Hari Ini</button>
                 <button type="button" class="btn btn-sm ${stateLaporan.periode === '7_hari' ? 'btn-primary' : 'btn-ghost'}" data-periode="7_hari">7 Hari</button>
                 <button type="button" class="btn btn-sm ${stateLaporan.periode === '30_hari' ? 'btn-primary' : 'btn-ghost'}" data-periode="30_hari">30 Hari</button>
@@ -78,16 +79,25 @@ export async function renderLaporanModule(container) {
               </div>
             </div>
 
+            <!-- Badge Tanggal Berjalan Aktif -->
+            <div class="badge badge-secondary" id="badge-periode-aktif" style="padding: 6px 12px; font-size: 11.5px; font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border);">
+              📅 ${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}
+            </div>
+          </div>
+
+          <!-- Bagian Pilihan Tanggal Manual (Hanya muncul jika mode Kustom) -->
+          <div id="box-kustom-tanggal" style="${stateLaporan.periode === 'kustom' ? 'display: flex;' : 'display: none;'} align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px dashed var(--border); flex-wrap: wrap;">
+            <span style="font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-muted);">Tentukan Rentang Tanggal:</span>
             <div class="cluster" style="align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
               <div class="row" style="align-items: center; gap: var(--sp-2);">
                 <label for="inp-lap-dari" style="font-size: var(--fs-xs); color: var(--text-muted); flex-shrink: 0;">Dari:</label>
-                <input type="date" id="inp-lap-dari" class="input input-sm" value="${stateLaporan.dari}" style="width: 130px; max-width: 100%;">
+                <input type="date" id="inp-lap-dari" class="input input-sm" value="${stateLaporan.dari}" style="width: 140px; max-width: 100%;">
               </div>
               <div class="row" style="align-items: center; gap: var(--sp-2);">
                 <label for="inp-lap-sampai" style="font-size: var(--fs-xs); color: var(--text-muted); flex-shrink: 0;">Sampai:</label>
-                <input type="date" id="inp-lap-sampai" class="input input-sm" value="${stateLaporan.sampai}" style="width: 130px; max-width: 100%;">
+                <input type="date" id="inp-lap-sampai" class="input input-sm" value="${stateLaporan.sampai}" style="width: 140px; max-width: 100%;">
               </div>
-              <button type="button" class="btn btn-sm btn-primary" id="btn-terapkan-tanggal">Terapkan</button>
+              <button type="button" class="btn btn-sm btn-primary" id="btn-terapkan-tanggal" style="font-weight: var(--fw-bold);">Terapkan Rentang</button>
             </div>
           </div>
         </div>
@@ -179,6 +189,16 @@ function pasangEventHeader(container) {
       });
       btn.classList.remove('btn-ghost');
       btn.classList.add('btn-primary');
+      haptic.light();
+
+      const boxKustom = $('#box-kustom-tanggal', container);
+      if (per === 'kustom') {
+        if (boxKustom) boxKustom.style.display = 'flex';
+        $('#inp-lap-dari', container)?.focus();
+        return;
+      } else {
+        if (boxKustom) boxKustom.style.display = 'none';
+      }
 
       const skrg = new Date();
       const formatTgl = (d) => {
@@ -212,6 +232,11 @@ function pasangEventHeader(container) {
       if (inpDari) inpDari.value = stateLaporan.dari;
       if (inpSampai) inpSampai.value = stateLaporan.sampai;
 
+      const badgeAktif = $('#badge-periode-aktif', container);
+      if (badgeAktif) {
+        badgeAktif.textContent = `📅 ${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}`;
+      }
+
       muatDataTabAktif(container);
     });
   });
@@ -233,6 +258,7 @@ function pasangEventHeader(container) {
       stateLaporan.dari = d;
       stateLaporan.sampai = s;
       stateLaporan.periode = 'kustom';
+      haptic.light();
 
       $$('#seg-periode button', container).forEach((b) => {
         b.classList.remove('btn-primary');
@@ -242,6 +268,11 @@ function pasangEventHeader(container) {
       if (btnKustom) {
         btnKustom.classList.remove('btn-ghost');
         btnKustom.classList.add('btn-primary');
+      }
+
+      const badgeAktif = $('#badge-periode-aktif', container);
+      if (badgeAktif) {
+        badgeAktif.textContent = `📅 ${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}`;
       }
 
       muatDataTabAktif(container);

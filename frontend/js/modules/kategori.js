@@ -115,7 +115,7 @@ async function muatKategori(container, canEdit) {
               <th>Nama Kategori</th>
               <th>Tipe & Hirarki</th>
               <th style="width: 80px; text-align: right;">Urutan</th>
-              ${canEdit ? '<th style="width: 220px; text-align: right;">Aksi</th>' : ''}
+              ${canEdit ? '<th style="width: 250px; text-align: right;">Aksi</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -148,7 +148,7 @@ async function muatKategori(container, canEdit) {
           <td class="num" data-label="Urutan">${p.urutan || 0}</td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
+              <div class="cluster" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap;">
                 <button type="button" class="btn btn-primary btn-sm btn-tambah-sub" data-parent-id="${p.id}" data-parent-nama="${escapeHtml(p.nama)}" title="Tambah Sub Kategori di bawah ${escapeHtml(p.nama)}" style="border-radius: var(--radius-full);">
                   ${ICONS.plus || ''}
                   <span>Sub</span>
@@ -189,7 +189,7 @@ async function muatKategori(container, canEdit) {
             <td class="num" data-label="Urutan">${c.urutan || 0}</td>
             ${canEdit ? `
               <td style="text-align: right;" data-label="Aksi">
-                <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
+                <div class="cluster" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap;">
                   <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${c.id}" title="Ubah" style="border-radius: var(--radius-full);">
                     ${ICONS.settings}
                     <span>Ubah</span>
@@ -222,7 +222,7 @@ async function muatKategori(container, canEdit) {
           <td class="num" data-label="Urutan">${o.urutan || 0}</td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">
-              <div class="row" style="justify-content: flex-end; gap: var(--sp-2); width: 100%;">
+              <div class="cluster" style="justify-content: flex-end; gap: 6px; flex-wrap: nowrap;">
                 <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${o.id}" title="Ubah">
                   ${ICONS.settings}
                   <span>Ubah</span>
