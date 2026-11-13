@@ -125,7 +125,7 @@ export function showModal({
   overlay.className = `overlay ${isSheet ? 'is-sheet' : 'is-modal'}`;
 
   const dialog = document.createElement('div');
-  dialog.className = `dialog ${size === 'lg' ? 'dialog-lg' : size === 'md' ? 'dialog-md' : ''}`;
+  dialog.className = `dialog ${size === 'lg' ? 'dialog-lg' : size === 'md' ? 'dialog-md' : size === 'sm' ? 'dialog-sm' : ''}`;
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
 
@@ -188,46 +188,120 @@ export function showModal({
 }
 
 /**
- * Tampilkan dialog konfirmasi interaktif
- * @param {Object} options
- * @param {string} options.title
- * @param {string} options.message
- * @param {string} [options.confirmText='Ya, Lanjutkan']
- * @param {string} [options.cancelText='Batal']
- * @param {boolean} [options.danger=false]
+ * Tampilkan dialog konfirmasi interaktif bergaya modern (menggantikan confirm bawaan browser)
+ * Mendukung format objek: showConfirm({ title, message, confirmText, cancelText, danger })
+ * Maupun format 2 argumen: showConfirm('Judul', 'Pesan')
  * @returns {Promise<boolean>}
  */
-export function showConfirm({
-  title = 'Konfirmasi',
-  message,
-  confirmText = 'Ya, Lanjutkan',
-  cancelText = 'Batal',
-  danger = false
-}) {
+export function showConfirm(titleOrOptions, messageOrOptions, extraOptions = {}) {
+  let title = 'Konfirmasi Tindakan';
+  let message = '';
+  let confirmText = 'Ya, Lanjutkan';
+  let cancelText = 'Batal';
+  let danger = false;
+
+  if (typeof titleOrOptions === 'string') {
+    title = titleOrOptions;
+    if (typeof messageOrOptions === 'string') {
+      message = messageOrOptions;
+      if (typeof extraOptions === 'object') {
+        if (extraOptions.confirmText) confirmText = extraOptions.confirmText;
+        if (extraOptions.cancelText) cancelText = extraOptions.cancelText;
+        if (extraOptions.danger !== undefined) danger = !!extraOptions.danger;
+      }
+    } else if (typeof messageOrOptions === 'object' && messageOrOptions !== null) {
+      if (messageOrOptions.message) message = messageOrOptions.message;
+      if (messageOrOptions.confirmText) confirmText = messageOrOptions.confirmText;
+      if (messageOrOptions.cancelText) cancelText = messageOrOptions.cancelText;
+      if (messageOrOptions.danger !== undefined) danger = !!messageOrOptions.danger;
+    }
+  } else if (titleOrOptions && typeof titleOrOptions === 'object') {
+    title = titleOrOptions.title || 'Konfirmasi Tindakan';
+    message = titleOrOptions.message || '';
+    confirmText = titleOrOptions.confirmText || 'Ya, Lanjutkan';
+    cancelText = titleOrOptions.cancelText || 'Batal';
+    danger = !!titleOrOptions.danger;
+  }
+
   return new Promise((resolve) => {
+    let resolved = false;
+    const safeResolve = (val) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(val);
+      }
+    };
+
+    const iconHtml = danger ? `
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(239, 68, 68, 0.14); color: #ef4444; display: grid; place-items: center; flex-shrink: 0;">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+    ` : `
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(234, 88, 12, 0.14); color: var(--primary, #ea580c); display: grid; place-items: center; flex-shrink: 0;">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+    `;
+
+    const bodyHtml = `
+      <div class="row" style="align-items: flex-start; gap: var(--sp-3); padding: var(--sp-1) 0;">
+        ${iconHtml}
+        <div class="stack" style="gap: 4px; flex: 1; min-width: 0;">
+          <div class="fw-bold text-base" style="color: var(--text);">${escapeHtml(title)}</div>
+          <div class="text-sm text-muted" style="line-height: 1.5;">${escapeHtml(message)}</div>
+        </div>
+      </div>
+    `;
+
     const footer = document.createElement('div');
     footer.style.display = 'contents';
     footer.innerHTML = `
-      <button type="button" class="btn btn-ghost btn-cancel">${escapeHtml(cancelText)}</button>
-      <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'} btn-confirm">${escapeHtml(confirmText)}</button>
+      <button type="button" class="btn btn-ghost btn-cancel" style="font-weight: 500;">${escapeHtml(cancelText)}</button>
+      <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'} btn-confirm" style="font-weight: 600; padding: 8px 18px;">${escapeHtml(confirmText)}</button>
     `;
 
     const modal = showModal({
-      title,
-      body: `<p class="text-sm">${escapeHtml(message)}</p>`,
+      title: '',
+      body: bodyHtml,
       footer,
-      isSheet: false
+      isSheet: false,
+      size: 'sm'
     });
 
-    modal.el.querySelector('.btn-cancel').addEventListener('click', () => {
+    const headerTitleEl = modal.el.querySelector('.dialog-title');
+    if (headerTitleEl) headerTitleEl.style.display = 'none';
+
+    modal.el.querySelector('.btn-cancel')?.addEventListener('click', () => {
       modal.close();
-      resolve(false);
+      safeResolve(false);
     });
 
-    modal.el.querySelector('.btn-confirm').addEventListener('click', () => {
-      modal.close();
-      resolve(true);
+    modal.el.querySelector('.btn-close-modal')?.addEventListener('click', () => {
+      safeResolve(false);
     });
+
+    modal.el.querySelector('.btn-confirm')?.addEventListener('click', () => {
+      modal.close();
+      safeResolve(true);
+    });
+
+    modal.el.addEventListener('click', (e) => {
+      if (e.target === modal.el) {
+        safeResolve(false);
+      }
+    });
+
+    setTimeout(() => {
+      const btnFocus = danger ? modal.el.querySelector('.btn-cancel') : modal.el.querySelector('.btn-confirm');
+      btnFocus?.focus();
+    }, 50);
   });
 }
 

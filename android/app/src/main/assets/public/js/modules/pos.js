@@ -22,7 +22,7 @@
 import { api } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml } from '../utils/format.js';
-import { showToast, showModal, ICONS } from '../utils/ui.js';
+import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
@@ -2177,14 +2177,21 @@ export function renderPosModule(container) {
   }
 
   // ---------- Kosongkan Keranjang ----------
-  elBtnClear?.addEventListener('click', () => {
+  elBtnClear?.addEventListener('click', async () => {
     if (state.keranjang.length === 0) return;
-    if (confirm('Kosongkan semua isi keranjang belanja?')) {
-      state.keranjang = [];
-      state.diskonTransaksi = { tipe: '', nilai: 0 };
-      renderKeranjang();
-      if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
-    }
+    const yakin = await showConfirm({
+      title: 'Kosongkan Keranjang Belanja?',
+      message: 'Semua item barang yang sudah dipilih akan dihapus dari daftar keranjang transaksi saat ini.',
+      confirmText: 'Ya, Kosongkan',
+      cancelText: 'Batal',
+      danger: true
+    });
+    if (!yakin) return;
+    state.keranjang = [];
+    state.diskonTransaksi = { tipe: '', nilai: 0 };
+    renderKeranjang();
+    showToast('Keranjang belanja telah dikosongkan.', 'info');
+    if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
   });
 
   // ---------- Scan Barcode Kamera & Fisik ----------

@@ -1021,6 +1021,7 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     padding-bottom: 0;
     animation: muncul var(--dur-normal) var(--ease);
   }
+  .is-modal .dialog.dialog-sm { max-width: 440px; }
   .is-modal .dialog.dialog-md { max-width: 620px; }
   .is-modal .dialog.dialog-lg { max-width: 800px; }
   .is-sheet .dialog { max-width: 560px; }
