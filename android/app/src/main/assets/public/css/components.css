@@ -293,6 +293,10 @@ input[type="password"] {
   transition: box-shadow var(--dur-fast), border-color var(--dur-fast);
   overflow: hidden;
 }
+[data-theme="dark"] .card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.08);
+}
 .card-body { padding: var(--sp-4); }
 .card-header {
   display: flex;
@@ -355,6 +359,127 @@ input[type="password"] {
 }
 .stat-delta { font-size: var(--fs-xs); font-weight: var(--fw-semibold); margin-top: 2px; }
 
+/* ---------- PRO KPI Cards ---------- */
+.stat-card-pro {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast);
+  overflow: hidden;
+}
+[data-theme="dark"] .stat-card-pro {
+  background: #182234;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.stat-card-pro:hover {
+  transform: translateY(-2px);
+  border-color: rgba(234, 88, 12, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+.stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.stat-card-title {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.stat-card-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  transition: transform var(--dur-fast);
+}
+.stat-card-pro:hover .stat-card-icon {
+  transform: scale(1.08);
+}
+.stat-card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.stat-card-icon.icon-blue {
+  background: rgba(59, 130, 246, 0.14);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.stat-card-icon.icon-amber {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.stat-card-icon.icon-rose {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.stat-card-icon.icon-emerald {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.stat-card-icon.icon-purple {
+  background: rgba(168, 85, 247, 0.14);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+.stat-card-value {
+  font-size: clamp(1.25rem, 2.2vw, 1.65rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.stat-card-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+@media (max-width: 767px) {
+  .stat-card-pro {
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-lg);
+  }
+  .stat-card-pro .stat-card-header {
+    margin-bottom: 3px;
+  }
+  .stat-card-pro .stat-card-icon {
+    width: 28px;
+    height: 28px;
+  }
+  .stat-card-pro .stat-card-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+  .stat-card-pro .stat-card-title {
+    font-size: 10px;
+  }
+  .stat-card-pro .stat-card-value {
+    font-size: 1.15rem;
+    margin-bottom: 2px;
+  }
+  .stat-card-pro .stat-card-desc {
+    font-size: 10.5px;
+  }
+}
+
 /* ---------- Badge & chip ---------- */
 .badge {
   display: inline-flex;
@@ -406,18 +531,22 @@ input[type="password"] {
 .table th,
 .table td { padding: var(--sp-3) var(--sp-4); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .table th {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   background: var(--surface-2);
   position: sticky;
   top: 0;
   z-index: 1;
+  white-space: nowrap;
+}
+.table tbody tr {
+  transition: background var(--dur-fast) var(--ease);
 }
 .table tbody tr:hover { background: var(--surface-2); }
-.table .num { text-align: right; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Container nilai sel bertumpuk di sebelah kanan (misal HP + badge WA + alamat) */
 .pel-cell-val {
@@ -427,6 +556,22 @@ input[type="password"] {
   text-align: right;
   gap: 3px;
   min-width: 0;
+}
+.pel-alamat-text {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .pel-alamat-text {
+    max-width: 190px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.25;
+  }
 }
 
 /* Toolbar tombol aksi tabel yang seragam dan rapi */

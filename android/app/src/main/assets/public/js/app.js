@@ -506,7 +506,6 @@ class App {
           <a href="${r.path}" class="nav-link" data-path="${r.path}" id="nav-side-${r.id}">
             ${r.icon}
             <span class="nav-label">${escapeHtml(r.shortTitle || r.title)}</span>
-            <span class="nav-fase">${escapeHtml(r.fase)}</span>
           </a>
         `;
       });

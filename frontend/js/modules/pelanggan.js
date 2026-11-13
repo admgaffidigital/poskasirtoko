@@ -32,25 +32,37 @@ export async function renderPelangganModule(container) {
 
       <!-- Stat Cards Pelanggan (2x2 di mobile, 4 kolom di desktop) -->
       <div class="stat-grid" id="stat-cards-pelanggan">
-        <div class="card card-body stat-card">
-          <span class="text-xs text-muted fw-semibold">TOTAL PELANGGAN</span>
-          <div class="stat-value" id="stat-pel-total">0</div>
-          <span class="text-xs text-muted" id="stat-pel-sub">Mitra terdaftar</span>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Pelanggan</span>
+            <div class="stat-card-icon icon-blue">${ICONS.users}</div>
+          </div>
+          <div class="stat-card-value" id="stat-pel-total">0</div>
+          <div class="stat-card-desc" id="stat-pel-sub">Mitra pembeli terdaftar</div>
         </div>
-        <div class="card card-body stat-card">
-          <span class="text-xs text-muted fw-semibold">MEMBER LOYALITAS</span>
-          <div class="stat-value text-primary" id="stat-pel-member">0 Member</div>
-          <span class="text-xs text-muted">Pelanggan terdaftar</span>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Member Loyalitas</span>
+            <div class="stat-card-icon icon-amber">${ICONS.award}</div>
+          </div>
+          <div class="stat-card-value text-primary" id="stat-pel-member">0 Member</div>
+          <div class="stat-card-desc">Pelanggan berlevel</div>
         </div>
-        <div class="card card-body stat-card">
-          <span class="text-xs text-muted fw-semibold">TOTAL PIUTANG AKTIF</span>
-          <div class="stat-value text-danger" id="stat-pel-piutang">Rp 0</div>
-          <span class="text-xs text-muted">Tagihan tempo berjalan</span>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Piutang Aktif</span>
+            <div class="stat-card-icon icon-rose">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value text-danger" id="stat-pel-piutang">Rp 0</div>
+          <div class="stat-card-desc">Tagihan tempo berjalan</div>
         </div>
-        <div class="card card-body stat-card">
-          <span class="text-xs text-muted fw-semibold">TOTAL POIN BEREDAR</span>
-          <div class="stat-value text-warning" id="stat-pel-poin">0 Poin</div>
-          <span class="text-xs text-muted">Dapat ditukar hadiah</span>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Poin Beredar</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.shoppingBag}</div>
+          </div>
+          <div class="stat-card-value text-warning" id="stat-pel-poin">0 Poin</div>
+          <div class="stat-card-desc">Dapat ditukar hadiah</div>
         </div>
       </div>
 
@@ -237,7 +249,7 @@ async function muatDataPelanggan(container) {
                         ` : ''}
                       </div>
                       ${it.alamat ? `
-                        <div class="text-xs text-muted" style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <div class="text-xs text-muted pel-alamat-text" title="${escapeHtml(it.alamat)}">
                           ${escapeHtml(it.alamat)}
                         </div>
                       ` : ''}
@@ -392,13 +404,13 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
       </div>
 
       <!-- Khusus Pengaturan Member & Kredit Tempo -->
-      <div id="section-member-options" class="card card-body stack" style="background: var(--surface-2); padding: var(--sp-3); gap: var(--sp-3); border-radius: var(--radius-lg); border: 1px solid var(--border);">
-        <div class="row items-center justify-between">
-          <span class="fw-bold text-xs uppercase" style="letter-spacing: 0.05em; color: var(--primary);">PENGATURAN LOYALITAS & KREDIT TEMPO</span>
+      <div id="section-member-options" class="stack" style="gap: var(--sp-2); padding-top: var(--sp-3); border-top: 1px dashed var(--border);">
+        <div class="row items-center justify-between" style="margin-bottom: 2px;">
+          <span class="fw-bold text-xs uppercase" style="letter-spacing: 0.05em; color: var(--primary);">Pengaturan Loyalitas & Kredit Tempo</span>
           <span class="badge badge-primary text-2xs">B2B / Rekanan</span>
         </div>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-2);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2);">
           <div class="field">
             <label class="field-label" for="pel-level">Level Member</label>
             <select class="input" id="pel-level" ${!isOwnerOrAdmin ? 'disabled' : ''}>

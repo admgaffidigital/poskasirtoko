@@ -36,20 +36,29 @@ export async function renderHutangPiutangModule(container) {
       <div id="panel-piutang" class="stack">
         <!-- Stat Cards Piutang (Responsif Proporsional) -->
         <div class="stat-grid-3" id="stat-cards-piutang">
-          <div class="card card-body stat-card">
-            <span class="text-xs text-muted fw-semibold">TOTAL SISA PIUTANG</span>
-            <div class="stat-value text-primary" id="stat-piutang-total">Rp 0</div>
-            <span class="text-xs text-muted" id="stat-piutang-ket">Dari semua nota tempo aktif</span>
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Total Sisa Piutang</span>
+              <div class="stat-card-icon icon-rose">${ICONS.wallet}</div>
+            </div>
+            <div class="stat-card-value text-primary" id="stat-piutang-total">Rp 0</div>
+            <div class="stat-card-desc" id="stat-piutang-ket">Dari semua nota tempo aktif</div>
           </div>
-          <div class="card card-body stat-card">
-            <span class="text-xs text-muted fw-semibold">JATUH TEMPO LEWAT (OVERDUE)</span>
-            <div class="stat-value text-danger" id="stat-piutang-overdue">0 Nota</div>
-            <span class="text-xs text-muted">Perlu segera ditagih</span>
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Jatuh Tempo Lewat</span>
+              <div class="stat-card-icon icon-rose">${ICONS.alertTriangle}</div>
+            </div>
+            <div class="stat-card-value text-danger" id="stat-piutang-overdue">0 Nota</div>
+            <div class="stat-card-desc">Perlu segera ditagih</div>
           </div>
-          <div class="card card-body stat-card">
-            <span class="text-xs text-muted fw-semibold">JUMLAH TRANSAKSI PIUTANG</span>
-            <div class="stat-value" id="stat-piutang-count">0 Transaksi</div>
-            <span class="text-xs text-muted" id="stat-piutang-pelanggan">-</span>
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Transaksi Piutang</span>
+              <div class="stat-card-icon icon-blue">${ICONS.clipboard}</div>
+            </div>
+            <div class="stat-card-value" id="stat-piutang-count">0 Transaksi</div>
+            <div class="stat-card-desc" id="stat-piutang-pelanggan">Tagihan pelanggan berjalan</div>
           </div>
         </div>
 
@@ -106,20 +115,29 @@ export async function renderHutangPiutangModule(container) {
         ` : `
           <!-- Stat Cards Hutang (Responsif Proporsional) -->
           <div class="stat-grid-3" id="stat-cards-hutang">
-            <div class="card card-body stat-card">
-              <span class="text-xs text-muted fw-semibold">TOTAL SISA HUTANG SUPPLIER</span>
-              <div class="stat-value text-danger" id="stat-hutang-total">Rp 0</div>
-              <span class="text-xs text-muted">Kewajiban pengadaan barang berjalan</span>
+            <div class="stat-card-pro">
+              <div class="stat-card-header">
+                <span class="stat-card-title">Total Sisa Hutang</span>
+                <div class="stat-card-icon icon-rose">${ICONS.wallet}</div>
+              </div>
+              <div class="stat-card-value text-danger" id="stat-hutang-total">Rp 0</div>
+              <div class="stat-card-desc">Kewajiban pengadaan berjalan</div>
             </div>
-            <div class="card card-body stat-card">
-              <span class="text-xs text-muted fw-semibold">JATUH TEMPO LEWAT (OVERDUE)</span>
-              <div class="stat-value text-warning" id="stat-hutang-overdue">0 Faktur</div>
-              <span class="text-xs text-muted">Perlu segera diselesaikan</span>
+            <div class="stat-card-pro">
+              <div class="stat-card-header">
+                <span class="stat-card-title">Jatuh Tempo Lewat</span>
+                <div class="stat-card-icon icon-amber">${ICONS.alertTriangle}</div>
+              </div>
+              <div class="stat-card-value text-warning" id="stat-hutang-overdue">0 Faktur</div>
+              <div class="stat-card-desc">Perlu segera diselesaikan</div>
             </div>
-            <div class="card card-body stat-card">
-              <span class="text-xs text-muted fw-semibold">FAKTUR HUTANG AKTIF</span>
-              <div class="stat-value" id="stat-hutang-count">0 Faktur</div>
-              <span class="text-xs text-muted" id="stat-hutang-supplier">-</span>
+            <div class="stat-card-pro">
+              <div class="stat-card-header">
+                <span class="stat-card-title">Faktur Hutang Aktif</span>
+                <div class="stat-card-icon icon-blue">${ICONS.truck}</div>
+              </div>
+              <div class="stat-card-value" id="stat-hutang-count">0 Faktur</div>
+              <div class="stat-card-desc" id="stat-hutang-supplier">Tagihan supplier berjalan</div>
             </div>
           </div>
 
