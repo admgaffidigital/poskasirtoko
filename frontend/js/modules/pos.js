@@ -296,18 +296,29 @@ export function renderPosModule(container) {
   }
 
   function perbaruiFloatingCart() {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const count = state.keranjang.length;
     if (elMobileCartBadge) {
       elMobileCartBadge.textContent = count;
       elMobileCartBadge.style.display = count > 0 ? 'inline-flex' : 'none';
     }
     if (!elFloatingCart) return;
-    if (state.mobileView === 'catalog' && count > 0) {
+    if (isMobile && state.mobileView === 'catalog' && count > 0) {
       elFloatingCart.style.display = 'flex';
     } else {
       elFloatingCart.style.display = 'none';
     }
   }
+
+  // Sembunyikan floating bar otomatis jika layar di-resize ke desktop/tablet
+  window.addEventListener('resize', () => {
+    perbaruiFloatingCart();
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      if (elPosWrapper && state.mobileView === 'cart') {
+        setMobileView('catalog');
+      }
+    }
+  });
 
   elTabCatalog?.addEventListener('click', () => {
     haptic.light();

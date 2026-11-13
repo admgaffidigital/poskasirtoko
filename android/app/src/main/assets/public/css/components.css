@@ -1302,6 +1302,9 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     flex-shrink: 0;
     height: 100%;
   }
+  .pos-mobile-floating-cart {
+    display: none !important;
+  }
 }
 @media (min-width: 1200px) {
   .pos-cart-panel {
