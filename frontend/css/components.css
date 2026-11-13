@@ -326,38 +326,76 @@ input[type="password"] {
 .card-grid { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
 /* Kartu statistik (dashboard) */
+.card.stat,
 .stat {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: var(--sp-1);
   padding: var(--sp-4);
   background: var(--surface);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast);
 }
+[data-theme="dark"] .card.stat,
+[data-theme="dark"] .stat {
+  background: #182234;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.card.stat:hover,
 .stat:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(234, 88, 12, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 .stat-label {
   font-size: var(--fs-2xs);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  font-weight: var(--fw-bold);
   line-height: 1.25;
 }
 .stat-value {
-  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-size: clamp(1.25rem, 2.2vw, 1.65rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   word-break: break-word;
 }
 .stat-delta { font-size: var(--fs-xs); font-weight: var(--fw-semibold); margin-top: 2px; }
+
+@media (max-width: 767px) {
+  .card.stat,
+  .stat {
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-lg);
+  }
+  .card.stat .stat-label,
+  .stat .stat-label {
+    font-size: 10px;
+  }
+  .card.stat .stat-value,
+  .stat .stat-value {
+    font-size: 1.15rem;
+    margin-bottom: 2px;
+  }
+  .card.stat .stat-delta,
+  .stat .stat-delta {
+    font-size: 10.5px;
+  }
+  .card-grid[style*="minmax(200px"],
+  .card-grid[style*="minmax(220px"],
+  .stat-grid-auto,
+  .card-grid.stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--sp-2) !important;
+  }
+}
 
 /* ---------- PRO KPI Cards ---------- */
 .stat-card-pro {
@@ -1030,6 +1068,15 @@ button.list-item:hover, a.list-item:hover { background: var(--surface-2); text-d
     border-radius: var(--radius-md);
     font-size: var(--fs-md);
   }
+}
+[data-theme="dark"] .dialog {
+  background: #111a2e;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 48px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .dialog-footer {
+  background: #111a2e;
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 /* ---------- Native App Autocomplete & Product Selection Dropdown ---------- */
