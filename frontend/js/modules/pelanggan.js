@@ -240,14 +240,7 @@ async function muatDataPelanggan(container) {
                   </td>
                   <td data-label="Kontak & Alamat">
                     <div class="pel-cell-val">
-                      <div class="row items-center" style="gap: 6px; justify-content: flex-end;">
-                        <span class="text-xs font-mono fw-semibold">${escapeHtml(it.hp || '-')}</span>
-                        ${it.hp ? `
-                          <button type="button" class="btn btn-xs btn-wa-direct" data-hp="${escapeHtml(it.hp)}" data-nama="${escapeHtml(it.nama)}" title="Chat WhatsApp" style="padding: 1px 6px; font-size: 10px; border-radius: var(--radius-full); background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3);">
-                            WA
-                          </button>
-                        ` : ''}
-                      </div>
+                      <span class="text-xs font-mono fw-semibold">${escapeHtml(it.hp || '-')}</span>
                       ${it.alamat ? `
                         <div class="text-xs text-muted pel-alamat-text" title="${escapeHtml(it.alamat)}">
                           ${escapeHtml(it.alamat)}
@@ -329,14 +322,6 @@ async function muatDataPelanggan(container) {
             showToast(err.message || 'Gagal menghapus pelanggan', 'error');
           }
         }
-      });
-    });
-
-    area.querySelectorAll('.btn-wa-direct').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const hp = btn.getAttribute('data-hp');
-        const nama = btn.getAttribute('data-nama');
-        bukaChatWhatsApp(hp, nama);
       });
     });
 
@@ -735,11 +720,19 @@ async function bukaModalDetailPelanggan(pelangganId) {
         </div>
       ` : ''}
 
-      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end;">
-        <button type="button" class="btn btn-secondary" id="btn-tutup-detail-pel">Tutup</button>
+      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end; gap: var(--sp-2);">
+        ${pel.hp ? `
+          <button type="button" class="btn btn-outline-success btn-sm" id="btn-modal-wa" style="gap: 6px;">
+            <span>Chat WhatsApp</span>
+          </button>
+        ` : ''}
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-detail-pel">Tutup</button>
       </div>
     `;
 
+    $('#btn-modal-wa', modalBody)?.addEventListener('click', () => {
+      bukaChatWhatsApp(pel.hp, pel.nama);
+    });
     $('#btn-tutup-detail-pel', modalBody)?.addEventListener('click', () => modalInstance.close());
 
   } catch (err) {
