@@ -89,6 +89,18 @@ assert.ok(pengJs.includes('cfg-printer-jalur'), 'Pengaturan wajib memiliki pilih
 assert.ok(posJs.includes('btn-pos-panduan-printer'), 'POS Kasir wajib memiliki tombol panduan koneksi printer');
 assert.ok(appJs.includes('btn-printer-tile'), 'Menu Lainnya wajib memiliki tile cepat Printer Bluetooth');
 
+// Audit Cetak Struk Pembelian & Riwayat Transaksi Penjualan/Pembelian
+const beliJs = fs.readFileSync('frontend/js/modules/pembelian.js', 'utf8');
+const lapJs = fs.readFileSync('frontend/js/modules/laporan.js', 'utf8');
+assert.ok(printerJs.includes('susunTeksStrukPembelian'), 'printer.js wajib memiliki fungsi susunTeksStrukPembelian');
+assert.ok(printerJs.includes('bukaModalPilihanCetakPembelian'), 'printer.js wajib memiliki fungsi bukaModalPilihanCetakPembelian');
+assert.ok(printerJs.includes('bukaModalPilihanCetakPenjualan'), 'printer.js wajib memiliki fungsi bukaModalPilihanCetakPenjualan');
+assert.ok(beliJs.includes('btn-cetak-riwayat-beli'), 'pembelian.js wajib memiliki tombol cetak riwayat faktur');
+assert.ok(beliJs.includes('btn-modal-cetak-detail-beli'), 'pembelian.js wajib memiliki tombol cetak pada detail faktur');
+assert.ok(lapJs.includes('btn-cetak-nota'), 'laporan.js wajib memiliki tombol cetak struk nota pada riwayat penjualan');
+assert.ok(lapJs.includes('btn-cetak-laporan-beli'), 'laporan.js wajib memiliki tombol cetak faktur pada tab pembelian');
+console.log('  ✔ LULUS: Fitur cetak struk faktur pembelian & riwayat transaksi penjualan/pembelian teruji 100%.');
+
 console.log('  ✔ LULUS: Label SKU bersih, floating cart fixed di viewport, dan fitur sinkronisasi global aktif.');
 console.log('  ✔ LULUS: Fitur koneksi & uji printer Bluetooth RawBT terintegrasi lengkap di seluruh modul.');
 

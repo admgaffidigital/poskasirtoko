@@ -10,6 +10,7 @@ import { $, $$, escapeHtml } from '../utils/dom.js';
 import { formatRupiah, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal } from '../utils/ui.js';
 import { haptic } from '../utils/native.js';
+import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian } from '../utils/printer.js';
 
 // State lokal modul laporan
 let stateLaporan = {
@@ -814,7 +815,7 @@ function renderTabPenjualan(container, data) {
                   <th>Status</th>
                   <th style="text-align: right;">Total Transaksi</th>
                   ${isOwner ? `<th style="text-align: right;">Laba Kotor</th>` : ''}
-                  <th class="no-print" style="text-align: center; width: ${canVoid ? '100px' : '60px'};">Aksi</th>
+                  <th class="no-print" style="text-align: center; width: ${canVoid ? '160px' : '100px'};">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -848,6 +849,10 @@ function renderTabPenjualan(container, data) {
                     ` : ''}
                     <td class="no-print" style="text-align: right;" data-label="Aksi">
                       <div class="table-actions">
+                        <button type="button" class="btn btn-sm btn-primary btn-cetak-nota" data-id="${j.id}" title="Cetak Struk Penjualan">
+                          ${ICONS.printer}
+                          <span>Cetak</span>
+                        </button>
                         <button type="button" class="btn btn-sm btn-secondary btn-detail-nota" data-id="${j.id}" title="Lihat Rincian Item">
                           ${ICONS.eye}
                           <span>Rincian</span>
@@ -885,6 +890,26 @@ function renderTabPenjualan(container, data) {
       muatDataTabAktif(container.closest('#modul-laporan-root'));
     });
   }
+
+  // Tombol Cetak Struk Nota Langsung
+  $$('.btn-cetak-nota', container).forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      btn.disabled = true;
+      try {
+        const res = await kirimRequest('penjualan.detail', { id });
+        if (!res || !res.ok) {
+          showToast(res ? (res.error || res.message) : 'Gagal mengambil detail nota', 'error');
+          return;
+        }
+        bukaModalPilihanCetakPenjualan(res.data);
+      } catch (err) {
+        showToast('Gagal memuat detail nota: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 
   // Tombol Rincian Nota Modal
   $$('.btn-detail-nota', container).forEach((btn) => {
@@ -1118,7 +1143,11 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
 
     const footerHtml = `
       <div class="cluster" style="justify-content: space-between; width: 100%; flex-wrap: wrap; gap: var(--sp-2);">
-        <div>
+        <div class="cluster" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-primary btn-sm btn-modal-cetak-nota" title="Cetak Struk Penjualan">
+            ${ICONS.printer}
+            <span>Cetak Struk</span>
+          </button>
           ${canVoid && !isVoided ? `
             <button type="button" class="btn btn-danger btn-sm btn-modal-void-nota" title="Batalkan / Hapus Transaksi Ini">
               ${ICONS.trash}
@@ -1138,6 +1167,13 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
 
     const btnTutup = modal.el.querySelector('.btn-modal-tutup');
     if (btnTutup) btnTutup.addEventListener('click', () => modal.close());
+
+    const btnCetakStruk = modal.el.querySelector('.btn-modal-cetak-nota');
+    if (btnCetakStruk) {
+      btnCetakStruk.addEventListener('click', () => {
+        bukaModalPilihanCetakPenjualan(d);
+      });
+    }
 
     const btnVoid = modal.el.querySelector('.btn-modal-void-nota');
     if (btnVoid) {
@@ -1206,11 +1242,12 @@ function renderTabPembelian(container, data) {
                   <th style="text-align: right;">Total Nilai</th>
                   <th style="text-align: right;">Dibayar</th>
                   <th style="text-align: right;">Sisa Hutang</th>
+                  <th class="no-print" style="text-align: right; width: 100px;">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 ${items.length === 0 ? `
-                  <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada faktur pembelian sesuai filter</td></tr>
+                  <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada faktur pembelian sesuai filter</td></tr>
                 ` : items.map((pb) => `
                   <tr>
                     <td data-label="No Faktur"><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(pb.no_faktur)}</span></td>
@@ -1227,6 +1264,14 @@ function renderTabPembelian(container, data) {
                     <td style="text-align: right; font-weight: var(--fw-bold); color: ${pb.sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};" data-label="Sisa Hutang">
                       ${formatRupiah(pb.sisa_hutang)}
                     </td>
+                    <td class="no-print" style="text-align: right;" data-label="Aksi">
+                      <div class="table-actions">
+                        <button type="button" class="btn btn-sm btn-primary btn-cetak-laporan-beli" data-id="${pb.id}" title="Cetak Struk Faktur">
+                          ${ICONS.printer}
+                          <span>Cetak</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -1236,6 +1281,26 @@ function renderTabPembelian(container, data) {
       </div>
     </div>
   `;
+
+  // Tombol Cetak Faktur Pembelian Langsung
+  $$('.btn-cetak-laporan-beli', container).forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      btn.disabled = true;
+      try {
+        const res = await kirimRequest('pembelian.detail', { id });
+        if (!res || !res.ok) {
+          showToast(res ? (res.error || res.message) : 'Gagal memuat rincian faktur pembelian', 'error');
+          return;
+        }
+        bukaModalPilihanCetakPembelian(res.data);
+      } catch (err) {
+        showToast('Gagal memuat faktur pembelian: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 
   const selBeli = $('#sel-filter-bayar-beli', container);
   if (selBeli) {

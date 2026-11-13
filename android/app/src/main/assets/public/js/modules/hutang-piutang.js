@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, parseRupiah, formatTanggal } from '../utils/format.js';
+import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian } from '../utils/printer.js';
 
 export async function renderHutangPiutangModule(container) {
   const user = store.get('user');
@@ -872,10 +873,25 @@ async function bukaModalDetailPiutang(piutangId) {
         `}
       </div>
 
-      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end;">
-        <button type="button" class="btn btn-secondary" id="btn-tutup-detail-pt">Tutup</button>
+      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: space-between;">
+        ${pt.penjualan_id ? `
+          <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-nota-piutang">
+            ${ICONS.printer}
+            <span>Cetak Struk Nota</span>
+          </button>
+        ` : '<div></div>'}
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-detail-pt">Tutup</button>
       </div>
     `;
+
+    $('#btn-cetak-nota-piutang', modalBody)?.addEventListener('click', async () => {
+      try {
+        const resDetail = await apiCall('penjualan.detail', { id: pt.penjualan_id });
+        bukaModalPilihanCetakPenjualan(resDetail);
+      } catch (e) {
+        showToast('Gagal memuat detail nota: ' + e.message, 'error');
+      }
+    });
 
     $('#btn-tutup-detail-pt', modalBody)?.addEventListener('click', () => modalInstance.close());
   } catch (err) {
@@ -952,10 +968,25 @@ async function bukaModalDetailHutang(hutangId) {
         `}
       </div>
 
-      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end;">
-        <button type="button" class="btn btn-secondary" id="btn-tutup-detail-ht">Tutup</button>
+      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: space-between;">
+        ${ht.pembelian_id ? `
+          <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-faktur-hutang">
+            ${ICONS.printer}
+            <span>Cetak Faktur Pembelian</span>
+          </button>
+        ` : '<div></div>'}
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-detail-ht">Tutup</button>
       </div>
     `;
+
+    $('#btn-cetak-faktur-hutang', modalBody)?.addEventListener('click', async () => {
+      try {
+        const resDetail = await apiCall('pembelian.detail', { id: ht.pembelian_id });
+        bukaModalPilihanCetakPembelian(resDetail);
+      } catch (e) {
+        showToast('Gagal memuat detail faktur: ' + e.message, 'error');
+      }
+    });
 
     $('#btn-tutup-detail-ht', modalBody)?.addEventListener('click', () => modalInstance.close());
   } catch (err) {

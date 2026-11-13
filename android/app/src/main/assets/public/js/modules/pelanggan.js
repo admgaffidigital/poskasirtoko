@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, parseRupiah, formatTanggal } from '../utils/format.js';
+import { bukaModalPilihanCetakPenjualan } from '../utils/printer.js';
 
 export async function renderPelangganModule(container) {
   const user = store.get('user');
@@ -663,6 +664,7 @@ async function bukaModalDetailPelanggan(pelangganId) {
                   <th class="num">Total Belanja</th>
                   <th>Metode</th>
                   <th>Status</th>
+                  <th class="no-print" style="text-align: right; width: 60px;">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -675,6 +677,11 @@ async function bukaModalDetailPelanggan(pelangganId) {
                     <td class="num fw-bold" data-label="Total Belanja">${formatRupiah(pj.total)}</td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(pj.metode_bayar)}</span></td>
                     <td data-label="Status"><span class="badge ${pj.status_bayar === 'lunas' ? 'badge-success' : 'badge-warning'}">${escapeHtml(pj.status_bayar)}</span></td>
+                    <td class="no-print" style="text-align: right;" data-label="Aksi">
+                      <button type="button" class="btn btn-sm btn-primary btn-cetak-riwayat-pelanggan" data-id="${escapeHtml(pj.id)}" title="Cetak Struk Transaksi">
+                        ${ICONS.printer}
+                      </button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -734,6 +741,21 @@ async function bukaModalDetailPelanggan(pelangganId) {
       bukaChatWhatsApp(pel.hp, pel.nama);
     });
     $('#btn-tutup-detail-pel', modalBody)?.addEventListener('click', () => modalInstance.close());
+
+    modalBody.querySelectorAll('.btn-cetak-riwayat-pelanggan').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        btn.disabled = true;
+        try {
+          const res = await apiCall('penjualan.detail', { id });
+          bukaModalPilihanCetakPenjualan(res);
+        } catch (e) {
+          showToast('Gagal memuat detail nota: ' + e.message, 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
 
   } catch (err) {
     modalBody.innerHTML = `

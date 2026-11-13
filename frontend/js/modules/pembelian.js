@@ -13,6 +13,7 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, parseRupiah, parseQty, formatTanggal } from '../utils/format.js';
 import { bukaKameraScanner } from '../utils/barcode.js';
+import { bukaModalPilihanCetakPembelian } from '../utils/printer.js';
 
 export async function renderPembelianModule(container) {
   const user = store.get('user');
@@ -823,6 +824,14 @@ async function simpanPembelian(container) {
     const res = await apiCall('pembelian.create', payload);
     showToast(`Faktur pembelian ${res.no_faktur} berhasil disimpan! Stok dan HPP telah disesuaikan.`, 'success', 5000);
 
+    // Tampilkan opsi cetak faktur langsung
+    try {
+      const detailRes = await apiCall('pembelian.detail', { id: res.id });
+      bukaModalPilihanCetakPembelian(detailRes);
+    } catch (e) {
+      console.warn('Gagal memuat detail faktur untuk cetak otomatis:', e);
+    }
+
     // Reset Form
     keranjangBeli = [];
     renderTabelKeranjangBeli(container);
@@ -914,6 +923,10 @@ async function muatRiwayatPembelian(container, query = '') {
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 <span>Rincian</span>
               </button>
+              <button type="button" class="btn btn-primary btn-sm btn-cetak-riwayat-beli" data-id="${pb.id}" title="Cetak Struk Pembelian">
+                ${ICONS.printer}
+                <span>Cetak</span>
+              </button>
             </div>
           </td>
         </tr>
@@ -933,6 +946,21 @@ async function muatRiwayatPembelian(container, query = '') {
         bukaModalDetailPembelian(btn.getAttribute('data-id'));
       });
     });
+
+    area.querySelectorAll('.btn-cetak-riwayat-beli').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        btn.disabled = true;
+        try {
+          const detailRes = await apiCall('pembelian.detail', { id });
+          bukaModalPilihanCetakPembelian(detailRes);
+        } catch (e) {
+          showToast('Gagal memuat data faktur: ' + e.message, 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
   } catch (err) {
     area.innerHTML = `
       <div class="alert alert-danger">
@@ -946,7 +974,16 @@ async function muatRiwayatPembelian(container, query = '') {
 async function bukaModalDetailPembelian(pembelianId) {
   const modal = showModal({
     title: 'Memuat Rincian Faktur...',
-    body: renderSkeleton(4)
+    body: renderSkeleton(4),
+    footer: `
+      <div class="row" style="width: 100%; justify-content: space-between; gap: var(--sp-2);">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-modal-cetak-detail-beli">
+          ${ICONS.printer}
+          <span>Cetak Struk Faktur</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-tutup-detail-beli">Tutup</button>
+      </div>
+    `
   });
 
   try {
@@ -955,6 +992,13 @@ async function bukaModalDetailPembelian(pembelianId) {
     const items = res.items || [];
     const sup = res.supplier;
     const hutang = res.hutang;
+
+    modal.el.querySelector('#btn-modal-cetak-detail-beli')?.addEventListener('click', () => {
+      bukaModalPilihanCetakPembelian(res);
+    });
+    modal.el.querySelector('#btn-modal-tutup-detail-beli')?.addEventListener('click', () => {
+      modal.close();
+    });
 
     modal.el.querySelector('.modal-title').textContent = `Faktur Pembelian: ${pb.no_faktur}`;
 

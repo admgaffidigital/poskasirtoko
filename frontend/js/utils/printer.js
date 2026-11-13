@@ -230,12 +230,11 @@ let bluetoothDevice = null;
 let bluetoothCharacteristic = null;
 
 /**
- * 1. Cetak via Web Bluetooth Direct BLE (Chrome / Android / Desktop)
- * @param {Object} dataStruk
- * @param {'58'|'80'} [ukuran='58']
+ * Kirim buffer bytes ESC/POS ke printer Web Bluetooth
+ * @param {Uint8Array} escposBytes
  * @returns {Promise<boolean>}
  */
-export async function cetakBluetooth(dataStruk, ukuran = '58') {
+async function kirimBytesKeBluetooth(escposBytes) {
   if (!navigator.bluetooth) {
     showToast('Web Bluetooth tidak didukung di browser ini. Gunakan RawBT atau Cetak Browser.', 'warning', 4500);
     return false;
@@ -277,9 +276,6 @@ export async function cetakBluetooth(dataStruk, ukuran = '58') {
       }
     }
 
-    const teksStruk = susunTeksStruk(dataStruk, ukuran);
-    const escposBytes = teksKeEscPos(teksStruk);
-
     // Kirim dalam pecahan chunk (512 bytes) agar buffer printer tidak overflow
     const chunkSize = 512;
     for (let i = 0; i < escposBytes.length; i += chunkSize) {
@@ -298,6 +294,18 @@ export async function cetakBluetooth(dataStruk, ukuran = '58') {
     }
     return false;
   }
+}
+
+/**
+ * 1. Cetak via Web Bluetooth Direct BLE (Chrome / Android / Desktop)
+ * @param {Object} dataStruk
+ * @param {'58'|'80'} [ukuran='58']
+ * @returns {Promise<boolean>}
+ */
+export async function cetakBluetooth(dataStruk, ukuran = '58') {
+  const teksStruk = susunTeksStruk(dataStruk, ukuran);
+  const escposBytes = teksKeEscPos(teksStruk);
+  return await kirimBytesKeBluetooth(escposBytes);
 }
 
 /**
@@ -697,6 +705,538 @@ export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
   pesan += `${toko.nota_footer || 'Terima kasih atas kunjungan Anda.'}`;
 
   // Bersihkan format nomor HP (ganti 08... jadi 628...)
+  let hpBersih = String(nomorHp || '').replace(/[^0-9]/g, '');
+  if (hpBersih.startsWith('0')) {
+    hpBersih = '62' + hpBersih.substring(1);
+  }
+
+  const encoded = encodeURIComponent(pesan);
+  return hpBersih ? `https://wa.me/${hpBersih}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+}
+
+/**
+ * Buka dialog modal pilihan cetak struk penjualan (RawBT, Web Bluetooth, Browser, WA)
+ * @param {Object} dataStruk { penjualan, items, pembayaran, pelanggan, kasir, toko }
+ * @param {Object} [options={}] { isNewTransaction: boolean, onNewTransaction: Function }
+ */
+export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
+  const cfg = store.get('pengaturan') || {};
+  const tokoData = store.get('toko') || {};
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO';
+
+  dataStruk.toko = dataStruk.toko || {
+    nama: cfg.toko_nama || tokoData.nama || namaFallback,
+    alamat: cfg.toko_alamat || tokoData.alamat || '',
+    hp: cfg.toko_hp || tokoData.hp || '',
+    nota_footer: cfg.nota_footer || tokoData.nota_footer || ''
+  };
+
+  const ukuran = cfg.printer_ukuran || '58';
+  const jalurUtama = cfg.printer_jalur || 'rawbt';
+  const isRawBtUtama = jalurUtama === 'rawbt' || jalurUtama === 'otomatis';
+
+  const pj = dataStruk.penjualan || {};
+  const pel = dataStruk.pelanggan || null;
+  const items = dataStruk.items || [];
+  const kembalian = Number(pj.kembalian || 0);
+
+  const modal = showModal({
+    title: options.isNewTransaction ? 'Transaksi Berhasil!' : 'Cetak Struk Penjualan',
+    size: 'sm',
+    body: `
+      <div class="stack" style="gap: var(--sp-3); text-align: center;">
+        <div style="font-size: 40px; color: ${options.isNewTransaction ? 'var(--success)' : 'var(--primary)'}; line-height: 1;">
+          ${options.isNewTransaction ? '✓' : ICONS.printer}
+        </div>
+        <div>
+          <div class="text-xs text-muted">NOMOR NOTA PENJUALAN</div>
+          <div class="fw-bold mono text-lg">${escapeHtml(pj.no_nota || '-')}</div>
+          <div class="text-sm text-muted" style="margin-top: 4px;">
+            Pelanggan: <strong>${escapeHtml(pel ? pel.nama : (pj.pelanggan_nama || 'Pelanggan Umum'))}</strong>
+          </div>
+          <div class="text-sm fw-bold text-primary" style="margin-top: 2px;">
+            Total: ${formatRupiah(pj.total)} (${String(pj.status_bayar || 'lunas').toUpperCase()})
+          </div>
+          ${options.isNewTransaction && kembalian > 0 ? `
+            <div class="badge badge-success" style="font-size: 13px; margin-top: 6px;">
+              Kembalian: ${formatRupiah(kembalian)}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="stack" style="gap: var(--sp-2);">
+          <div class="row-between">
+            <span class="fw-bold text-xs text-muted">PILIHAN CETAK STRUK:</span>
+            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-panduan-printer-modal-jual" style="padding: 2px 6px;">
+              ⚙️ Atur Printer
+            </button>
+          </div>
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-jual-rawbt">
+              📱 RawBT Android (${ukuran}mm)
+            </button>
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-jual-bt">
+              📶 Bluetooth Direct
+            </button>
+          </div>
+          <div class="row" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-jual-browser">
+              🖨️ Cetak / Pratinjau Browser
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-jual-wa">
+              💬 WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: ${options.isNewTransaction ? 'space-between' : 'flex-end'};">
+        ${options.isNewTransaction ? `
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-transaksi-baru-modal" style="font-weight: 700;">
+            Transaksi Baru
+          </button>
+        ` : `
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
+        `}
+      </div>
+    `
+  });
+
+  modal.el.querySelector('#btn-print-jual-rawbt')?.addEventListener('click', () => {
+    cetakRawBT(dataStruk, ukuran);
+  });
+
+  modal.el.querySelector('#btn-print-jual-bt')?.addEventListener('click', () => {
+    cetakBluetooth(dataStruk, ukuran);
+  });
+
+  modal.el.querySelector('#btn-print-jual-browser')?.addEventListener('click', () => {
+    cetakBrowser(dataStruk, ukuran);
+  });
+
+  modal.el.querySelector('#btn-panduan-printer-modal-jual')?.addEventListener('click', () => {
+    tampilkanModalKoneksiPrinter();
+  });
+
+  modal.el.querySelector('#btn-share-jual-wa')?.addEventListener('click', () => {
+    const noHp = pel ? pel.hp : (dataStruk.pelanggan_hp || '');
+    const urlWa = buatTautanWhatsApp(dataStruk, noHp);
+    window.open(urlWa, '_blank');
+  });
+
+  modal.el.querySelector('#btn-tutup-modal-cetak-jual')?.addEventListener('click', () => {
+    modal.close();
+  });
+
+  if (options.isNewTransaction) {
+    modal.el.querySelector('#btn-transaksi-baru-modal')?.addEventListener('click', () => {
+      modal.close();
+      if (typeof options.onNewTransaction === 'function') {
+        options.onNewTransaction();
+      }
+    });
+  }
+}
+
+/* ========================================================================== */
+/* MODUL CETAK STRUK PEMBELIAN & BARANG MASUK KE SUPPLIER                     */
+/* ========================================================================== */
+
+/**
+ * Susun teks nota pembelian / barang masuk (Thermal 58mm & 80mm)
+ * @param {Object} data  { pembelian, items, supplier, hutang, toko, petugas }
+ * @param {'58'|'80'} [ukuran='58']
+ * @returns {string}
+ */
+export function susunTeksStrukPembelian(data, ukuran = '58') {
+  const lebar = LEBAR_KERTAS[ukuran] || 32;
+  const pb = data.pembelian || {};
+  const items = data.items || [];
+  const sup = data.supplier || { nama: 'Supplier Umum' };
+  const hutang = data.hutang || null;
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO';
+  const cfg = store.get('pengaturan') || {};
+  const toko = data.toko || store.get('toko') || {
+    nama: namaFallback,
+    alamat: cfg.toko_alamat || '',
+    hp: cfg.toko_hp || '',
+    nota_footer: cfg.nota_footer || ''
+  };
+  const petugas = data.petugas || store.get('user') || { nama: 'Petugas' };
+
+  const baris = [];
+
+  // Header Toko
+  baris.push(formatTengah((toko.nama || namaFallback).toUpperCase(), lebar));
+  if (toko.alamat) {
+    const alamatPecah = toko.alamat.split('\n');
+    alamatPecah.forEach((al) => baris.push(formatTengah(al, lebar)));
+  }
+  if (toko.hp) {
+    baris.push(formatTengah('Telp/WA: ' + toko.hp, lebar));
+  }
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatTengah('FAKTUR PEMBELIAN / BARANG MASUK', lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  // Metadata Faktur
+  baris.push(formatDuaKolom('No. Faktur : ' + (pb.no_faktur || '-'), '', lebar));
+  baris.push(formatDuaKolom('Tanggal    : ' + formatTanggal(pb.tanggal, true), '', lebar));
+  baris.push(formatDuaKolom('Supplier   : ' + (sup.nama || '-'), '', lebar));
+  if (pb.no_faktur_supplier) {
+    baris.push(formatDuaKolom('Ref Asli   : ' + pb.no_faktur_supplier, '', lebar));
+  }
+  baris.push(formatDuaKolom('Petugas    : ' + (petugas.nama || 'Petugas'), '', lebar));
+
+  baris.push(buatGaris(lebar, '-'));
+
+  // Daftar Barang Masuk
+  items.forEach((it) => {
+    let namaBarang = it.nama || 'Barang';
+    if (it.satuan) namaBarang += ` (${it.satuan})`;
+    baris.push(namaBarang);
+
+    const hargaSatuan = formatRupiah(it.harga_beli, false);
+    const qtyStr = `${formatQty(it.qty)} x ${hargaSatuan}`;
+    const subtotalStr = formatRupiah(it.subtotal);
+    baris.push(formatDuaKolom('  ' + qtyStr, subtotalStr, lebar));
+
+    if (Number(it.diskon_persen) > 0 || Number(it.diskon_item) > 0) {
+      const diskonKet = Number(it.diskon_persen) > 0 ? `(Disk ${formatQty(it.diskon_persen)}%)` : `(Potongan)`;
+      const diskonRp = Number(it.diskon_item) || Math.round(Number(it.qty || 0) * Number(it.harga_beli || 0) * (Number(it.diskon_persen) / 100));
+      baris.push(formatDuaKolom('  ' + diskonKet, '-' + formatRupiah(diskonRp), lebar));
+    }
+  });
+
+  baris.push(buatGaris(lebar, '-'));
+
+  // Ringkasan Keuangan
+  baris.push(formatDuaKolom('Subtotal Kotor', formatRupiah(pb.subtotal), lebar));
+
+  if (Number(pb.diskon_item) > 0) {
+    baris.push(formatDuaKolom('Diskon Supplier', '-' + formatRupiah(pb.diskon_item), lebar));
+  }
+  if (Number(pb.diskon) > 0) {
+    baris.push(formatDuaKolom('Diskon Faktur', '-' + formatRupiah(pb.diskon), lebar));
+  }
+
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatDuaKolom('TOTAL TAGIHAN', formatRupiah(pb.total), lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  baris.push(formatDuaKolom('Dibayar', formatRupiah(pb.bayar || 0), lebar));
+  const statusStr = String(pb.status_bayar || 'lunas').toUpperCase();
+  baris.push(formatDuaKolom('Status Bayar', statusStr, lebar));
+
+  const sisaHutang = hutang ? hutang.sisa : Math.max(0, Number(pb.total || 0) - Number(pb.bayar || 0));
+  if (sisaHutang > 0) {
+    baris.push(formatDuaKolom('Sisa Hutang', formatRupiah(sisaHutang), lebar));
+    const jatuhTempoTgl = pb.jatuh_tempo || (hutang ? hutang.jatuh_tempo : '');
+    if (jatuhTempoTgl) {
+      baris.push(formatDuaKolom('Jatuh Tempo', formatTanggal(jatuhTempoTgl), lebar));
+    }
+  }
+
+  if (pb.catatan) {
+    baris.push(buatGaris(lebar, '-'));
+    baris.push('Catatan: ' + pb.catatan.substring(0, lebar * 2));
+  }
+
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatTengah('Bukti Sah Verifikasi Stok Masuk', lebar));
+  baris.push(formatTengah('Terima kasih atas kerja samanya', lebar));
+
+  baris.push('');
+  baris.push('');
+
+  return baris.join('\n');
+}
+
+/**
+ * Cetak struk pembelian via RawBT Android
+ * @param {Object} dataPembelian
+ * @param {'58'|'80'} [ukuran='58']
+ * @returns {boolean}
+ */
+export function cetakRawBTPembelian(dataPembelian, ukuran = '58') {
+  let base64Data = '';
+  try {
+    const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
+    const escposBytes = teksKeEscPos(teksStruk);
+
+    let binary = '';
+    const len = escposBytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(escposBytes[i]);
+    }
+    base64Data = window.btoa(binary);
+
+    const intentUri = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
+
+    const a = document.createElement('a');
+    a.href = intentUri;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 150);
+
+    showToast('Mengirim faktur pembelian ke RawBT...', 'info', 2500);
+    return true;
+  } catch (err) {
+    try {
+      if (!base64Data) throw err;
+      const rawbtUri = `rawbt:data:base64,${base64Data}`;
+      window.location.href = rawbtUri;
+      return true;
+    } catch (e2) {
+      console.error('Gagal cetak RawBT Pembelian:', err);
+      showToast('Gagal memproses faktur untuk RawBT: ' + err.message, 'error', 3500);
+      return false;
+    }
+  }
+}
+
+/**
+ * Cetak struk pembelian via Web Bluetooth BLE
+ * @param {Object} dataPembelian
+ * @param {'58'|'80'} [ukuran='58']
+ * @returns {Promise<boolean>}
+ */
+export async function cetakBluetoothPembelian(dataPembelian, ukuran = '58') {
+  const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
+  const escposBytes = teksKeEscPos(teksStruk);
+  return await kirimBytesKeBluetooth(escposBytes);
+}
+
+/**
+ * Cetak struk pembelian via dialog cetak browser / preview modal
+ * @param {Object} dataPembelian
+ * @param {'58'|'80'} [ukuran='58']
+ */
+export function cetakBrowserPembelian(dataPembelian, ukuran = '58') {
+  const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
+  const lebarPx = ukuran === '80' ? '300px' : '230px';
+  const pb = dataPembelian.pembelian || {};
+
+  const modal = showModal({
+    title: `Pratinjau Faktur Pembelian: ${pb.no_faktur || ''}`,
+    size: 'sm',
+    body: `
+      <div class="thermal-receipt-container" style="display: flex; justify-content: center; background: var(--surface-3); padding: var(--sp-4); border-radius: var(--radius-md);">
+        <div id="print-area-thermal-beli" class="thermal-receipt-sheet" style="
+          width: ${lebarPx};
+          background: #ffffff;
+          color: #000000;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: ${ukuran === '80' ? '12px' : '11px'};
+          line-height: 1.25;
+          padding: 16px 12px;
+          box-shadow: var(--shadow-md);
+          white-space: pre;
+          overflow-x: hidden;
+        ">${teksStruk}</div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-struk-beli">Tutup</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-eksekusi-print-beli">
+          ${ICONS.printer} Cetak Faktur
+        </button>
+      </div>
+    `
+  });
+
+  modal.el.querySelector('#btn-tutup-struk-beli')?.addEventListener('click', () => modal.close());
+  modal.el.querySelector('#btn-eksekusi-print-beli')?.addEventListener('click', () => {
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    document.body.appendChild(printFrame);
+
+    const doc = printFrame.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Faktur Pembelian ${pb.no_faktur || ''}</title>
+        <style>
+          @page {
+            size: ${ukuran === '80' ? '80mm auto' : '58mm auto'};
+            margin: 0;
+          }
+          body {
+            margin: 0;
+            padding: 8px 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: ${ukuran === '80' ? '12px' : '10px'};
+            line-height: 1.25;
+            color: #000;
+            background: #fff;
+            white-space: pre;
+          }
+        </style>
+      </head>
+      <body>${teksStruk}</body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      printFrame.contentWindow.focus();
+      printFrame.contentWindow.print();
+      setTimeout(() => {
+        if (printFrame.parentElement) printFrame.remove();
+      }, 1000);
+    }, 250);
+  });
+}
+
+/**
+ * Buka dialog modal pilihan cetak faktur pembelian (RawBT, Web Bluetooth, Browser, WA)
+ * @param {Object} dataPembelian { pembelian, items, supplier, hutang }
+ */
+export function bukaModalPilihanCetakPembelian(dataPembelian) {
+  const cfg = store.get('pengaturan') || {};
+  const ukuran = cfg.printer_ukuran || '58';
+  const jalurUtama = cfg.printer_jalur || 'rawbt';
+  const isRawBtUtama = jalurUtama === 'rawbt' || jalurUtama === 'otomatis';
+
+  const pb = dataPembelian.pembelian || {};
+  const sup = dataPembelian.supplier || {};
+
+  const modal = showModal({
+    title: 'Cetak Faktur Pembelian',
+    size: 'sm',
+    body: `
+      <div class="stack" style="gap: var(--sp-3); text-align: center;">
+        <div style="font-size: 40px; color: var(--primary); line-height: 1;">
+          ${ICONS.printer}
+        </div>
+        <div>
+          <div class="text-xs text-muted">FAKTUR PEMBELIAN / BARANG MASUK</div>
+          <div class="fw-bold mono text-lg">${escapeHtml(pb.no_faktur || '-')}</div>
+          <div class="text-sm text-muted" style="margin-top: 4px;">
+            Supplier: <strong>${escapeHtml(sup.nama || '-')}</strong>
+          </div>
+          <div class="text-sm fw-bold text-primary" style="margin-top: 2px;">
+            Total: ${formatRupiah(pb.total)} (${String(pb.status_bayar || 'lunas').toUpperCase()})
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="stack" style="gap: var(--sp-2);">
+          <div class="row-between">
+            <span class="fw-bold text-xs text-muted">PILIHAN JALUR CETAK:</span>
+            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-panduan-printer-modal-beli" style="padding: 2px 6px;">
+              ⚙️ Atur Printer
+            </button>
+          </div>
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-beli-rawbt">
+              📱 RawBT Android (${ukuran}mm)
+            </button>
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-beli-bt">
+              📶 Bluetooth Direct
+            </button>
+          </div>
+          <div class="row" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-beli-browser">
+              🖨️ Cetak / Pratinjau Browser
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-beli-wa">
+              💬 WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-beli">Tutup</button>
+      </div>
+    `
+  });
+
+  modal.el.querySelector('#btn-print-beli-rawbt')?.addEventListener('click', () => {
+    cetakRawBTPembelian(dataPembelian, ukuran);
+  });
+
+  modal.el.querySelector('#btn-print-beli-bt')?.addEventListener('click', () => {
+    cetakBluetoothPembelian(dataPembelian, ukuran);
+  });
+
+  modal.el.querySelector('#btn-print-beli-browser')?.addEventListener('click', () => {
+    cetakBrowserPembelian(dataPembelian, ukuran);
+  });
+
+  modal.el.querySelector('#btn-panduan-printer-modal-beli')?.addEventListener('click', () => {
+    tampilkanModalKoneksiPrinter();
+  });
+
+  modal.el.querySelector('#btn-share-beli-wa')?.addEventListener('click', () => {
+    const noHp = sup.hp || '';
+    const urlWa = buatTautanWhatsAppPembelian(dataPembelian, noHp);
+    window.open(urlWa, '_blank');
+  });
+
+  modal.el.querySelector('#btn-tutup-modal-cetak-beli')?.addEventListener('click', () => {
+    modal.close();
+  });
+}
+
+/**
+ * Buat URL WhatsApp untuk kirim konfirmasi penerimaan barang/faktur pembelian ke supplier
+ * @param {Object} dataPembelian
+ * @param {string} [nomorHp='']
+ * @returns {string}
+ */
+export function buatTautanWhatsAppPembelian(dataPembelian, nomorHp = '') {
+  const pb = dataPembelian.pembelian || {};
+  const sup = dataPembelian.supplier || {};
+  const items = dataPembelian.items || [];
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO';
+  const toko = dataPembelian.toko || store.get('toko') || { nama: namaFallback };
+
+  let pesan = `*BUKTI PEMBELIAN & PENERIMAAN BARANG*\n`;
+  pesan += `Toko: *${(toko.nama || namaFallback).toUpperCase()}*\n`;
+  pesan += `No. Faktur: *${pb.no_faktur || '-'}*\n`;
+  if (pb.no_faktur_supplier) pesan += `Ref Asli  : ${pb.no_faktur_supplier}\n`;
+  pesan += `Tanggal   : ${formatTanggal(pb.tanggal, true)}\n`;
+  pesan += `Supplier  : ${sup.nama || '-'}\n`;
+  pesan += `--------------------------------\n`;
+
+  items.forEach((it) => {
+    pesan += `• ${it.nama} (${formatQty(it.qty)} ${it.satuan})\n`;
+    pesan += `  @ ${formatRupiah(it.harga_beli)}`;
+    if (Number(it.diskon_persen) > 0) pesan += ` (Disk ${formatQty(it.diskon_persen)}%)`;
+    pesan += ` = ${formatRupiah(it.subtotal)}\n`;
+  });
+
+  pesan += `--------------------------------\n`;
+  if (Number(pb.diskon_item) > 0) pesan += `Diskon Supplier: -${formatRupiah(pb.diskon_item)}\n`;
+  if (Number(pb.diskon) > 0) pesan += `Diskon Faktur  : -${formatRupiah(pb.diskon)}\n`;
+  pesan += `*TOTAL TAGIHAN : ${formatRupiah(pb.total)}*\n`;
+  pesan += `Dibayar       : ${formatRupiah(pb.bayar || 0)}\n`;
+  pesan += `Status Bayar  : ${String(pb.status_bayar || 'lunas').toUpperCase()}\n`;
+
+  const sisa = Number(pb.total || 0) - Number(pb.bayar || 0);
+  if (sisa > 0) {
+    pesan += `Sisa Hutang   : ${formatRupiah(sisa)}\n`;
+    if (pb.jatuh_tempo) pesan += `Jatuh Tempo   : ${formatTanggal(pb.jatuh_tempo)}\n`;
+  }
+
   let hpBersih = String(nomorHp || '').replace(/[^0-9]/g, '');
   if (hpBersih.startsWith('0')) {
     hpBersih = '62' + hpBersih.substring(1);

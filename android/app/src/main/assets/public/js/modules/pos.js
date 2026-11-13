@@ -23,7 +23,7 @@ import { api } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
-import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter } from '../utils/printer.js';
+import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
 
@@ -139,6 +139,13 @@ export function renderPosModule(container) {
               <span class="badge badge-primary" id="cart-item-count">0</span>
             </div>
             <div class="row" style="gap: var(--sp-1);">
+              <button type="button" id="btn-pos-reprint" class="btn btn-ghost btn-sm" title="Cetak Ulang Transaksi Terakhir">
+                ${ICONS.printer}
+                <span class="d-none-mobile">Struk Terakhir</span>
+              </button>
+              <button type="button" id="btn-pos-panduan-printer" class="btn btn-ghost btn-sm" title="Atur Printer Bluetooth">
+                ⚙️ <span class="d-none-mobile">Printer</span>
+              </button>
               <button type="button" id="btn-pending-list" class="btn btn-ghost btn-sm position-relative" title="Daftar Tahan / Pending (F8)">
                 ${ICONS.clipboard}
                 <span class="d-none-mobile">Tahan</span>
@@ -1955,93 +1962,16 @@ export function renderPosModule(container) {
 
   // ---------- Modal Struk Sukses & Cetak ----------
   function bukaModalStrukSukses(dataStruk) {
-    dataStruk.toko = dataStruk.toko || store.get('toko') || {
-      nama: state.pengaturan?.toko_nama || 'TOKO',
-      alamat: state.pengaturan?.toko_alamat || '',
-      hp: state.pengaturan?.toko_hp || '',
-      nota_footer: state.pengaturan?.nota_footer || ''
-    };
-    const pj = dataStruk.penjualan || {};
-    const kembalian = pj.kembalian || 0;
-    const ukuranPrinter = state.pengaturan.printer_ukuran || '58';
-    const jalurUtama = state.pengaturan?.printer_jalur || 'rawbt';
-    const isRawBtUtama = jalurUtama === 'rawbt' || jalurUtama === 'otomatis';
+    store.set('pos_terakhir', dataStruk);
+    try {
+      localStorage.setItem('pos_last_receipt', JSON.stringify(dataStruk));
+    } catch (e) {}
 
-    const modal = showModal({
-      title: 'Transaksi Berhasil!',
-      size: 'md',
-      body: `
-        <div class="stack" style="gap: var(--sp-4); text-align: center;">
-          <div style="font-size: 48px; color: var(--success); line-height: 1;">✓</div>
-          <div>
-            <div class="text-xs text-muted">NOMOR NOTA</div>
-            <div class="fw-bold mono" style="font-size: var(--fs-xl);">${escapeHtml(pj.no_nota || '-')}</div>
-            <div class="text-sm text-muted" style="margin-top: 4px;">Total: <b>${formatRupiah(pj.total)}</b></div>
-            ${kembalian > 0 ? `<div class="badge badge-success" style="font-size: 14px; margin-top: 6px;">Kembalian: ${formatRupiah(kembalian)}</div>` : ''}
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="stack" style="gap: var(--sp-2);">
-            <div class="row-between">
-              <span class="fw-bold text-xs text-muted">PILIHAN CETAK STRUK:</span>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-pos-panduan-printer" style="padding: 2px 6px;">
-                ⚙️ Atur Printer Bluetooth
-              </button>
-            </div>
-            <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-              <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm" id="btn-print-rawbt" style="flex: 1;">
-                📱 RawBT Android (${ukuranPrinter}mm)
-              </button>
-              <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm" id="btn-print-bt" style="flex: 1;">
-                ${ICONS.printer} Cetak Bluetooth
-              </button>
-            </div>
-            <div class="row" style="gap: var(--sp-2);">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-print-browser" style="flex: 1;">
-                🖨️ Cetak / Pratinjau Browser
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-share-wa" style="flex: 1;">
-                💬 Kirim WhatsApp
-              </button>
-            </div>
-          </div>
-        </div>
-      `,
-      footer: `
-        <div class="row" style="width: 100%; justify-content: flex-end;">
-          <button type="button" class="btn btn-primary btn-lg" id="btn-transaksi-baru" style="font-weight: 700;">
-            Transaksi Baru
-          </button>
-        </div>
-      `
-    });
-
-    modal.el.querySelector('#btn-print-bt')?.addEventListener('click', () => {
-      cetakBluetooth(dataStruk, ukuranPrinter);
-    });
-
-    modal.el.querySelector('#btn-print-rawbt')?.addEventListener('click', () => {
-      cetakRawBT(dataStruk, ukuranPrinter);
-    });
-
-    modal.el.querySelector('#btn-print-browser')?.addEventListener('click', () => {
-      cetakBrowser(dataStruk, ukuranPrinter);
-    });
-
-    modal.el.querySelector('#btn-pos-panduan-printer')?.addEventListener('click', () => {
-      tampilkanModalKoneksiPrinter();
-    });
-
-    modal.el.querySelector('#btn-share-wa')?.addEventListener('click', () => {
-      const noHp = dataStruk.pelanggan?.hp || '';
-      const urlWa = buatTautanWhatsApp(dataStruk, noHp);
-      window.open(urlWa, '_blank');
-    });
-
-    modal.el.querySelector('#btn-transaksi-baru')?.addEventListener('click', () => {
-      modal.close();
-      elSearch?.focus();
+    bukaModalPilihanCetakPenjualan(dataStruk, {
+      isNewTransaction: true,
+      onNewTransaction: () => {
+        elSearch?.focus();
+      }
     });
   }
 
@@ -2092,6 +2022,28 @@ export function renderPosModule(container) {
       showToast('Gagal menahan transaksi: ' + err.message, 'error');
     }
   }
+
+  // ---------- Cetak Ulang Struk Transaksi Terakhir POS ----------
+  container.querySelector('#btn-pos-reprint')?.addEventListener('click', () => {
+    let lastReceipt = store.get('pos_terakhir');
+    if (!lastReceipt) {
+      try {
+        lastReceipt = JSON.parse(localStorage.getItem('pos_last_receipt'));
+      } catch (e) {
+        lastReceipt = null;
+      }
+    }
+    if (!lastReceipt) {
+      showToast('Belum ada transaksi terakhir untuk dicetak ulang.', 'info');
+      return;
+    }
+    bukaModalPilihanCetakPenjualan(lastReceipt);
+  });
+
+  // ---------- Atur Printer Bluetooth dari POS Kasir ----------
+  container.querySelector('#btn-pos-panduan-printer')?.addEventListener('click', () => {
+    tampilkanModalKoneksiPrinter();
+  });
 
   // ---------- Daftar Transaksi Tahan (Pending List / F8) ----------
   elBtnPendingList?.addEventListener('click', bukaModalDaftarPending);
