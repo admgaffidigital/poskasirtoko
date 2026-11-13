@@ -358,7 +358,53 @@ export function renderPosModule(container) {
       </button>
     `;
 
-    state.kategori.forEach((kat) => {
+    // Kelompokkan parent dan sub-kategori
+    const parents = state.kategori.filter((k) => !k.parent_id);
+    parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+
+    const subsByParent = {};
+    state.kategori.forEach((k) => {
+      if (k.parent_id) {
+        if (!subsByParent[k.parent_id]) subsByParent[k.parent_id] = [];
+        subsByParent[k.parent_id].push(k);
+      }
+    });
+
+    parents.forEach((kat) => {
+      const subs = subsByParent[kat.id] || [];
+      subs.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+
+      // Total barang di kategori induk + seluruh sub-kategorinya
+      const subIds = subs.map((s) => s.id);
+      const targetIds = new Set([kat.id, ...subIds]);
+      const jumlahTotal = state.katalog.filter((p) => targetIds.has(p.kategori_id)).length;
+
+      const isAktif = state.kategoriAktif === kat.id;
+      const anakAktif = subs.some((s) => s.id === state.kategoriAktif);
+
+      html += `
+        <button type="button" class="pos-chip ${isAktif ? 'active' : ''}" data-cat="${kat.id}">
+          ${escapeHtml(kat.nama)} (${jumlahTotal})
+        </button>
+      `;
+
+      // Jika kategori induk atau salah satu sub-kategorinya sedang aktif, munculkan chip sub-kategori di sebelahnya
+      if (isAktif || anakAktif) {
+        subs.forEach((sub) => {
+          const subJumlah = state.katalog.filter((p) => p.kategori_id === sub.id).length;
+          const isSubAktif = state.kategoriAktif === sub.id;
+          html += `
+            <button type="button" class="pos-chip ${isSubAktif ? 'active' : ''}" data-cat="${sub.id}" style="border-left: 2px solid var(--primary); padding-left: 8px;">
+              ↳ ${escapeHtml(sub.nama)} (${subJumlah})
+            </button>
+          `;
+        });
+      }
+    });
+
+    // Handle orphans jika ada
+    const orphans = state.kategori.filter((k) => k.parent_id && !parents.some((p) => p.id === k.parent_id));
+    orphans.forEach((kat) => {
       const jumlah = state.katalog.filter((p) => p.kategori_id === kat.id).length;
       html += `
         <button type="button" class="pos-chip ${state.kategoriAktif === kat.id ? 'active' : ''}" data-cat="${kat.id}">
@@ -382,9 +428,11 @@ export function renderPosModule(container) {
   function renderKatalog() {
     let filtered = state.katalog;
 
-    // Filter kategori
+    // Filter kategori (mencakup produk di kategori induk maupun sub-kategori di bawahnya)
     if (state.kategoriAktif !== 'semua') {
-      filtered = filtered.filter((p) => p.kategori_id === state.kategoriAktif);
+      const subs = state.kategori.filter((k) => k.parent_id === state.kategoriAktif).map((k) => k.id);
+      const targetCatIds = new Set([state.kategoriAktif, ...subs]);
+      filtered = filtered.filter((p) => targetCatIds.has(p.kategori_id));
     }
 
     // Filter pencarian

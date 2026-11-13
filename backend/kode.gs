@@ -1171,10 +1171,17 @@ function aksiProdukList_(ctx) {
     return prAman;
   });
 
-  // Filter kategori
+  // Filter kategori (mencakup produk di kategori terpilih serta seluruh sub-kategorinya)
   let tersaring = daftarLengkap;
   if (p.kategori_id) {
-    tersaring = tersaring.filter(function (pr) { return pr.kategori_id === p.kategori_id; });
+    const targetKatIds = {};
+    targetKatIds[p.kategori_id] = true;
+    bacaSemua_('Kategori').forEach(function (k) {
+      if (!k.deleted && k.parent_id === p.kategori_id) {
+        targetKatIds[k.id] = true;
+      }
+    });
+    tersaring = tersaring.filter(function (pr) { return !!targetKatIds[pr.kategori_id]; });
   }
 
   // Filter hanya produk aktif

@@ -72,12 +72,9 @@ export async function renderProdukModule(container) {
   try {
     const katRes = await apiCall('kategori.list', {});
     const selKat = $('#filter-produk-kategori', container);
-    (katRes.items || []).forEach((k) => {
-      const opt = document.createElement('option');
-      opt.value = k.id;
-      opt.textContent = k.nama;
-      selKat.appendChild(opt);
-    });
+    if (selKat) {
+      selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
+    }
   } catch (e) {
     // Abaikan jika gagal muat filter
   }
@@ -345,6 +342,52 @@ function dapatkanBadgeStok(stok, stokMin) {
   return { kelas: 'badge-success', teks: 'Aman' };
 }
 
+function susunOpsiKategoriHtml(daftarKategori, selectedId = '', placeholder = '-- Tanpa Kategori --') {
+  let html = `<option value="">${escapeHtml(placeholder)}</option>`;
+  const parents = (daftarKategori || []).filter((k) => !k.parent_id);
+  parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+
+  const subsByParent = {};
+  (daftarKategori || []).forEach((k) => {
+    if (k.parent_id) {
+      if (!subsByParent[k.parent_id]) subsByParent[k.parent_id] = [];
+      subsByParent[k.parent_id].push(k);
+    }
+  });
+
+  parents.forEach((p) => {
+    const subs = subsByParent[p.id] || [];
+    subs.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+
+    if (subs.length > 0) {
+      html += `<optgroup label="📁 ${escapeHtml(p.nama)}">`;
+      const isParentSel = selectedId === p.id ? 'selected' : '';
+      html += `<option value="${p.id}" ${isParentSel}>📁 ${escapeHtml(p.nama)} (Utama)</option>`;
+      subs.forEach((c) => {
+        const isChildSel = selectedId === c.id ? 'selected' : '';
+        html += `<option value="${c.id}" ${isChildSel}>&nbsp;&nbsp;&nbsp;&nbsp;↳ ${escapeHtml(c.nama)}</option>`;
+      });
+      html += `</optgroup>`;
+    } else {
+      const isParentSel = selectedId === p.id ? 'selected' : '';
+      html += `<option value="${p.id}" ${isParentSel}>📁 ${escapeHtml(p.nama)}</option>`;
+    }
+  });
+
+  // Handle orphans jika ada
+  const orphans = (daftarKategori || []).filter((k) => k.parent_id && !parents.some((p) => p.id === k.parent_id));
+  if (orphans.length > 0) {
+    html += `<optgroup label="Lainnya">`;
+    orphans.forEach((o) => {
+      const isOrphanSel = selectedId === o.id ? 'selected' : '';
+      html += `<option value="${o.id}" ${isOrphanSel}>🏷️ ${escapeHtml(o.nama)}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+
+  return html;
+}
+
 /**
  * Modal Form Tambah / Edit Produk Lengkap
  */
@@ -356,11 +399,7 @@ async function bukaModalFormProduk(container, produk) {
     daftarKategori = kRes.items || [];
   } catch (e) {}
 
-  let optionsKat = '<option value="">-- Tanpa Kategori --</option>';
-  daftarKategori.forEach((k) => {
-    const sel = isEdit && produk.kategori_id === k.id ? 'selected' : '';
-    optionsKat += `<option value="${k.id}" ${sel}>${escapeHtml(k.nama)}</option>`;
-  });
+  const optionsKat = susunOpsiKategoriHtml(daftarKategori, isEdit ? produk.kategori_id : '', '-- Tanpa Kategori --');
 
   const bodyHtml = `
     <form id="form-produk" class="stack">
