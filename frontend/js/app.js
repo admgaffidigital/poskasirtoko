@@ -177,7 +177,7 @@ class App {
 
       // 1. Periksa pembaruan Service Worker PWA di latar belakang
       if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-        navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {});
+        navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => { });
       }
 
       // 2. Ambil identitas toko & pengaturan terbaru dari server
@@ -360,7 +360,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm">🟢 Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.31'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.32'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -413,7 +413,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.31'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.32'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1030,7 +1030,7 @@ class App {
   }
 
   /* ======================================================================== */
-  /* HALAMAN MENU LAINNYA (MOBILE GRID)                                       */
+  /* HALAMAN MENU LAINNYA (LISTVIEW ELEGAN & RAPI)                            */
   /* ======================================================================== */
   renderHalamanLainnya(container) {
     const user = store.get('user');
@@ -1042,53 +1042,196 @@ class App {
       return true;
     });
 
+    const MENU_DESCRIPTIONS = {
+      pos: 'Kasir transaksi penjualan, keranjang belanja & cetak struk',
+      dashboard: 'Grafik omset harian, laba rugi, kas & valuasi stok',
+      produk: 'Katalog barang, harga bertingkat grosir & cetak barcode',
+      pembelian: 'Pencatatan faktur barang masuk distributor & update HPP',
+      kategori: 'Pengelompokan barang & susunan hierarki sub-kategori',
+      'kartu-stok': 'Riwayat mutasi keluar-masuk & kartu stok per barang',
+      opname: 'Pemeriksaan fisik gudang & penyesuaian selisih stok',
+      pricetag: 'Cetak label harga rak barcode ukuran kertas custom',
+      pelanggan: 'Data member pelanggan, batas tempo piutang & poin',
+      loyalti: 'Katalog reward penukaran poin member & kupon diskon',
+      supplier: 'Daftar distributor rekanan toko & kontak vendor',
+      'hutang-piutang': 'Buku tempo pelanggan, cicilan pembayaran & hutang',
+      retur: 'Pengembalian barang rusak pelanggan & retur ke supplier',
+      pengaturan: 'Profil toko, struk nota, printer & preferensi sistem',
+      users: 'Manajemen pengguna, peran kasir/admin & ganti PIN',
+      sistem: 'Status server backend Apps Script, memori & diagnosis',
+      desainsistem: 'Pratinjau galeri komponen UI & dokumentasi visual'
+    };
+
+    const groupTitles = {
+      'Transaksi': 'Transaksi & Kasir',
+      'Katalog & Stok': 'Katalog & Stok Barang',
+      'Mitra & Loyalitas': 'Mitra, Pelanggan & Hadiah',
+      'Keuangan': 'Keuangan & Retur',
+      'Sistem': 'Pengaturan & Sistem'
+    };
+
+    // Kelompokkan rute berdasarkan grupnya
+    const groupedRoutes = {};
+    listRoutes.forEach((r) => {
+      const g = r.group || 'Lainnya';
+      if (!groupedRoutes[g]) groupedRoutes[g] = [];
+      groupedRoutes[g].push(r);
+    });
+
+    const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir Toko';
+    const namaUser = user ? (user.nama || user.username) : 'Pengguna';
+
     let html = `
-      <div class="stack">
-        <div class="page-header d-none-mobile">
-          <div>
-            <h2>Semua Menu Aplikasi</h2>
-            <p>Daftar seluruh modul dan fitur ${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')} sesuai peran Anda</p>
+      <div class="menu-list-container">
+        <!-- Kartu Profil & Identitas Toko Ringkas -->
+        <div class="card card-body" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); margin-bottom: var(--sp-2);">
+          <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-3);">
+            <div class="row" style="align-items: center; gap: var(--sp-3); flex: 1; min-width: 0;">
+              <div class="brand-logo" style="width: 44px; height: 44px; font-size: var(--fs-lg); border-radius: var(--radius-xl); flex-shrink: 0;">
+                ${ICONS.store}
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: var(--fw-bold); font-size: var(--fs-md); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  ${escapeHtml(namaToko)}
+                </div>
+                <div class="text-xs text-muted" style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${escapeHtml(namaUser)}</span>
+                  <span class="badge badge-primary" style="font-size: 10px; text-transform: uppercase; padding: 1px 7px; border-radius: var(--radius-full); font-weight: var(--fw-bold);">
+                    ${escapeHtml(userRole)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-logout-menu" title="Keluar / Ganti Akun" style="flex-shrink: 0;">
+              ${ICONS.logout}
+              <span class="d-none-mobile">Keluar</span>
+            </button>
           </div>
         </div>
 
-        <div class="menu-grid">
-          <!-- Tombol Cepat Sinkronisasi Data Global -->
-          <button type="button" class="menu-tile btn-sync" id="btn-sync-tile" style="border-color: var(--primary); background: var(--surface);">
-            <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary);">
-              ${ICONS.refresh}
-            </div>
-            <span>Sinkron Data</span>
-          </button>
+        <!-- Kolom Pencarian Cepat Menu -->
+        <div class="field" style="margin-bottom: var(--sp-2);">
+          <div class="input-group">
+            <span class="input-icon">${ICONS.search}</span>
+            <input type="search" class="input" id="search-menu-lainnya" placeholder="Cari menu, fitur, atau alat..." autocomplete="off">
+          </div>
+        </div>
 
-          <!-- Tombol Cepat Koneksi Printer Bluetooth (RawBT) -->
-          <button type="button" class="menu-tile" id="btn-printer-tile" style="background: var(--surface);">
-            <div class="list-item-icon" style="background: var(--surface-3); color: var(--primary);">
-              ${ICONS.printer}
-            </div>
-            <span>Printer Bluetooth</span>
-          </button>
+        <!-- Group Aksi Cepat / Alat Utama -->
+        <div class="menu-group-wrap" data-group-wrap="alat">
+          <div class="menu-group-heading">Alat & Aksi Cepat</div>
+          <div class="menu-list-card">
+            <button type="button" class="menu-list-item" id="btn-sync-tile" data-search="sinkron data perbarui cache produk pelanggan stok offline cloud">
+              <div class="menu-list-icon" style="background: rgba(234, 88, 12, 0.12); color: #ea580c; border-color: rgba(234, 88, 12, 0.25);">
+                ${ICONS.refresh}
+              </div>
+              <div class="menu-list-body">
+                <div class="menu-list-title">Sinkron Data Cloud</div>
+                <div class="menu-list-desc">Perbarui cache produk, pelanggan & stok offline</div>
+              </div>
+              <div class="menu-list-chevron">${ICONS.chevronRight}</div>
+            </button>
+
+            <button type="button" class="menu-list-item" id="btn-printer-tile" data-search="printer bluetooth rawbt struk nota cetak kasir faktur">
+              <div class="menu-list-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7; border-color: rgba(14, 165, 233, 0.25);">
+                ${ICONS.printer}
+              </div>
+              <div class="menu-list-body">
+                <div class="menu-list-title">Printer Bluetooth (RawBT)</div>
+                <div class="menu-list-desc">Pengaturan koneksi printer termal & tes cetak nota</div>
+              </div>
+              <div class="menu-list-chevron">${ICONS.chevronRight}</div>
+            </button>
+          </div>
+        </div>
     `;
 
-    listRoutes.forEach((r) => {
+    // Render per grup rute
+    Object.entries(groupedRoutes).forEach(([groupKey, items]) => {
+      const displayTitle = groupTitles[groupKey] || groupKey;
       html += `
-        <a href="${r.path}" class="menu-tile">
-          <div class="list-item-icon">${r.icon}</div>
-          <span>${escapeHtml(r.shortTitle || r.title)}</span>
-        </a>
+        <div class="menu-group-wrap" data-group-wrap="${escapeHtml(groupKey)}">
+          <div class="menu-group-heading">${escapeHtml(displayTitle)}</div>
+          <div class="menu-list-card">
+      `;
+
+      items.forEach((r) => {
+        const desc = MENU_DESCRIPTIONS[r.id] || r.shortTitle || '';
+        const searchKeywords = `${r.title} ${r.shortTitle || ''} ${desc} ${displayTitle}`.toLowerCase();
+        html += `
+          <a href="${r.path}" class="menu-list-item" data-search="${escapeHtml(searchKeywords)}">
+            <div class="menu-list-icon">${r.icon}</div>
+            <div class="menu-list-body">
+              <div class="menu-list-title">${escapeHtml(r.title)}</div>
+              <div class="menu-list-desc">${escapeHtml(desc)}</div>
+            </div>
+            <div class="menu-list-chevron">${ICONS.chevronRight}</div>
+          </a>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
       `;
     });
 
+    // Wadah pesan jika pencarian kosong
     html += `
+        <div id="menu-search-empty" class="card card-body text-center" style="display: none; padding: var(--sp-8) var(--sp-4);">
+          <div style="font-size: 32px; color: var(--text-muted); margin-bottom: var(--sp-2);">${ICONS.search}</div>
+          <h4 style="margin-bottom: var(--sp-1);">Menu Tidak Ditemukan</h4>
+          <p class="text-muted text-sm">Tidak ada menu atau fitur yang cocok dengan kata kunci pencarian Anda.</p>
         </div>
       </div>
     `;
 
     container.innerHTML = html;
+
+    // Event handler: Sinkron data
     container.querySelector('#btn-sync-tile')?.addEventListener('click', () => {
       this.sinkronkanDataGlobal();
     });
+
+    // Event handler: Printer Bluetooth
     container.querySelector('#btn-printer-tile')?.addEventListener('click', () => {
       tampilkanModalKoneksiPrinter();
+    });
+
+    // Event handler: Logout
+    container.querySelector('#btn-logout-menu')?.addEventListener('click', () => {
+      konfirmasiLogout();
+    });
+
+    // Event handler: Pencarian menu instan
+    const inpSearch = container.querySelector('#search-menu-lainnya');
+    const emptyMsg = container.querySelector('#menu-search-empty');
+    const allGroups = container.querySelectorAll('.menu-group-wrap');
+
+    inpSearch?.addEventListener('input', () => {
+      const q = inpSearch.value.trim().toLowerCase();
+      let totalVisible = 0;
+
+      allGroups.forEach((grp) => {
+        let groupHasMatch = false;
+        const items = grp.querySelectorAll('.menu-list-item');
+        items.forEach((item) => {
+          const hay = item.getAttribute('data-search') || '';
+          if (!q || hay.includes(q)) {
+            item.style.display = 'flex';
+            groupHasMatch = true;
+            totalVisible++;
+          } else {
+            item.style.display = 'none';
+          }
+        });
+
+        grp.style.display = groupHasMatch ? 'flex' : 'none';
+      });
+
+      if (emptyMsg) {
+        emptyMsg.style.display = totalVisible === 0 ? 'block' : 'none';
+      }
     });
   }
 
