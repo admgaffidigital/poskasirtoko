@@ -16,6 +16,44 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.34] - 2026-11-15
+
+### Changed & Enhanced
+- [UI] [DESIGN-SYSTEM] **Perombakan UI/UX Presisi, Konsisten, dan Profesional (Enterprise POS Quality)**:
+  - **Eliminasi Efek Kaca (Glassmorphism)**: Menghapus `backdrop-filter: blur(...)` dan latar belakang transparan keruh dari Topbar, Bottomnav, Scrim Modal, dan Overlay. Seluruh permukaan kini menggunakan warna solid bersih dengan garis batas 1px tegas (`1px solid var(--border)`).
+  - **Presisi Border Radius (Anti-Bubbly)**: Menghapus radius lengkung 20px–28px berlebih yang tampak seperti gelembung mainan. Menetapkan skala radius enterprise: 3px (badge/tag), 4px (chip/button-sm), 6px (input/select/control), 8px (card/table/sheet), 10px (modal/dialog), 12px (bottom sheet top).
+  - **Tipografi Bersih (Anti-Bold Berlebihan)**: Mengatur `--fw-bold: 600` untuk meniadakan bobot font 700/800 yang kaku. Seluruh harga, metrik KPI, judul, dan angka transaksi kini menggunakan bobot 600 semibold dengan perataan tabular (*tabular-nums*), serta bobot 500 (*medium*) untuk label dan judul kartu.
+  - **Bayangan Natural & Non-Glow**: Menghilangkan efek bayangan neon berpendar pada tombol aksi. Menggunakan bayangan fungsional tipis 1px (`var(--shadow-xs)` dan `var(--shadow-card)`).
+  - **Neutral Product Hero Visual**: Menghilangkan gradasi warna pelangi (*rainbow gradient*) pada placeholder kartu produk, digantikan latar netral elegan (`var(--surface-2)`).
+- [APK] Kompilasi ulang APK Android native ramping berukuran **~4.02 MB**.
+
+---
+
+## [1.0.33] - 2026-11-15
+
+### Added & Enhanced
+- [PRODUK] [BACKEND] **Fitur Filter Produk Komprehensif & Urutan Terbaru Selalu di Atas**:
+  - Menetapkan urutan default `p.sort = 'terbaru'` (`created_at DESC` / baris terbaru) baik di server Google Apps Script (`backend/kode.gs`) maupun filter lokal (`frontend/js/modules/produk.js`).
+  - Menambahkan dropdown pengurutan lengkap: Terbaru, Terlama, Nama A-Z, Nama Z-A, Stok Terendah, Stok Tertinggi, Harga Ritel Tertinggi, dan Harga Ritel Terendah.
+  - Menambahkan filter Kategori dinamis, Status Stok (Semua, Menipis, Habis, Tersedia), dan Status Keaktifan (Aktif, Nonaktif).
+  - Menyediakan Quick Filter Chips satu sentuhan: `[Semua]`, `[⚡ Terbaru]`, `[🚨 Menipis]`, `[❌ Habis]`, `[✅ Ada Stok]`.
+  - Penambahan produk baru otomatis mereset tampilan ke halaman 1 dan urutan `Terbaru` sehingga produk langsung terlihat paling atas.
+- [BUILD] [RELEASE] Mengatasi bug rekursi duplikasi aset APK di `scripts/release.js` dan `.gitignore`.
+
+---
+
+## [1.0.32] - 2026-11-15
+
+### Changed & Enhanced
+- [UI] [MENU] **Redesain Tampilan Menu Lainnya Menjadi Grouped ListView Modern**:
+  - Mengubah tampilan grid kartu 3 kolom menjadi Grouped Inset Card ListView bergaya iOS / Material 3.
+  - Menambahkan profil ringkas toko di bagian atas dengan badge peran pengguna aktif.
+  - Menambahkan bar aksi cepat untuk Sinkron Cloud dan status Printer Bluetooth.
+  - Menambahkan fitur pencarian instan (*live search*) untuk menemukan menu secara real-time.
+  - Mengelompokkan menu secara terstruktur: Transaksi & Kasir, Manajemen Stok, Relasi & Mitra, Keuangan, serta Sistem & Pengaturan.
+
+---
+
 ## [1.0.13] - 2026-11-13
 
 ### Changed & Enhanced
