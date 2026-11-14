@@ -24,11 +24,11 @@ export async function renderReturModule(container) {
           <div class="segmented" id="tabs-retur" role="tablist">
             <button type="button" id="tab-btn-retur-jual" class="btn btn-sm" aria-pressed="true">
               ${ICONS.rotateCcw}
-              <span>Retur Penjualan (Pelanggan)</span>
+              <span>Retur Penjualan <span class="d-none-mobile">(Pelanggan)</span></span>
             </button>
             <button type="button" id="tab-btn-retur-beli" class="btn btn-sm" aria-pressed="false">
               ${ICONS.truck}
-              <span>Retur Pembelian (Supplier)</span>
+              <span>Retur Pembelian <span class="d-none-mobile">(Supplier)</span></span>
             </button>
           </div>
           <button type="button" class="btn btn-primary" id="btn-tambah-retur">

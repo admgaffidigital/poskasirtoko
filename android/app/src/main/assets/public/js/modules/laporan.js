@@ -105,7 +105,7 @@ export async function renderLaporanModule(container) {
       </div>
 
       <!-- Segmented Tab Navigation -->
-      <div class="segmented no-print" id="tabs-laporan" role="tablist" style="margin-bottom: var(--sp-3); overflow-x: auto;">
+      <div class="segmented no-print" id="tabs-laporan" role="tablist" style="margin-bottom: var(--sp-3); overflow-x: auto; max-width: 100%; width: 100%; box-sizing: border-box;">
         <button type="button" id="tab-btn-dashboard" class="btn btn-sm" aria-pressed="${stateLaporan.tabAktif === 'dashboard'}">
           ${ICONS.chart}
           <span>Ringkasan Eksekutif</span>

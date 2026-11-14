@@ -24,15 +24,15 @@ export async function renderLoyaltiModule(container) {
           <div class="segmented" id="tabs-loyalti" role="tablist">
             <button type="button" id="tab-btn-katalog" class="btn btn-sm" aria-pressed="true">
               ${ICONS.award}
-              <span>Katalog Hadiah</span>
+              <span>Katalog <span class="d-none-mobile">Hadiah</span></span>
             </button>
             <button type="button" id="tab-btn-tukar" class="btn btn-sm" aria-pressed="false">
               ${ICONS.rotateCcw}
-              <span>Formulir Tukar Poin</span>
+              <span><span class="d-none-mobile">Formulir </span>Tukar<span class="d-none-mobile"> Poin</span></span>
             </button>
             <button type="button" id="tab-btn-riwayat" class="btn btn-sm" aria-pressed="false">
               ${ICONS.clipboard}
-              <span>Riwayat Penukaran</span>
+              <span>Riwayat<span class="d-none-mobile"> Penukaran</span></span>
             </button>
           </div>
           ${isOwnerOrAdmin ? `

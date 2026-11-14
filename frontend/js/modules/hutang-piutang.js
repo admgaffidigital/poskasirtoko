@@ -24,11 +24,11 @@ export async function renderHutangPiutangModule(container) {
         <div class="segmented" id="tabs-hp" role="tablist">
           <button type="button" id="tab-btn-piutang" class="btn btn-sm" aria-pressed="true">
             ${ICONS.wallet}
-            <span>Piutang Pelanggan</span>
+            <span>Piutang <span class="d-none-mobile">Pelanggan</span></span>
           </button>
           <button type="button" id="tab-btn-hutang" class="btn btn-sm" aria-pressed="false">
             ${ICONS.truck}
-            <span>Hutang Supplier</span>
+            <span>Hutang <span class="d-none-mobile">Supplier</span></span>
           </button>
         </div>
       </div>
