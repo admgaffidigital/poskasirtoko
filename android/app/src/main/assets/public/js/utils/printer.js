@@ -796,7 +796,7 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
       <div class="row" style="width: 100%; justify-content: ${options.isNewTransaction ? 'space-between' : 'flex-end'};">
         ${options.isNewTransaction ? `
           <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-transaksi-baru-modal" style="font-weight: 700;">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-transaksi-baru-modal" style="font-weight: 600;">
             Transaksi Baru
           </button>
         ` : `

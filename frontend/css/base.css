@@ -93,33 +93,33 @@ h6 {
 }
 
 h1 {
-  font-size: clamp(1.4rem, 2.6vw, var(--fs-2xl));
-  font-weight: var(--fw-bold);
+  font-size: clamp(1.35rem, 2.4vw, var(--fs-2xl));
+  font-weight: var(--fw-semibold);
 }
 
 h2 {
-  font-size: clamp(1.2rem, 2.1vw, var(--fs-xl));
-  font-weight: var(--fw-bold);
+  font-size: clamp(1.15rem, 1.9vw, var(--fs-xl));
+  font-weight: var(--fw-semibold);
 }
 
 h3 {
-  font-size: clamp(1.05rem, 1.6vw, var(--fs-lg));
+  font-size: clamp(1rem, 1.5vw, var(--fs-lg));
   font-weight: var(--fw-semibold);
 }
 
 h4 {
   font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
 }
 
 h5 {
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
 }
 
 h6 {
   font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
 }
 
 p {

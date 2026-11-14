@@ -71,7 +71,7 @@
 .brand-text span {
   display: block;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
@@ -239,20 +239,15 @@
   box-sizing: border-box;
   height: calc(var(--topbar-h) + var(--safe-top));
   padding: var(--safe-top) calc(var(--sp-2) + var(--safe-right)) 0 calc(var(--sp-4) + var(--safe-left));
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(16px) saturate(1.8);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translate3d(0, 0, 0);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  box-shadow: var(--shadow-xs);
 }
 
 [data-theme="dark"] .topbar {
-  background: rgba(15, 23, 42, 0.88);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
 }
 
 .topbar-logo {
@@ -368,8 +363,8 @@
 }
 
 .page-header h2 {
-  font-size: clamp(1.2rem, 2.2vw, var(--fs-xl));
-  font-weight: var(--fw-bold);
+  font-size: clamp(1.15rem, 1.9vw, var(--fs-xl));
+  font-weight: var(--fw-semibold);
   letter-spacing: -0.02em;
 }
 
@@ -485,21 +480,18 @@
   box-sizing: border-box;
   height: calc(var(--bottomnav-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  background: var(--surface);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
-  contain: paint;
 }
 
 [data-theme="dark"] .bottomnav {
-  background: rgba(15, 23, 42, 0.92);
-  border-top-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.25);
 }
 
 @media (min-width: 768px) {
@@ -522,7 +514,7 @@
   font-weight: var(--fw-medium);
   position: relative;
   touch-action: manipulation;
-  transition: color var(--dur-fast) var(--ease), transform 0.1s var(--ease);
+  transition: color var(--dur-fast) var(--ease);
 }
 
 .bottomnav-link:hover {
@@ -530,31 +522,30 @@
 }
 
 .bottomnav-link:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
 }
 
 .bottomnav-link svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .bottomnav-link .ikon-wrap {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 44px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
 .bottomnav-link[aria-current="page"] {
   color: var(--primary);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
 }
 
 .bottomnav-link[aria-current="page"] .ikon-wrap {
   background: var(--primary-soft);
-  transform: scale(1.06);
 }
 
 /* Menu "Lainnya" — ListView Elegan & Rapi */
@@ -578,7 +569,7 @@
 
 .menu-group-heading {
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -588,7 +579,7 @@
 .menu-list-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-card);
   display: flex;
@@ -598,8 +589,8 @@
 }
 
 [data-theme="dark"] .menu-list-card {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
-  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border);
 }
 
 .menu-list-item {
@@ -607,7 +598,7 @@
   align-items: center;
   gap: var(--sp-3);
   padding: 12px var(--sp-4);
-  min-height: 62px;
+  min-height: 60px;
   color: var(--text);
   text-decoration: none;
   background: transparent;
@@ -628,14 +619,13 @@
 
 .menu-list-item:active {
   background: var(--surface-3);
-  transform: scale(0.995);
 }
 
 .menu-list-item:not(:last-child)::after {
   content: "";
   position: absolute;
   bottom: 0;
-  left: calc(var(--sp-4) + 42px + var(--sp-3));
+  left: calc(var(--sp-4) + 40px + var(--sp-3));
   right: 0;
   height: 1px;
   background: var(--border);
@@ -643,27 +633,26 @@
 }
 
 .menu-list-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-lg);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   color: var(--primary);
   display: grid;
   place-items: center;
   flex-shrink: 0;
   border: 1px solid var(--border);
-  transition: transform 0.14s var(--ease), background var(--dur-fast), border-color var(--dur-fast);
+  transition: background var(--dur-fast), border-color var(--dur-fast);
 }
 
 .menu-list-item:hover .menu-list-icon {
-  transform: scale(1.08);
   background: var(--primary-soft);
   border-color: var(--primary);
 }
 
 .menu-list-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .menu-list-body {
@@ -831,27 +820,27 @@
 }
 
 .splash-logo {
-  width: 84px;
-  height: 84px;
-  border-radius: var(--radius-2xl);
-  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  width: 76px;
+  height: 76px;
+  border-radius: var(--radius-xl);
+  background: var(--primary);
   display: grid;
   place-items: center;
-  box-shadow: 0 14px 32px rgba(234, 88, 12, 0.35), 0 4px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
   z-index: 2;
   animation: splash-pulse 2.6s ease-in-out infinite;
 }
 
 .splash-logo svg {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   color: #ffffff;
 }
 
 .splash-logo-ring {
   position: absolute;
   inset: 0;
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   border: 2px solid var(--primary);
   opacity: 0.35;
   animation: splash-ring 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
@@ -890,7 +879,7 @@
 
 .splash-title {
   font-size: var(--fs-xl);
-  font-weight: 800;
+  font-weight: var(--fw-semibold);
   color: var(--text);
   letter-spacing: -0.02em;
   margin: 0 0 6px;

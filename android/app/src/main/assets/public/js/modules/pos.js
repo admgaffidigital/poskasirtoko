@@ -224,7 +224,7 @@ export function renderPosModule(container) {
             <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg" style="flex: 1;" title="Tahan Transaksi (F7)">
               ${ICONS.clipboard} <span>Tahan</span><span class="d-none-mobile"> (F7)</span>
             </button>
-            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg" style="flex: 2; font-weight: 700; font-size: var(--fs-md);" title="Bayar Sekarang (F4)">
+            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg" style="flex: 2; font-weight: 600; font-size: var(--fs-md);" title="Bayar Sekarang (F4)">
               ${ICONS.wallet} <span>BAYAR</span><span class="d-none-mobile"> (F4)</span>
             </button>
           </div>
@@ -1786,7 +1786,7 @@ export function renderPosModule(container) {
       footer: `
         <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
           <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-bayar">Batal</button>
-          <button type="button" class="btn btn-primary btn-lg" id="btn-proses-transaksi" style="font-weight: 700;">
+          <button type="button" class="btn btn-primary btn-lg" id="btn-proses-transaksi" style="font-weight: 600;">
             ${ICONS.check} Konfirmasi & Simpan Transaksi
           </button>
         </div>
