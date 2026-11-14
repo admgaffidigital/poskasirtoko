@@ -58,6 +58,9 @@ function kompresGambar(file, maxDimension = 800, quality = 0.8) {
 let filterState = {
   q: '',
   kategori_id: '',
+  filter_stok: '', // '', 'menipis', 'habis', 'tersedia'
+  status: '', // '', 'aktif', 'nonaktif'
+  sort: 'terbaru', // 'terbaru', 'terlama', 'nama_asc', 'nama_desc', 'stok_asc', 'stok_desc', 'harga_desc', 'harga_asc'
   aktif_saja: false,
   view: localStorage.getItem('produk_view_mode') || (typeof window !== 'undefined' && window.innerWidth < 768 ? 'grid' : 'table'),
   page: 1,
@@ -87,22 +90,85 @@ export async function renderProdukModule(container) {
         ` : ''}
       </div>
 
-      <!-- Bilah Filter & Pencarian -->
-      <div class="card card-body">
-        <div class="row">
-          <div class="input-group grow">
+      <!-- Bilah Filter & Pencarian Komprehensif -->
+      <div class="card card-body stack-sm" style="gap: var(--sp-3);">
+        <!-- Baris 1: Pencarian Cepat & Pengaturan Tampilan -->
+        <div class="row" style="gap: var(--sp-2);">
+          <div class="input-group grow" style="min-width: 200px;">
             <span class="input-icon">${ICONS.search}</span>
             <input type="text" class="input" id="filter-produk-q" placeholder="Cari nama barang, SKU, atau barcode..." value="${escapeHtml(filterState.q)}">
           </div>
 
-          <select class="select" id="filter-produk-kategori" style="max-width: 200px;">
-            <option value="">Semua Kategori</option>
-          </select>
-
           <div class="segmented" id="toggle-view">
-            <button type="button" data-view="table" aria-pressed="${filterState.view === 'table'}">${ICONS.list}</button>
-            <button type="button" data-view="grid" aria-pressed="${filterState.view === 'grid'}">${ICONS.grid}</button>
+            <button type="button" data-view="table" aria-pressed="${filterState.view === 'table'}" title="Tampilan Tabel / Kartu">${ICONS.list}</button>
+            <button type="button" data-view="grid" aria-pressed="${filterState.view === 'grid'}" title="Tampilan Grid">${ICONS.grid}</button>
           </div>
+
+          <button type="button" class="btn btn-secondary btn-icon" id="btn-reset-filter" title="Reset Semua Filter" style="display: none;">
+            ${ICONS.refresh}
+          </button>
+        </div>
+
+        <!-- Baris 2: Dropdown Filter & Pengurutan (Urutkan, Kategori, Status Stok, Status Keaktifan) -->
+        <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
+          <!-- Dropdown Urutkan (Default: Terbaru selalu di atas) -->
+          <div class="field" style="flex: 1 1 180px; min-width: 150px;">
+            <select class="select" id="filter-produk-sort" title="Urutan Tampilan">
+              <option value="terbaru" ${filterState.sort === 'terbaru' ? 'selected' : ''}>⚡ Terbaru (Baru Ditambahkan)</option>
+              <option value="terlama" ${filterState.sort === 'terlama' ? 'selected' : ''}>Terlama (Awal Ditambahkan)</option>
+              <option value="nama_asc" ${filterState.sort === 'nama_asc' ? 'selected' : ''}>Nama Barang (A - Z)</option>
+              <option value="nama_desc" ${filterState.sort === 'nama_desc' ? 'selected' : ''}>Nama Barang (Z - A)</option>
+              <option value="stok_asc" ${filterState.sort === 'stok_asc' ? 'selected' : ''}>Stok Terendah (🚨 Menipis)</option>
+              <option value="stok_desc" ${filterState.sort === 'stok_desc' ? 'selected' : ''}>Stok Tertinggi</option>
+              <option value="harga_desc" ${filterState.sort === 'harga_desc' ? 'selected' : ''}>Harga Ritel Tertinggi</option>
+              <option value="harga_asc" ${filterState.sort === 'harga_asc' ? 'selected' : ''}>Harga Ritel Terendah</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Kategori -->
+          <div class="field" style="flex: 1 1 180px; min-width: 150px;">
+            <select class="select" id="filter-produk-kategori" title="Kategori Produk">
+              <option value="">Semua Kategori</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Status Stok -->
+          <div class="field" style="flex: 1 1 160px; min-width: 140px;">
+            <select class="select" id="filter-produk-stok" title="Status Stok">
+              <option value="" ${filterState.filter_stok === '' ? 'selected' : ''}>Semua Status Stok</option>
+              <option value="menipis" ${filterState.filter_stok === 'menipis' ? 'selected' : ''}>🚨 Stok Menipis (<= Min)</option>
+              <option value="habis" ${filterState.filter_stok === 'habis' ? 'selected' : ''}>❌ Stok Habis (0)</option>
+              <option value="tersedia" ${filterState.filter_stok === 'tersedia' ? 'selected' : ''}>✅ Stok Tersedia</option>
+            </select>
+          </div>
+
+          <!-- Dropdown Status Keaktifan -->
+          <div class="field" style="flex: 1 1 140px; min-width: 130px;">
+            <select class="select" id="filter-produk-status" title="Status Produk">
+              <option value="" ${filterState.status === '' ? 'selected' : ''}>Semua Status</option>
+              <option value="aktif" ${filterState.status === 'aktif' ? 'selected' : ''}>Aktif Saja</option>
+              <option value="nonaktif" ${filterState.status === 'nonaktif' ? 'selected' : ''}>Nonaktif</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Baris 3: Filter Cepat Chips -->
+        <div class="row" style="gap: 6px; overflow-x: auto; padding-bottom: 2px;" id="filter-chips-wrap">
+          <button type="button" class="btn btn-xs ${!filterState.filter_stok && filterState.sort === 'terbaru' && !filterState.kategori_id && !filterState.status && !filterState.q ? 'btn-primary' : 'btn-secondary'}" data-chip="semua">
+            Semua Produk
+          </button>
+          <button type="button" class="btn btn-xs ${filterState.sort === 'terbaru' && !filterState.filter_stok ? 'btn-primary' : 'btn-secondary'}" data-chip="terbaru">
+            ⚡ Terbaru
+          </button>
+          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'menipis' ? 'btn-warning' : 'btn-secondary'}" data-chip="menipis">
+            🚨 Stok Menipis
+          </button>
+          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'habis' ? 'btn-danger' : 'btn-secondary'}" data-chip="habis">
+            ❌ Stok Habis
+          </button>
+          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'tersedia' ? 'btn-primary' : 'btn-secondary'}" data-chip="tersedia">
+            ✅ Ada Stok
+          </button>
         </div>
       </div>
 
@@ -134,13 +200,102 @@ export async function renderProdukModule(container) {
     debounceTimer = setTimeout(() => {
       filterState.q = e.target.value.trim();
       filterState.page = 1;
+      perbaruiTampilanFilter(container);
       muatProduk(container, canEdit, isKasir);
     }, 300);
   });
 
+  // Dropdown pengurutan (Default: Terbaru selalu di atas)
+  $('#filter-produk-sort', container)?.addEventListener('change', (e) => {
+    filterState.sort = e.target.value;
+    filterState.page = 1;
+    perbaruiTampilanFilter(container);
+    muatProduk(container, canEdit, isKasir);
+  });
+
+  // Dropdown kategori
   $('#filter-produk-kategori', container)?.addEventListener('change', (e) => {
     filterState.kategori_id = e.target.value;
     filterState.page = 1;
+    perbaruiTampilanFilter(container);
+    muatProduk(container, canEdit, isKasir);
+  });
+
+  // Dropdown status stok
+  $('#filter-produk-stok', container)?.addEventListener('change', (e) => {
+    filterState.filter_stok = e.target.value;
+    filterState.page = 1;
+    perbaruiTampilanFilter(container);
+    muatProduk(container, canEdit, isKasir);
+  });
+
+  // Dropdown status keaktifan
+  $('#filter-produk-status', container)?.addEventListener('change', (e) => {
+    filterState.status = e.target.value;
+    filterState.page = 1;
+    perbaruiTampilanFilter(container);
+    muatProduk(container, canEdit, isKasir);
+  });
+
+  // Quick filter chips
+  container.querySelectorAll('#filter-chips-wrap button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const chip = btn.getAttribute('data-chip');
+      if (chip === 'semua') {
+        filterState.q = '';
+        filterState.kategori_id = '';
+        filterState.filter_stok = '';
+        filterState.status = '';
+        filterState.sort = 'terbaru';
+        const inpQ = $('#filter-produk-q', container);
+        if (inpQ) inpQ.value = '';
+        const selKat = $('#filter-produk-kategori', container);
+        if (selKat) selKat.value = '';
+        const selStok = $('#filter-produk-stok', container);
+        if (selStok) selStok.value = '';
+        const selStatus = $('#filter-produk-status', container);
+        if (selStatus) selStatus.value = '';
+        const selSort = $('#filter-produk-sort', container);
+        if (selSort) selSort.value = 'terbaru';
+      } else if (chip === 'terbaru') {
+        filterState.sort = 'terbaru';
+        filterState.filter_stok = '';
+        const selSort = $('#filter-produk-sort', container);
+        if (selSort) selSort.value = 'terbaru';
+        const selStok = $('#filter-produk-stok', container);
+        if (selStok) selStok.value = '';
+      } else if (chip === 'menipis' || chip === 'habis' || chip === 'tersedia') {
+        filterState.filter_stok = chip;
+        const selStok = $('#filter-produk-stok', container);
+        if (selStok) selStok.value = chip;
+      }
+      filterState.page = 1;
+      perbaruiTampilanFilter(container);
+      muatProduk(container, canEdit, isKasir);
+    });
+  });
+
+  // Tombol reset semua filter
+  $('#btn-reset-filter', container)?.addEventListener('click', () => {
+    filterState.q = '';
+    filterState.kategori_id = '';
+    filterState.filter_stok = '';
+    filterState.status = '';
+    filterState.sort = 'terbaru';
+    filterState.page = 1;
+
+    const inpQ = $('#filter-produk-q', container);
+    if (inpQ) inpQ.value = '';
+    const selKat = $('#filter-produk-kategori', container);
+    if (selKat) selKat.value = '';
+    const selStok = $('#filter-produk-stok', container);
+    if (selStok) selStok.value = '';
+    const selStatus = $('#filter-produk-status', container);
+    if (selStatus) selStatus.value = '';
+    const selSort = $('#filter-produk-sort', container);
+    if (selSort) selSort.value = 'terbaru';
+
+    perbaruiTampilanFilter(container);
     muatProduk(container, canEdit, isKasir);
   });
 
@@ -161,7 +316,77 @@ export async function renderProdukModule(container) {
     });
   }
 
+  perbaruiTampilanFilter(container);
   await muatProduk(container, canEdit, isKasir);
+}
+
+function perbaruiTampilanFilter(c) {
+  const isFilterAktif = !!(filterState.q || filterState.kategori_id || filterState.filter_stok || filterState.status || filterState.sort !== 'terbaru');
+  const btnReset = $('#btn-reset-filter', c);
+  if (btnReset) {
+    btnReset.style.display = isFilterAktif ? 'inline-flex' : 'none';
+  }
+
+  // Perbarui styling tombol chips
+  c.querySelectorAll('#filter-chips-wrap button').forEach((btn) => {
+    const chip = btn.getAttribute('data-chip');
+    let isActive = false;
+    if (chip === 'semua') {
+      isActive = !filterState.filter_stok && filterState.sort === 'terbaru' && !filterState.kategori_id && !filterState.status && !filterState.q;
+    } else if (chip === 'terbaru') {
+      isActive = filterState.sort === 'terbaru' && !filterState.filter_stok;
+    } else if (chip === 'menipis') {
+      isActive = filterState.filter_stok === 'menipis';
+    } else if (chip === 'habis') {
+      isActive = filterState.filter_stok === 'habis';
+    } else if (chip === 'tersedia') {
+      isActive = filterState.filter_stok === 'tersedia';
+    }
+
+    btn.classList.remove('btn-primary', 'btn-secondary', 'btn-warning', 'btn-danger');
+    if (isActive) {
+      if (chip === 'menipis') btn.classList.add('btn-warning');
+      else if (chip === 'habis') btn.classList.add('btn-danger');
+      else btn.classList.add('btn-primary');
+    } else {
+      btn.classList.add('btn-secondary');
+    }
+  });
+}
+
+function urutkanDaftarProdukLokal(items, sortMode) {
+  const mode = sortMode || 'terbaru';
+  return [...items].sort((a, b) => {
+    if (mode === 'terlama') {
+      const tA = String(a.created_at || '');
+      const tB = String(b.created_at || '');
+      if (tA && tB && tA !== tB) return tA.localeCompare(tB);
+      return 0;
+    }
+    if (mode === 'nama_asc') {
+      return String(a.nama || '').localeCompare(String(b.nama || ''));
+    }
+    if (mode === 'nama_desc') {
+      return String(b.nama || '').localeCompare(String(a.nama || ''));
+    }
+    if (mode === 'stok_asc') {
+      return Number(a.stok || 0) - Number(b.stok || 0);
+    }
+    if (mode === 'stok_desc') {
+      return Number(b.stok || 0) - Number(a.stok || 0);
+    }
+    if (mode === 'harga_asc') {
+      return Number(a.harga_ritel || 0) - Number(b.harga_ritel || 0);
+    }
+    if (mode === 'harga_desc') {
+      return Number(b.harga_ritel || 0) - Number(a.harga_ritel || 0);
+    }
+    // Default: 'terbaru' (created_at DESC)
+    const tA = String(a.created_at || '');
+    const tB = String(b.created_at || '');
+    if (tA && tB && tA !== tB) return tB.localeCompare(tA);
+    return 0;
+  });
 }
 
 async function muatProduk(container, canEdit, isKasir, isAppend = false) {
@@ -172,7 +397,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
   try {
     if (!isAppend) {
       const res = await apiCall('produk.list', filterState);
-      cacheDaftarProduk = res.items || [];
+      cacheDaftarProduk = urutkanDaftarProdukLokal(res.items || [], filterState.sort);
       window._totalProdukTerakhir = res.total || 0;
     } else {
       filterState.page++;
@@ -183,6 +408,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
           cacheDaftarProduk.push(p);
         }
       });
+      cacheDaftarProduk = urutkanDaftarProdukLokal(cacheDaftarProduk, filterState.sort);
       window._totalProdukTerakhir = res.total || 0;
     }
 
@@ -190,16 +416,22 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
     const total = window._totalProdukTerakhir || items.length;
 
     if (!items.length) {
+      const adaFilter = !!(filterState.q || filterState.kategori_id || filterState.filter_stok || filterState.status || filterState.sort !== 'terbaru');
       area.innerHTML = `
         <div class="card card-body">
           ${renderEmpty({
         title: 'Produk Tidak Ditemukan',
-        text: filterState.q ? `Tidak ada barang yang cocok dengan kata kunci "${filterState.q}".` : 'Belum ada produk yang didaftarkan ke sistem.',
+        text: filterState.q ? `Tidak ada barang yang cocok dengan kata kunci "${filterState.q}".` : (adaFilter ? 'Tidak ada produk yang cocok dengan kombinasi filter yang dipilih.' : 'Belum ada produk yang didaftarkan ke sistem.'),
         icon: ICONS.box,
-        actionButton: canEdit && !filterState.q ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Produk Pertama</button>` : ''
+        actionButton: adaFilter
+          ? `<button type="button" class="btn btn-secondary btn-reset-dari-empty">${ICONS.refresh} Reset Filter</button>`
+          : (canEdit && !filterState.q ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Produk Pertama</button>` : '')
       })}
         </div>
       `;
+      area.querySelector('.btn-reset-dari-empty')?.addEventListener('click', () => {
+        $('#btn-reset-filter', container)?.click();
+      });
       area.querySelector('.btn-tambah-pertama')?.addEventListener('click', () => {
         bukaModalFormProduk(container, null);
       });
@@ -1256,6 +1488,10 @@ async function bukaModalFormProduk(container, produk) {
       } else {
         await apiCall('produk.create', payload);
         showToast('Produk baru berhasil ditambahkan.', 'success');
+        // Reset filter ke halaman 1 dan urutan terbaru agar produk baru langsung tampil paling atas
+        filterState.page = 1;
+        filterState.sort = 'terbaru';
+        perbaruiTampilanFilter(container);
       }
       modal.close();
       await muatProduk(container, true, false);

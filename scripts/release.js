@@ -141,7 +141,13 @@ function main() {
   // 4. Sinkronisasi Web Assets ke Android (Capacitor)
   logStep(4, 'Sinkronisasi Web Assets ke Capacitor Android');
   runCmd('npx cap sync android');
-  logSuccess('Web assets tersinkronisasi ke android/app/src/main/assets/public');
+
+  // Bersihkan folder download dari assets Android agar APK tidak bersarang secara rekursif
+  const androidDownloadDir = path.join(ROOT_DIR, 'android', 'app', 'src', 'main', 'assets', 'public', 'download');
+  if (fs.existsSync(androidDownloadDir)) {
+    fs.rmSync(androidDownloadDir, { recursive: true, force: true });
+  }
+  logSuccess('Web assets tersinkronisasi ke android/app/src/main/assets/public (bebas dari rekursi APK)');
 
   // 5. Kompilasi APK Android Native (Gradle)
   if (skipApk) {
@@ -160,10 +166,6 @@ function main() {
       const stat = fs.statSync(targetApk);
       const sizeMb = (stat.size / (1024 * 1024)).toFixed(2);
       logSuccess(`APK Berhasil disalin ke frontend/download/poskasirtoko.apk (${sizeMb} MB)`);
-
-      // Re-sync agar APK terbaru juga ada di dalam build assets android
-      runCmd('npx cap sync android');
-      logSuccess('Aset APK tersinkronisasi ulang ke platform Android');
     } else {
       logError(`APK hasil build tidak ditemukan di: ${builtApk}`);
       process.exit(1);

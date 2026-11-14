@@ -118,7 +118,7 @@ assert.ok(sw.includes('bersihkanRedirect'), 'sw.js wajib memiliki proteksi bersi
 assert.strictEqual(vercelCfg.cleanUrls, false, 'vercel.json wajib menetapkan cleanUrls: false agar index.html tidak di-redirect 308');
 assert.ok(fs.existsSync('frontend/download/poskasirtoko.apk'), 'File APK harus ada');
 const apkStat = fs.statSync('frontend/download/poskasirtoko.apk');
-assert.ok(apkStat.size > 20000000, 'Ukuran APK harus valid (>20MB)');
+assert.ok(apkStat.size > 1000000 && apkStat.size < 100000000, 'Ukuran APK harus valid (antara 1MB dan 100MB)');
 console.log(`  ✔ LULUS: Versi v${pkg.version} sinkron 100% di semua file proyek.`);
 console.log(`  ✔ LULUS: APK Android siap diunduh (${(apkStat.size / (1024 * 1024)).toFixed(2)} MB).`);
 

@@ -1241,8 +1241,9 @@ function aksiProdukList_(ctx) {
   });
 
   // Susun data produk lengkap
-  const daftarLengkap = produk.map(function (pr) {
+  const daftarLengkap = produk.map(function (pr, idx) {
     const prAman = Object.assign({}, pr);
+    prAman._idx = idx; // Indeks baris asli untuk fallback stable sort
     if (isKasir) prAman.hpp = null; // Kasir TIDAK BOLEH melihat HPP
     prAman.varian = petaVarian[pr.id] || [];
     prAman.satuan_konversi = petaSatuan[pr.id] || [];
@@ -1262,9 +1263,28 @@ function aksiProdukList_(ctx) {
     tersaring = tersaring.filter(function (pr) { return !!targetKatIds[pr.kategori_id]; });
   }
 
-  // Filter hanya produk aktif
-  if (p.aktif_saja) {
-    tersaring = tersaring.filter(function (pr) { return pr.aktif; });
+  // Filter hanya produk aktif / status
+  if (p.aktif_saja || p.status === 'aktif') {
+    tersaring = tersaring.filter(function (pr) { return pr.aktif === true || String(pr.aktif).toUpperCase() === 'TRUE'; });
+  } else if (p.status === 'nonaktif') {
+    tersaring = tersaring.filter(function (pr) { return pr.aktif === false || String(pr.aktif).toUpperCase() === 'FALSE'; });
+  }
+
+  // Filter status stok (menipis, habis, tersedia)
+  if (p.filter_stok === 'menipis') {
+    tersaring = tersaring.filter(function (pr) {
+      const s = Number(pr.stok || 0);
+      const min = Number(pr.stok_min || 0);
+      return s > 0 && s <= min;
+    });
+  } else if (p.filter_stok === 'habis') {
+    tersaring = tersaring.filter(function (pr) {
+      return Number(pr.stok || 0) <= 0;
+    });
+  } else if (p.filter_stok === 'tersedia') {
+    tersaring = tersaring.filter(function (pr) {
+      return Number(pr.stok || 0) > 0;
+    });
   }
 
   // Pencarian q (nama, sku, barcode, nama varian, barcode varian)
@@ -1281,6 +1301,48 @@ function aksiProdukList_(ctx) {
       });
     });
   }
+
+  // Pengurutan (Sorting) — Default: 'terbaru' (Produk baru dibuat/ditambahkan tampil paling atas)
+  const sortBy = String(p.sort || 'terbaru').toLowerCase();
+  tersaring.sort(function (a, b) {
+    if (sortBy === 'terlama') {
+      const tA = String(a.created_at || '');
+      const tB = String(b.created_at || '');
+      if (tA && tB && tA !== tB) return tA.localeCompare(tB);
+      return (a._idx || 0) - (b._idx || 0);
+    }
+    if (sortBy === 'nama_asc') {
+      return String(a.nama || '').localeCompare(String(b.nama || ''));
+    }
+    if (sortBy === 'nama_desc') {
+      return String(b.nama || '').localeCompare(String(a.nama || ''));
+    }
+    if (sortBy === 'stok_asc') {
+      return Number(a.stok || 0) - Number(b.stok || 0);
+    }
+    if (sortBy === 'stok_desc') {
+      return Number(b.stok || 0) - Number(a.stok || 0);
+    }
+    if (sortBy === 'harga_asc') {
+      return Number(a.harga_ritel || 0) - Number(b.harga_ritel || 0);
+    }
+    if (sortBy === 'harga_desc') {
+      return Number(b.harga_ritel || 0) - Number(a.harga_ritel || 0);
+    }
+
+    // Default: 'terbaru' -> created_at DESC, atau baris sheet paling bawah (indeks lebih tinggi) di atas
+    const tA = String(a.created_at || '');
+    const tB = String(b.created_at || '');
+    if (tA && tB && tA !== tB) {
+      return tB.localeCompare(tA);
+    }
+    return (b._idx || 0) - (a._idx || 0);
+  });
+
+  // Bersihkan properti internal _idx
+  tersaring.forEach(function (pr) {
+    delete pr._idx;
+  });
 
   // Paginasi
   const limit = Math.min(Math.max(parseInt(p.limit, 10) || APP.PAGE_LIMIT_DEFAULT, 1), APP.PAGE_LIMIT_MAKS);
