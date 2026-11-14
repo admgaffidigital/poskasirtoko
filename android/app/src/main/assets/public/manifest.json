@@ -3,7 +3,7 @@
   "short_name": "POS Toko",
   "description": "Aplikasi Point of Sale Toko Bangunan Modern & Responsif",
   "id": "./",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
