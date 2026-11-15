@@ -156,6 +156,29 @@ Penjualan & Pembelian (harian/mingguan/bulanan), Riwayat Penjualan, Riwayat Pemb
 ### 6.4 Produk
 Buat, edit, hapus (soft delete), kategori & sub kategori, varian, satuan & konversi satuan (dengan barcode per satuan), harga ritel/grosir, HPP, stok minimum, barcode/SKU, foto.
 
+#### 6.4.1 Tata Cara & Panduan Penggunaan Varian & Satuan Kemasan (Multi Satuan)
+
+| Fitur | Varian Produk (Warna / Ukuran / Tebal) | Konversi Satuan Kemasan (Multi Satuan) |
+| :--- | :--- | :--- |
+| **Fungsi Utama** | Membedakan barang dengan spesifikasi/fisik berbeda | Menjual barang yang sama dalam kemasan grosir/dus/ikat/rol |
+| **Pengelolaan Stok** | **Terpisah per varian**. Pengurangan stok hanya pada varian yang terjual | **Satu stok fisik induk** (satuan dasar). Jual kemasan memotong stok satuan dasar × faktor |
+| **Barcode & SKU** | Tiap varian memiliki barcode dan SKU unik tersendiri | Tiap kemasan memiliki barcode kemasan tersendiri (misal barcode di kardus) |
+| **Contoh Toko Bangunan** | Cat (Putih 5kg, Krem 5kg); Besi (8mm, 10mm); Pipa (Tebal C, Tebal D) | Pipa (1 Ikat = 25 Batang); Kabel (1 Rol = 50 Meter); Semen (1 Truk = 100 Sak) |
+| **Di Kasir POS** | Kasir memilih varian saat memasukkan item ke keranjang | Kasir dapat beralih satuan eceran/kemasan langsung di keranjang via badge `[ BTG ▾ ]` |
+
+**Langkah Setting Varian:**
+1. Di formulir Tambah/Ubah Produk, buka tab **Varian & Satuan**.
+2. Aktifkan sakelar *"Produk memiliki beberapa varian (Warna, Ukuran, Tebal)"*, lalu tekan tombol **"+ Varian"**.
+3. Isi **Nama Varian** (contoh: `Putih 5kg`, `10mm`, `Tebal C`), **Harga Ritel**, dan **Stok Awal**. SKU dan Barcode boleh dikosongkan (otomatis digenerate sistem).
+
+**Langkah Setting Satuan Kemasan:**
+1. Pastikan **Satuan Dasar** di Tab 1 sudah diisi dengan benar (contoh: `BTG`, `MTR`, `SAK`, `PCS`, `KG`).
+2. Di Tab **Varian & Satuan** bagian Konversi Satuan Kemasan, tekan tombol **"+ Satuan Kemasan"**.
+3. Isi **Nama Kemasan** (contoh: `IKAT`, `DUS`, `ROL`, `TRUK`), **Isi / Faktor** (contoh: `25` untuk 1 ikat berisi 25 batang), dan **Harga per Kemasan (Rp)**.
+
+**Di Kasir POS:**
+Kasir dapat menjual eceran maupun kemasan secara fleksibel. Cukup klik badge satuan `[ BTG ▾ ]` pada keranjang belanja untuk beralih satuan dan harga serta subtotal langsung terhitung ulang seketika.
+
 ### 6.5 Price Tag Harga
 Cetak label harga rak: pilih produk, ukuran label, jumlah salinan, pratinjau.
 

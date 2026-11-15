@@ -82,7 +82,11 @@ export async function renderProdukModule(container) {
           <p>Kelola daftar barang, varian, satuan konversi, harga eceran & grosir</p>
         </div>
         ${canEdit ? `
-          <div>
+          <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" id="btn-panduan-varian-header" title="Tata Cara & Panduan Penggunaan Varian dan Satuan">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+              <span>Panduan Varian &amp; Satuan</span>
+            </button>
             <button type="button" class="btn btn-primary" id="btn-tambah-produk">
               <span>+ Tambah Produk</span>
             </button>
@@ -290,6 +294,9 @@ export async function renderProdukModule(container) {
   });
 
   if (canEdit) {
+    $('#btn-panduan-varian-header', container)?.addEventListener('click', () => {
+      bukaModalPanduanVarianSatuan();
+    });
     $('#btn-tambah-produk', container)?.addEventListener('click', () => {
       bukaModalFormProduk(container, null);
     });
@@ -722,6 +729,141 @@ function generateSkuCode(prefix = 'SKU') {
 }
 
 /**
+ * Modal Panduan & Tata Cara Penggunaan Varian dan Satuan Kemasan
+ */
+export function bukaModalPanduanVarianSatuan() {
+  showModal({
+    title: '💡 Panduan & Tata Cara: Varian dan Satuan Kemasan',
+    size: 'lg',
+    body: `
+      <div class="stack" style="gap: var(--sp-4); font-size: var(--fs-sm); line-height: 1.6;">
+        <!-- Ringkasan Inti -->
+        <div class="alert alert-info" style="background: var(--surface-2); border: 1px solid rgba(232, 89, 12, 0.35); border-radius: var(--radius-md); padding: var(--sp-3);">
+          <div class="fw-bold" style="color: var(--primary); margin-bottom: 4px; font-size: var(--fs-base);">
+            Perbedaan Utama: Kapan Pakai Varian? Kapan Pakai Satuan Kemasan?
+          </div>
+          <div>
+            Keduanya memiliki fungsi yang sangat berbeda dalam operasional toko bangunan:
+            <ul style="margin: 6px 0 0 18px; padding: 0;">
+              <li><b>Varian Produk:</b> Digunakan jika barang memiliki <u>karakteristik fisik atau spesifikasi yang berbeda</u> sehingga stok fisiknya wajib dihitung terpisah di gudang (contoh: Pipa Tipe C vs Tipe D; Cat Putih 5kg vs Abu-abu 5kg).</li>
+              <li><b>Konversi Satuan Kemasan (Multi Satuan):</b> Digunakan jika <u>satu barang fisik yang sama persis</u> bisa dijual eceran maupun dalam kemasan grosir/dus/ikat/rol (contoh: Pipa dijual per Batang atau per Ikat; Semen per Sak atau per Truk).</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tabel Perbandingan Komprehensif -->
+        <div>
+          <div class="fw-bold" style="margin-bottom: var(--sp-2); font-size: var(--fs-base);">
+            Tabel Komparasi Fitur
+          </div>
+          <div class="table-responsive" style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
+            <table class="table" style="margin: 0; font-size: var(--fs-xs);">
+              <thead style="background: var(--surface-2);">
+                <tr>
+                  <th style="width: 22%;">Aspek</th>
+                  <th style="width: 39%;">Varian Produk (Warna / Ukuran / Tebal)</th>
+                  <th style="width: 39%;">Konversi Satuan Kemasan (Multi Satuan)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold">Fungsi Utama</td>
+                  <td>Membedakan jenis barang dengan spesifikasi berbeda.</td>
+                  <td>Menjual barang yang sama dalam kemasan grosir / partai besar.</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Pengelolaan Stok</td>
+                  <td><b>Terpisah per varian</b>. Jika Cat Putih laku 1 kaleng, hanya stok Cat Putih yang berkurang.</td>
+                  <td><b>Satu stok fisik induk</b> (satuan dasar). Jual 1 Ikat Pipa (isi 25 btg) otomatis memotong 25 btg dari stok pipa.</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Barcode & SKU</td>
+                  <td>Tiap varian memiliki barcode dan SKU mandiri.</td>
+                  <td>Tiap kemasan bisa memiliki barcode kemasan tersendiri (misal barcode di kardus luar).</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Contoh Kasus Toko Bangunan</td>
+                  <td>
+                    • Cat: <i>Putih 5kg</i>, <i>Krem 5kg</i>, <i>Abu-abu 5kg</i><br>
+                    • Besi Beton: <i>8mm</i>, <i>10mm</i>, <i>12mm</i><br>
+                    • Pipa PVC: <i>Tebal C</i>, <i>Tebal D</i>, <i>Tebal AW</i>
+                  </td>
+                  <td>
+                    • Pipa: 1 Ikat = 25 Batang (Faktor: 25)<br>
+                    • Kabel: 1 Rol = 50 Meter (Faktor: 50)<br>
+                    • Semen: 1 Truk = 100 Sak (Faktor: 100)<br>
+                    • Keramik: 1 Dus = 1.44 m² (Faktor: 1.44)
+                  </td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Di Kasir POS</td>
+                  <td>Kasir memilih varian saat item ditambahkan ke keranjang.</td>
+                  <td>Kasir dapat beralih satuan langsung di keranjang belanja melalui tombol badge <code>[ BTG ▾ ]</code>.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tata Cara 1: Varian Produk -->
+        <div class="card" style="padding: var(--sp-3); border: 1px solid var(--border); background: var(--surface-1);">
+          <div class="fw-bold" style="color: var(--primary); margin-bottom: 6px; font-size: var(--fs-base);">
+            1. Tata Cara Mengatur Varian Produk
+          </div>
+          <ol style="margin: 0; padding-left: 20px;" class="stack-xs text-xs">
+            <li>Buka formulir Tambah/Ubah Produk, lalu buka tab <b>Varian & Satuan</b>.</li>
+            <li>Aktifkan sakelar <b>"Produk memiliki beberapa varian (Warna, Ukuran, Tebal)"</b>.</li>
+            <li>Tekan tombol <b>"+ Varian"</b> untuk menambahkan baris varian baru.</li>
+            <li>Isi <b>Nama Varian</b> sesuai spesifikasi barang (contoh: <code>Putih 5kg</code>, <code>Tebal Tipe C</code>, atau <code>10mm</code>).</li>
+            <li>Kolom <b>SKU Varian</b> & <b>Barcode Varian</b> boleh dikosongkan jika ingin sistem membuatnya secara otomatis (kode EAN-13 standar retail).</li>
+            <li>Isi <b>Harga Jual Ritel</b> untuk varian tersebut.</li>
+            <li>Isi <b>Stok Awal</b> fisik yang ada di toko untuk varian tersebut. (Total stok produk induk akan dihitung otomatis oleh sistem sebagai akumulasi seluruh varian).</li>
+          </ol>
+        </div>
+
+        <!-- Tata Cara 2: Satuan Kemasan -->
+        <div class="card" style="padding: var(--sp-3); border: 1px solid var(--border); background: var(--surface-1);">
+          <div class="fw-bold" style="color: var(--primary); margin-bottom: 6px; font-size: var(--fs-base);">
+            2. Tata Cara Mengatur Satuan Kemasan (Multi Satuan)
+          </div>
+          <ol style="margin: 0; padding-left: 20px;" class="stack-xs text-xs">
+            <li>Pastikan <b>Satuan Dasar</b> di Tab 1 (Informasi Dasar) sudah diisi terlebih dahulu (contoh: <code>BTG</code>, <code>MTR</code>, <code>PCS</code>, <code>SAK</code>, atau <code>KG</code>). Satuan dasar adalah unit terkecil yang biasa diecer.</li>
+            <li>Pada Tab <b>Varian & Satuan</b> bagian Konversi Satuan Kemasan, klik tombol <b>"+ Satuan Kemasan"</b>.</li>
+            <li>Isi <b>Nama Kemasan</b> (contoh: <code>IKAT</code>, <code>DUS</code>, <code>ROL</code>, <code>TRUK</code>, <code>LUSIN</code>).</li>
+            <li>Isi <b>Isi / Faktor</b> dengan jumlah satuan dasar di dalam 1 kemasan tersebut:
+              <br><span class="text-muted">• Jika 1 Ikat berisi 25 Batang pipa &rarr; Masukkan Faktor = <code>25</code>.</span>
+              <br><span class="text-muted">• Jika 1 Rol kabel berisi 50 Meter &rarr; Masukkan Faktor = <code>50</code>.</span>
+              <br><span class="text-muted">• Jika 1 Truk semen berisi 100 Sak &rarr; Masukkan Faktor = <code>100</code>.</span>
+            </li>
+            <li>Isi <b>Harga per Kemasan (Rp)</b>: Masukkan harga jual untuk 1 kemasan utuh. (Disarankan memberi harga grosir lebih murah daripada membeli eceran sebagai daya tarik pelanggan borongan).</li>
+          </ol>
+        </div>
+
+        <!-- Tips Kasir POS -->
+        <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border-left: 4px solid var(--primary);">
+          <div class="fw-bold" style="margin-bottom: 2px;">
+            💡 Tips Penggunaan di Kasir POS:
+          </div>
+          <div class="text-xs text-muted" style="line-height: 1.5;">
+            Saat transaksi di kasir:
+            <ul style="margin: 4px 0 0 16px; padding: 0;">
+              <li>Kasir dapat menjual eceran maupun kemasan secara fleksibel.</li>
+              <li>Untuk mengubah satuan barang di keranjang belanja, kasir cukup menekan badge satuan (contoh: <code>[ BTG ▾ ]</code> lalu pilih <code>IKAT</code>). Subtotal otomatis dihitung ulang, dan stok fisik di gudang otomatis terpotong sesuai faktor konversinya (1 Ikat memotong 25 Batang stok).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row-between" style="width: 100%; align-items: center;">
+        <span class="text-xs text-muted">POS Kasir Toko Bangunan</span>
+        <button type="button" class="btn btn-primary btn-sm btn-close-modal">Saya Mengerti</button>
+      </div>
+    `
+  });
+}
+
+/**
  * Modal Form Tambah / Edit Produk Lengkap
  */
 async function bukaModalFormProduk(container, produk) {
@@ -962,6 +1104,27 @@ async function bukaModalFormProduk(container, produk) {
 
       <!-- Tab 3: Varian & Satuan -->
       <div class="tab-pane stack hidden" id="pane-varian">
+        <!-- Kotak Ringkasan Panduan & Tata Cara -->
+        <div class="alert alert-info" style="border: 1px solid rgba(232, 89, 12, 0.3); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md);">
+          <div class="row-between" style="align-items: flex-start; margin-bottom: 6px;">
+            <div class="row" style="gap: 6px; align-items: center;">
+              <span style="font-size: 16px;">💡</span>
+              <span class="fw-bold text-xs" style="color: var(--primary);">Tata Cara Penggunaan Varian & Satuan Kemasan</span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-buka-panduan-lengkap-varian" style="font-size: var(--fs-xs); text-decoration: underline; padding: 2px 6px;">
+              Buka Panduan Lengkap &raquo;
+            </button>
+          </div>
+          <div class="text-xs text-muted" style="line-height: 1.55;">
+            <div style="margin-bottom: 4px;">
+              <b>1. Varian Produk:</b> Gunakan jika barang punya <u>spesifikasi fisik berbeda</u> yang stoknya dihitung terpisah (contoh: Pipa varian <i>Tebal C</i> & <i>Tebal D</i>; Cat <i>Putih 5kg</i> & <i>Abu 5kg</i>; Besi <i>8mm</i> & <i>10mm</i>).
+            </div>
+            <div>
+              <b>2. Satuan Kemasan (Multi Satuan):</b> Gunakan jika 1 barang fisik bisa <u>dijual eceran maupun kemasan grosir</u> (contoh: Satuan dasar <code>BTG</code> &rarr; <code>1 IKAT = 25 BTG</code>; <code>MTR</code> &rarr; <code>1 ROL = 50 MTR</code>; <code>SAK</code> &rarr; <code>1 TRUK = 100 SAK</code>).
+            </div>
+          </div>
+        </div>
+
         <div class="field">
           <label class="switch">
             <input type="checkbox" id="prd-punya-varian" ${isEdit && produk.punya_varian ? 'checked' : ''}>
@@ -975,6 +1138,7 @@ async function bukaModalFormProduk(container, produk) {
             <span class="section-title">Daftar Varian Produk</span>
             <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-varian">+ Varian</button>
           </div>
+          <span class="field-hint">Tiap varian memiliki nama spesifikasi, barcode, harga ritel, dan stok fisik tersendiri.</span>
           <div id="wadah-varian" class="stack-sm"></div>
         </div>
 
@@ -985,7 +1149,7 @@ async function bukaModalFormProduk(container, produk) {
             <span class="section-title">Konversi Satuan Kemasan (Multi Satuan)</span>
             <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-satuan">+ Satuan Kemasan</button>
           </div>
-          <span class="field-hint">Contoh: 1 Dus = 24 pcs, 1 Truk = 100 sak</span>
+          <span class="field-hint">Tentukan kemasan grosir/dus/ikat/rol untuk memudahkan kasir menjual dalam jumlah besar. Contoh: 1 Dus = 24 pcs, 1 Truk = 100 sak, 1 Ikat = 25 btg.</span>
           <div id="wadah-satuan" class="stack-sm"></div>
         </div>
       </div>
@@ -1238,20 +1402,37 @@ async function bukaModalFormProduk(container, produk) {
     const row = document.createElement('div');
     row.className = 'card card-body baris-varian';
     row.style.padding = 'var(--sp-3)';
+    row.style.border = '1px solid var(--border)';
+    row.style.background = 'var(--surface-1)';
     row.innerHTML = `
       <input type="hidden" class="var-id" value="${v.id || ''}">
       <div class="form-grid cols-3" style="gap: var(--sp-2);">
-        <input type="text" class="input var-nama" placeholder="Nama Varian (cth: Putih 5kg)" value="${escapeHtml(v.nama_varian || '')}">
-        <input type="text" class="input mono uppercase var-sku" placeholder="Auto SKU Varian" value="${escapeHtml(v.sku || '')}" title="Kosongkan jika ingin dibuat otomatis">
-        <input type="text" class="input mono var-barcode" placeholder="Auto Barcode Varian" value="${escapeHtml(v.barcode || '')}" title="Kosongkan jika ingin dibuat otomatis">
-      </div>
-      <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-2);">
-        <div class="input-prefix grow">
-          <span>Rp</span>
-          <input type="text" class="input input-num var-ritel" placeholder="Harga Ritel" value="${formatRupiah(v.harga_ritel || 0, false)}">
+        <div>
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Nama Varian *</label>
+          <input type="text" class="input var-nama" placeholder="Cth: Putih 5kg / 10mm" value="${escapeHtml(v.nama_varian || '')}">
         </div>
-        <input type="number" class="input input-num var-stok" placeholder="Stok" value="${v.stok || 0}" style="max-width: 110px;">
-        <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-varian">Hapus</button>
+        <div>
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">SKU Varian (Auto)</label>
+          <input type="text" class="input mono uppercase var-sku" placeholder="Auto SKU" value="${escapeHtml(v.sku || '')}" title="Kosongkan jika ingin dibuat otomatis">
+        </div>
+        <div>
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Barcode Varian (Auto)</label>
+          <input type="text" class="input mono var-barcode" placeholder="Auto Barcode" value="${escapeHtml(v.barcode || '')}" title="Kosongkan jika ingin dibuat otomatis">
+        </div>
+      </div>
+      <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-2); align-items: flex-end;">
+        <div class="grow">
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Harga Jual Ritel Varian (Rp) *</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="text" class="input input-num var-ritel" placeholder="0" value="${v.harga_ritel ? formatRupiah(v.harga_ritel, false) : ''}">
+          </div>
+        </div>
+        <div style="max-width: 120px;">
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Stok Awal</label>
+          <input type="number" class="input input-num var-stok" placeholder="0" value="${v.stok !== undefined ? v.stok : ''}">
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-varian" title="Hapus Varian" style="height: 38px; margin-bottom: 1px;">Hapus</button>
       </div>
     `;
     formatInputRp(row.querySelector('.var-ritel'));
@@ -1270,18 +1451,34 @@ async function bukaModalFormProduk(container, produk) {
     const row = document.createElement('div');
     row.className = 'card card-body baris-satuan';
     row.style.padding = 'var(--sp-3)';
+    row.style.border = '1px solid var(--border)';
+    row.style.background = 'var(--surface-1)';
     row.innerHTML = `
-      <div class="row" style="gap: var(--sp-2);">
-        <input type="text" class="input sat-nama" placeholder="Satuan (cth: Dus)" value="${escapeHtml(s.satuan || '')}" style="max-width: 130px;">
-        <span class="text-sm">=</span>
-        <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Faktor (cth: 24)" value="${s.faktor || ''}" style="max-width: 90px;">
-        <span class="text-xs text-muted satuan-dasar-label">${escapeHtml($('#prd-satuan', form).value || 'pcs')}</span>
-        <input type="text" class="input mono sat-barcode" placeholder="Auto Barcode Satuan" value="${escapeHtml(s.barcode || '')}" style="max-width: 150px;" title="Kosongkan jika ingin dibuat otomatis">
-        <div class="input-prefix grow">
-          <span>Rp</span>
-          <input type="text" class="input input-num sat-ritel" placeholder="Harga Jual per Satuan" value="${formatRupiah(s.harga_ritel || 0, false)}">
+      <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 120px;">
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Nama Satuan Kemasan *</label>
+          <input type="text" class="input sat-nama" placeholder="Cth: Dus / Ikat / Rol" value="${escapeHtml(s.satuan || '')}">
         </div>
-        <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-satuan">Hapus</button>
+        <div style="padding-bottom: 10px; font-weight: bold; font-size: var(--fs-base);">=</div>
+        <div style="width: 100px;">
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Isi / Faktor *</label>
+          <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Cth: 24" value="${s.faktor || ''}">
+        </div>
+        <div style="padding-bottom: 10px;" class="text-xs fw-semibold text-muted satuan-dasar-label">
+          ${escapeHtml($('#prd-satuan', form).value || 'pcs')}
+        </div>
+        <div style="flex: 1; min-width: 130px;">
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Barcode Kemasan (Auto)</label>
+          <input type="text" class="input mono sat-barcode" placeholder="Auto Barcode" value="${escapeHtml(s.barcode || '')}" title="Kosongkan jika ingin dibuat otomatis">
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Harga per Kemasan (Rp) *</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="text" class="input input-num sat-ritel" placeholder="0" value="${s.harga_ritel ? formatRupiah(s.harga_ritel, false) : ''}">
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-satuan" title="Hapus Satuan Kemasan" style="height: 38px; margin-bottom: 1px;">Hapus</button>
       </div>
     `;
     formatInputRp(row.querySelector('.sat-ritel'));
@@ -1293,6 +1490,19 @@ async function bukaModalFormProduk(container, produk) {
     produk.satuan_konversi.forEach((s) => renderBarisSatuan(s));
   }
   $('#btn-tambah-baris-satuan', form)?.addEventListener('click', () => renderBarisSatuan());
+
+  // Buka dialog panduan lengkap dari tombol di Tab 3
+  $('#btn-buka-panduan-lengkap-varian', form)?.addEventListener('click', () => {
+    bukaModalPanduanVarianSatuan();
+  });
+
+  // Sinkronisasi dinamis nama satuan dasar ke baris konversi
+  $('#prd-satuan', form)?.addEventListener('input', (e) => {
+    const val = (e.target.value || '').trim() || 'pcs';
+    form.querySelectorAll('.satuan-dasar-label').forEach((el) => {
+      el.textContent = val;
+    });
+  });
 
   // Submit Handler Form Produk
   form.addEventListener('submit', async (e) => {
