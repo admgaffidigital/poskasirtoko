@@ -41,6 +41,22 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - [APK] [BUILD] Kompilasi APK Android native **v1.0.46** via Capacitor (VersionCode 33).
 
 ### Fixed
+- [PRODUK] [UI] [RESPONSIF-MOBILE] **Presisi Tata Letak Kartu Produk Mobile & Header Anti-Wrap**:
+  - Mengatasi masalah tata letak kartu produk di layar mobile di mana badge stok terdorong jatuh ke bawah SKU pada nama produk panjang, yang sebelumnya meninggalkan ruang kosong asimetris (*"ada space"*):
+    - Komponen header diubah menggunakan `.prd-table-head` dengan aturan `flex-wrap: nowrap !important; align-items: flex-start !important;`.
+    - Posisi badge stok dikunci presisi di pojok kanan atas dengan `margin-left: auto !important; flex-shrink: 0 !important; align-self: flex-start !important;`.
+    - Nama produk panjang kini terbungkus rapi ke baris kedua tanpa merusak keseragaman tinggi kartu di katalog produk.
+  - Menyematkan sanitasi auto-normalizer spasi `replace(/\s+/g, ' ')` pada submit handler form produk untuk mencegah spasi ganda atau spasi berlebih pada nama barang.
+- [PRODUK] [UI] **Perbaikan Banner Panduan Varian & Satuan (Tab 3 & Modal Panduan)**:
+  - Mengatasi masalah teks bertumpuk (*overlap*) dengan tombol di desktop dan terhimpit menjadi kolom sempit 40px di layar HP:
+    - Menambahkan modifier class `.alert.alert-block` (`display: block !important; width: 100% !important;`) di [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css) dan [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js).
+    - Memisahkan baris judul & tombol di bagian atas dan mengalirkan teks penjelasan poin 1 & 2 ke bawah secara penuh sehingga terbaca lega dan responsif.
+- [MODAL] [UI] **Perbaikan Tombol Batal pada Seluruh Dialog Modal**:
+  - Memperbaiki event binding tombol Batal di [frontend/js/utils/ui.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/utils/ui.js) menggunakan `querySelectorAll('.btn-close-modal, .btn-batal-modal, .btn-cancel')` sehingga tombol Batal di footer/body modal berfungsi menutup dialog dengan sempurna.
+- [APK] [BUILD] **Pencegahan Duplikasi Bundle File APK & Optimasi Ukuran File**:
+  - Menambahkan filter `:!*.apk` pada `aaptOptions.ignoreAssetsPattern` di [android/app/build.gradle](file:///c:/POS%20KASIR%20TOKO/android/app/build.gradle).
+  - Mencegah file APK web di folder `download/` ikut terpaket ke dalam aset aplikasi native Capacitor.
+  - Ukuran file APK Android [frontend/download/poskasirtoko.apk](file:///c:/POS%20KASIR%20TOKO/frontend/download/poskasirtoko.apk) terjaga sangat ringan dan stabil di **4.07 MB**.
 - [UI] [PRODUK] [RESPONSIF-MOBILE] **Perbaikan Tampilan Nilai Satuan, HPP, Harga Ritel, & Harga Grosir pada Mode Mobile**:
   - Mengatasi masalah nilai data (`satuan_dasar`, `hpp`, `harga_ritel`, `harga_grosir`) yang sebelumnya tampak hilang / kosong pada kartu katalog produk di layar ponsel mobile (<768px):
     - **Akar Masalah**: Elemen `<table>` pada modul [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js) memiliki inline style `min-width: 980px`. Karena spesifisitas inline style mengalahkan aturan class CSS biasa, tabel tetap dipaksa selebar 980px di layar HP. Akibatnya, `td` dengan `justify-content: space-between` menaruh label (*SATUAN*, *HPP*, dll.) di sisi kiri (0px), sedangkan nilai angkanya (*PCS*, *Rp 3.900*, *Rp 7.000*) terdorong jauh ke koordinat 980px (di luar batas layar ponsel 360px–412px)!
