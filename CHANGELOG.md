@@ -16,6 +16,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.36] - 2026-11-15
+
+### Fixed
+- [UI] [MENU] **Perbaikan Tombol Logout "undefined" pada Menu Lainnya**:
+  - **Akar Masalah**: Tombol logout akun di kartu profil toko `Menu Lainnya` memanggil variabel `${ICONS.logout}` yang belum didefinisikan pada objek kamus ikon SVG `ICONS` di `frontend/js/utils/ui.js`. Akibatnya, JavaScript mengevaluasi variabel tersebut menjadi `undefined`, dan karena label teks desktop `Keluar` disembunyikan pada layar seluler (`d-none-mobile`), tombol di perangkat Android hanya menampilkan tulisan teks harfiah `"undefined"`.
+  - **Solusi**:
+    - Menambahkan ikon SVG `ICONS.logout` (standar Lucide/Feather *log-out*) ke kamus ikon resmi `ICONS` di [frontend/js/utils/ui.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/utils/ui.js).
+    - Memperbarui tombol logout di [frontend/js/app.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/app.js) agar menampilkan ikon logout beserta label teks `Keluar` secara presisi dan jelas di perangkat seluler maupun desktop.
+- [APK] [BUILD] Kompilasi ulang APK Android native ramping **v1.0.36** berukuran **~4.02 MB** (VersionCode 23) dengan sinkronisasi aset web terbaru.
+
+---
+
 ## [1.0.35] - 2026-11-15
 
 ### Fixed
