@@ -16,6 +16,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.35] - 2026-11-15
+
+### Fixed
+- [UI] [SCROLL] **Perbaikan Total Kunci Gulir (Scroll Lock) Layar Mobile & Android WebView**:
+  - **Akar Masalah**: Penggunaan kombinasi `overscroll-behavior-y: none`, `touch-action: manipulation`, dan `overflow-x: hidden` secara bertingkat pada `html`, `body`, `.app`, `.main`, dan `.content` secara tidak sengaja memicu pembentukan multi-container `overflow-y: auto` dengan ketinggian tidak terikat (*unconstrained height*). Hal ini menyebabkan sistem WebView Android menangkap dan membatalkan seluruh gestur sentuh geser (*touch drag*), sehingga layar terkunci dan tidak dapat di-scroll ke bawah.
+  - **Restorasi Scroll Root Tunggal**:
+    - Menetapkan `html` sebagai wadah gulir vertikal utama dengan `overflow-y: auto`, `overflow-x: clip`, `-webkit-overflow-scrolling: touch`, dan `touch-action: pan-y`.
+    - Menghapus `overscroll-behavior-y: none` dan `overscroll-behavior-x: none` pada `body`, serta menetapkan `overflow-y: visible` dan `overflow-x: clip` agar tidak membentuk wadah gulir tandingan.
+    - Menghapus `overflow-x: hidden` dari `.app`, `.main`, dan `.content` agar seluruh elemen anak mengalir secara alami pada viewport window tanpa menyerap gestur sentuh.
+    - Menambahkan `window.scrollTo(0, 0)` pada router `renderPage()` agar setiap perpindahan rute selalu mengembalikan posisi layar ke paling atas secara bersih.
+  - **Bottomnav Viewport Anchoring**: Mempertegas penempatan `.bottomnav` dengan `position: fixed; bottom: 0; left: 0; right: 0; inset: auto 0 0 0; max-width: 100%` agar tetap kokoh terisolasi di bagian bawah layar tanpa menutupi konten terakhir.
+- [APK] [BUILD] Kompilasi ulang APK Android native ramping **v1.0.35** berukuran **~4.02 MB** (VersionCode 22) dengan sinkronisasi Service Worker cache bumper terbaru.
+
+---
+
 ## [1.0.34] - 2026-11-15
 
 ### Changed & Enhanced
