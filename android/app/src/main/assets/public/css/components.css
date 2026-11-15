@@ -941,7 +941,7 @@ input[type="password"] {
 .table-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   justify-content: flex-end;
   white-space: nowrap;
   flex-shrink: 0;
@@ -949,12 +949,12 @@ input[type="password"] {
 
 .pel-actions-row .btn,
 .table-actions .btn {
-  height: 32px;
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: var(--fs-xs);
-  border-radius: var(--radius-md);
-  gap: 6px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  border-radius: var(--radius-sm);
+  gap: 4px;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
@@ -970,21 +970,25 @@ input[type="password"] {
   white-space: nowrap;
 }
 
-/* Min-width tabel desktop agar kolom tidak terhimpit dan mendukung scroll horizontal */
+/* Min-width tabel desktop agar kolom tidak terhimpit dan pas di layar */
 @media (min-width: 768px) {
   .table-produk {
-    min-width: 980px;
+    min-width: 960px;
   }
 
   .table-pelanggan {
-    min-width: 1080px;
+    min-width: 860px;
   }
 
   .table-supplier {
-    min-width: 900px;
+    min-width: 860px;
   }
 
   .table-users {
+    min-width: 840px;
+  }
+
+  .table-kartu-stok {
     min-width: 860px;
   }
 }
@@ -3118,8 +3122,18 @@ a.list-item:hover {
 
 @media (min-width: 992px) {
   .pembelian-layout {
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: minmax(0, 1fr) 340px;
   }
+}
+
+@media (min-width: 1280px) {
+  .pembelian-layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+.pembelian-layout > * {
+  min-width: 0;
 }
 
 .pembelian-header-grid {
@@ -3140,11 +3154,53 @@ a.list-item:hover {
   gap: var(--sp-2);
 }
 
-@media (min-width: 640px) {
+@media (min-width: 640px) and (max-width: 1199px) {
   .beli-inputs-grid {
-    grid-template-columns: 1.2fr 0.8fr 1.4fr 0.9fr auto;
+    grid-template-columns: 1.2fr 0.8fr 1.4fr 1fr;
     align-items: flex-end;
   }
+
+  .beli-inputs-grid button#btn-tambah-item-beli {
+    grid-column: span 4;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .beli-inputs-grid {
+    grid-template-columns: 1.1fr 0.8fr 1.3fr 0.9fr auto;
+    align-items: flex-end;
+  }
+}
+
+/* Filter Bar & Tabel Kartu Stok */
+.ks-filter-bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+  align-items: flex-end;
+}
+
+@media (min-width: 640px) {
+  .ks-filter-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ks-filter-bar {
+    grid-template-columns: 2fr 1.2fr 1fr 1fr auto;
+  }
+}
+
+.ks-btn-refresh {
+  height: 40px;
+  width: 40px;
+  min-width: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  margin-bottom: 0;
 }
 
 .beli-diskon-massal {

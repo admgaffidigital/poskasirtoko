@@ -196,14 +196,14 @@ async function muatDataPelanggan(container) {
         <table class="table table-pelanggan">
           <thead>
             <tr>
-              <th style="min-width: 190px;">Kode & Nama</th>
-              <th style="min-width: 180px;">Kontak & Alamat</th>
-              <th style="min-width: 110px;">Tipe & Level</th>
-              <th class="num" style="min-width: 125px; white-space: nowrap;">Limit Kredit</th>
-              <th class="num" style="min-width: 115px; white-space: nowrap;">Sisa Piutang</th>
-              <th class="num" style="min-width: 105px; white-space: nowrap;">Poin Member</th>
-              <th style="min-width: 85px; text-align: center;">Status</th>
-              <th style="text-align: right; min-width: 245px; width: 245px; white-space: nowrap;">Aksi</th>
+              <th style="min-width: 150px;">Kode & Nama</th>
+              <th style="min-width: 130px;">Kontak & Alamat</th>
+              <th style="min-width: 90px;">Tipe & Level</th>
+              <th class="num" style="min-width: 105px; white-space: nowrap;">Limit Kredit</th>
+              <th class="num" style="min-width: 95px; white-space: nowrap;">Sisa Piutang</th>
+              <th class="num" style="min-width: 80px; white-space: nowrap;">Poin Member</th>
+              <th style="min-width: 70px; text-align: center;">Status</th>
+              <th style="text-align: right; min-width: 190px; width: 190px; white-space: nowrap;">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -263,7 +263,7 @@ async function muatDataPelanggan(container) {
                     ${isMember ? `<span class="fw-bold text-warning">${(it.poin || 0).toLocaleString('id-ID')}</span>` : '<span class="text-muted">-</span>'}
                   </td>
                   <td data-label="Status">${statusBadge}</td>
-                  <td style="text-align: right; min-width: 260px; width: 260px; padding-right: 16px; white-space: nowrap;" data-label="Aksi">
+                  <td style="text-align: right; min-width: 190px; width: 190px; padding-right: 8px; white-space: nowrap;" data-label="Aksi">
                     <div class="pel-actions-row">
                       <button type="button" class="btn btn-secondary btn-sm btn-detail-pel" data-id="${escapeHtml(it.id)}" title="Rincian & Riwayat Belanja/Poin">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>

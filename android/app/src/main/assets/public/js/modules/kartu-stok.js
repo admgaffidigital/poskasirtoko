@@ -21,15 +21,15 @@ export async function renderKartuStokModule(container) {
 
       <div class="card card-body stack">
         <!-- Filter Bar -->
-        <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
-          <div class="field grow" style="min-width: 220px;">
+        <div class="ks-filter-bar">
+          <div class="field" style="min-width: 0;">
             <label class="field-label" for="filter-ks-produk">Pilih Produk</label>
             <select class="input" id="filter-ks-produk">
               <option value="">-- Semua Produk --</option>
             </select>
           </div>
 
-          <div class="field" style="width: 150px;">
+          <div class="field" style="min-width: 0;">
             <label class="field-label" for="filter-ks-tipe">Jenis Mutasi</label>
             <select class="input" id="filter-ks-tipe">
               <option value="">Semua Mutasi</option>
@@ -42,17 +42,17 @@ export async function renderKartuStokModule(container) {
             </select>
           </div>
 
-          <div class="field" style="width: 140px;">
+          <div class="field" style="min-width: 0;">
             <label class="field-label" for="filter-ks-dari">Dari Tanggal</label>
             <input type="date" class="input" id="filter-ks-dari">
           </div>
 
-          <div class="field" style="width: 140px;">
+          <div class="field" style="min-width: 0;">
             <label class="field-label" for="filter-ks-sampai">Sampai Tanggal</label>
             <input type="date" class="input" id="filter-ks-sampai">
           </div>
 
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-ks" title="Muat Ulang" style="margin-bottom: 2px;">
+          <button type="button" class="btn btn-secondary btn-icon ks-btn-refresh" id="btn-refresh-ks" title="Muat Ulang">
             ${ICONS.refresh}
           </button>
         </div>
@@ -139,18 +139,18 @@ async function muatDataKartuStok(container) {
 
     let html = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-kartu-stok">
           <thead>
             <tr>
-              <th style="width: 140px;">Waktu</th>
-              <th>Nama Produk & Varian</th>
-              <th style="width: 100px;">Jenis</th>
-              <th>No. Referensi</th>
-              <th style="text-align: right;">Mutasi (+/-)</th>
-              <th style="text-align: right;">Saldo Akhir</th>
-              <th style="text-align: right;">HPP Mutasi</th>
-              <th>Petugas</th>
-              <th>Keterangan</th>
+              <th style="width: 120px; min-width: 120px; white-space: nowrap;">Waktu</th>
+              <th style="min-width: 160px;">Nama Produk & Varian</th>
+              <th style="width: 80px; text-align: center;">Jenis</th>
+              <th style="width: 130px; min-width: 130px; white-space: nowrap;">No. Referensi</th>
+              <th style="text-align: right; min-width: 90px;">Mutasi (+/-)</th>
+              <th style="text-align: right; min-width: 90px;">Saldo Akhir</th>
+              <th style="text-align: right; min-width: 100px;">HPP Mutasi</th>
+              <th style="min-width: 90px;">Petugas</th>
+              <th style="min-width: 130px; max-width: 220px;">Keterangan</th>
             </tr>
           </thead>
           <tbody>
