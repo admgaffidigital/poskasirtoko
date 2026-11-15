@@ -294,8 +294,9 @@ class App {
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                 <span>Unduh File APK (.apk)</span>
               </a>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full);">
-                📱 Pasang via Chrome (PWA)
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pasang-pwa" style="border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+                <span>Pasang via Chrome (PWA)</span>
               </button>
             </div>
           </div>
@@ -358,9 +359,9 @@ class App {
             <div>
               <div class="row" style="gap: 6px; align-items: center;">
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
-                <span class="badge badge-success badge-sm">🟢 Aktif</span>
+                <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.38'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.39'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -413,7 +414,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.38'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.39'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -935,8 +936,11 @@ class App {
         hasilDiv.innerHTML = `
           <div class="card card-body stack">
             <div class="row-between">
-              <div class="row">
-                <span class="badge badge-success" style="font-size: 14px; padding: 4px 10px;">✔ Terhubung</span>
+              <div class="row" style="align-items: center; gap: var(--sp-2);">
+                <span class="badge badge-success" style="font-size: 13px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Terhubung</span>
+                </span>
                 <span class="text-sm text-muted">Latency: ${latency} ms</span>
               </div>
               <span class="badge badge-primary">Versi API: ${escapeHtml(res.versi || '0.0.1')}</span>

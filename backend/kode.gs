@@ -6006,7 +6006,7 @@ function aksiLaporanStokValuasi_(ctx) {
 function onOpen() {
   try {
     SpreadsheetApp.getUi()
-      .createMenu('🏗️ POS')
+      .createMenu('POS Kasir')
       .addItem('1. Setup / perbarui database', 'setupDatabase')
       .addItem('2. Pasang trigger backup harian', 'setupTriggers')
       .addSeparator()

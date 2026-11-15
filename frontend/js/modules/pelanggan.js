@@ -377,7 +377,7 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
         <div class="field" style="width: 200px; min-width: 160px;">
           <div class="row items-center justify-between" style="margin-bottom: 4px;">
             <label class="field-label" for="pel-kode" style="margin-bottom: 0;">Kode Member</label>
-            ${!isEdit ? '<button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-kode-pel" title="Generate kode otomatis" style="padding: 1px 6px; font-size: 11px;">🎲 Auto</button>' : ''}
+            ${!isEdit ? '<button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-kode-pel" title="Generate kode otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>' : ''}
           </div>
           <input type="text" class="input font-mono uppercase" id="pel-kode" value="${escapeHtml(pelanggan ? pelanggan.kode : '')}" placeholder="Auto (MBR-...)" ${!isOwnerOrAdmin && isEdit ? 'disabled' : ''}>
           <span class="text-xs text-muted">Dibuat otomatis bila kosong</span>

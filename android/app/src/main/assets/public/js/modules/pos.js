@@ -144,7 +144,8 @@ export function renderPosModule(container) {
                 <span class="d-none-mobile">Struk Terakhir</span>
               </button>
               <button type="button" id="btn-pos-panduan-printer" class="btn btn-ghost btn-sm" title="Atur Printer Bluetooth">
-                ⚙️ <span class="d-none-mobile">Printer</span>
+                ${ICONS.settings}
+                <span class="d-none-mobile">Printer</span>
               </button>
               <button type="button" id="btn-pending-list" class="btn btn-ghost btn-sm position-relative" title="Daftar Tahan / Pending (F8)">
                 ${ICONS.clipboard}
@@ -177,7 +178,9 @@ export function renderPosModule(container) {
         <!-- Cart Items List -->
         <div class="pos-cart-items" id="pos-cart-items">
           <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted);">
-            <div style="font-size: 32px; margin-bottom: var(--sp-2); opacity: 0.5;">🛒</div>
+            <div style="margin-bottom: var(--sp-2); opacity: 0.35; display: flex; justify-content: center; color: var(--text-muted);">
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            </div>
             <div>Keranjang masih kosong</div>
             <div class="text-xs text-muted">Pilih produk dari katalog atau scan barcode<span class="d-none-mobile"> (F2)</span></div>
           </div>
@@ -555,7 +558,9 @@ export function renderPosModule(container) {
     if (filtered.length === 0) {
       elProductArea.innerHTML = `
         <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted); width: 100%; border: 1px dashed var(--border); border-radius: var(--radius-xl); background: var(--surface);">
-          <div style="font-size: 32px; margin-bottom: var(--sp-2);">🔍</div>
+          <div style="margin-bottom: var(--sp-2); display: flex; justify-content: center; color: var(--text-muted); opacity: 0.4;">
+            <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
           <div class="fw-semibold text-base" style="color: var(--text);">Tidak ada produk yang cocok</div>
           <div class="text-xs text-muted" style="margin-top: 4px;">Coba ubah kata kunci pencarian atau pilih kategori lain</div>
         </div>
@@ -673,8 +678,9 @@ export function renderPosModule(container) {
       `;
     } else if (items.length > 0 && state.totalProduk > state.pageSize) {
       html += `
-        <div class="pos-load-all-wrap text-center text-xs text-muted" style="grid-column: 1 / -1; width: 100%; padding: var(--sp-3);">
-          ✓ Semua ${items.length} produk telah dimuat
+        <div class="pos-load-all-wrap text-center text-xs text-muted" style="grid-column: 1 / -1; width: 100%; padding: var(--sp-3); display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Semua ${items.length} produk telah dimuat</span>
         </div>
       `;
     }
@@ -777,8 +783,9 @@ export function renderPosModule(container) {
       `;
     } else if (items.length > 0 && state.totalProduk > state.pageSize) {
       html += `
-        <div class="pos-load-all-wrap text-center text-xs text-muted" style="width: 100%; padding: var(--sp-3);">
-          ✓ Semua ${items.length} produk telah dimuat
+        <div class="pos-load-all-wrap text-center text-xs text-muted" style="width: 100%; padding: var(--sp-3); display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Semua ${items.length} produk telah dimuat</span>
         </div>
       `;
     }
@@ -1081,7 +1088,9 @@ export function renderPosModule(container) {
     if (state.keranjang.length === 0) {
       elCartItems.innerHTML = `
         <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted);">
-          <div style="font-size: 32px; margin-bottom: var(--sp-2); opacity: 0.5;">🛒</div>
+          <div style="margin-bottom: var(--sp-2); opacity: 0.35; display: flex; justify-content: center; color: var(--text-muted);">
+            <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+          </div>
           <div>Keranjang masih kosong</div>
           <div class="text-xs text-muted">Pilih produk dari katalog atau scan barcode (F2)</div>
         </div>
@@ -1550,8 +1559,9 @@ export function renderPosModule(container) {
       body: `
         <div class="stack" style="gap: var(--sp-3);">
           <div class="row" style="gap: var(--sp-2);">
-            <button type="button" class="btn btn-sm ${!state.pelanggan ? 'btn-primary' : 'btn-secondary'}" id="btn-pilih-umum" style="flex: 1;">
-              👤 Pelanggan Umum (Tanpa Member)
+            <button type="button" class="btn btn-sm ${!state.pelanggan ? 'btn-primary' : 'btn-secondary'}" id="btn-pilih-umum" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Pelanggan Umum (Tanpa Member)</span>
             </button>
           </div>
 
@@ -1688,11 +1698,13 @@ export function renderPosModule(container) {
             <div>
               <label class="form-label fw-bold">Opsi Pengiriman:</label>
               <div class="row" style="gap: var(--sp-2);">
-                <button type="button" class="btn btn-sm ${state.pengiriman === 'ambil' ? 'btn-primary' : 'btn-secondary'} btn-opt-kirim" data-kirim="ambil" style="flex: 1;">
-                  🏪 Ambil di Toko
+                <button type="button" class="btn btn-sm ${state.pengiriman === 'ambil' ? 'btn-primary' : 'btn-secondary'} btn-opt-kirim" data-kirim="ambil" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
+                  <span>Ambil di Toko</span>
                 </button>
-                <button type="button" class="btn btn-sm ${state.pengiriman === 'dikirim' ? 'btn-primary' : 'btn-secondary'} btn-opt-kirim" data-kirim="dikirim" style="flex: 1;">
-                  🚚 Dikirim Toko
+                <button type="button" class="btn btn-sm ${state.pengiriman === 'dikirim' ? 'btn-primary' : 'btn-secondary'} btn-opt-kirim" data-kirim="dikirim" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+                  <span>Dikirim Toko</span>
                 </button>
               </div>
             </div>

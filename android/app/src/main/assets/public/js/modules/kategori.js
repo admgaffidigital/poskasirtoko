@@ -323,7 +323,7 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
   let optionsParent = '<option value="">-- Kategori Utama (Tanpa Induk) --</option>';
   listPilihanInduk.forEach((k) => {
     const selected = activeParentId === k.id ? 'selected' : '';
-    optionsParent += `<option value="${k.id}" ${selected}>📁 ${escapeHtml(k.nama)}</option>`;
+    optionsParent += `<option value="${k.id}" ${selected}>${escapeHtml(k.nama)}</option>`;
   });
 
   let modalTitle = 'Tambah Kategori Baru';

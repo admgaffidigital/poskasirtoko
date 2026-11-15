@@ -16,6 +16,23 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.39] - 2026-11-15
+
+### Changed & Refactored
+- [UI] [DESIGN] **Eliminasi Total Ikon Emoji & Standardisasi Ikon Vektor SVG Presisi**:
+  - **Akar Masalah**: Masih terdapat elemen UI seperti chip filter katalog, tombol auto-generate SKU/barcode/member, modal status sistem, opsi printer thermal, empty-state keranjang/pencarian, dan badge tanggal yang menggunakan karakter emoji sistem (seperti ⚡, 🚨, ❌, ✅, 📁, 🏷️, 🎲, 📱, 📶, 🖨️, 🧪, ⚙️, 🛒, 🔍, 👤, 🏪, 🚚, 💬). Hal ini membuat tampilan terasa kekanak-kanakan, kaku, inkonsisten antar perangkat sistem operasi, dan tidak mencerminkan antarmuka aplikasi kasir POS profesional.
+  - **Standardisasi Vektor SVG Modern (Lucide/Feather Style)**:
+    - Menambahkan kamus ikon SVG resmi baru pada [frontend/js/utils/ui.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/utils/ui.js) (`calendar`, `sparkles`, `zap`, `checkCircle`, `xCircle`, `smartphone`, `bluetooth`, `wifi`, `messageCircle`, `user`, `helpCircle`).
+    - Mengganti seluruh emoji pada tombol aksi otomatis SKU, Barcode EAN-13, dan Kode Member (`🎲 Auto`) dengan tombol mikro rapi berikon SVG *sparkles/magic* presisi.
+    - Mengganti emoji pada chip filter produk (`⚡ Terbaru`, `🚨 Stok Menipis`, `❌ Stok Habis`, `✅ Ada Stok`) dengan ikon SVG bergaris tipis 2.5px profesional.
+    - Mengganti emoji pada empty-state keranjang kasir (`🛒`) dan hasil pencarian katalog (`🔍`) dengan ikon ilustrasi SVG 38px elegan berkontras lembut.
+    - Mengganti seluruh emoji pada modal printer RawBT, BLE, dan pratinjau browser dengan ikon SVG smartphone, printer thermal, bluetooth, dan pesan WhatsApp.
+    - Mengganti badge sesi `🟢 Aktif` dengan `.badge-dot` sesuai standar design system tokens.css.
+    - Membersihkan karakter emoji dari menu Spreadsheet backend `backend/kode.gs` (`POS Kasir`) dan seluruh string template pesan WhatsApp.
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.39** berukuran **~4.02 MB** (VersionCode 26) dengan sinkronisasi aset web terbaru.
+
+---
+
 ## [1.0.38] - 2026-11-15
 
 ### Fixed & Enhanced

@@ -479,19 +479,23 @@ export function tampilkanModalKoneksiPrinter() {
         <div class="stack-sm">
           <div class="fw-bold text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">Aksi Cepat &amp; Uji Cetak:</div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-open-rawbt" style="min-width: 140px;">
-              📱 Buka Aplikasi RawBT
+            <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-open-rawbt" style="min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+              <span>Buka Aplikasi RawBT</span>
             </button>
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-modal-test-rawbt" style="min-width: 140px;">
-              🧪 Uji Cetak RawBT (${ukuranKertas}mm)
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-modal-test-rawbt" style="min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+              <span>Uji Cetak RawBT (${ukuranKertas}mm)</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px;">
-            <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-ble">
-              📶 Uji Web Bluetooth Direct
+            <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-ble" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+              <span>Uji Web Bluetooth Direct</span>
             </button>
-            <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-browser">
-              🖨️ Uji Cetak Browser
+            <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+              <span>Uji Cetak Browser</span>
             </button>
           </div>
         </div>
@@ -508,8 +512,9 @@ export function tampilkanModalKoneksiPrinter() {
               <div>
                 <strong>Pasang Aplikasi RawBT</strong> dari Google Play Store di HP/Tablet Android Anda jika belum ada.
                 <div style="margin-top: 4px;">
-                  <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-modal-download-rawbt" style="padding: 2px 8px; border: 1px solid var(--primary-soft);">
-                    📥 Unduh RawBT di Google Play Store
+                  <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-modal-download-rawbt" style="padding: 2px 8px; border: 1px solid var(--primary-soft); display: inline-flex; align-items: center; gap: 4px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    <span>Unduh RawBT di Google Play Store</span>
                   </button>
                 </div>
               </div>
@@ -532,21 +537,23 @@ export function tampilkanModalKoneksiPrinter() {
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">4</span>
               <div>
-                <strong>Tekan Tombol Uji Cetak</strong>: Tekan tombol <span class="badge badge-secondary">🧪 Uji Cetak RawBT</span> di atas. Jika kertas struk keluar, printer Anda sudah <strong>100% SIAP</strong> digunakan mencetak nota kasir!
+                <strong>Tekan Tombol Uji Cetak</strong>: Tekan tombol <span class="badge badge-secondary" style="font-weight: var(--fw-semibold);">Uji Cetak RawBT</span> di atas. Jika kertas struk keluar, printer Anda sudah <strong>100% SIAP</strong> digunakan mencetak nota kasir!
               </div>
             </div>
           </div>
         </div>
 
-        <div class="alert alert-info text-xs" style="margin-top: var(--sp-1); padding: 8px 12px;">
-          💡 <strong>Tips Kasir:</strong> Setelah printer terhubung di RawBT, Anda tidak perlu mengulang proses koneksi lagi. Setiap kali selesai transaksi kasir, struk dapat langsung dicetak cukup dengan 1 kali klik.
+        <div class="alert alert-info text-xs" style="margin-top: var(--sp-1); padding: 8px 12px; display: flex; align-items: flex-start; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <div><strong>Tips Kasir:</strong> Setelah printer terhubung di RawBT, Anda tidak perlu mengulang proses koneksi lagi. Setiap kali selesai transaksi kasir, struk dapat langsung dicetak cukup dengan 1 kali klik.</div>
         </div>
       </div>
     `,
     footer: `
       <div class="row-between" style="width: 100%;">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-modal-ke-pengaturan">
-          ⚙️ Pengaturan Nota &amp; Kertas
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-modal-ke-pengaturan" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Pengaturan Nota &amp; Kertas</span>
         </button>
         <button type="button" class="btn btn-primary btn-sm" id="btn-modal-tutup-koneksi">
           Selesai / Tutup
@@ -745,8 +752,10 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
     size: 'sm',
     body: `
       <div class="stack" style="gap: var(--sp-3); text-align: center;">
-        <div style="font-size: 40px; color: ${options.isNewTransaction ? 'var(--success)' : 'var(--primary)'}; line-height: 1;">
-          ${options.isNewTransaction ? '✓' : ICONS.printer}
+        <div style="display: flex; justify-content: center; align-items: center; color: ${options.isNewTransaction ? 'var(--success)' : 'var(--primary)'};">
+          <div style="width: 44px; height: 44px;">
+            ${options.isNewTransaction ? ICONS.checkCircle : ICONS.printer}
+          </div>
         </div>
         <div>
           <div class="text-xs text-muted">NOMOR NOTA PENJUALAN</div>
@@ -769,24 +778,29 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
         <div class="stack" style="gap: var(--sp-2);">
           <div class="row-between">
             <span class="fw-bold text-xs text-muted">PILIHAN CETAK STRUK:</span>
-            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-panduan-printer-modal-jual" style="padding: 2px 6px;">
-              ⚙️ Atur Printer
+            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-panduan-printer-modal-jual" style="padding: 2px 6px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Atur Printer</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-jual-rawbt">
-              📱 RawBT Android (${ukuran}mm)
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-jual-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+              <span>RawBT Android (${ukuran}mm)</span>
             </button>
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-jual-bt">
-              📶 Bluetooth Direct
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-jual-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+              <span>Bluetooth Direct</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2);">
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-jual-browser">
-              🖨️ Cetak / Pratinjau Browser
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-jual-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+              <span>Cetak / Browser</span>
             </button>
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-jual-wa">
-              💬 WhatsApp
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-jual-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              <span>WhatsApp</span>
             </button>
           </div>
         </div>
@@ -1120,8 +1134,10 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
     size: 'sm',
     body: `
       <div class="stack" style="gap: var(--sp-3); text-align: center;">
-        <div style="font-size: 40px; color: var(--primary); line-height: 1;">
-          ${ICONS.printer}
+        <div style="display: flex; justify-content: center; align-items: center; color: var(--primary);">
+          <div style="width: 44px; height: 44px;">
+            ${ICONS.printer}
+          </div>
         </div>
         <div>
           <div class="text-xs text-muted">FAKTUR PEMBELIAN / BARANG MASUK</div>
@@ -1139,24 +1155,29 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
         <div class="stack" style="gap: var(--sp-2);">
           <div class="row-between">
             <span class="fw-bold text-xs text-muted">PILIHAN JALUR CETAK:</span>
-            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-panduan-printer-modal-beli" style="padding: 2px 6px;">
-              ⚙️ Atur Printer
+            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-panduan-printer-modal-beli" style="padding: 2px 6px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Atur Printer</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-beli-rawbt">
-              📱 RawBT Android (${ukuran}mm)
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-beli-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+              <span>RawBT Android (${ukuran}mm)</span>
             </button>
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-beli-bt">
-              📶 Bluetooth Direct
+            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-beli-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+              <span>Bluetooth Direct</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2);">
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-beli-browser">
-              🖨️ Cetak / Pratinjau Browser
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-beli-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+              <span>Cetak / Browser</span>
             </button>
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-beli-wa">
-              💬 WhatsApp
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-beli-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              <span>WhatsApp</span>
             </button>
           </div>
         </div>

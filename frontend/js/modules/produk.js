@@ -114,11 +114,11 @@ export async function renderProdukModule(container) {
           <!-- Dropdown Urutkan (Default: Terbaru selalu di atas) -->
           <div class="field" style="flex: 1 1 180px; min-width: 150px;">
             <select class="select" id="filter-produk-sort" title="Urutan Tampilan">
-              <option value="terbaru" ${filterState.sort === 'terbaru' ? 'selected' : ''}>⚡ Terbaru (Baru Ditambahkan)</option>
+              <option value="terbaru" ${filterState.sort === 'terbaru' ? 'selected' : ''}>Terbaru (Baru Ditambahkan)</option>
               <option value="terlama" ${filterState.sort === 'terlama' ? 'selected' : ''}>Terlama (Awal Ditambahkan)</option>
               <option value="nama_asc" ${filterState.sort === 'nama_asc' ? 'selected' : ''}>Nama Barang (A - Z)</option>
               <option value="nama_desc" ${filterState.sort === 'nama_desc' ? 'selected' : ''}>Nama Barang (Z - A)</option>
-              <option value="stok_asc" ${filterState.sort === 'stok_asc' ? 'selected' : ''}>Stok Terendah (🚨 Menipis)</option>
+              <option value="stok_asc" ${filterState.sort === 'stok_asc' ? 'selected' : ''}>Stok Terendah (Menipis)</option>
               <option value="stok_desc" ${filterState.sort === 'stok_desc' ? 'selected' : ''}>Stok Tertinggi</option>
               <option value="harga_desc" ${filterState.sort === 'harga_desc' ? 'selected' : ''}>Harga Ritel Tertinggi</option>
               <option value="harga_asc" ${filterState.sort === 'harga_asc' ? 'selected' : ''}>Harga Ritel Terendah</option>
@@ -136,9 +136,9 @@ export async function renderProdukModule(container) {
           <div class="field" style="flex: 1 1 160px; min-width: 140px;">
             <select class="select" id="filter-produk-stok" title="Status Stok">
               <option value="" ${filterState.filter_stok === '' ? 'selected' : ''}>Semua Status Stok</option>
-              <option value="menipis" ${filterState.filter_stok === 'menipis' ? 'selected' : ''}>🚨 Stok Menipis (<= Min)</option>
-              <option value="habis" ${filterState.filter_stok === 'habis' ? 'selected' : ''}>❌ Stok Habis (0)</option>
-              <option value="tersedia" ${filterState.filter_stok === 'tersedia' ? 'selected' : ''}>✅ Stok Tersedia</option>
+              <option value="menipis" ${filterState.filter_stok === 'menipis' ? 'selected' : ''}>Stok Menipis (<= Min)</option>
+              <option value="habis" ${filterState.filter_stok === 'habis' ? 'selected' : ''}>Stok Habis (0)</option>
+              <option value="tersedia" ${filterState.filter_stok === 'tersedia' ? 'selected' : ''}>Stok Tersedia</option>
             </select>
           </div>
 
@@ -157,17 +157,21 @@ export async function renderProdukModule(container) {
           <button type="button" class="btn btn-xs ${!filterState.filter_stok && filterState.sort === 'terbaru' && !filterState.kategori_id && !filterState.status && !filterState.q ? 'btn-primary' : 'btn-secondary'}" data-chip="semua">
             Semua Produk
           </button>
-          <button type="button" class="btn btn-xs ${filterState.sort === 'terbaru' && !filterState.filter_stok ? 'btn-primary' : 'btn-secondary'}" data-chip="terbaru">
-            ⚡ Terbaru
+          <button type="button" class="btn btn-xs ${filterState.sort === 'terbaru' && !filterState.filter_stok ? 'btn-primary' : 'btn-secondary'}" data-chip="terbaru" style="display: inline-flex; align-items: center; gap: 4px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Terbaru</span>
           </button>
-          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'menipis' ? 'btn-warning' : 'btn-secondary'}" data-chip="menipis">
-            🚨 Stok Menipis
+          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'menipis' ? 'btn-warning' : 'btn-secondary'}" data-chip="menipis" style="display: inline-flex; align-items: center; gap: 4px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            <span>Stok Menipis</span>
           </button>
-          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'habis' ? 'btn-danger' : 'btn-secondary'}" data-chip="habis">
-            ❌ Stok Habis
+          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'habis' ? 'btn-danger' : 'btn-secondary'}" data-chip="habis" style="display: inline-flex; align-items: center; gap: 4px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+            <span>Stok Habis</span>
           </button>
-          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'tersedia' ? 'btn-primary' : 'btn-secondary'}" data-chip="tersedia">
-            ✅ Ada Stok
+          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'tersedia' ? 'btn-primary' : 'btn-secondary'}" data-chip="tersedia" style="display: inline-flex; align-items: center; gap: 4px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Ada Stok</span>
           </button>
         </div>
       </div>
@@ -692,9 +696,9 @@ function susunOpsiKategoriHtml(daftarKategori, selectedId = '', placeholder = '-
     subs.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
 
     if (subs.length > 0) {
-      html += `<optgroup label="📁 ${escapeHtml(p.nama)}">`;
+      html += `<optgroup label="${escapeHtml(p.nama)}">`;
       const isParentSel = selectedId === p.id ? 'selected' : '';
-      html += `<option value="${p.id}" ${isParentSel}>📁 ${escapeHtml(p.nama)} (Utama)</option>`;
+      html += `<option value="${p.id}" ${isParentSel}>${escapeHtml(p.nama)} (Utama)</option>`;
       subs.forEach((c) => {
         const isChildSel = selectedId === c.id ? 'selected' : '';
         html += `<option value="${c.id}" ${isChildSel}>&nbsp;&nbsp;&nbsp;&nbsp;↳ ${escapeHtml(c.nama)}</option>`;
@@ -702,7 +706,7 @@ function susunOpsiKategoriHtml(daftarKategori, selectedId = '', placeholder = '-
       html += `</optgroup>`;
     } else {
       const isParentSel = selectedId === p.id ? 'selected' : '';
-      html += `<option value="${p.id}" ${isParentSel}>📁 ${escapeHtml(p.nama)}</option>`;
+      html += `<option value="${p.id}" ${isParentSel}>${escapeHtml(p.nama)}</option>`;
     }
   });
 
@@ -712,7 +716,7 @@ function susunOpsiKategoriHtml(daftarKategori, selectedId = '', placeholder = '-
     html += `<optgroup label="Lainnya">`;
     orphans.forEach((o) => {
       const isOrphanSel = selectedId === o.id ? 'selected' : '';
-      html += `<option value="${o.id}" ${isOrphanSel}>🏷️ ${escapeHtml(o.nama)}</option>`;
+      html += `<option value="${o.id}" ${isOrphanSel}>${escapeHtml(o.nama)}</option>`;
     });
     html += `</optgroup>`;
   }
@@ -833,7 +837,7 @@ async function bukaModalFormProduk(container, produk) {
           <div class="field">
             <div class="row items-center justify-between" style="margin-bottom: 4px;">
               <label class="field-label" for="prd-sku" style="margin-bottom: 0;">Kode SKU</label>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 1px 6px; font-size: 11px;">🎲 Auto</button>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>
             </div>
             <input type="text" class="input mono uppercase" id="prd-sku" value="${isEdit ? escapeHtml(produk.sku || '') : ''}" placeholder="Auto (cth: SKU-20261113-0001)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
@@ -841,7 +845,7 @@ async function bukaModalFormProduk(container, produk) {
           <div class="field">
             <div class="row items-center justify-between" style="margin-bottom: 4px;">
               <label class="field-label" for="prd-barcode" style="margin-bottom: 0;">Barcode</label>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 1px 6px; font-size: 11px;">🎲 Auto</button>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>
             </div>
             <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(produk.barcode || '') : ''}" placeholder="Auto (13 digit EAN-13)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
