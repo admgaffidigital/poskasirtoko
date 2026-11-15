@@ -656,8 +656,8 @@ async function bukaModalDetailPelanggan(pelangganId) {
         ${riwayatJual.length === 0 ? `
           <div class="text-xs text-muted" style="padding: var(--sp-2); text-align: center;">Belum ada riwayat transaksi belanja.</div>
         ` : `
-          <div class="table-wrap">
-            <table class="table">
+          <div class="table-wrap keep-table">
+            <table class="table" style="min-width: 0; width: 100%;">
               <thead>
                 <tr>
                   <th>No Nota & Tgl</th>
@@ -697,8 +697,8 @@ async function bukaModalDetailPelanggan(pelangganId) {
           ${riwayatPoin.length === 0 ? `
             <div class="text-xs text-muted" style="padding: var(--sp-2); text-align: center;">Belum ada mutasi poin tercatat.</div>
           ` : `
-            <div class="table-wrap">
-              <table class="table">
+            <div class="table-wrap keep-table">
+              <table class="table" style="min-width: 0; width: 100%;">
                 <thead>
                   <tr>
                     <th>Waktu</th>

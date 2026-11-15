@@ -548,7 +548,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
     <form id="form-submit-retur-jual" class="stack">
       <div class="stack" style="gap: var(--sp-1);">
         <label class="field-label">Pilih Item & Jumlah yang Diretur *</label>
-        <div class="table-wrap">
+        <div class="table-wrap keep-table">
           <table class="table">
             <thead>
               <tr>
@@ -842,7 +842,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
     <form id="form-submit-retur-beli" class="stack">
       <div class="stack" style="gap: var(--sp-1);">
         <label class="field-label">Pilih Item Pembelian yang Diretur ke Vendor *</label>
-        <div class="table-wrap">
+        <div class="table-wrap keep-table">
           <table class="table">
             <thead>
               <tr>
@@ -1081,7 +1081,7 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
 
       <div class="stack" style="gap: var(--sp-1); margin-top: var(--sp-2);">
         <span class="fw-semibold text-xs text-muted uppercase">ITEM BARANG YANG DIRETUR</span>
-        <div class="table-wrap">
+        <div class="table-wrap keep-table">
           <table class="table">
             <thead>
               <tr>

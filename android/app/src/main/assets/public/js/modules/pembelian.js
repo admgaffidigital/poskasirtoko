@@ -104,7 +104,7 @@ function renderFormInputBeli() {
   return `
     <div class="pembelian-layout">
       <!-- Kolom Kiri: Input Item & Keranjang Beli -->
-      <div class="stack">
+      <div class="stack pembelian-col-main">
         <!-- Informasi Header Faktur -->
         <div class="card card-body stack">
           <div class="pembelian-header-grid">
@@ -181,17 +181,17 @@ function renderFormInputBeli() {
               <button type="button" class="btn btn-ghost btn-sm" id="btn-terapkan-diskon-semua">Terapkan ke Semua</button>
             </div>
           </div>
-          <div class="table-wrap">
-            <table class="table" id="tabel-keranjang-beli">
+          <div class="table-wrap keep-table">
+            <table class="table tabel-keranjang-beli" id="tabel-keranjang-beli">
               <thead>
                 <tr>
-                  <th>Barang</th>
-                  <th>Satuan</th>
-                  <th style="text-align: right;">Qty Beli</th>
-                  <th style="text-align: right;">Harga Satuan</th>
-                  <th style="text-align: right;">Disk. (%)</th>
-                  <th style="text-align: right;">Subtotal</th>
-                  <th style="width: 40px;"></th>
+                  <th style="min-width: 130px;">Barang</th>
+                  <th style="width: 75px; min-width: 60px;">Satuan</th>
+                  <th style="width: 75px; min-width: 60px; text-align: right;">Qty Beli</th>
+                  <th style="width: 110px; min-width: 90px; text-align: right;">Harga Satuan</th>
+                  <th style="width: 75px; min-width: 60px; text-align: right;">Disk. (%)</th>
+                  <th style="width: 115px; min-width: 95px; text-align: right;">Subtotal</th>
+                  <th style="width: 40px; text-align: center;"></th>
                 </tr>
               </thead>
               <tbody id="tbody-keranjang-beli">
@@ -207,7 +207,7 @@ function renderFormInputBeli() {
       </div>
 
       <!-- Kolom Kanan: Ringkasan & Pembayaran -->
-      <div class="card card-body stack" style="position: sticky; top: var(--sp-3);">
+      <div class="card card-body stack pembelian-col-side card-ringkasan-beli" style="position: sticky; top: var(--sp-3);">
         <h3>Ringkasan Pembelian</h3>
 
         <div class="row-between text-sm">
@@ -870,7 +870,7 @@ async function muatRiwayatPembelian(container, query = '') {
 
     let html = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-riwayat-beli">
           <thead>
             <tr>
               <th>No Faktur</th>
@@ -1033,8 +1033,8 @@ async function bukaModalDetailPembelian(pembelianId) {
           </div>
         </div>
 
-        <div class="table-wrap" style="max-height: 280px; overflow-y: auto;">
-          <table class="table">
+        <div class="table-wrap keep-table" style="max-height: 280px; overflow-y: auto;">
+          <table class="table" style="min-width: 0; width: 100%;">
             <thead>
               <tr>
                 <th>Nama Barang</th>

@@ -176,7 +176,7 @@
 .field-label {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 4px;
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   color: var(--text);
@@ -187,6 +187,11 @@
   color: var(--danger-text);
   margin-left: 2px;
   font-weight: var(--fw-bold);
+}
+
+.field-label .field-hint-right,
+.field-label .label-action {
+  margin-left: auto;
 }
 
 .field-hint {
@@ -990,6 +995,10 @@ input[type="password"] {
 
   .table-kartu-stok {
     min-width: 860px;
+  }
+
+  .table-riwayat-beli {
+    min-width: 820px;
   }
 }
 
@@ -3116,30 +3125,57 @@ a.list-item:hover {
 .pembelian-layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @media (min-width: 992px) {
   .pembelian-layout {
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr) 330px;
   }
 }
 
 @media (min-width: 1280px) {
   .pembelian-layout {
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) 350px;
   }
 }
 
 .pembelian-layout > * {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.pembelian-col-main {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pembelian-col-side,
+.card-ringkasan-beli {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.card-ringkasan-beli .row-between {
+  min-width: 0;
+  gap: var(--sp-2);
 }
 
 .pembelian-header-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--sp-2);
+}
+
+.pembelian-header-grid .field {
+  min-width: 0;
 }
 
 @media (min-width: 640px) {
@@ -3154,23 +3190,51 @@ a.list-item:hover {
   gap: var(--sp-2);
 }
 
-@media (min-width: 640px) and (max-width: 1199px) {
+.beli-inputs-grid .field {
+  min-width: 0;
+}
+
+@media (min-width: 640px) and (max-width: 1359px) {
   .beli-inputs-grid {
-    grid-template-columns: 1.2fr 0.8fr 1.4fr 1fr;
+    grid-template-columns: 1fr 1fr 1.3fr 1fr;
     align-items: flex-end;
   }
 
   .beli-inputs-grid button#btn-tambah-item-beli {
-    grid-column: span 4;
+    grid-column: 1 / -1;
     width: 100%;
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1360px) {
   .beli-inputs-grid {
-    grid-template-columns: 1.1fr 0.8fr 1.3fr 0.9fr auto;
+    grid-template-columns: 1.1fr 0.9fr 1.4fr 1fr auto;
     align-items: flex-end;
   }
+
+  .beli-inputs-grid button#btn-tambah-item-beli {
+    white-space: nowrap;
+    padding: 0 16px;
+  }
+}
+
+.tabel-keranjang-beli {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: auto;
+}
+
+.tabel-keranjang-beli th,
+.tabel-keranjang-beli td {
+  padding: 8px 10px;
+}
+
+/* Pertahankan agar tabel dalam modal atau tata letak multi-kolom tidak meledak ke min-width 960px */
+.modal .table-wrap:not(.keep-table) .table,
+.modal-body .table-wrap:not(.keep-table) .table,
+.pembelian-layout .table-wrap:not(.keep-table) .table {
+  min-width: 0;
+  width: 100%;
 }
 
 /* Filter Bar & Tabel Kartu Stok */
