@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.38] - 2026-11-15
+
+### Fixed & Enhanced
+- [UI] [PRODUK] **Penyempurnaan Total Tata Letak Footer Paginasi & Tombol Muat Lebih Banyak (Load More)**:
+  - **Akar Masalah**: Pada tampilan katalog produk mobile, wadah paginasi (`#area-paginasi-produk`) sebelumnya menggunakan tata letak baris flex horizontal tunggal (`row-between`) yang menggabungkan teks info barang (`Menampilkan 20 dari 21 barang`) dengan kluster tombol di sebelah kanan (`+ Muat Lebih Banyak (+1)` dan `← Sebelumnya 1 / 2 Berikutnya →`). Pada layar smartphone berlebar 360–420px, ruang horizontal tidak mencukupi sehingga teks info tertekan (*squished*) menjadi beberapa baris yang bertumpuk canggung, dan tombol `Muat Lebih Banyak` terhimpit tepat di atas tombol paginasi tanpa jarak atau pemisah visual yang rapi.
+  - **Tata Letak Baru yang Bersih & Responsif**:
+    - Memisahkan tombol **Muat Lebih Banyak** menjadi wadah mandiri berorientasi tengah (`.produk-load-more-wrapper`) dengan ukuran tombol proporsional, ikon plus, dan indikator jumlah sisa barang yang jelas.
+    - Menghadirkan bilah paginasi bergaris pembatas elegan (`.produk-pagination-bar`) dengan *border-top* solid halus.
+    - Mengatur tombol navigasi `← Sebelumnya`, indikator halaman badge `1 / 2` (`.pagination-page-indicator`), dan tombol `Berikutnya →` dalam satu grup rapi (`.pagination-controls`) dengan tinggi sentuh seragam (*control-h-sm* 36px).
+    - Menerapkan aturan media query seluler (`@media (max-width: 600px)`) dengan susunan vertikal terbalik (*column-reverse*): grup tombol paginasi berada rapi di tengah atas, diikuti teks informasi jumlah barang di tengah bawah tanpa pemotongan kata atau pemisahan baris paksa.
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.38** berukuran **~4.02 MB** (VersionCode 25) dengan sinkronisasi aset web terbaru.
+
+---
+
 ## [1.0.37] - 2026-11-15
 
 ### Fixed & Enhanced

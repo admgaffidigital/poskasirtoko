@@ -464,6 +464,70 @@
   }
 }
 
+/* ---------- Paginasi Katalog Produk Responsif ---------- */
+.produk-load-more-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: var(--sp-2) 0;
+}
+
+.produk-load-more-wrapper .btn {
+  min-width: 240px;
+  max-width: 100%;
+  font-weight: var(--fw-semibold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.produk-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.produk-pagination-bar .pagination-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.produk-pagination-bar .pagination-page-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .produk-pagination-bar {
+    flex-direction: column-reverse;
+    align-items: center;
+    text-align: center;
+    gap: var(--sp-3);
+  }
+
+  .produk-pagination-bar .pagination-controls {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ---------- Bottom navigation (mobile) ---------- */
 .bottomnav {
   position: fixed;

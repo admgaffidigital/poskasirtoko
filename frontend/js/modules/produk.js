@@ -177,8 +177,8 @@ export async function renderProdukModule(container) {
         ${renderSkeleton(4)}
       </div>
 
-      <!-- Paginasi -->
-      <div id="area-paginasi-produk" class="row-between"></div>
+      <!-- Paginasi & Kontrol Muat Produk -->
+      <div id="area-paginasi-produk" class="stack-sm" style="width: 100%; margin-top: var(--sp-3);"></div>
     </div>
   `;
 
@@ -605,17 +605,32 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       const totalHal = Math.ceil(total / filterState.limit) || 1;
       const sisaProduk = total - items.length;
       areaPaginasi.innerHTML = `
-        <div class="text-sm text-muted">Menampilkan ${items.length} dari ${total} barang</div>
-        <div class="row items-center" style="gap: var(--sp-2); flex-wrap: wrap;">
-          ${sisaProduk > 0 ? `
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-load-more-prd" style="font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              <span>Muat Lebih Banyak (+${Math.min(filterState.limit, sisaProduk)})</span>
+        ${sisaProduk > 0 ? `
+          <div class="produk-load-more-wrapper">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-load-more-prd">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Muat Lebih Banyak (+${Math.min(filterState.limit, sisaProduk)} barang)</span>
             </button>
+          </div>
+        ` : ''}
+
+        <div class="produk-pagination-bar">
+          <div class="text-sm text-muted">
+            Menampilkan <strong style="color: var(--text);">${items.length}</strong> dari <strong style="color: var(--text);">${total}</strong> barang
+          </div>
+          ${totalHal > 1 ? `
+            <div class="pagination-controls">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-hal-sebelum" ${filterState.page <= 1 ? 'disabled' : ''}>
+                ← Sebelumnya
+              </button>
+              <span class="pagination-page-indicator">
+                ${filterState.page} / ${totalHal}
+              </span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-hal-berikut" ${filterState.page >= totalHal ? 'disabled' : ''}>
+                Berikutnya →
+              </button>
+            </div>
           ` : ''}
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-hal-sebelum" ${filterState.page <= 1 ? 'disabled' : ''}>← Sebelumnya</button>
-          <span class="text-sm fw-medium">${filterState.page} / ${totalHal}</span>
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-hal-berikut" ${filterState.page >= totalHal ? 'disabled' : ''}>Berikutnya →</button>
         </div>
       `;
 
