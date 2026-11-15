@@ -263,7 +263,7 @@ async function muatDataPelanggan(container) {
                     ${isMember ? `<span class="fw-bold text-warning">${(it.poin || 0).toLocaleString('id-ID')}</span>` : '<span class="text-muted">-</span>'}
                   </td>
                   <td data-label="Status">${statusBadge}</td>
-                  <td style="text-align: right; min-width: 245px; width: 245px; white-space: nowrap;" data-label="Aksi">
+                  <td style="text-align: right; min-width: 260px; width: 260px; padding-right: 16px; white-space: nowrap;" data-label="Aksi">
                     <div class="pel-actions-row">
                       <button type="button" class="btn btn-secondary btn-sm btn-detail-pel" data-id="${escapeHtml(it.id)}" title="Rincian & Riwayat Belanja/Poin">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>

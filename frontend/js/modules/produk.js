@@ -132,15 +132,6 @@ export async function renderProdukModule(container) {
             </select>
           </div>
 
-          <!-- Dropdown Status Stok -->
-          <div class="field" style="flex: 1 1 160px; min-width: 140px;">
-            <select class="select" id="filter-produk-stok" title="Status Stok">
-              <option value="" ${filterState.filter_stok === '' ? 'selected' : ''}>Semua Status Stok</option>
-              <option value="menipis" ${filterState.filter_stok === 'menipis' ? 'selected' : ''}>Stok Menipis (<= Min)</option>
-              <option value="habis" ${filterState.filter_stok === 'habis' ? 'selected' : ''}>Stok Habis (0)</option>
-              <option value="tersedia" ${filterState.filter_stok === 'tersedia' ? 'selected' : ''}>Stok Tersedia</option>
-            </select>
-          </div>
 
           <!-- Dropdown Status Keaktifan -->
           <div class="field" style="flex: 1 1 140px; min-width: 130px;">
@@ -225,14 +216,6 @@ export async function renderProdukModule(container) {
     muatProduk(container, canEdit, isKasir);
   });
 
-  // Dropdown status stok
-  $('#filter-produk-stok', container)?.addEventListener('change', (e) => {
-    filterState.filter_stok = e.target.value;
-    filterState.page = 1;
-    perbaruiTampilanFilter(container);
-    muatProduk(container, canEdit, isKasir);
-  });
-
   // Dropdown status keaktifan
   $('#filter-produk-status', container)?.addEventListener('change', (e) => {
     filterState.status = e.target.value;
@@ -255,8 +238,6 @@ export async function renderProdukModule(container) {
         if (inpQ) inpQ.value = '';
         const selKat = $('#filter-produk-kategori', container);
         if (selKat) selKat.value = '';
-        const selStok = $('#filter-produk-stok', container);
-        if (selStok) selStok.value = '';
         const selStatus = $('#filter-produk-status', container);
         if (selStatus) selStatus.value = '';
         const selSort = $('#filter-produk-sort', container);
@@ -266,12 +247,8 @@ export async function renderProdukModule(container) {
         filterState.filter_stok = '';
         const selSort = $('#filter-produk-sort', container);
         if (selSort) selSort.value = 'terbaru';
-        const selStok = $('#filter-produk-stok', container);
-        if (selStok) selStok.value = '';
       } else if (chip === 'menipis' || chip === 'habis' || chip === 'tersedia') {
         filterState.filter_stok = chip;
-        const selStok = $('#filter-produk-stok', container);
-        if (selStok) selStok.value = chip;
       }
       filterState.page = 1;
       perbaruiTampilanFilter(container);
@@ -292,8 +269,6 @@ export async function renderProdukModule(container) {
     if (inpQ) inpQ.value = '';
     const selKat = $('#filter-produk-kategori', container);
     if (selKat) selKat.value = '';
-    const selStok = $('#filter-produk-stok', container);
-    if (selStok) selStok.value = '';
     const selStatus = $('#filter-produk-status', container);
     if (selStatus) selStatus.value = '';
     const selSort = $('#filter-produk-sort', container);
@@ -604,20 +579,10 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       });
     }
 
-    // Render kontrol paginasi & tombol Muat Lebih Banyak (Load More)
+    // Render kontrol paginasi tunggal yang rapi & bersih tanpa duplikasi tombol
     if (areaPaginasi) {
       const totalHal = Math.ceil(total / filterState.limit) || 1;
-      const sisaProduk = total - items.length;
       areaPaginasi.innerHTML = `
-        ${sisaProduk > 0 ? `
-          <div class="produk-load-more-wrapper">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-load-more-prd">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              <span>Muat Lebih Banyak (+${Math.min(filterState.limit, sisaProduk)} barang)</span>
-            </button>
-          </div>
-        ` : ''}
-
         <div class="produk-pagination-bar">
           <div class="text-sm text-muted">
             Menampilkan <strong style="color: var(--text);">${items.length}</strong> dari <strong style="color: var(--text);">${total}</strong> barang
@@ -637,13 +602,6 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
           ` : ''}
         </div>
       `;
-
-      $('#btn-load-more-prd', areaPaginasi)?.addEventListener('click', async (e) => {
-        const btn = e.currentTarget;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-sm" style="border-color: currentColor; border-top-color: transparent; margin-right: 6px;"></span> Memuat...`;
-        await muatProduk(container, canEdit, isKasir, true);
-      });
 
       $('#btn-hal-sebelum', areaPaginasi)?.addEventListener('click', () => {
         if (filterState.page > 1) {

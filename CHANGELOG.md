@@ -16,6 +16,35 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.44] - 2026-11-15
+
+### Added & Fixed
+- [UI] [POS-KASIR] **Workstation POS Terkunci (Accurate POS Style) & Keranjang Belanja Fixed/Docked**:
+  - Mengatasi pertanyaan dan keluhan pengguna *"apakah memang keranjang belanja harus ikut terscroll"*: pada POS kasir profesional (ala Accurate POS), keranjang belanja dan tombol checkout `[BAYAR (F4)]` **tidak boleh ikut terscroll** atau terdorong ke luar layar.
+  - Menerapkan viewport lock pada rute POS (`body.pos-route-active`, `.app.pos-mode`, `.content.pos-content-locked`) dengan `height: 100vh; overflow: hidden;` pada breakpoint desktop & tablet (≥768px).
+  - Area katalog produk (`.pos-product-area`) kini menjadi satu-satunya kontainer di sisi kiri yang bergulir (*independent smooth vertical scroll*), sementara toolbar pencarian, scanner, dan chips kategori tetap diam terkunci di atas.
+  - Panel keranjang belanja (`.pos-cart-panel`) di sisi kanan berukuran presisi 340px–360px dan terkunci utuh (*permanently fixed/docked*):
+    - Header keranjang dan pemilih member tetap diam di atas.
+    - Daftar item keranjang (`.pos-cart-items`) bergulir internal jika item belanja banyak.
+    - Footer keranjang (Subtotal, Diskon, Total Belanja) dan tombol aksi `[📋 Tahan (F7)]` & `[💳 BAYAR (F4)]` selalu tampak 100% di bagian bawah layar tanpa pernah terpotong atau harus digulir.
+- [UI] [TOPBAR] **Pembersihan Total Fitur Duplikat di Header (Lega, Bersih, & Minimalis)**:
+  - Mengeliminasi seluruh tombol fitur yang terduplikat antara Topbar dan Sidebar:
+    - Menghapus tombol ganda *Sinkronisasi Data*, *Ubah Tema (Moon)*, *Ukuran Teks (Aa)*, dan *Status Sistem (Database)* dari Topbar karena semuanya sudah tersedia lengkap di Sidebar footer dan menu navigasi.
+    - Mengintegrasikan preferensi tema, ukuran teks, dan sinkronisasi ke dalam modal profil pengguna (*User Account Sheet*), sehingga pengguna mobile dan desktop tetap memiliki akses instan 1-klik.
+    - Menghilangkan duplikasi tombol toggle menu (*hamburger [☰]* di Topbar dan *chevron [<]* di Sidebar) saat sidebar terbuka di desktop.
+    - Menghilangkan logo toko ganda di Topbar pada layar desktop/tablet karena logo utama sudah tampil di Sidebar header.
+    - Topbar kini tampil sangat lega, rapi, dan elegan: hanya memuat judul halaman aktif, indikator jaringan offline, dan tombol profil ringkas di pojok kanan.
+- [UI] [PRODUK] **Eliminasi Duplikasi Paginasi & Filter Manajemen Produk**:
+  - Menghapus tombol "+ Muat Lebih Banyak (+1)" yang sebelumnya menumpuk di atas bar paginasi "← Sebelumnya 1 / 2 Berikutnya →". Paginasi kini tampil tunggal dan bersih.
+  - Menghilangkan dropdown "Status Stok" yang menduplikasi fungsi filter chips "Semua / Stok Menipis / Stok Habis / Ada Stok" di bawahnya.
+- [UI] [SIDEBAR] **Pelebaran Sidebar ke 276px & Anti-Ellipsis Nama Toko**:
+  - Menyesuaikan `--sidebar-w: 276px;` pada [frontend/css/tokens.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/tokens.css) dan menyempurnakan padding header `.sidebar-brand` agar nama toko `TB.PUTRI UTAMA TEKNIK` selalu tampil utuh tanpa terpotong `TB.PUTRI UTAMA T...`.
+- [UI] [PELANGGAN] **Pelebaran Kolom Aksi Tabel Pelanggan**:
+  - Menyesuaikan kolom aksi pada [frontend/js/modules/pelanggan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pelanggan.js) menjadi `min-width: 260px; width: 260px; padding-right: 16px;` agar ketiga tombol aksi ("Rincian", "Ubah", "Hapus") memiliki ruang bernapas yang cukup dan tidak terpotong.
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.44** berukuran **4.03 MB** (VersionCode 31).
+
+---
+
 ## [1.0.43] - 2026-11-15
 
 ### Added & Fixed

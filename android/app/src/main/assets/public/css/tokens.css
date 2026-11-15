@@ -92,7 +92,7 @@
   --control-h-lg: 52px;
   --topbar-h: 56px;
   --bottomnav-h: 64px;
-  --sidebar-w: 264px;
+  --sidebar-w: 276px;
   --rail-w: 76px;
   --content-max: 1280px;
   --safe-top: env(safe-area-inset-top, 0px);

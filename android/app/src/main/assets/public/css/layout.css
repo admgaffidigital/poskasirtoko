@@ -34,7 +34,7 @@
   align-items: center;
   gap: var(--sp-2);
   height: var(--topbar-h);
-  padding: 0 10px 0 14px;
+  padding: 0 8px 0 12px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
@@ -99,8 +99,8 @@
 
 .brand-text span {
   display: block;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
   color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
@@ -388,6 +388,20 @@
   color: var(--text);
 }
 
+@media (min-width: 768px) {
+  /* Di desktop/tablet, logo toko sudah ada di sidebar header, sembunyikan logo duplikat di topbar */
+  .topbar-logo {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Saat sidebar terbuka penuh di desktop, sembunyikan toggle topbar agar tidak berdampingan dengan tombol toggle di sidebar */
+  .app:not(.sidebar-collapsed) .btn-sidebar-toggle-top {
+    display: none !important;
+  }
+}
+
 .topbar-logo {
   display: grid;
   flex-shrink: 0;
@@ -476,19 +490,49 @@
   }
 }
 
-/* POS Kasir Full-Height Fluid Layout agar presisi dan tidak terjepit / menabrak layar */
-.content:has(.pos-wrapper) {
-  max-width: 100% !important;
-  width: 100% !important;
-  padding: var(--sp-3) var(--sp-4) !important;
-  height: calc(100vh - var(--topbar-h));
-  height: calc(100dvh - var(--topbar-h));
-  overflow: hidden;
-  box-sizing: border-box;
+/* POS Kasir Full-Height Fluid Layout - Workstation Accurate POS Presisi */
+@media (min-width: 768px) {
+  body.pos-route-active,
+  .app.pos-mode,
+  .app:has(.pos-wrapper) {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .app.pos-mode .main,
+  .app:has(.pos-wrapper) .main {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .content.pos-content-locked,
+  .content:has(.pos-wrapper) {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: var(--sp-2) var(--sp-4) !important;
+    height: calc(100vh - var(--topbar-h)) !important;
+    height: calc(100dvh - var(--topbar-h)) !important;
+    max-height: calc(100vh - var(--topbar-h)) !important;
+    max-height: calc(100dvh - var(--topbar-h)) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+  }
 }
 
 @media (max-width: 767px) {
-  .content:has(.pos-wrapper) {
+  .content:has(.pos-wrapper),
+  .content.pos-content-locked {
     height: auto;
     overflow: visible;
     padding: var(--sp-2) var(--sp-3) !important;

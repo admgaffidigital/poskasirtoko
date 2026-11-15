@@ -388,7 +388,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.43'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.44'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -441,7 +441,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.43'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.44'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -532,25 +532,8 @@ class App {
             <div class="topbar-actions">
               <span class="badge badge-warning net-pill ${typeof navigator !== 'undefined' && navigator.onLine ? '' : 'is-offline'}" id="net-pill">Offline</span>
 
-              <!-- Tombol Sinkronisasi Data Global (Reload/Refresh) -->
-              <button type="button" class="btn btn-ghost btn-icon btn-sm btn-sync" id="btn-sync-top" title="Sinkronisasi & Segarkan Data (F5)" aria-label="Sinkronisasi Data">
-                ${ICONS.refresh}
-              </button>
-
-              <button type="button" class="btn btn-ghost btn-icon btn-sm" id="btn-theme-top" title="Ubah Tema" aria-label="Ubah Tema">
-                ${ICONS.moon}
-              </button>
-
-              <button type="button" class="btn btn-ghost btn-icon btn-sm" id="btn-font-top" title="Ukuran Teks" aria-label="Ukuran Teks">
-                <span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span>
-              </button>
-
-              <a href="#/sistem" class="btn btn-ghost btn-icon btn-sm" title="Status Sistem" aria-label="Status Sistem">
-                ${ICONS.database}
-              </a>
-
-              <!-- Tombol Profil Pengguna / Login -->
-              <button type="button" class="btn btn-ghost btn-sm" id="btn-user-top" style="gap: 4px; padding: 0 8px;">
+              <!-- Tombol Profil Pengguna / Login (Ringkas & Bersih) -->
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-user-top" style="gap: 6px; padding: 0 10px; border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border);" title="Akun Pengguna">
                 ${ICONS.users}
                 <span id="label-user-top" class="text-xs fw-semibold">Login</span>
               </button>
@@ -749,8 +732,8 @@ class App {
         return;
       }
 
-      showModal({
-        title: 'Akun Pengguna',
+      const modalUser = showModal({
+        title: 'Akun Pengguna & Preferensi',
         isSheet: true,
         body: `
           <div class="stack">
@@ -768,6 +751,27 @@ class App {
             <div class="divider"></div>
 
             <div class="list">
+              <button type="button" class="list-item" id="btn-menu-tema">
+                <div class="list-item-icon">${ICONS.moon}</div>
+                <div class="grow">
+                  <div class="list-item-title">Ubah Tema Tampilan</div>
+                  <div class="list-item-sub">Beralih mode Terang / Gelap</div>
+                </div>
+              </button>
+              <button type="button" class="list-item" id="btn-menu-font">
+                <div class="list-item-icon"><span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span></div>
+                <div class="grow">
+                  <div class="list-item-title">Ukuran Teks Tampilan</div>
+                  <div class="list-item-sub">Beralih ukuran Normal / Besar</div>
+                </div>
+              </button>
+              <button type="button" class="list-item" id="btn-menu-sync">
+                <div class="list-item-icon">${ICONS.refresh}</div>
+                <div class="grow">
+                  <div class="list-item-title">Sinkronisasi Data</div>
+                  <div class="list-item-sub">Segarkan cache data &amp; stok lokal (F5)</div>
+                </div>
+              </button>
               <button type="button" class="list-item" id="btn-menu-ganti-pin">
                 <div class="list-item-icon">${ICONS.userCheck}</div>
                 <div class="grow">
@@ -787,11 +791,28 @@ class App {
         `
       });
 
+      document.getElementById('btn-menu-tema')?.addEventListener('click', () => {
+        toggleTemaHandler();
+        modalUser.close();
+      });
+
+      document.getElementById('btn-menu-font')?.addEventListener('click', () => {
+        toggleFontHandler();
+        modalUser.close();
+      });
+
+      document.getElementById('btn-menu-sync')?.addEventListener('click', () => {
+        triggerSyncHandler();
+        modalUser.close();
+      });
+
       document.getElementById('btn-menu-ganti-pin')?.addEventListener('click', () => {
+        modalUser.close();
         tampilkanDialogWajibGantiPin(store.get('token'));
       });
 
       document.getElementById('btn-menu-logout')?.addEventListener('click', () => {
+        modalUser.close();
         konfirmasiLogout();
       });
     };
@@ -886,6 +907,14 @@ class App {
     requestAnimationFrame(() => {
       content.classList.add('masuk');
     });
+
+    const isPos = rute && rute.id === 'pos';
+    document.body.classList.toggle('pos-route-active', isPos);
+    const appEl = document.querySelector('.app');
+    if (appEl) {
+      appEl.classList.toggle('pos-mode', isPos);
+    }
+    content.classList.toggle('pos-content-locked', isPos);
 
     if (rute.id === 'pos') {
       renderPosModule(content);

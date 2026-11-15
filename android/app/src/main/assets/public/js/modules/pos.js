@@ -28,6 +28,11 @@ import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/ba
 import { haptic } from '../utils/native.js';
 
 export function renderPosModule(container) {
+  // Tandai layout POS terkunci ala workstation kasir profesional (Accurate POS)
+  container.classList.add('pos-content-locked');
+  document.body.classList.add('pos-route-active');
+  document.querySelector('.app')?.classList.add('pos-mode');
+
   // POS State
   const state = {
     katalog: [],
@@ -141,15 +146,15 @@ export function renderPosModule(container) {
             <div class="row" style="gap: var(--sp-1);">
               <button type="button" id="btn-pos-reprint" class="btn btn-ghost btn-sm" title="Cetak Ulang Transaksi Terakhir">
                 ${ICONS.printer}
-                <span class="d-none-mobile">Struk Terakhir</span>
+                <span class="d-none-mobile">Struk</span>
               </button>
               <button type="button" id="btn-pos-panduan-printer" class="btn btn-ghost btn-sm" title="Atur Printer Bluetooth">
                 ${ICONS.settings}
                 <span class="d-none-mobile">Printer</span>
               </button>
-              <button type="button" id="btn-pending-list" class="btn btn-ghost btn-sm position-relative" title="Daftar Tahan / Pending (F8)">
+              <button type="button" id="btn-pending-list" class="btn btn-ghost btn-sm position-relative" title="Daftar Transaksi Tertahan (F8)">
                 ${ICONS.clipboard}
-                <span class="d-none-mobile">Tahan</span>
+                <span class="d-none-mobile">Pending</span>
                 <span class="badge badge-warning badge-sm" id="pending-badge" style="display: none;">0</span>
               </button>
               <button type="button" id="btn-clear-cart" class="btn btn-ghost btn-icon btn-sm text-danger" title="Kosongkan Keranjang">
@@ -177,7 +182,7 @@ export function renderPosModule(container) {
 
         <!-- Cart Items List -->
         <div class="pos-cart-items" id="pos-cart-items">
-          <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted);">
+          <div class="empty-state text-center" style="padding: var(--sp-4); color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
             <div style="margin-bottom: var(--sp-2); opacity: 0.35; display: flex; justify-content: center; color: var(--text-muted);">
               <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
             </div>
@@ -223,7 +228,7 @@ export function renderPosModule(container) {
           </div>
 
           <!-- Action Buttons: Hold & Pay -->
-          <div class="row" style="gap: var(--sp-2); margin-top: var(--sp-3);">
+          <div class="row" style="gap: var(--sp-2); margin-top: var(--sp-2);">
             <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg" style="flex: 1;" title="Tahan Transaksi (F7)">
               ${ICONS.clipboard} <span>Tahan</span><span class="d-none-mobile"> (F7)</span>
             </button>
