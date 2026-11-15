@@ -137,61 +137,65 @@ export function renderPosModule(container) {
 
         <!-- Cart Header -->
         <div class="pos-cart-header">
-          <div class="row" style="justify-content: space-between; align-items: center; width: 100%;">
-            <div class="row" style="gap: var(--sp-2); align-items: center;">
-              <span style="color: var(--primary);">${ICONS.cart}</span>
-              <div class="fw-bold" style="font-size: var(--fs-md);">Keranjang Belanja</div>
-              <span class="badge badge-primary" id="cart-item-count">0</span>
+          <!-- Top Row: Judul & Reset Cart -->
+          <div class="pos-cart-title-row">
+            <div class="pos-cart-heading">
+              <span class="pos-cart-title-icon">${ICONS.cart}</span>
+              <span class="pos-cart-title-text">Keranjang Belanja</span>
+              <span class="badge badge-primary pos-cart-count-badge" id="cart-item-count">0</span>
             </div>
-            <div class="row" style="gap: var(--sp-1);">
-              <button type="button" id="btn-pos-shift" class="btn btn-ghost btn-sm" title="Kas & Rekap Shift Kasir (F3)">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-                <span class="d-none-mobile">Shift</span>
-              </button>
-              <button type="button" id="btn-pos-reprint" class="btn btn-ghost btn-sm" title="Cetak Ulang Transaksi Terakhir (F9)">
-                ${ICONS.printer}
-                <span class="d-none-mobile">Struk</span>
-              </button>
-              <button type="button" id="btn-pos-panduan-printer" class="btn btn-ghost btn-sm" title="Atur Printer Bluetooth">
-                ${ICONS.settings}
-                <span class="d-none-mobile">Printer</span>
-              </button>
-              <button type="button" id="btn-pending-list" class="btn btn-ghost btn-sm position-relative" title="Daftar Transaksi Tertahan (F8)">
-                ${ICONS.clipboard}
-                <span class="d-none-mobile">Pending</span>
-                <span class="badge badge-warning badge-sm" id="pending-badge" style="display: none;">0</span>
-              </button>
-              <button type="button" id="btn-clear-cart" class="btn btn-ghost btn-icon btn-sm text-danger" title="Kosongkan Keranjang">
-                ${ICONS.rotateCcw}
-              </button>
-            </div>
+            <button type="button" id="btn-clear-cart" class="btn btn-ghost btn-sm text-danger pos-btn-clear" title="Kosongkan Keranjang Belanja">
+              ${ICONS.rotateCcw}
+              <span>Reset</span>
+            </button>
           </div>
 
-          <!-- Pelanggan Info Pill -->
-          <div class="pos-customer-pill" id="pos-customer-pill">
-            <div class="row" style="justify-content: space-between; align-items: center; width: 100%;">
-              <div class="row" style="gap: var(--sp-2); align-items: center; overflow: hidden;">
-                <span style="color: var(--text-muted);">${ICONS.users}</span>
-                <div class="text-truncate">
-                  <span class="fw-medium text-xs" id="label-pelanggan-nama">Pelanggan Umum</span>
-                  <span class="text-xs text-muted" id="label-pelanggan-sub">(Tunai / Non-Tempo)</span>
-                </div>
+          <!-- Quick Actions Toolbar: 4 Tombol Operasional POS (Shift, Struk, Printer, Pending) -->
+          <div class="pos-cart-quickbar">
+            <button type="button" id="btn-pos-shift" class="pos-quick-btn" title="Kas & Rekap Shift Kasir (F3)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+              <span>Shift <span class="pos-kbd-hint">(F3)</span></span>
+            </button>
+            <button type="button" id="btn-pos-reprint" class="pos-quick-btn" title="Cetak Ulang Transaksi Terakhir (F9)">
+              ${ICONS.printer}
+              <span>Struk <span class="pos-kbd-hint">(F9)</span></span>
+            </button>
+            <button type="button" id="btn-pos-panduan-printer" class="pos-quick-btn" title="Atur Printer Bluetooth">
+              ${ICONS.settings}
+              <span>Printer</span>
+            </button>
+            <button type="button" id="btn-pending-list" class="pos-quick-btn position-relative" title="Daftar Transaksi Tertahan (F8)">
+              ${ICONS.clipboard}
+              <span>Pending <span class="pos-kbd-hint">(F8)</span></span>
+              <span class="badge badge-warning badge-sm" id="pending-badge" style="display: none;">0</span>
+            </button>
+          </div>
+
+          <!-- Pelanggan / Member Card -->
+          <div class="pos-customer-card" id="pos-customer-pill">
+            <div class="pos-customer-main">
+              <div class="pos-customer-avatar">
+                ${ICONS.users}
               </div>
-              <button type="button" id="btn-ganti-pelanggan" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: var(--fs-xs);">
-                Pilih Member
-              </button>
+              <div class="pos-customer-details">
+                <div class="pos-customer-name" id="label-pelanggan-nama">Pelanggan Umum</div>
+                <div class="pos-customer-sub" id="label-pelanggan-sub">(Tunai / Non-Tempo)</div>
+              </div>
             </div>
+            <button type="button" id="btn-ganti-pelanggan" class="btn btn-secondary btn-sm pos-customer-btn">
+              Pilih Member
+            </button>
           </div>
         </div>
 
         <!-- Cart Items List -->
         <div class="pos-cart-items" id="pos-cart-items">
-          <div class="empty-state text-center" style="padding: var(--sp-4); color: var(--text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
-            <div style="margin-bottom: var(--sp-2); opacity: 0.35; display: flex; justify-content: center; color: var(--text-muted);">
-              <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+          <div class="pos-cart-empty">
+            <div class="pos-empty-icon-wrap">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
             </div>
-            <div>Keranjang masih kosong</div>
-            <div class="text-xs text-muted">Pilih produk dari katalog atau scan barcode<span class="d-none-mobile"> (F2)</span></div>
+            <div class="pos-empty-title">Keranjang masih kosong</div>
+            <div class="pos-empty-sub">Pilih produk dari katalog atau scan barcode<span class="d-none-mobile"> (F2)</span></div>
           </div>
         </div>
 
@@ -221,22 +225,20 @@ export function renderPosModule(container) {
             <span class="text-sm mono fw-medium" id="cart-pembulatan">Rp 0</span>
           </div>
 
-          <div class="divider" style="margin: var(--sp-2) 0;"></div>
+          <div class="divider" style="margin: var(--sp-1) 0;"></div>
 
           <!-- Grand Total Row -->
           <div class="pos-total-row">
-            <div>
-              <div class="text-xs text-muted">TOTAL BELANJA</div>
-              <div class="fw-bold pos-grand-total mono" id="cart-grand-total">Rp 0</div>
-            </div>
+            <div class="pos-total-label">TOTAL BELANJA</div>
+            <div class="fw-bold pos-grand-total mono" id="cart-grand-total">Rp 0</div>
           </div>
 
           <!-- Action Buttons: Hold & Pay -->
-          <div class="row" style="gap: var(--sp-2); margin-top: var(--sp-2);">
-            <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg" style="flex: 1;" title="Tahan Transaksi (F7)">
+          <div class="pos-cart-action-btns">
+            <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg pos-btn-hold" style="flex: 1;" title="Tahan Transaksi (F7)">
               ${ICONS.clipboard} <span>Tahan</span><span class="d-none-mobile"> (F7)</span>
             </button>
-            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg" style="flex: 2; font-weight: 600; font-size: var(--fs-md);" title="Bayar Sekarang (F4)">
+            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg pos-btn-pay" style="flex: 2;" title="Bayar Sekarang (F4)">
               ${ICONS.wallet} <span>BAYAR</span><span class="d-none-mobile"> (F4)</span>
             </button>
           </div>
@@ -1108,12 +1110,12 @@ export function renderPosModule(container) {
 
     if (state.keranjang.length === 0) {
       elCartItems.innerHTML = `
-        <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted);">
-          <div style="margin-bottom: var(--sp-2); opacity: 0.35; display: flex; justify-content: center; color: var(--text-muted);">
-            <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        <div class="pos-cart-empty">
+          <div class="pos-empty-icon-wrap">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
           </div>
-          <div>Keranjang masih kosong</div>
-          <div class="text-xs text-muted">Pilih produk dari katalog atau scan barcode (F2)</div>
+          <div class="pos-empty-title">Keranjang masih kosong</div>
+          <div class="pos-empty-sub">Pilih produk dari katalog atau scan barcode (F2)</div>
         </div>
       `;
       hitungDanTampilkanTotal();
@@ -1147,31 +1149,31 @@ export function renderPosModule(container) {
 
       html += `
         <div class="pos-cart-item" data-idx="${idx}">
-          <div class="row" style="justify-content: space-between; align-items: flex-start;">
-            <div style="flex: 1; padding-right: var(--sp-2);">
-              <div class="fw-bold text-sm">${escapeHtml(it.nama)}</div>
-              <div class="row" style="gap: 4px; align-items: center; margin-top: 2px;">
+          <div class="pos-item-header">
+            <div class="pos-item-info">
+              <div class="pos-item-name">${escapeHtml(it.nama)}</div>
+              <div class="pos-item-badges">
                 ${badgeSatuanHtml}
                 ${labelTipeHarga}
                 ${it.diskon > 0 ? `<span class="badge badge-danger badge-sm">Hemat ${formatRupiah(it.diskon)}</span>` : ''}
               </div>
             </div>
-            <button type="button" class="btn btn-ghost btn-icon btn-sm text-danger btn-hapus-item" data-idx="${idx}" title="Hapus Item" style="width: 24px; height: 24px;">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm text-danger btn-hapus-item" data-idx="${idx}" title="Hapus Item" style="width: 26px; height: 26px;">
               ${ICONS.x}
             </button>
           </div>
 
-          <div class="row" style="justify-content: space-between; align-items: center; margin-top: var(--sp-2);">
+          <div class="pos-item-controls">
             <!-- Qty Stepper -->
-            <div class="row" style="gap: 2px; align-items: center;">
-              <button type="button" class="btn btn-secondary btn-icon btn-sm btn-item-min" data-idx="${idx}" style="width: 28px; height: 28px;">-</button>
-              <input type="number" class="input text-center fw-bold input-item-qty" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" style="width: 65px; height: 28px; padding: 2px 4px; font-size: var(--fs-xs);" />
-              <button type="button" class="btn btn-secondary btn-icon btn-sm btn-item-plus" data-idx="${idx}" style="width: 28px; height: 28px;">+</button>
+            <div class="pos-item-stepper">
+              <button type="button" class="btn-item-min" data-idx="${idx}" title="Kurang">-</button>
+              <input type="number" class="input-item-qty mono" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" />
+              <button type="button" class="btn-item-plus" data-idx="${idx}" title="Tambah">+</button>
             </div>
 
             <!-- Harga & Diskon Button -->
-            <div style="text-align: right;">
-              <div class="row" style="gap: 4px; justify-content: flex-end; align-items: baseline;">
+            <div class="pos-item-pricing">
+              <div class="pos-item-actions">
                 <button type="button" class="btn btn-ghost btn-sm btn-edit-harga" data-idx="${idx}" style="padding: 0 4px; font-size: var(--fs-2xs); text-decoration: underline;" title="Ubah Harga Satuan">
                   @${formatRupiah(it.harga, false)}
                 </button>
@@ -1179,7 +1181,7 @@ export function renderPosModule(container) {
                   % Diskon
                 </button>
               </div>
-              <div class="fw-bold mono text-sm" style="color: var(--text);">
+              <div class="pos-item-subtotal">
                 ${formatRupiah(it.subtotal)}
               </div>
             </div>
