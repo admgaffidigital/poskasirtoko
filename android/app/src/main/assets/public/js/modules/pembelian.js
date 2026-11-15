@@ -102,8 +102,9 @@ export async function renderPembelianModule(container) {
 function renderFormInputBeli() {
   const tglHariIni = new Date().toISOString().substring(0, 10);
   return `
-    <div class="pembelian-layout">
-      <!-- Kolom Kiri: Input Item & Keranjang Beli -->
+    <div class="pembelian-container">
+      <div class="pembelian-layout">
+        <!-- Kolom Kiri: Input Item & Keranjang Beli -->
       <div class="stack pembelian-col-main">
         <!-- Informasi Header Faktur -->
         <div class="card card-body stack">
@@ -267,6 +268,7 @@ function renderFormInputBeli() {
         </button>
       </div>
     </div>
+  </div>
   `;
 }
 

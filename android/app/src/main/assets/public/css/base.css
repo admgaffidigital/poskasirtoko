@@ -322,6 +322,8 @@ input[type="number"] {
   gap: var(--sp-4);
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .stack-sm {

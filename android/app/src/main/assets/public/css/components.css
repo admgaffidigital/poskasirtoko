@@ -3122,6 +3122,14 @@ a.list-item:hover {
 }
 
 /* Tata Letak Responsif POS Pembelian */
+.pembelian-container {
+  container-type: inline-size;
+  container-name: pembelian;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .pembelian-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -3132,15 +3140,31 @@ a.list-item:hover {
   box-sizing: border-box;
 }
 
-@media (min-width: 992px) {
+/* Fallback Media Query:
+   - Layar lebar (≥ 1260px): ruang konten cukup lebar (≥ 990px) baik sidebar terbuka maupun tertutup
+   - Layar desktop menengah (1024px - 1259px): 2-kolom hanya aktif jika sidebar collapsed (rail mode) */
+@media (min-width: 1260px) {
   .pembelian-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1259px) {
+  .app.sidebar-collapsed .pembelian-layout {
     grid-template-columns: minmax(0, 1fr) 330px;
   }
 }
 
-@media (min-width: 1280px) {
+/* Container Query Modern: Aktifkan 2 kolom presisi hanya saat ruang konten container ≥ 880px */
+@container pembelian (min-width: 880px) {
   .pembelian-layout {
-    grid-template-columns: minmax(0, 1fr) 350px;
+    grid-template-columns: minmax(0, 1fr) 330px !important;
+  }
+}
+
+@container pembelian (min-width: 1120px) {
+  .pembelian-layout {
+    grid-template-columns: minmax(0, 1fr) 350px !important;
   }
 }
 
