@@ -11,6 +11,7 @@
 html {
   font-size: calc(16px * var(--font-scale));
   -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   width: 100%;
