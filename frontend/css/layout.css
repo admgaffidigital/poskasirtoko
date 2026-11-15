@@ -31,9 +31,9 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   height: var(--topbar-h);
-  padding: 0 var(--sp-3) 0 var(--sp-4);
+  padding: 0 10px 0 14px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
@@ -54,13 +54,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
-  transition: background var(--dur-fast), color var(--dur-fast);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
 }
 
 .sidebar-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
   color: #fff;
 }
 

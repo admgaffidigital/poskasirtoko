@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.42] - 2026-11-15
+
+### Added & Fixed
+- [UI] [TABLE] **Presisi Tabel Pelanggan, Supplier & Pengguna (Anti-Truncation Kolom Aksi)**:
+  - Memperluas kolom Aksi pada [frontend/js/modules/pelanggan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pelanggan.js) menjadi `min-width: 245px; width: 245px;` dan menetapkan `min-width: 1080px;` pada tabel, sehingga seluruh 3 tombol aksi ("Rincian", "Ubah", dan "Hapus") selalu tampil utuh berdampingan tanpa teks "Hapus" terpotong menjadi `Hap...`.
+  - Mengoptimalkan lebar kolom Aksi dan batas tabel pada modul Supplier (`min-width: 900px;` & Aksi `170px`) di [frontend/js/modules/supplier.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/supplier.js) dan Manajemen Pengguna (`min-width: 860px;` & Aksi `175px`) di [frontend/js/modules/users.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/users.js).
+- [UI] [SIDEBAR] **Pelebaran Sidebar Desktop & Anti-Ellipsis Nama Toko**:
+  - Menyesuaikan variabel `--sidebar-w: 264px;` pada [frontend/css/tokens.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/tokens.css) dan mengoptimalkan padding header `.sidebar-brand` pada [frontend/css/layout.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/layout.css).
+  - Nama toko yang panjang seperti `TB.PUTRI UTAMA TEKNIK` kini dapat tampil penuh dan elegan tanpa terpotong (*ellipsis*) `TB.PUTRI UTAMA T...`.
+  - Tombol toggle panah collapse di header sidebar kini dilengkapi dengan latar transparan halus dan border tipis yang lebih kontras dan mudah diklik.
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.42** berukuran **4.03 MB** (VersionCode 29).
+
+---
+
 ## [1.0.41] - 2026-11-15
 
 ### Added & Fixed

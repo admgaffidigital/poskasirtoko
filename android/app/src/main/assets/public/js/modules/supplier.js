@@ -92,16 +92,16 @@ async function muatSupplierList(container, canEdit, query = '') {
 
     let html = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table" style="min-width: 900px;">
           <thead>
             <tr>
-              <th>Nama Supplier</th>
-              <th>Kontak PIC & HP</th>
-              <th>Alamat</th>
-              <th style="text-align: right;">Saldo Hutang</th>
-              <th style="text-align: center;">Faktur</th>
-              <th style="text-align: center;">Status</th>
-              ${canEdit ? '<th style="width: 140px; text-align: right;">Aksi</th>' : ''}
+              <th style="min-width: 200px;">Nama Supplier</th>
+              <th style="min-width: 170px;">Kontak PIC & HP</th>
+              <th style="min-width: 160px;">Alamat</th>
+              <th style="text-align: right; min-width: 120px; white-space: nowrap;">Saldo Hutang</th>
+              <th style="text-align: center; min-width: 80px; white-space: nowrap;">Faktur</th>
+              <th style="text-align: center; min-width: 90px; white-space: nowrap;">Status</th>
+              ${canEdit ? '<th style="width: 170px; min-width: 170px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -149,7 +149,7 @@ async function muatSupplierList(container, canEdit, query = '') {
             </span>
           </td>
           ${canEdit ? `
-            <td style="text-align: right;" data-label="Aksi">
+            <td style="text-align: right; min-width: 170px; width: 170px; white-space: nowrap;" data-label="Aksi">
               <div class="table-actions">
                 <button type="button" class="btn btn-secondary btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah">
                   ${ICONS.settings}

@@ -31,9 +31,9 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   height: var(--topbar-h);
-  padding: 0 var(--sp-3) 0 var(--sp-4);
+  padding: 0 10px 0 14px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
@@ -54,14 +54,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
-  transition: background var(--dur-fast), color var(--dur-fast);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
 }
+
 .sidebar-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
   color: #fff;
 }
+
 .sidebar-toggle-icon {
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -371,6 +374,7 @@
   flex-shrink: 0;
   cursor: pointer;
 }
+
 .btn-sidebar-toggle-top:hover {
   background: var(--surface-2);
   color: var(--text);
@@ -510,7 +514,7 @@
     gap: var(--sp-2);
   }
 
-  .page-header > div:first-child {
+  .page-header>div:first-child {
     width: 100%;
   }
 
@@ -522,7 +526,7 @@
     display: none;
   }
 
-  .page-header > .row {
+  .page-header>.row {
     flex-direction: column;
     align-items: stretch;
     width: 100%;
@@ -552,7 +556,7 @@
     white-space: nowrap;
   }
 
-  .page-header > .row > .btn,
+  .page-header>.row>.btn,
   .page-header .btn-primary {
     width: 100%;
     justify-content: center;
@@ -565,16 +569,16 @@
     text-align: center;
   }
 
-  .card-body > .row {
+  .card-body>.row {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
   }
 
-  .card-body > .row > .field[style*="width: 170px"],
-  .card-body > .row > .field[style*="width: 160px"],
-  .card-body > .row > .field[style*="width: 150px"],
-  .card-body > .row > .field[style*="width: 140px"] {
+  .card-body>.row>.field[style*="width: 170px"],
+  .card-body>.row>.field[style*="width: 160px"],
+  .card-body>.row>.field[style*="width: 150px"],
+  .card-body>.row>.field[style*="width: 140px"] {
     width: 100% !important;
   }
 }

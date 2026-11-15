@@ -193,17 +193,17 @@ async function muatDataPelanggan(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table" style="min-width: 1080px;">
           <thead>
             <tr>
-              <th>Kode & Nama</th>
-              <th>Kontak & Alamat</th>
-              <th>Tipe & Level</th>
-              <th class="num">Limit Kredit</th>
-              <th class="num">Sisa Piutang</th>
-              <th class="num">Poin Member</th>
-              <th>Status</th>
-              <th style="text-align: right; min-width: 170px;">Aksi</th>
+              <th style="min-width: 190px;">Kode & Nama</th>
+              <th style="min-width: 180px;">Kontak & Alamat</th>
+              <th style="min-width: 110px;">Tipe & Level</th>
+              <th class="num" style="min-width: 125px; white-space: nowrap;">Limit Kredit</th>
+              <th class="num" style="min-width: 115px; white-space: nowrap;">Sisa Piutang</th>
+              <th class="num" style="min-width: 105px; white-space: nowrap;">Poin Member</th>
+              <th style="min-width: 85px; text-align: center;">Status</th>
+              <th style="text-align: right; min-width: 245px; width: 245px; white-space: nowrap;">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -263,7 +263,7 @@ async function muatDataPelanggan(container) {
                     ${isMember ? `<span class="fw-bold text-warning">${(it.poin || 0).toLocaleString('id-ID')}</span>` : '<span class="text-muted">-</span>'}
                   </td>
                   <td data-label="Status">${statusBadge}</td>
-                  <td style="text-align: right;" data-label="Aksi">
+                  <td style="text-align: right; min-width: 245px; width: 245px; white-space: nowrap;" data-label="Aksi">
                     <div class="pel-actions-row">
                       <button type="button" class="btn btn-secondary btn-sm btn-detail-pel" data-id="${escapeHtml(it.id)}" title="Rincian & Riwayat Belanja/Poin">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>

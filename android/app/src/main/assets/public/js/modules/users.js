@@ -70,15 +70,15 @@ async function muatUsers(container) {
 
     let html = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table" style="min-width: 860px;">
           <thead>
             <tr>
-              <th>Username</th>
-              <th>Nama Lengkap</th>
-              <th>Peran (Role)</th>
-              <th>Status</th>
-              <th>Login Terakhir</th>
-              <th style="width: 170px; text-align: right;">Aksi</th>
+              <th style="min-width: 140px;">Username</th>
+              <th style="min-width: 170px;">Nama Lengkap</th>
+              <th style="min-width: 120px;">Peran (Role)</th>
+              <th style="min-width: 90px; text-align: center;">Status</th>
+              <th style="min-width: 140px;">Login Terakhir</th>
+              <th style="width: 175px; min-width: 175px; text-align: right; white-space: nowrap;">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -120,7 +120,7 @@ async function muatUsers(container) {
           <td class="text-xs text-muted" data-label="Login Terakhir">
             ${u.last_login ? formatTanggal(u.last_login, true) : 'Belum pernah'}
           </td>
-          <td style="text-align: right;" data-label="Aksi">
+          <td style="text-align: right; min-width: 175px; width: 175px; white-space: nowrap;" data-label="Aksi">
             <div class="table-actions">
               <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}" title="Ubah Pengguna">
                 ${ICONS.settings}
