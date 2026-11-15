@@ -249,6 +249,7 @@ const RUTE = {
   'penjualan.pending.delete': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenjualanPendingDelete_ },
   'penjualan.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPenjualanList_ },
   'penjualan.detail': { publik: false, roles: SEMUA_ROLE, handler: aksiPenjualanDetail_ },
+  'penjualan.shiftKasir': { publik: false, roles: SEMUA_ROLE, handler: aksiPenjualanShiftKasir_ },
   'penjualan.void': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiPenjualanVoid_ },
   'pelanggan.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPelangganList_ },
 
@@ -2756,6 +2757,73 @@ function aksiPenjualanDetail_(ctx) {
       hp: peng.toko_hp || '',
       nota_footer: peng.nota_footer || ''
     }
+  };
+}
+
+/** penjualan.shiftKasir — Ringkasan kas, transaksi, dan saldo laci untuk shift kasir (X-Report). */
+function aksiPenjualanShiftKasir_(ctx) {
+  const p = ctx.payload || {};
+  const user = ctx.user;
+  const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
+
+  // Tanggal target (default hari ini WIB YYYY-MM-DD)
+  const targetTgl = p.tanggal || formatWaktu_(new Date()).substring(0, 10);
+  const targetKasirId = p.kasir_id || (isOwnerOrAdmin && p.semua_kasir ? '' : user.id);
+
+  const semuaPenjualan = bacaSemua_('Penjualan');
+  const semuaUsers = bacaSemua_('Users');
+  const userPeta = {};
+  semuaUsers.forEach(function (u) { userPeta[u.id] = u.nama || u.username; });
+
+  const penjualanHariIni = semuaPenjualan.filter(function (pj) {
+    if (pj.deleted || pj.void || pj.status === 'void' || pj.status === 'pending') return false;
+    const tgl = String(pj.tanggal || '').substring(0, 10);
+    if (tgl !== targetTgl) return false;
+    if (targetKasirId && pj.created_by !== targetKasirId) return false;
+    return true;
+  });
+
+  let totalTransaksi = penjualanHariIni.length;
+  let totalPenjualan = 0;
+  let totalTunai = 0;
+  let totalTransfer = 0;
+  let totalTempo = 0;
+  let totalDiskon = 0;
+
+  penjualanHariIni.forEach(function (pj) {
+    const tot = Number(pj.total) || 0;
+    totalPenjualan += tot;
+    totalDiskon += Number(pj.diskon) || 0;
+
+    const m = String(pj.metode_bayar || 'tunai').toLowerCase();
+    if (m === 'tunai') {
+      totalTunai += tot;
+    } else if (m === 'transfer' || m === 'qris' || m === 'debit') {
+      totalTransfer += tot;
+    } else if (m === 'tempo') {
+      totalTempo += tot;
+    } else {
+      totalTunai += Number(pj.bayar) || tot;
+    }
+  });
+
+  const modalAwal = Number(p.modal_awal) || 0;
+  const totalLaci = modalAwal + totalTunai;
+
+  return {
+    tanggal: targetTgl,
+    kasir: {
+      id: targetKasirId || user.id,
+      nama: userPeta[targetKasirId] || user.nama || user.username
+    },
+    modal_awal: modalAwal,
+    total_transaksi: totalTransaksi,
+    total_penjualan: totalPenjualan,
+    total_tunai: totalTunai,
+    total_transfer: totalTransfer,
+    total_tempo: totalTempo,
+    total_diskon: totalDiskon,
+    total_laci: totalLaci
   };
 }
 

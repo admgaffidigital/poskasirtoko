@@ -1267,3 +1267,199 @@ export function buatTautanWhatsAppPembelian(dataPembelian, nomorHp = '') {
   return hpBersih ? `https://wa.me/${hpBersih}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
 }
 
+/* ========================================================================== */
+/* MODUL CETAK REKAPITULASI SHIFT KASIR (X-REPORT)                            */
+/* ========================================================================== */
+
+/**
+ * Susun teks struk rekapitulasi kas shift kasir / X-Report (Thermal 58mm & 80mm)
+ * @param {Object} data  { toko, kasir, tanggal, modal_awal, total_transaksi, total_penjualan, total_tunai, total_transfer, total_tempo, total_laci }
+ * @param {'58'|'80'} [ukuran='58']
+ * @returns {string}
+ */
+export function susunTeksXReport(data, ukuran = '58') {
+  const lebar = LEBAR_KERTAS[ukuran] || 32;
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO';
+  const toko = data.toko || store.get('toko') || {
+    nama: namaFallback,
+    alamat: store.get('pengaturan')?.toko_alamat || '',
+    hp: store.get('pengaturan')?.toko_hp || ''
+  };
+  const kasir = data.kasir || { nama: 'Kasir' };
+  const modalAwal = Number(data.modal_awal || 0);
+  const totalTransaksi = Number(data.total_transaksi || 0);
+  const totalTunai = Number(data.total_tunai || 0);
+  const totalTransfer = Number(data.total_transfer || 0);
+  const totalTempo = Number(data.total_tempo || 0);
+  const totalPenjualan = Number(data.total_penjualan || 0);
+  const totalLaci = Number(data.total_laci || (modalAwal + totalTunai));
+
+  const baris = [];
+
+  // Header Toko
+  baris.push(formatTengah((toko.nama || namaFallback).toUpperCase(), lebar));
+  if (toko.alamat) {
+    const alamatPecah = toko.alamat.split('\n');
+    alamatPecah.forEach((al) => baris.push(formatTengah(al, lebar)));
+  }
+  if (toko.hp) {
+    baris.push(formatTengah('Telp/WA: ' + toko.hp, lebar));
+  }
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatTengah('REKAP SHIFT KASIR (X-REPORT)', lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  // Info Petugas & Waktu
+  baris.push(formatDuaKolom('Waktu Cetak', formatTanggal(new Date(), true), lebar));
+  baris.push(formatDuaKolom('Petugas/Kasir', (kasir.nama || kasir.username || 'Kasir'), lebar));
+  baris.push(formatDuaKolom('Tanggal Shift', data.tanggal || formatTanggal(new Date()).substring(0, 10), lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  // Rincian Kas & Transaksi
+  baris.push(formatDuaKolom('Modal Awal Laci', formatRupiah(modalAwal), lebar));
+  baris.push(formatDuaKolom('Total Transaksi', `${totalTransaksi} Nota`, lebar));
+  baris.push(buatGaris(lebar, '.'));
+
+  baris.push(formatDuaKolom('Penerimaan Tunai', formatRupiah(totalTunai), lebar));
+  baris.push(formatDuaKolom('Non-Tunai (QRIS/Bank)', formatRupiah(totalTransfer), lebar));
+  if (totalTempo > 0) {
+    baris.push(formatDuaKolom('Piutang (Tempo Bon)', formatRupiah(totalTempo), lebar));
+  }
+  baris.push(buatGaris(lebar, '-'));
+  baris.push(formatDuaKolom('TOTAL OMSET SHIFT', formatRupiah(totalPenjualan), lebar));
+  baris.push(buatGaris(lebar, '='));
+
+  // Saldo Akhir Uang Fisik di Laci
+  baris.push(formatDuaKolom('UANG FISIK LACI', formatRupiah(totalLaci), lebar));
+  baris.push(formatTengah('(Modal Awal + Kas Tunai)', lebar));
+  baris.push(buatGaris(lebar, '='));
+
+  // Tanda Tangan Serah Terima
+  baris.push('');
+  baris.push(formatDuaKolom('   ( Kasir )', '( Supervisor )  ', lebar));
+  baris.push('');
+  baris.push('');
+  baris.push(formatDuaKolom('   .........', '..............  ', lebar));
+  baris.push(buatGaris(lebar, '-'));
+  baris.push(formatTengah('POS KASIR TOKO BANGUNAN', lebar));
+
+  return baris.join('\n');
+}
+
+/**
+ * Cetak X-Report shift via aplikasi RawBT (Android)
+ */
+export async function cetakRawBTShift(dataReport, ukuran = '58') {
+  const teks = susunTeksXReport(dataReport, ukuran);
+  const base64 = btoa(unescape(encodeURIComponent(teks)));
+  const url = `rawbt:data:text/plain;base64,${base64}`;
+  window.location.href = url;
+}
+
+/**
+ * Cetak X-Report shift via Web Bluetooth
+ */
+export async function cetakBluetoothShift(dataReport, ukuran = '58') {
+  const teks = susunTeksXReport(dataReport, ukuran);
+  return kirimKePrinterBluetooth(teks);
+}
+
+/**
+ * Cetak X-Report shift via browser print dialog
+ */
+export function cetakBrowserShift(dataReport, ukuran = '58') {
+  const teks = susunTeksXReport(dataReport, ukuran);
+  const win = window.open('', '_blank', 'width=380,height=600');
+  if (!win) {
+    showToast('Popup diblokir browser. Izinkan popup untuk mencetak.', 'warning');
+    return;
+  }
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Rekap Shift (X-Report)</title>
+        <style>
+          @page { size: ${ukuran === '80' ? '80mm' : '58mm'} auto; margin: 2mm; }
+          body { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; white-space: pre-wrap; padding: 4px; margin: 0; }
+        </style>
+      </head>
+      <body>${escapeHtml(teks)}</body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  setTimeout(() => {
+    win.print();
+    win.close();
+  }, 400);
+}
+
+/**
+ * Dialog pilihan cetak struk rekap shift (RawBT / Bluetooth / Browser)
+ * @param {Object} dataReport
+ */
+export function bukaModalPilihanCetakShift(dataReport) {
+  const cfg = store.get('pengaturan') || {};
+  const ukuran = cfg.printer_lebar === '80' ? '80' : '58';
+  const teksStruk = susunTeksXReport(dataReport, ukuran);
+
+  const modal = showModal({
+    title: 'Cetak Rekap Shift (X-Report)',
+    body: `
+      <div class="stack" style="gap: var(--sp-4);">
+        <div class="alert alert-info">
+          ${ICONS.printer}
+          <div>
+            <strong>Rekap Shift Kasir Siap Dicetak</strong><br>
+            Pilih jalur pencetakan yang sesuai dengan printer kasir Anda.
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label text-xs fw-semibold">Pratinjau Struk X-Report (${ukuran}mm):</label>
+          <pre class="struk-preview mono" style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: 11px; line-height: 1.35; max-height: 240px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all;">${escapeHtml(teksStruk)}</pre>
+        </div>
+
+        <div class="stack" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-print-shift-rawbt" style="width: 100%; justify-content: center; gap: 8px;">
+            ${ICONS.printer}
+            <span>Cetak via RawBT Printer (Android)</span>
+          </button>
+          <div class="row" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-shift-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.bluetooth || ICONS.printer}
+              <span>Web Bluetooth</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-shift-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+              <span>Browser / PDF</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-shift">Tutup</button>
+      </div>
+    `
+  });
+
+  modal.el.querySelector('#btn-print-shift-rawbt')?.addEventListener('click', () => {
+    cetakRawBTShift(dataReport, ukuran);
+  });
+
+  modal.el.querySelector('#btn-print-shift-bt')?.addEventListener('click', () => {
+    cetakBluetoothShift(dataReport, ukuran);
+  });
+
+  modal.el.querySelector('#btn-print-shift-browser')?.addEventListener('click', () => {
+    cetakBrowserShift(dataReport, ukuran);
+  });
+
+  modal.el.querySelector('#btn-tutup-modal-cetak-shift')?.addEventListener('click', () => {
+    modal.close();
+  });
+}
+

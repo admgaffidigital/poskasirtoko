@@ -388,7 +388,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.45'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.46'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -441,7 +441,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.45'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.46'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -772,6 +772,13 @@ class App {
                   <div class="list-item-sub">Segarkan cache data &amp; stok lokal (F5)</div>
                 </div>
               </button>
+              <button type="button" class="list-item" id="btn-menu-shift">
+                <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary-soft-text);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg></div>
+                <div class="grow">
+                  <div class="list-item-title">Kas &amp; Shift Kasir (X-Report)</div>
+                  <div class="list-item-sub">Hitung saldo laci &amp; cetak laporan kasir (F3)</div>
+                </div>
+              </button>
               <button type="button" class="list-item" id="btn-menu-ganti-pin">
                 <div class="list-item-icon">${ICONS.userCheck}</div>
                 <div class="grow">
@@ -804,6 +811,20 @@ class App {
       document.getElementById('btn-menu-sync')?.addEventListener('click', () => {
         triggerSyncHandler();
         modalUser.close();
+      });
+
+      document.getElementById('btn-menu-shift')?.addEventListener('click', () => {
+        modalUser.close();
+        if (typeof window.bukaModalShiftKasirGlobal === 'function') {
+          window.bukaModalShiftKasirGlobal();
+        } else {
+          window.location.hash = '#/pos';
+          setTimeout(() => {
+            if (typeof window.bukaModalShiftKasirGlobal === 'function') {
+              window.bukaModalShiftKasirGlobal();
+            }
+          }, 350);
+        }
       });
 
       document.getElementById('btn-menu-ganti-pin')?.addEventListener('click', () => {

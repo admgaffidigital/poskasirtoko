@@ -19,11 +19,11 @@
  * - Keyboard shortcuts: F2 (Cari), F4 (Bayar), F7 (Tahan), F8 (Daftar Tahan)
  */
 
-import { api } from '../api.js';
+import { api, apiCall } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
-import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan } from '../utils/printer.js';
+import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
 
@@ -144,7 +144,11 @@ export function renderPosModule(container) {
               <span class="badge badge-primary" id="cart-item-count">0</span>
             </div>
             <div class="row" style="gap: var(--sp-1);">
-              <button type="button" id="btn-pos-reprint" class="btn btn-ghost btn-sm" title="Cetak Ulang Transaksi Terakhir">
+              <button type="button" id="btn-pos-shift" class="btn btn-ghost btn-sm" title="Kas & Rekap Shift Kasir (F3)">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                <span class="d-none-mobile">Shift</span>
+              </button>
+              <button type="button" id="btn-pos-reprint" class="btn btn-ghost btn-sm" title="Cetak Ulang Transaksi Terakhir (F9)">
                 ${ICONS.printer}
                 <span class="d-none-mobile">Struk</span>
               </button>
@@ -1061,7 +1065,8 @@ export function renderPosModule(container) {
 
   function hitungUlangItem(it) {
     // Cek auto-switch harga grosir (README aturan bisnis & 6.3)
-    const p = it._pr;
+    const p = it._pr || state.katalog.find((x) => x.id === it.produk_id);
+    if (!p) return;
     const minGrosir = Number(p.min_grosir_qty || 1);
     const punyaGrosir = p.harga_grosir && p.harga_grosir > 0;
 
@@ -1072,6 +1077,17 @@ export function renderPosModule(container) {
     } else if (it.tipe_harga !== 'kustom' && it.satuan === p.satuan_dasar) {
       it.tipe_harga = 'ritel';
       it.harga = p.harga_ritel;
+    } else if (it.tipe_harga !== 'kustom' && it.satuan !== p.satuan_dasar) {
+      const konv = (p.satuan_konversi || []).find((s) => s.satuan === it.satuan && !s.deleted);
+      if (konv) {
+        if (konv.harga_grosir && konv.harga_grosir > 0 && it.qty >= minGrosir) {
+          it.tipe_harga = 'grosir';
+          it.harga = konv.harga_grosir;
+        } else {
+          it.tipe_harga = 'ritel';
+          it.harga = konv.harga_ritel;
+        }
+      }
     }
 
     const subtotalKotor = Math.round(it.harga * it.qty);
@@ -1117,13 +1133,25 @@ export function renderPosModule(container) {
         labelTipeHarga = `<span class="badge badge-warning" style="font-size: 9px;">Harga Kustom</span>`;
       }
 
+      const p = it._pr || state.katalog.find((x) => x.id === it.produk_id);
+      const punyaMultiSatuan = p && (p.satuan_konversi || []).filter((s) => !s.deleted).length > 0;
+      let badgeSatuanHtml = `<span class="badge badge-sm" style="background: var(--surface-3);">${escapeHtml(it.satuan)}</span>`;
+      if (punyaMultiSatuan) {
+        badgeSatuanHtml = `
+          <button type="button" class="badge badge-sm btn-ganti-satuan-item" data-idx="${idx}" title="Ganti Satuan Jual (${escapeHtml(it.satuan)})" style="cursor: pointer; background: var(--primary-soft); color: var(--primary-soft-text); border: 1px solid rgba(232, 89, 12, 0.35); display: inline-flex; align-items: center; gap: 3px; font-weight: var(--fw-semibold);">
+            <span>${escapeHtml(it.satuan)}</span>
+            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        `;
+      }
+
       html += `
         <div class="pos-cart-item" data-idx="${idx}">
           <div class="row" style="justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1; padding-right: var(--sp-2);">
               <div class="fw-bold text-sm">${escapeHtml(it.nama)}</div>
               <div class="row" style="gap: 4px; align-items: center; margin-top: 2px;">
-                <span class="badge badge-sm" style="background: var(--surface-3);">${escapeHtml(it.satuan)}</span>
+                ${badgeSatuanHtml}
                 ${labelTipeHarga}
                 ${it.diskon > 0 ? `<span class="badge badge-danger badge-sm">Hemat ${formatRupiah(it.diskon)}</span>` : ''}
               </div>
@@ -1166,6 +1194,15 @@ export function renderPosModule(container) {
   }
 
   function pasangAksiKeranjang() {
+    // Ganti Satuan Item Langsung di Keranjang (Fitur #3)
+    elCartItems.querySelectorAll('.btn-ganti-satuan-item').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        bukaModalGantiSatuanItem(idx);
+      });
+    });
+
     // Hapus Item
     elCartItems.querySelectorAll('.btn-hapus-item').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1393,6 +1430,122 @@ export function renderPosModule(container) {
       hitungUlangItem(it);
       renderKeranjang();
       modal.close();
+    });
+  }
+
+  // ---------- Dialog Ganti Satuan Langsung di Keranjang (Fitur #3) ----------
+  function bukaModalGantiSatuanItem(idx) {
+    const it = state.keranjang[idx];
+    if (!it) return;
+    const p = it._pr || state.katalog.find((x) => x.id === it.produk_id);
+    if (!p) {
+      showToast('Data produk tidak ditemukan.', 'warning');
+      return;
+    }
+
+    const satuanList = [{ satuan: p.satuan_dasar, faktor: 1, harga_ritel: p.harga_ritel, harga_grosir: p.harga_grosir }].concat(
+      (p.satuan_konversi || []).filter((s) => !s.deleted)
+    );
+
+    if (satuanList.length <= 1) {
+      showToast('Produk ini hanya memiliki satu jenis satuan.', 'info');
+      return;
+    }
+
+    const modal = showModal({
+      title: `Ganti Satuan: ${it.nama}`,
+      size: 'sm',
+      body: `
+        <div class="stack" style="gap: var(--sp-3);">
+          <div class="text-xs text-muted">
+            Pilih satuan penjualan. Harga dan subtotal otomatis disesuaikan dengan faktor konversi:
+          </div>
+          <div class="stack" style="gap: var(--sp-2);">
+            ${satuanList.map((s) => {
+              const aktif = s.satuan === it.satuan;
+              let hargaDisplay = s.harga_ritel;
+              if (it._var) {
+                hargaDisplay = Math.round((it._var.harga_ritel || 0) * (s.faktor || 1));
+              } else if (it.tipe_harga === 'grosir' && s.harga_grosir > 0) {
+                hargaDisplay = s.harga_grosir;
+              }
+              return `
+                <button type="button" class="btn btn-sm btn-pilih-satuan-item ${aktif ? 'btn-primary' : 'btn-secondary'}" data-sat="${escapeHtml(s.satuan)}" style="justify-content: space-between; padding: 10px 14px; text-align: left;">
+                  <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span class="fw-bold" style="font-size: var(--fs-sm);">${escapeHtml(s.satuan)} ${s.faktor > 1 ? `<small style="font-weight: normal; opacity: 0.85;">(Isi ${s.faktor} ${escapeHtml(p.satuan_dasar)})</small>` : '<small style="font-weight: normal; opacity: 0.85;">(Satuan Dasar)</small>'}</span>
+                    ${s.harga_grosir && s.harga_grosir > 0 && !it._var ? `<small style="opacity: 0.8;">Grosir: ${formatRupiah(s.harga_grosir)}</small>` : ''}
+                  </div>
+                  <div class="mono fw-bold" style="font-size: var(--fs-sm);">
+                    ${formatRupiah(hargaDisplay)}
+                  </div>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `,
+      footer: `
+        <div class="row" style="width: 100%; justify-content: flex-end;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-batal-ganti-satuan">Batal</button>
+        </div>
+      `
+    });
+
+    modal.el.querySelector('#btn-batal-ganti-satuan')?.addEventListener('click', () => modal.close());
+
+    modal.el.querySelectorAll('.btn-pilih-satuan-item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const satBaru = btn.getAttribute('data-sat');
+        if (satBaru === it.satuan) {
+          modal.close();
+          return;
+        }
+
+        const targetSat = satuanList.find((s) => s.satuan === satBaru);
+        if (!targetSat) return;
+
+        const faktorBaru = targetSat.faktor || 1;
+        const baseHpp = it._var ? (it._var.hpp || 0) : (p.hpp || 0);
+        const snapshotHpp = Math.round(baseHpp * faktorBaru);
+
+        let hargaBaru = targetSat.harga_ritel;
+        if (it._var) {
+          hargaBaru = Math.round((it._var.harga_ritel || 0) * faktorBaru);
+        } else if (it.tipe_harga === 'grosir' && targetSat.harga_grosir > 0) {
+          hargaBaru = targetSat.harga_grosir;
+        }
+
+        // Cek apakah item dengan satuan tujuan sudah ada di baris keranjang lain
+        const existingIdx = state.keranjang.findIndex((x, i) =>
+          i !== idx &&
+          x.produk_id === it.produk_id &&
+          x.varian_id === it.varian_id &&
+          x.satuan === targetSat.satuan
+        );
+
+        if (existingIdx !== -1) {
+          // Gabungkan qty ke baris yang sudah ada
+          state.keranjang[existingIdx].qty = bulatQty(state.keranjang[existingIdx].qty + it.qty);
+          state.keranjang[existingIdx].qty_dibawa = state.keranjang[existingIdx].qty;
+          hitungUlangItem(state.keranjang[existingIdx]);
+          state.keranjang.splice(idx, 1);
+          showToast(`Satuan diganti ke ${targetSat.satuan} & digabung ke baris keranjang yang sama.`, 'success');
+        } else {
+          it.satuan = targetSat.satuan;
+          it.faktor = faktorBaru;
+          it.hpp = snapshotHpp;
+          it.harga_asli = hargaBaru;
+          if (it.tipe_harga !== 'kustom') {
+            it.harga = hargaBaru;
+          }
+          hitungUlangItem(it);
+          showToast(`Satuan item berhasil diganti ke ${targetSat.satuan}.`, 'success');
+        }
+
+        haptic.medium();
+        renderKeranjang();
+        modal.close();
+      });
     });
   }
 
@@ -2040,6 +2193,194 @@ export function renderPosModule(container) {
     }
   }
 
+  // ---------- Ringkasan Kas & Shift Kasir (X-Report / Fitur #5) ----------
+  async function bukaModalShiftKasir() {
+    const user = store.get('user') || state.user || {};
+    const todayStr = formatTanggal(new Date()).substring(0, 10);
+    const storageKey = `pos_modal_awal_${todayStr}_${user.id || 'kasir'}`;
+    let modalAwal = Number(localStorage.getItem(storageKey) || 0);
+
+    const modal = showModal({
+      title: '💵 Kas & Shift Kasir (X-Report)',
+      size: 'md',
+      body: `
+        <div class="stack" style="gap: var(--sp-4);" id="shift-kasir-container">
+          <div class="text-center" style="padding: var(--sp-6);">
+            <div class="spinner spinner-primary" style="margin: 0 auto var(--sp-2);"></div>
+            <div class="text-muted text-sm">Menghitung rekapitulasi shift kasir...</div>
+          </div>
+        </div>
+      `,
+      footer: `
+        <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-shift">Tutup</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-xreport" disabled style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak X-Report</span>
+          </button>
+        </div>
+      `
+    });
+
+    const elContainer = modal.el.querySelector('#shift-kasir-container');
+    const btnCetak = modal.el.querySelector('#btn-cetak-xreport');
+    modal.el.querySelector('#btn-tutup-shift')?.addEventListener('click', () => modal.close());
+
+    let reportData = null;
+
+    try {
+      const res = await apiCall('penjualan.shiftKasir', {
+        kasir_id: user.id,
+        tanggal: todayStr,
+        modal_awal: modalAwal
+      });
+
+      if (res && res.ok && res.data) {
+        reportData = res.data;
+      }
+    } catch (err) {
+      console.warn('Gagal panggil penjualan.shiftKasir, fallback client-side:', err);
+    }
+
+    if (!reportData) {
+      // Fallback offline / client-side calculation
+      reportData = {
+        tanggal: todayStr,
+        kasir: { id: user.id, nama: user.nama || user.username || 'Kasir' },
+        modal_awal: modalAwal,
+        total_transaksi: 0,
+        total_penjualan: 0,
+        total_tunai: 0,
+        total_transfer: 0,
+        total_tempo: 0,
+        total_diskon: 0,
+        total_laci: modalAwal
+      };
+    }
+
+    const renderShiftBody = () => {
+      const totalLaci = modalAwal + Number(reportData.total_tunai || 0);
+      reportData.modal_awal = modalAwal;
+      reportData.total_laci = totalLaci;
+
+      elContainer.innerHTML = `
+        <div class="stack" style="gap: var(--sp-3);">
+          <!-- Header Kasir & Tanggal -->
+          <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <div class="row" style="justify-content: space-between; align-items: center;">
+              <div>
+                <div class="text-xs text-muted">Kasir Bertugas:</div>
+                <div class="fw-bold" style="font-size: var(--fs-base); color: var(--text);">${escapeHtml(reportData.kasir?.nama || user.nama || 'Kasir')}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-muted">Tanggal Shift:</div>
+                <div class="fw-bold mono text-sm">${escapeHtml(reportData.tanggal || todayStr)}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Modal Awal / Float Uang Kasir -->
+          <div style="background: var(--surface-1); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <label class="form-label fw-bold text-xs" style="margin-bottom: 4px;">Modal Awal / Kas Kasir (Float Laci):</label>
+            <div class="row" style="gap: var(--sp-2); align-items: center;">
+              <input type="number" id="input-shift-modal-awal" class="input fw-bold mono" value="${modalAwal}" min="0" step="10000" style="flex: 1;" placeholder="Rp 0" />
+            </div>
+            <div class="row" style="gap: 4px; margin-top: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="50000">+50rb</button>
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="100000">+100rb</button>
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="200000">+200rb</button>
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="500000">+500rb</button>
+              <button type="button" class="btn btn-ghost btn-xs text-muted btn-reset-modal" style="font-size: 10px;">Reset 0</button>
+            </div>
+          </div>
+
+          <!-- Highlight Total Uang Fisik di Laci -->
+          <div style="background: var(--primary-soft); border: 1px solid rgba(232, 89, 12, 0.4); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
+            <div class="text-xs fw-semibold" style="color: var(--primary-soft-text); text-transform: uppercase; letter-spacing: 0.5px;">
+              Total Uang Fisik Harus Ada di Laci
+            </div>
+            <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary); margin: 4px 0;" id="display-total-laci">
+              ${formatRupiah(totalLaci)}
+            </div>
+            <div class="text-xs text-muted">
+              (Modal Awal: ${formatRupiah(modalAwal)} + Kas Tunai: ${formatRupiah(reportData.total_tunai || 0)})
+            </div>
+          </div>
+
+          <!-- Rincian Penjualan Shift -->
+          <div class="stack" style="gap: 6px; font-size: var(--fs-sm);">
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-muted">Total Transaksi (Nota):</span>
+              <span class="fw-bold">${reportData.total_transaksi || 0} Penjualan</span>
+            </div>
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-muted">Penerimaan Tunai:</span>
+              <span class="fw-bold mono text-success">${formatRupiah(reportData.total_tunai || 0)}</span>
+            </div>
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-muted">Non-Tunai (Transfer / QRIS):</span>
+              <span class="fw-bold mono text-info">${formatRupiah(reportData.total_transfer || 0)}</span>
+            </div>
+            ${reportData.total_tempo > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-muted">Piutang Pelanggan (Tempo):</span>
+                <span class="fw-bold mono text-warning">${formatRupiah(reportData.total_tempo || 0)}</span>
+              </div>
+            ` : ''}
+            ${reportData.total_diskon > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-muted">Total Diskon Diberikan:</span>
+                <span class="fw-bold mono text-danger">-${formatRupiah(reportData.total_diskon || 0)}</span>
+              </div>
+            ` : ''}
+            <div class="row" style="justify-content: space-between; padding: 6px 0; font-weight: bold; font-size: var(--fs-base);">
+              <span>Total Omset Penjualan:</span>
+              <span class="mono" style="color: var(--primary);">${formatRupiah(reportData.total_penjualan || 0)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const inputModal = elContainer.querySelector('#input-shift-modal-awal');
+      inputModal?.addEventListener('input', () => {
+        modalAwal = Math.max(0, parseRupiah(inputModal.value));
+        localStorage.setItem(storageKey, String(modalAwal));
+        const laciBaru = modalAwal + Number(reportData.total_tunai || 0);
+        reportData.modal_awal = modalAwal;
+        reportData.total_laci = laciBaru;
+        const displayLaci = elContainer.querySelector('#display-total-laci');
+        if (displayLaci) displayLaci.textContent = formatRupiah(laciBaru);
+      });
+
+      elContainer.querySelectorAll('.btn-preset-modal').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const val = Number(btn.getAttribute('data-val') || 0);
+          modalAwal = (modalAwal || 0) + val;
+          localStorage.setItem(storageKey, String(modalAwal));
+          if (inputModal) inputModal.value = modalAwal;
+          inputModal?.dispatchEvent(new Event('input'));
+        });
+      });
+
+      elContainer.querySelector('.btn-reset-modal')?.addEventListener('click', () => {
+        modalAwal = 0;
+        localStorage.setItem(storageKey, '0');
+        if (inputModal) inputModal.value = 0;
+        inputModal?.dispatchEvent(new Event('input'));
+      });
+    };
+
+    renderShiftBody();
+    btnCetak.disabled = false;
+    btnCetak.addEventListener('click', () => {
+      bukaModalPilihanCetakShift(reportData);
+    });
+  }
+
+  // Bind tombol Shift Kasir di Header POS Cart
+  container.querySelector('#btn-pos-shift')?.addEventListener('click', bukaModalShiftKasir);
+  window.bukaModalShiftKasirGlobal = bukaModalShiftKasir;
+
   // ---------- Cetak Ulang Struk Transaksi Terakhir POS ----------
   container.querySelector('#btn-pos-reprint')?.addEventListener('click', () => {
     let lastReceipt = store.get('pos_terakhir');
@@ -2333,6 +2674,9 @@ export function renderPosModule(container) {
       e.preventDefault();
       elSearch?.focus();
       elSearch?.select();
+    } else if (e.key === 'F3') {
+      e.preventDefault();
+      bukaModalShiftKasir();
     } else if (e.key === 'F4') {
       e.preventDefault();
       bukaModalPembayaran();
@@ -2342,6 +2686,9 @@ export function renderPosModule(container) {
     } else if (e.key === 'F8') {
       e.preventDefault();
       bukaModalDaftarPending();
+    } else if (e.key === 'F9') {
+      e.preventDefault();
+      container.querySelector('#btn-pos-reprint')?.click();
     }
   };
 

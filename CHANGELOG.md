@@ -16,7 +16,29 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
-## [1.0.45] - 2026-11-15
+## [1.0.46] - 2026-11-15
+
+### Added
+- [POS-JUAL] [UI] **Fitur #3: Ganti Satuan Langsung di Keranjang Belanja (*Inline Unit Switcher*)**:
+  - Pada panel keranjang POS kasir, produk yang memiliki satuan konversi bertingkat kini menampilkan badge interaktif `[ SATUAN ▾ ]` dengan indikator chevron yang elegan di [frontend/js/modules/pos.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pos.js).
+  - Kasir dapat langsung menekan badge satuan untuk beralih satuan jual (misal dari *Batang* ke *Ikat*, *Meter* ke *Rol*, atau *Pcs* ke *Dus*) tanpa perlu menghapus item dan mencari ulang produk dari katalog.
+  - Sistem otomatis menyesuaikan faktor konversi, HPP snapshot, harga ritel/grosir, dan subtotal item secara instan.
+  - Dilengkapi fitur cerdas *auto-merge*: jika produk dengan satuan tujuan sudah ada di baris keranjang lain, kuantitas item otomatis digabungkan (*merge*) ke baris yang ada dan menghapus baris lama sehingga keranjang tetap rapi tanpa duplikasi.
+- [POS-JUAL] [CETAK] [BACKEND] **Fitur #5: Ringkasan Kas & Shift Kasir (*Cash Drawer / Shift Summary & X-Report*)**:
+  - **Backend API**: Menambahkan rute dan handler `penjualan.shiftKasir` di [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs) yang merekapitulasi data penjualan harian kasir bertugas secara aman (mengabaikan transaksi void, transaksi batal, pending, dan soft-deleted).
+  - **Workstation & Shortcut Akses**:
+    - Tombol `[ 💵 Shift ]` di toolbar header keranjang POS kasir.
+    - Tombol menu *Kas & Shift Kasir (X-Report)* pada *User Account Sheet* di [frontend/js/app.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/app.js) sehingga dapat diakses dari halaman mana pun di aplikasi.
+    - Shortcut keyboard global: **F3** untuk membuka Ringkasan Shift Kasir dan **F9** untuk Cetak Ulang Struk Transaksi Terakhir.
+  - **Modal Interaktif & Saldo Laci Kasir**:
+    - Menampilkan identitas kasir bertugas, tanggal shift, total nota transaksi, omset kotor, penerimaan kas tunai, non-tunai (transfer/QRIS), piutang tempo bon, dan potongan diskon.
+    - Input modal awal / float laci dengan quick presets (+50rb, +100rb, +200rb, +500rb, reset 0) yang tersimpan otomatis di `localStorage`.
+    - Menghitung dan menyorot **Total Uang Fisik yang Wajib Ada di Laci** (`Modal Awal + Penerimaan Kas Tunai`).
+  - **Cetak X-Report Thermal**:
+    - Menambahkan generator format teks ESC/POS khusus `susunTeksXReport` untuk ukuran kertas thermal 58mm dan 80mm di [frontend/js/utils/printer.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/utils/printer.js).
+    - Mendukung cetak langsung via aplikasi RawBT (Android), Web Bluetooth, maupun dialog cetak/PDF browser, lengkap dengan kolom tanda tangan serah terima Kasir dan Supervisor.
+- [TESTS] Menambahkan suite uji otomatis [tests/test_shift_kasir.js](file:///c:/POS%20KASIR%20TOKO/tests/test_shift_kasir.js) (20 pengujian unit & integrasi lulus 100%).
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.46** via Capacitor (VersionCode 33).
 
 ### Fixed
 - [UI] [PRODUK] [RESPONSIF-MOBILE] **Perbaikan Tampilan Nilai Satuan, HPP, Harga Ritel, & Harga Grosir pada Mode Mobile**:
