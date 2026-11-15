@@ -358,7 +358,7 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
       </div>
 
       <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-2)">
-        <button type="button" class="btn btn-ghost btn-close-modal">Batal</button>
+        <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-kat">Batal</button>
         <button type="submit" class="btn btn-primary" id="btn-simpan-kat">
           ${isEdit ? 'Simpan Perubahan' : 'Tambah Kategori'}
         </button>
@@ -372,6 +372,7 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
   });
 
   const form = $('#form-kategori', modal.el);
+  $('#btn-batal-kat', modal.el)?.addEventListener('click', () => modal.close());
 
   // Update hint saat dropdown induk berubah
   $('#kat-parent', form)?.addEventListener('change', (e) => {

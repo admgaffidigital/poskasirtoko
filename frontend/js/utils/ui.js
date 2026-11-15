@@ -184,7 +184,9 @@ export function showModal({
     }, 200);
   };
 
-  dialog.querySelector('.btn-close-modal').addEventListener('click', close);
+  dialog.querySelectorAll('.btn-close-modal, .btn-batal-modal, .btn-cancel').forEach((btn) => {
+    btn.addEventListener('click', close);
+  });
 
   if (closeOnOverlay) {
     overlay.addEventListener('click', (e) => {

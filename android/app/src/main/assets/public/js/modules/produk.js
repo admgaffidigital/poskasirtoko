@@ -1156,7 +1156,7 @@ async function bukaModalFormProduk(container, produk) {
 
       <!-- Footer Tombol -->
       <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-3);">
-        <button type="button" class="btn btn-ghost btn-close-modal">Batal</button>
+        <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-produk">Batal</button>
         <button type="submit" class="btn btn-primary" id="btn-simpan-produk">
           ${isEdit ? 'Simpan Perubahan' : 'Tambah Produk'}
         </button>
@@ -1171,6 +1171,11 @@ async function bukaModalFormProduk(container, produk) {
   });
 
   const form = $('#form-produk', modal.el);
+
+  // Tombol Batal Form Produk
+  $('#btn-batal-produk', modal.el)?.addEventListener('click', () => {
+    modal.close();
+  });
 
   // Tab switching helper
   const switchTab = (target) => {

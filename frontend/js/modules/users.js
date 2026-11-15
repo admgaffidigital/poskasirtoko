@@ -219,7 +219,7 @@ function bukaModalFormUser(container, user) {
       `}
 
       <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-2);">
-        <button type="button" class="btn btn-ghost btn-close-modal">Batal</button>
+        <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-user">Batal</button>
         <button type="submit" class="btn btn-primary" id="btn-simpan-usr">
           ${isEdit ? 'Simpan Perubahan' : 'Tambah Pengguna'}
         </button>
@@ -231,6 +231,8 @@ function bukaModalFormUser(container, user) {
     title: isEdit ? `Ubah Data Pengguna (${user.username})` : 'Tambah Pengguna Baru',
     body: bodyHtml
   });
+
+  $('#btn-batal-user', modal.el)?.addEventListener('click', () => modal.close());
 
   const form = $('#form-user', modal.el);
   form?.addEventListener('submit', async (e) => {
@@ -285,7 +287,7 @@ function bukaModalResetPin(container, userId, username) {
       </div>
 
       <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-2);">
-        <button type="button" class="btn btn-ghost btn-close-modal">Batal</button>
+        <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-reset">Batal</button>
         <button type="submit" class="btn btn-danger" id="btn-submit-reset">Reset Sekarang</button>
       </div>
     </form>
@@ -295,6 +297,8 @@ function bukaModalResetPin(container, userId, username) {
     title: `Reset PIN: ${username}`,
     body: bodyHtml
   });
+
+  $('#btn-batal-reset', modal.el)?.addEventListener('click', () => modal.close());
 
   const form = $('#form-reset-pin', modal.el);
   form?.addEventListener('submit', async (e) => {
