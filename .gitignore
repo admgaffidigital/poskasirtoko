@@ -5,6 +5,7 @@ dist/
 build/
 .gradle/
 android/.gradle/
+android/build/
 android/app/build/
 
 # OS & Editor
