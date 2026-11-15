@@ -5,7 +5,7 @@
 
 import { CONFIG, setApiUrl } from './config.js';
 import { ROUTES, cariRute } from './routes.js';
-import { apiCall } from './api.js';
+import { apiCall, invalidateApiCache } from './api.js';
 import { store } from './state.js';
 import {
   ICONS,
@@ -83,6 +83,7 @@ class App {
           if (res.toko) store.setToko(res.toko);
           this.updateUserUI(res.user);
           this.updateBrandUI();
+          this.hangatkanCacheLatarBelakang();
           if (res.user.wajib_ganti_pin) {
             tampilkanDialogWajibGantiPin(token, (u) => {
               this.cekIzinDanRender(this.currentRoute, u);
@@ -120,6 +121,23 @@ class App {
       }
     } catch (e) {
       // Jika offline atau belum login, gunakan identitas dari cache lokal
+    }
+  }
+
+  /**
+   * Pemanasan cache in-memory di latar belakang saat CPU idle
+   * Memastikan pembukaan modul POS Kasir, Katalog, dan Satuan berlangsung instan (0ms)
+   */
+  hangatkanCacheLatarBelakang() {
+    const warmup = () => {
+      if (!store.get('token')) return;
+      apiCall('kategori.list', {}).catch(() => {});
+      apiCall('produk.list', { page: 1, limit: 30, sort: 'terbaru' }).catch(() => {});
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(warmup, { timeout: 2500 });
+    } else {
+      setTimeout(warmup, 800);
     }
   }
 
@@ -174,6 +192,9 @@ class App {
         if (this.currentRoute) this.renderPage(this.currentRoute);
         return;
       }
+
+      // Kosongkan cache API in-memory agar seluruh request memuat data segar dari server
+      invalidateApiCache();
 
       // 1. Periksa pembaruan Service Worker PWA di latar belakang
       if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
@@ -361,7 +382,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.39'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.40'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -414,7 +435,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.39'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.40'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {

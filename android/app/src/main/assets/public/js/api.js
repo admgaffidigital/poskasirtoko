@@ -21,25 +21,42 @@ export class ApiError extends Error {
 // Cache respons in-memory di sisi klien untuk query baca (read queries)
 const memoryApiCache = new Map();
 
+// Koleksi request yang sedang berjalan untuk deduplikasi request identik (In-Flight Request Coalescing)
+const inFlightRequests = new Map();
+
 // Aksi yang dapat di-cache dengan aman (TTL dalam milidetik)
 const CACHE_CONFIG = {
-  'kategori.list': 60000,    // 1 menit
-  'pengaturan.get': 120000,  // 2 menit
-  'satuan.list': 120000,     // 2 menit
-  'user.list': 30000,        // 30 detik
-  'supplier.list': 45000,    // 45 detik
-  'auth.me': 15000           // 15 detik
+  'kategori.list': 120000,   // 2 menit
+  'pengaturan.get': 180000,  // 3 menit
+  'produk.list': 60000,      // 1 menit (katalog instan per filter & paginasi)
+  'produk.detail': 60000,    // 1 menit
+  'pelanggan.list': 60000,   // 1 menit
+  'pelanggan.detail': 60000, // 1 menit
+  'supplier.list': 60000,    // 1 menit
+  'hadiah.list': 60000,      // 1 menit
+  'user.list': 45000,        // 45 detik
+  'auth.me': 20000,          // 20 detik
+  'sistem.status': 30000     // 30 detik
 };
 
-// Pola mutasi data yang otomatis mengosongkan cache terkait
+// Pola mutasi data yang otomatis mengosongkan cache terkait secara instan
 const MUTATION_PATTERNS = [
-  { trigger: 'kategori.', target: 'kategori.list' },
-  { trigger: 'pengaturan.', target: 'pengaturan.get' },
-  { trigger: 'satuan.', target: 'satuan.list' },
-  { trigger: 'user.', target: 'user.list' },
-  { trigger: 'supplier.', target: 'supplier.list' },
-  { trigger: 'auth.logout', target: 'auth.me' },
-  { trigger: 'auth.login', target: 'auth.me' }
+  { trigger: 'kategori.', target: 'kategori.' },
+  { trigger: 'produk.', target: 'produk.' },
+  { trigger: 'penjualan.', target: 'produk.' },     // penjualan mengurangi stok produk
+  { trigger: 'penjualan.', target: 'pelanggan.' },  // penjualan mempengaruhi poin/piutang
+  { trigger: 'pembelian.', target: 'produk.' },     // pembelian menambah stok produk
+  { trigger: 'pembelian.', target: 'supplier.' },   // pembelian mempengaruhi hutang supplier
+  { trigger: 'opname.', target: 'produk.' },        // opname menyesuaikan stok
+  { trigger: 'retur.', target: 'produk.' },         // retur mengembalikan stok
+  { trigger: 'pelanggan.', target: 'pelanggan.' },
+  { trigger: 'supplier.', target: 'supplier.' },
+  { trigger: 'hadiah.', target: 'hadiah.' },
+  { trigger: 'hadiah.', target: 'pelanggan.' },
+  { trigger: 'pengaturan.', target: 'pengaturan.' },
+  { trigger: 'user.', target: 'user.' },
+  { trigger: 'auth.logout', target: '' },           // bersihkan seluruh cache
+  { trigger: 'auth.login', target: '' }             // bersihkan seluruh cache
 ];
 
 /**
@@ -52,7 +69,8 @@ export function invalidateApiCache(prefix = null) {
     return;
   }
   for (const key of memoryApiCache.keys()) {
-    if (key.startsWith(prefix)) {
+    const act = key.split('::')[0] || '';
+    if (act.startsWith(prefix) || key.startsWith(prefix)) {
       memoryApiCache.delete(key);
     }
   }
@@ -101,8 +119,9 @@ export async function apiCall(action, payload = {}, options = {}) {
   token = (token || '').trim();
 
   // Periksa cache in-memory untuk aksi baca aman (read queries)
-  const isCacheable = !options.skipCache && CACHE_CONFIG[action] && (!payload || Object.keys(payload).length === 0);
-  const cacheKey = isCacheable ? `${action}:${token}` : null;
+  const isCacheable = !options.skipCache && !!CACHE_CONFIG[action];
+  const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
+  const cacheKey = isCacheable ? `${action}::${token}::${payloadStr}` : null;
 
   if (isCacheable && memoryApiCache.has(cacheKey)) {
     const entry = memoryApiCache.get(cacheKey);
@@ -110,6 +129,11 @@ export async function apiCall(action, payload = {}, options = {}) {
       return entry.data;
     }
     memoryApiCache.delete(cacheKey);
+  }
+
+  // Deduplikasi: Jika request identik sedang berjalan di jaringan, bagikan Promise (In-Flight Coalescing)
+  if (isCacheable && inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey);
   }
 
   const timeoutMs = options.timeoutMs || CONFIG.API_TIMEOUT_MS || 30000;
@@ -123,77 +147,90 @@ export async function apiCall(action, payload = {}, options = {}) {
     payload
   });
 
-  try {
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        // Penting: text/plain mencegah browser mengirim CORS preflight (OPTIONS)
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
-      body: requestBody,
-      signal: controller.signal
-    });
-
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      throw new ApiError(
-        `Server mengembalikan status HTTP ${res.status} (${res.statusText})`,
-        'HTTP_ERROR'
-      );
-    }
-
-    const text = await res.text();
-    let data;
+  const fetchPromise = (async () => {
     try {
-      data = JSON.parse(text);
-    } catch (parseErr) {
-      console.error('[API] Respon bukan JSON valid:', text);
-      throw new ApiError(
-        'Format respons dari server tidak dapat dibaca.',
-        'PARSE_ERROR'
-      );
-    }
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          // Penting: text/plain mencegah browser mengirim CORS preflight (OPTIONS)
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: requestBody,
+        signal: controller.signal
+      });
 
-    // Periksa format respons seragam: { ok, data, error, code }
-    if (!data || typeof data !== 'object') {
-      throw new ApiError('Format respons server tidak sesuai standar.', 'INVALID_RESPONSE');
-    }
+      clearTimeout(timer);
 
-    if (data.ok === true) {
-      if (isCacheable) {
-        memoryApiCache.set(cacheKey, {
-          data: data.data,
-          expiry: Date.now() + CACHE_CONFIG[action]
-        });
+      if (!res.ok) {
+        throw new ApiError(
+          `Server mengembalikan status HTTP ${res.status} (${res.statusText})`,
+          'HTTP_ERROR'
+        );
       }
-      return data.data;
-    } else {
-      // Lempar error terkontrol dari backend
-      const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
-      const errCode = data.code || 'SERVER';
-      throw new ApiError(errMsg, errCode, data.data);
-    }
-  } catch (err) {
-    clearTimeout(timer);
 
-    if (err instanceof ApiError) {
-      throw err;
-    }
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error('[API] Respon bukan JSON valid:', text);
+        throw new ApiError(
+          'Format respons dari server tidak dapat dibaca.',
+          'PARSE_ERROR'
+        );
+      }
 
-    if (err.name === 'AbortError') {
+      // Periksa format respons seragam: { ok, data, error, code }
+      if (!data || typeof data !== 'object') {
+        throw new ApiError('Format respons server tidak sesuai standar.', 'INVALID_RESPONSE');
+      }
+
+      if (data.ok === true) {
+        if (isCacheable) {
+          memoryApiCache.set(cacheKey, {
+            data: data.data,
+            expiry: Date.now() + CACHE_CONFIG[action]
+          });
+        }
+        return data.data;
+      } else {
+        // Lempar error terkontrol dari backend
+        const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
+        const errCode = data.code || 'SERVER';
+        throw new ApiError(errMsg, errCode, data.data);
+      }
+    } catch (err) {
+      clearTimeout(timer);
+
+      if (err instanceof ApiError) {
+        throw err;
+      }
+
+      if (err.name === 'AbortError') {
+        throw new ApiError(
+          'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',
+          'TIMEOUT'
+        );
+      }
+
+      console.error('[API Error]', err);
       throw new ApiError(
-        'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',
-        'TIMEOUT'
+        'Gagal menghubungi server. Periksa koneksi internet atau izin URL Web App.',
+        'NETWORK_ERROR'
       );
+    } finally {
+      clearTimeout(timer);
+      if (cacheKey) {
+        inFlightRequests.delete(cacheKey);
+      }
     }
+  })();
 
-    console.error('[API Error]', err);
-    throw new ApiError(
-      'Gagal menghubungi server. Periksa koneksi internet atau izin URL Web App.',
-      'NETWORK_ERROR'
-    );
+  if (cacheKey) {
+    inFlightRequests.set(cacheKey, fetchPromise);
   }
+
+  return await fetchPromise;
 }
 
 /**

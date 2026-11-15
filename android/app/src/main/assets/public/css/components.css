@@ -334,6 +334,11 @@ input[type="password"] {
 @media (min-width: 768px) { .card-body { padding: var(--sp-5); } }
 
 .card-grid { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.card-grid > .card {
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 220px;
+}
 
 /* Kartu statistik (dashboard) */
 .card.stat,
@@ -595,6 +600,8 @@ input[type="password"] {
 }
 .table tbody tr {
   transition: background var(--dur-fast) var(--ease);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 44px;
 }
 .table tbody tr:hover { background: var(--surface-2); }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }

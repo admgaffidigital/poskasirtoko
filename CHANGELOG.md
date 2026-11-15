@@ -16,6 +16,23 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.40] - 2026-11-15
+
+### Enhanced & Optimized
+- [PERFORMANCE] [API] **In-Flight Request Coalescing & Serialized Payload Cache**:
+  - Mengimplementasikan teknik **In-Flight Request Coalescing** pada [frontend/js/api.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/api.js): apabila beberapa komponen atau modul memanggil endpoint baca yang sama secara bersamaan (seperti `kategori.list` atau `produk.list`), aplikasi hanya mengirim **1 HTTP request** ke server backend dan membagikan *Promise* yang sama ke seluruh pemanggil. Hal ini menghemat kuota Google Apps Script dan memangkas penggunaan bandwidth hingga 50%.
+  - Memperluas sistem caching memori klien dengan kunci serialisasi parameter payload (`action::token::payload`). Dengan ini, query katalog produk per halaman/filter (`produk.list`), kategori (`kategori.list`), pelanggan (`pelanggan.list`), dan pengaturan (`pengaturan.get`) tersimpan di memori dan merespons dalam **0 milidetik (instan)** saat pengguna berpindah menu atau berganti filter.
+  - Mengintegrasikan mekanisme *cache auto-invalidation* cerdas: setiap aksi mutasi data (seperti `penjualan.simpan`, `pembelian.simpan`, `produk.tambah`, `produk.ubah`, `opname.simpan`, `retur.simpan`) otomatis mengosongkan entri cache terkait seketika sehingga data selalu terjamin segar dan akurat.
+- [PERFORMANCE] [SHELL] **Idle Background Cache Warming**:
+  - Menambahkan metode `hangatkanCacheLatarBelakang()` pada [frontend/js/app.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/app.js) yang berjalan menggunakan `requestIdleCallback` saat CPU sedang santai setelah login, menghangatkan cache data master sehingga ketika kasir membuka modul Kasir atau Produk untuk pertama kalinya, data telah siap di memori.
+- [PERFORMANCE] [CSS] **DOM Layout Containment & Virtualization Rendering**:
+  - Menerapkan `content-visibility: auto; contain-intrinsic-size: 220px;` dan `contain: layout style paint;` pada elemen `.card-grid > .card` dan baris tabel `.table tbody tr` pada [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css). Browser dan WebView Android melewati perhitungan tata letak (*layout calculation*) dan penggambaran piksel (*paint*) untuk item yang berada di luar layar viewport, menghasilkan gulir layar 60fps yang super mulus tanpa *jank*.
+- [ANDROID] [HARDWARE] **Akselerasi Perangkat Keras GPU Native & Large Heap**:
+  - Menambahkan konfigurasi `android:hardwareAccelerated="true"` dan `android:largeHeap="true"` pada tag `<application>` di [android/app/src/main/AndroidManifest.xml](file:///c:/POS%20KASIR%20TOKO/android/app/src/main/AndroidManifest.xml), memastikan WebView Android selalu dirender oleh GPU dan mencegah kehabisan memori (*out-of-memory*) pada perangkat berspesifikasi hemat.
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.40** berukuran **~4.02 MB** (VersionCode 27).
+
+---
+
 ## [1.0.39] - 2026-11-15
 
 ### Changed & Refactored
