@@ -2531,8 +2531,12 @@ a.list-item:hover {
 }
 
 .pos-cart-header {
-  padding: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
   flex-shrink: 0;
 }
 
@@ -2540,7 +2544,7 @@ a.list-item:hover {
   background: var(--surface-2);
   border-radius: var(--radius-md);
   padding: var(--sp-2) var(--sp-3);
-  margin-top: var(--sp-2);
+  margin-top: 6px;
   border: 1px dashed var(--border);
 }
 
@@ -2548,19 +2552,19 @@ a.list-item:hover {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  min-height: 60px;
+  gap: 6px;
+  min-height: 0;
 }
 
 .pos-cart-item {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: var(--sp-2) var(--sp-3);
-  transition: border-color var(--dur-fast) var(--ease);
+  padding: 6px 10px;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
 .pos-cart-item:hover {
@@ -2568,10 +2572,43 @@ a.list-item:hover {
 }
 
 .pos-cart-footer {
-  padding: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-top: 1px solid var(--border);
   background: var(--surface);
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.03);
   flex-shrink: 0;
+}
+
+.pos-cart-footer .btn-lg {
+  min-height: 44px;
+  height: 44px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+/* Custom Slim Scrollbars ala Native Desktop POS */
+.pos-product-area::-webkit-scrollbar,
+.pos-cart-items::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.pos-product-area::-webkit-scrollbar-track,
+.pos-cart-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pos-product-area::-webkit-scrollbar-thumb,
+.pos-cart-items::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+.pos-product-area::-webkit-scrollbar-thumb:hover,
+.pos-cart-items::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .pos-summary-row {
