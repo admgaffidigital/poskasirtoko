@@ -450,23 +450,23 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
         html += `
           <tr>
             <td data-label="Produk">
-              <div class="row" style="align-items: center; gap: var(--sp-3); width: 100%;">
-                <div class="prd-table-avatar">
+              <div class="prd-table-head" style="display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%; flex-wrap: nowrap;">
+                <div class="prd-table-avatar" style="flex-shrink: 0;">
                   ${p.foto_url ? `
                     <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" loading="lazy" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
                     <div style="display: none; width: 100%; height: 100%; place-items: center;">${ICONS.package}</div>
                   ` : ICONS.package}
                 </div>
-                <div class="grow" style="min-width: 0;">
-                  <div class="fw-bold text-md prd-table-nama">${escapeHtml(p.nama)}</div>
+                <div class="grow" style="flex: 1 1 auto; min-width: 0;">
+                  <div class="fw-bold text-md prd-table-nama" style="word-break: break-word; line-height: 1.35;">${escapeHtml(p.nama)}</div>
                   <div class="row" style="gap: 4px; margin-top: 3px; flex-wrap: wrap;">
                     ${p.sku ? `<span class="mono text-xs text-muted" style="white-space: nowrap;">${escapeHtml(p.sku)}</span>` : ''}
                     ${p.punya_varian && p.varian && p.varian.length ? `<span class="badge badge-info badge-sm">${p.varian.length} Varian</span>` : ''}
                     ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge badge-sm">+${p.satuan_konversi.length} Satuan</span>` : ''}
                   </div>
                 </div>
-                <div class="d-none-desktop">
-                  <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
+                <div class="d-none-desktop" style="flex-shrink: 0; margin-left: auto; align-self: flex-start; padding-top: 2px;">
+                  <span class="badge ${stokBadge.kelas}" style="white-space: nowrap;">${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
                 </div>
               </div>
             </td>
@@ -738,11 +738,11 @@ export function bukaModalPanduanVarianSatuan() {
     body: `
       <div class="stack" style="gap: var(--sp-4); font-size: var(--fs-sm); line-height: 1.6;">
         <!-- Ringkasan Inti -->
-        <div class="alert alert-info" style="background: var(--surface-2); border: 1px solid rgba(232, 89, 12, 0.35); border-radius: var(--radius-md); padding: var(--sp-3);">
-          <div class="fw-bold" style="color: var(--primary); margin-bottom: 4px; font-size: var(--fs-base);">
+        <div class="alert alert-info alert-block" style="display: block !important; width: 100% !important; background: var(--surface-2); border: 1px solid rgba(232, 89, 12, 0.35); border-left: 4px solid var(--primary); border-radius: var(--radius-md); padding: var(--sp-3); box-sizing: border-box;">
+          <div class="fw-bold" style="color: var(--primary); margin-bottom: 6px; font-size: var(--fs-base);">
             Perbedaan Utama: Kapan Pakai Varian? Kapan Pakai Satuan Kemasan?
           </div>
-          <div>
+          <div style="line-height: 1.6;">
             Keduanya memiliki fungsi yang sangat berbeda dalam operasional toko bangunan:
             <ul style="margin: 6px 0 0 18px; padding: 0;">
               <li><b>Varian Produk:</b> Digunakan jika barang memiliki <u>karakteristik fisik atau spesifikasi yang berbeda</u> sehingga stok fisiknya wajib dihitung terpisah di gudang (contoh: Pipa Tipe C vs Tipe D; Cat Putih 5kg vs Abu-abu 5kg).</li>
@@ -1105,22 +1105,22 @@ async function bukaModalFormProduk(container, produk) {
       <!-- Tab 3: Varian & Satuan -->
       <div class="tab-pane stack hidden" id="pane-varian">
         <!-- Kotak Ringkasan Panduan & Tata Cara -->
-        <div class="alert alert-info" style="border: 1px solid rgba(232, 89, 12, 0.3); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md);">
-          <div class="row-between" style="align-items: flex-start; margin-bottom: 6px;">
-            <div class="row" style="gap: 6px; align-items: center;">
+        <div class="alert alert-info alert-block" style="display: block !important; width: 100% !important; border: 1px solid rgba(232, 89, 12, 0.35); border-left: 4px solid var(--primary); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed rgba(232, 89, 12, 0.25);">
+            <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 16px;">💡</span>
-              <span class="fw-bold text-xs" style="color: var(--primary);">Tata Cara Penggunaan Varian & Satuan Kemasan</span>
+              <span class="fw-bold" style="color: var(--primary); font-size: var(--fs-xs);">Tata Cara Penggunaan Varian &amp; Satuan Kemasan</span>
             </div>
-            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-buka-panduan-lengkap-varian" style="font-size: var(--fs-xs); text-decoration: underline; padding: 2px 6px;">
+            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-buka-panduan-lengkap-varian" style="font-size: var(--fs-xs); font-weight: 600; text-decoration: underline; padding: 3px 8px; background: rgba(232, 89, 12, 0.08); border-radius: var(--radius-sm);">
               Buka Panduan Lengkap &raquo;
             </button>
           </div>
-          <div class="text-xs text-muted" style="line-height: 1.55;">
-            <div style="margin-bottom: 4px;">
-              <b>1. Varian Produk:</b> Gunakan jika barang punya <u>spesifikasi fisik berbeda</u> yang stoknya dihitung terpisah (contoh: Pipa varian <i>Tebal C</i> & <i>Tebal D</i>; Cat <i>Putih 5kg</i> & <i>Abu 5kg</i>; Besi <i>8mm</i> & <i>10mm</i>).
+          <div style="display: block; width: 100%; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6;">
+            <div style="margin-bottom: 5px;">
+              <b style="color: var(--text);">1. Varian Produk:</b> Gunakan jika barang punya <u>spesifikasi fisik berbeda</u> yang stoknya dihitung terpisah (contoh: Pipa varian <i>Tebal C</i> &amp; <i>Tebal D</i>; Cat <i>Putih 5kg</i> &amp; <i>Abu 5kg</i>; Besi <i>8mm</i> &amp; <i>10mm</i>).
             </div>
             <div>
-              <b>2. Satuan Kemasan (Multi Satuan):</b> Gunakan jika 1 barang fisik bisa <u>dijual eceran maupun kemasan grosir</u> (contoh: Satuan dasar <code>BTG</code> &rarr; <code>1 IKAT = 25 BTG</code>; <code>MTR</code> &rarr; <code>1 ROL = 50 MTR</code>; <code>SAK</code> &rarr; <code>1 TRUK = 100 SAK</code>).
+              <b style="color: var(--text);">2. Satuan Kemasan (Multi Satuan):</b> Gunakan jika 1 barang fisik bisa <u>dijual eceran maupun kemasan grosir</u> (contoh: Satuan dasar <code>BTG</code> &rarr; <code>1 IKAT = 25 BTG</code>; <code>MTR</code> &rarr; <code>1 ROL = 50 MTR</code>; <code>SAK</code> &rarr; <code>1 TRUK = 100 SAK</code>).
             </div>
           </div>
         </div>
@@ -1514,7 +1514,7 @@ async function bukaModalFormProduk(container, produk) {
     e.preventDefault();
     if (isSubmitting) return;
 
-    const nama = $('#prd-nama', form).value.trim();
+    const nama = $('#prd-nama', form).value.trim().replace(/\s+/g, ' ');
     if (!nama) {
       switchTab('dasar');
       $('#prd-nama', form)?.focus();

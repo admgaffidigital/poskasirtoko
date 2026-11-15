@@ -1096,6 +1096,7 @@ input[type="password"] {
     padding-bottom: var(--sp-2);
     margin-bottom: var(--sp-2);
     justify-content: space-between;
+    align-items: flex-start !important;
     text-align: left;
     min-height: auto;
   }
@@ -1211,9 +1212,32 @@ input[type="password"] {
 }
 
 .prd-table-nama {
-  line-height: 1.3;
+  line-height: 1.35;
   color: var(--text);
   word-break: break-word;
+}
+
+.prd-table-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: var(--sp-3) !important;
+  width: 100% !important;
+  flex-wrap: nowrap !important;
+}
+
+.prd-table-head .prd-table-avatar {
+  flex-shrink: 0 !important;
+}
+
+.prd-table-head .grow {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.prd-table-head .d-none-desktop {
+  flex-shrink: 0 !important;
+  margin-left: auto !important;
+  align-self: flex-start !important;
 }
 
 /* Tabel khusus yang tetap mempertahankan scroll horizontal di mobile */
@@ -1308,6 +1332,15 @@ a.list-item:hover {
   background: var(--info-soft);
   color: var(--info-text);
   border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.alert.alert-block {
+  display: block !important;
+}
+
+.alert.alert-column {
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .alert svg {
