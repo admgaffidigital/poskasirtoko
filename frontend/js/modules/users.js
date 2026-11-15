@@ -70,7 +70,7 @@ async function muatUsers(container) {
 
     let html = `
       <div class="table-wrap">
-        <table class="table" style="min-width: 860px;">
+        <table class="table table-users">
           <thead>
             <tr>
               <th style="min-width: 140px;">Username</th>
@@ -109,16 +109,18 @@ async function muatUsers(container) {
               </div>
             </div>
           </td>
-          <td data-label="Nama Lengkap">${escapeHtml(u.nama || '-')}</td>
+          <td data-label="Nama Lengkap"><span class="table-cell-val">${escapeHtml(u.nama || '-')}</span></td>
           <td data-label="Role" class="d-none-mobile">
             <span class="badge ${badgeRole}" style="text-transform: capitalize;">${escapeHtml(u.role)}</span>
           </td>
           <td data-label="Status">
-            ${u.aktif ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-danger">Nonaktif</span>'}
-            ${u.kunci_sampai ? `<span class="badge badge-danger text-xs">Terkunci hingga ${escapeHtml(u.kunci_sampai)}</span>` : ''}
+            <span class="table-cell-val">
+              ${u.aktif ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-danger">Nonaktif</span>'}
+              ${u.kunci_sampai ? `<span class="badge badge-danger text-xs">Terkunci hingga ${escapeHtml(u.kunci_sampai)}</span>` : ''}
+            </span>
           </td>
           <td class="text-xs text-muted" data-label="Login Terakhir">
-            ${u.last_login ? formatTanggal(u.last_login, true) : 'Belum pernah'}
+            <span class="table-cell-val">${u.last_login ? formatTanggal(u.last_login, true) : 'Belum pernah'}</span>
           </td>
           <td style="text-align: right; min-width: 175px; width: 175px; white-space: nowrap;" data-label="Aksi">
             <div class="table-actions">

@@ -92,7 +92,7 @@ async function muatSupplierList(container, canEdit, query = '') {
 
     let html = `
       <div class="table-wrap">
-        <table class="table" style="min-width: 900px;">
+        <table class="table table-supplier">
           <thead>
             <tr>
               <th style="min-width: 200px;">Nama Supplier</th>
@@ -123,28 +123,30 @@ async function muatSupplierList(container, canEdit, query = '') {
             </div>
           </td>
           <td data-label="Kontak PIC">
-            <div>${escapeHtml(s.kontak || '-')}</div>
-            ${s.hp ? `
-              <a href="${waLink}" target="_blank" rel="noopener" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px;">
-                ${escapeHtml(s.hp)}
-              </a>
-            ` : '<span class="text-xs text-muted">-</span>'}
+            <div class="pel-cell-val">
+              <span class="text-xs fw-semibold">${escapeHtml(s.kontak || '-')}</span>
+              ${s.hp ? `
+                <a href="${waLink}" target="_blank" rel="noopener" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px;">
+                  ${escapeHtml(s.hp)}
+                </a>
+              ` : ''}
+            </div>
           </td>
           <td data-label="Alamat">
-            <div class="text-sm text-muted" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <div class="text-sm text-muted table-cell-val" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               ${escapeHtml(s.alamat || '-')}
             </div>
           </td>
           <td style="text-align: right;" data-label="Saldo Hutang">
-            <div class="tabular fw-bold ${s.saldo_hutang > 0 ? 'text-danger' : 'text-muted'}">
+            <div class="tabular fw-bold table-cell-val ${s.saldo_hutang > 0 ? 'text-danger' : 'text-muted'}">
               ${formatRupiah(s.saldo_hutang)}
             </div>
           </td>
           <td style="text-align: center;" data-label="Faktur">
-            <span class="badge ${s.total_pembelian > 0 ? 'badge-info' : ''}">${s.total_pembelian || 0}</span>
+            <span class="table-cell-val badge ${s.total_pembelian > 0 ? 'badge-info' : ''}">${s.total_pembelian || 0}</span>
           </td>
           <td style="text-align: center;" data-label="Status">
-            <span class="badge ${s.aktif ? 'badge-success' : 'badge-warning'}">
+            <span class="table-cell-val badge ${s.aktif ? 'badge-success' : 'badge-warning'}">
               ${s.aktif ? 'Aktif' : 'Nonaktif'}
             </span>
           </td>

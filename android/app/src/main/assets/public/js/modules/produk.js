@@ -422,7 +422,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       let html = `
         <div class="card">
           <div class="table-wrap">
-            <table class="table" style="min-width: 980px;">
+            <table class="table table-produk">
               <thead>
                 <tr>
                   <th style="min-width: 220px;">Nama Produk</th>
@@ -467,10 +467,10 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               <div class="mono text-xs" style="white-space: nowrap;">${escapeHtml(p.sku || '-')}</div>
               <div class="text-xs text-muted" style="white-space: nowrap;">${escapeHtml(p.barcode || '')}</div>
             </td>
-            <td data-label="Satuan" style="white-space: nowrap;">${escapeHtml(p.satuan_dasar)}</td>
-            ${!isKasir ? `<td class="num" data-label="HPP" style="white-space: nowrap;">${formatRupiah(p.hpp)}</td>` : ''}
-            <td class="num fw-bold text-primary" data-label="Harga Ritel" style="white-space: nowrap;">${formatRupiah(p.harga_ritel)}</td>
-            <td class="num text-muted" data-label="Harga Grosir" style="white-space: nowrap;">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</td>
+            <td data-label="Satuan"><span class="table-cell-val">${escapeHtml(p.satuan_dasar)}</span></td>
+            ${!isKasir ? `<td class="num" data-label="HPP"><span class="table-cell-val">${formatRupiah(p.hpp)}</span></td>` : ''}
+            <td class="num fw-bold text-primary" data-label="Harga Ritel"><span class="table-cell-val">${formatRupiah(p.harga_ritel)}</span></td>
+            <td class="num text-muted" data-label="Harga Grosir"><span class="table-cell-val">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</span></td>
             <td style="text-align: center; white-space: nowrap;" data-label="Stok" class="d-none-mobile">
               <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
             </td>

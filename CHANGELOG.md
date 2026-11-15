@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.45] - 2026-11-15
+
+### Fixed
+- [UI] [PRODUK] [RESPONSIF-MOBILE] **Perbaikan Tampilan Nilai Satuan, HPP, Harga Ritel, & Harga Grosir pada Mode Mobile**:
+  - Mengatasi masalah nilai data (`satuan_dasar`, `hpp`, `harga_ritel`, `harga_grosir`) yang sebelumnya tampak hilang / kosong pada kartu katalog produk di layar ponsel mobile (<768px):
+    - **Akar Masalah**: Elemen `<table>` pada modul [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js) memiliki inline style `min-width: 980px`. Karena spesifisitas inline style mengalahkan aturan class CSS biasa, tabel tetap dipaksa selebar 980px di layar HP. Akibatnya, `td` dengan `justify-content: space-between` menaruh label (*SATUAN*, *HPP*, dll.) di sisi kiri (0px), sedangkan nilai angkanya (*PCS*, *Rp 3.900*, *Rp 7.000*) terdorong jauh ke koordinat 980px (di luar batas layar ponsel 360px–412px)!
+    - **Solusi**:
+      1. Memindahkan batas min-width tabel desktop ke media query khusus `@media (min-width: 768px)` menggunakan class semantik (`.table-produk`, `.table-pelanggan`, `.table-supplier`, `.table-users`) di [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css).
+      2. Menerapkan penegakan strict `width: 100% !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important;` pada `.table`, `tbody`, `tr`, dan `td` di `@media (max-width: 767px)`.
+      3. Membungkus nilai setiap sel data dengan elemen class `.table-cell-val` yang rapi dan terisolasi, sehingga pada layar mobile flex item label (`::before`) dan nilai (`.table-cell-val`) berdampingan presisi di sisi kiri dan kanan kartu tanpa pernah terpotong atau terdorong ke luar layar.
+      4. Memastikan selektor `.table td:not(.d-none-mobile)` dan `.table td.d-none-mobile` menjaga integritas kolom tersembunyi (seperti SKU/Barcode dan stok terpisah yang sudah dipindahkan ke header kartu) tetap tersembunyi tanpa bentrok spesifisitas.
+      5. Menerapkan standardisasi yang sama ke tabel [pelanggan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pelanggan.js), [supplier.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/supplier.js), dan [users.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/users.js).
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.45** berukuran **4.03 MB** (VersionCode 32).
+
 ## [1.0.44] - 2026-11-15
 
 ### Added & Fixed

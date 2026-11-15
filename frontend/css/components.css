@@ -960,47 +960,74 @@ input[type="password"] {
   flex-shrink: 0;
 }
 
+/* Nilai sel tabel yang rapi di sisi kanan kartu mobile / kolom desktop */
+.table-cell-val {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Min-width tabel desktop agar kolom tidak terhimpit dan mendukung scroll horizontal */
+@media (min-width: 768px) {
+  .table-produk { min-width: 980px; }
+  .table-pelanggan { min-width: 1080px; }
+  .table-supplier { min-width: 900px; }
+  .table-users { min-width: 860px; }
+}
+
 /* Transformasi Tabel ke Native Card di Layar Mobile (< 768px) */
 @media (max-width: 767px) {
   .table-wrap:not(.keep-table) {
-    overflow-x: visible;
+    overflow-x: hidden !important;
     background: transparent;
     border: 0;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .table-wrap:not(.keep-table) .table {
-    display: block;
-    width: 100%;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     border: 0;
     background: transparent;
   }
 
   .table-wrap:not(.keep-table) .table thead {
-    display: none;
+    display: none !important;
   }
 
   .table-wrap:not(.keep-table) .table tbody {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-    width: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--sp-3) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
 
   .table-wrap:not(.keep-table) .table tbody tr {
-    display: flex;
-    flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    padding: var(--sp-4);
-    gap: 6px;
-    position: relative;
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-card) !important;
+    padding: var(--sp-4) !important;
+    gap: 6px !important;
+    position: relative !important;
     transition: box-shadow var(--dur-fast);
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .table-wrap:not(.keep-table) .table tbody tr:active {
-    background: var(--surface-2);
+    background: var(--surface-2) !important;
   }
 
   /* Indentasi kartu sub-kategori pada tampilan mobile ala native tree */
@@ -1021,15 +1048,23 @@ input[type="password"] {
     font-size: var(--fs-sm);
   }
 
-  .table-wrap:not(.keep-table) .table td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 3px 0;
-    border: 0;
-    text-align: right;
-    min-height: 24px;
-    font-size: var(--fs-sm);
+  .table-wrap:not(.keep-table) .table td:not(.d-none-mobile) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 3px 0 !important;
+    border: 0 !important;
+    text-align: right !important;
+    min-height: 24px !important;
+    font-size: var(--fs-sm) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .table-wrap:not(.keep-table) .table td.d-none-mobile {
+    display: none !important;
   }
 
   /* Label sel di sisi kiri */
@@ -1043,6 +1078,13 @@ input[type="password"] {
     text-align: left;
     margin-right: var(--sp-3);
     flex-shrink: 0;
+  }
+
+  /* Nilai sel teks di sisi kanan kartu */
+  .table-wrap:not(.keep-table) .table td .table-cell-val,
+  .table-wrap:not(.keep-table) .table td > span:last-child {
+    text-align: right;
+    word-break: break-word;
   }
 
   /* Judul / Kolom utama pada baris kartu */
@@ -1077,33 +1119,38 @@ input[type="password"] {
   }
 
   /* Baris aksi di footer kartu */
-  .table-wrap:not(.keep-table) .table td:last-child {
-    border-top: 1px solid var(--border);
-    border-bottom: 0;
-    padding-top: var(--sp-3);
-    margin-top: var(--sp-2);
-    justify-content: stretch;
-    width: 100%;
-    min-height: auto;
+  .table-wrap:not(.keep-table) .table td:last-child,
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] {
+    border-top: 1px solid var(--border) !important;
+    border-bottom: 0 !important;
+    padding-top: var(--sp-3) !important;
+    margin-top: var(--sp-2) !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: auto !important;
   }
 
-  .table-wrap:not(.keep-table) .table td:last-child::before {
+  .table-wrap:not(.keep-table) .table td:last-child::before,
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"]::before {
     display: none !important;
   }
 
-  .table-wrap:not(.keep-table) .table td:last-child .row {
-    width: 100%;
-    display: flex;
-    gap: var(--sp-2);
+  .table-wrap:not(.keep-table) .table td:last-child .row,
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .row {
+    width: 100% !important;
+    display: flex !important;
+    gap: var(--sp-2) !important;
   }
 
-  .table-wrap:not(.keep-table) .table td:last-child .btn {
-    flex: 1;
-    min-height: 38px;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-semibold);
+  .table-wrap:not(.keep-table) .table td:last-child .btn,
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .btn {
+    flex: 1 !important;
+    min-height: 38px !important;
+    justify-content: center !important;
+    border-radius: var(--radius-md) !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: var(--fw-semibold) !important;
   }
 
   /* Toolbar tombol aksi kartu pada tampilan mobile */

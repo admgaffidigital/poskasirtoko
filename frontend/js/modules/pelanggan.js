@@ -193,7 +193,7 @@ async function muatDataPelanggan(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table" style="min-width: 1080px;">
+        <table class="table table-pelanggan">
           <thead>
             <tr>
               <th style="min-width: 190px;">Kode & Nama</th>
