@@ -16,6 +16,24 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.43] - 2026-11-15
+
+### Added & Fixed
+- [UI] [LAYOUT] **Eliminasi Total Overflow Horizontal & Presisi Area Utama `.main`**:
+  - Mengidentifikasi akar masalah utama penyebab layout menabrak dan meluap melebihi layar (*horizontal overflow*): elemen `.main` sebelumnya memiliki `width: 100%` dipadukan dengan `margin-left: 264px` (atau `76px` saat collapsed), yang menyebabkan batas kanan `.main` meluap keluar layar sebesar lebar sidebar tersebut.
+  - Memperbaiki perhitungan dimensi `.main` di [frontend/css/layout.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/layout.css):
+    - Pada desktop/tablet: Mengubah menjadi `width: calc(100% - var(--sidebar-w)); max-width: calc(100% - var(--sidebar-w));` saat expanded, dan `width: calc(100% - var(--rail-w)); max-width: calc(100% - var(--rail-w));` saat collapsed.
+    - Menambahkan `overflow-x: hidden;` pada `.app` dan `.main` untuk mencegah kebocoran gulir horizontal.
+    - Mengoreksi `topbar` menjadi `max-width: 100%`, sehingga seluruh tombol aksi pojok kanan (Sinkron, Tema, Aa, Status, Profil) selalu terkunci rapi di tepi kanan layar tanpa terdorong keluar viewport.
+- [UI] [POS-KASIR] **Fluid Dual-Panel Layout POS Kasir & Presisi Keranjang Belanja**:
+  - Mengatur kontainer `.content:has(.pos-wrapper)` agar memanfaatkan 100% ruang kerja secara proporsional dengan tinggi penuh layar (`height: calc(100vh - var(--topbar-h))`).
+  - Mengubah `.pos-wrapper` di [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css) menjadi `height: 100%; max-height: 100%; overflow: hidden;`.
+  - Panel keranjang belanja (`.pos-cart-panel`) kini berukuran presisi 330px–360px dan berada pas di tepi kanan layar, dengan area item keranjang yang fleksibel (*dynamic scroll*), sehingga tombol utama "BAYAR" dan "Tahan" selalu tampak utuh tanpa terpotong di bagian bawah.
+  - Mengoptimalkan ukuran kisi kartu katalog produk (`.pos-grid-container`) dengan `minmax(160px, 1fr)` sehingga kartu tersusun rapi 3–5 kolom sesuai ruang layar yang tersedia tanpa saling berhimpitan (*terjepit*).
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.43** berukuran **4.03 MB** (VersionCode 30).
+
+---
+
 ## [1.0.42] - 2026-11-15
 
 ### Added & Fixed

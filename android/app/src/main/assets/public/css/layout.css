@@ -12,6 +12,7 @@
   max-width: 100%;
   position: relative;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ---------- Sidebar ---------- */
@@ -317,12 +318,15 @@
   max-width: 100%;
   box-sizing: border-box;
   padding-bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + var(--sp-8));
-  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1), width 0.22s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
 }
 
 @media (min-width: 768px) {
   .main {
     margin-left: var(--rail-w);
+    width: calc(100% - var(--rail-w));
+    max-width: calc(100% - var(--rail-w));
     padding-bottom: 0;
   }
 }
@@ -330,10 +334,14 @@
 @media (min-width: 1024px) {
   .main {
     margin-left: var(--sidebar-w);
+    width: calc(100% - var(--sidebar-w));
+    max-width: calc(100% - var(--sidebar-w));
   }
 
   .app.sidebar-collapsed .main {
     margin-left: var(--rail-w);
+    width: calc(100% - var(--rail-w));
+    max-width: calc(100% - var(--rail-w));
   }
 }
 
@@ -346,7 +354,7 @@
   align-items: center;
   gap: var(--sp-2);
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   box-sizing: border-box;
   height: calc(var(--topbar-h) + var(--safe-top));
   padding: var(--safe-top) calc(var(--sp-2) + var(--safe-right)) 0 calc(var(--sp-3) + var(--safe-left));
@@ -464,7 +472,26 @@
 
 @media (min-width: 768px) {
   .content {
-    padding: var(--sp-6);
+    padding: var(--sp-4) var(--sp-6);
+  }
+}
+
+/* POS Kasir Full-Height Fluid Layout agar presisi dan tidak terjepit / menabrak layar */
+.content:has(.pos-wrapper) {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: var(--sp-3) var(--sp-4) !important;
+  height: calc(100vh - var(--topbar-h));
+  height: calc(100dvh - var(--topbar-h));
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .content:has(.pos-wrapper) {
+    height: auto;
+    overflow: visible;
+    padding: var(--sp-2) var(--sp-3) !important;
   }
 }
 
