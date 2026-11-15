@@ -182,7 +182,7 @@ function bukaModalFormUser(container, user) {
     <form id="form-user" class="stack">
       <div class="field">
         <label class="field-label" for="usr-username">Username <span class="wajib">*</span></label>
-        <input type="text" class="input mono" id="usr-username" value="${isEdit ? escapeHtml(user.username) : ''}" placeholder="Cth: kasir_budi" ${isEdit ? 'disabled' : 'required'} autofocus>
+        <input type="text" class="input mono" id="usr-username" value="${isEdit ? escapeHtml(user.username) : ''}" placeholder="Cth: kasir_budi" ${isEdit ? 'disabled' : 'required'} data-autofocus>
         <span class="field-hint">Hanya huruf, angka, garis bawah, dan titik.</span>
       </div>
 
@@ -283,7 +283,7 @@ function bukaModalResetPin(container, userId, username) {
 
       <div class="field">
         <label class="field-label" for="reset-pin-baru">PIN Baru Sementara (6 Angka) <span class="wajib">*</span></label>
-        <input type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" class="input tabular" id="reset-pin-baru" placeholder="6 angka" required autofocus>
+        <input type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" class="input tabular" id="reset-pin-baru" placeholder="6 angka" required data-autofocus>
       </div>
 
       <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-2);">

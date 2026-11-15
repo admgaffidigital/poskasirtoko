@@ -202,6 +202,12 @@ export function showModal({
   };
   window.addEventListener('keydown', handleKey);
 
+  // Programmatic smooth autofocus tanpa memicu intervensi browser
+  setTimeout(() => {
+    const autoEl = dialog.querySelector('[data-autofocus]') || dialog.querySelector('input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])');
+    autoEl?.focus();
+  }, 100);
+
   return { close, el: overlay };
 }
 

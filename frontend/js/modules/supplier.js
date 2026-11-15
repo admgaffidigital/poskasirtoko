@@ -228,7 +228,7 @@ function bukaModalSupplier(container, supplier = null) {
       <form id="form-supplier" class="stack">
         <div class="field">
           <label class="field-label" for="sup-nama">Nama Perusahaan / Supplier <span class="wajib">*</span></label>
-          <input type="text" class="input" id="sup-nama" value="${escapeHtml(supplier?.nama || '')}" placeholder="Contoh: PT Semen Perkasa Abadi" required autofocus>
+          <input type="text" class="input" id="sup-nama" value="${escapeHtml(supplier?.nama || '')}" placeholder="Contoh: PT Semen Perkasa Abadi" required data-autofocus>
         </div>
 
         <div class="row" style="gap: var(--sp-2);">

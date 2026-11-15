@@ -341,7 +341,7 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
     <form id="form-kategori" class="stack">
       <div class="field">
         <label class="field-label" for="kat-nama">Nama Kategori <span class="wajib">*</span></label>
-        <input type="text" class="input" id="kat-nama" value="${isEdit ? escapeHtml(kat.nama) : ''}" placeholder="Cth: PIPA AW, SEMEN GRESIK, CAT TEMBOK" required autofocus>
+        <input type="text" class="input" id="kat-nama" value="${isEdit ? escapeHtml(kat.nama) : ''}" placeholder="Cth: PIPA AW, SEMEN GRESIK, CAT TEMBOK" required data-autofocus>
       </div>
 
       <div class="field">

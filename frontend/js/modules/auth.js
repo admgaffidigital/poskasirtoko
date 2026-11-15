@@ -74,7 +74,7 @@ export function tampilkanModalLogin(onSuccess) {
         <label class="field-label" for="login-username">Username <span class="wajib">*</span></label>
         <div class="input-group">
           <span class="input-icon">${ICONS.users}</span>
-          <input type="text" class="input" id="login-username" placeholder="Contoh: owner" required autofocus>
+          <input type="text" class="input" id="login-username" placeholder="Contoh: owner" required data-autofocus>
         </div>
       </div>
 
@@ -175,7 +175,7 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
 
         <div class="field">
           <label class="field-label" for="pin-lama">PIN Saat Ini <span class="wajib">*</span></label>
-          <input type="password" inputmode="numeric" maxlength="6" class="input" id="pin-lama" placeholder="PIN saat ini" required autofocus>
+          <input type="password" inputmode="numeric" maxlength="6" class="input" id="pin-lama" placeholder="PIN saat ini" required data-autofocus>
         </div>
 
         <div class="field">

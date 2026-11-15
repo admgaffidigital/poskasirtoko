@@ -930,7 +930,7 @@ async function bukaModalFormProduk(container, produk) {
 
         <div class="field">
           <label class="field-label" for="prd-nama">Nama Produk <span class="wajib">*</span></label>
-          <input type="text" class="input" id="prd-nama" value="${isEdit ? escapeHtml(produk.nama) : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" autofocus>
+          <input type="text" class="input" id="prd-nama" value="${isEdit ? escapeHtml(produk.nama) : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" data-autofocus>
         </div>
 
         <div class="form-grid cols-2">
