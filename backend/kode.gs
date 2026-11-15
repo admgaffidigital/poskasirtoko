@@ -247,6 +247,7 @@ const RUTE = {
   'penjualan.pending.save': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenjualanPendingSave_ },
   'penjualan.pending.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPenjualanPendingList_ },
   'penjualan.pending.delete': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenjualanPendingDelete_ },
+  'penjualan.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPenjualanList_ },
   'penjualan.detail': { publik: false, roles: SEMUA_ROLE, handler: aksiPenjualanDetail_ },
   'penjualan.void': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiPenjualanVoid_ },
   'pelanggan.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPelangganList_ },
@@ -2644,6 +2645,72 @@ function aksiPenjualanPendingDelete_(ctx) {
   });
 
   return { pesan: 'Draft transaksi ' + pending.no_nota + ' berhasil dihapus.' };
+}
+
+/** penjualan.list — Daftar riwayat penjualan dengan pencarian dan filter */
+function aksiPenjualanList_(ctx) {
+  const p = ctx.payload || {};
+  const semuaPenjualan = bacaSemua_('Penjualan');
+  const semuaPelanggan = bacaSemua_('Pelanggan');
+  const pelangganPeta = {};
+  semuaPelanggan.forEach(function (pl) { pelangganPeta[pl.id] = pl.nama; });
+
+  let data = semuaPenjualan.map(function (pj) {
+    const copy = Object.assign({}, pj);
+    copy.pelanggan_nama = pelangganPeta[pj.pelanggan_id] || (pj.pelanggan_id ? 'Pelanggan' : 'Umum (Non-Member)');
+    return copy;
+  });
+
+  // Filter void (default hanya non-void kecuali diminta)
+  if (!p.include_void) {
+    data = data.filter(function (pj) { return !pj.void; });
+  }
+
+  // Filter pelanggan
+  if (p.pelanggan_id) {
+    data = data.filter(function (pj) { return pj.pelanggan_id === p.pelanggan_id; });
+  }
+
+  // Filter status bayar
+  if (p.status_bayar) {
+    data = data.filter(function (pj) { return pj.status_bayar === p.status_bayar; });
+  }
+
+  // Filter tanggal
+  if (p.dari) {
+    data = data.filter(function (pj) { return String(pj.tanggal || '').substring(0, 10) >= p.dari; });
+  }
+  if (p.sampai) {
+    data = data.filter(function (pj) { return String(pj.tanggal || '').substring(0, 10) <= p.sampai; });
+  }
+
+  // Pencarian no_nota atau pelanggan_nama
+  const q = String(p.q || p.cari || '').trim().toLowerCase();
+  if (q) {
+    data = data.filter(function (pj) {
+      return String(pj.no_nota || '').toLowerCase().indexOf(q) !== -1 ||
+        String(pj.pelanggan_nama || '').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  // Urutkan tanggal desc
+  data.sort(function (a, b) {
+    return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
+  });
+
+  const total = data.length;
+  const page = Math.max(1, parseInt(p.page, 10) || 1);
+  const limit = Math.max(1, Math.min(100, parseInt(p.limit, 10) || 20));
+  const offset = (page - 1) * limit;
+  const items = data.slice(offset, offset + limit);
+
+  return {
+    items: items,
+    total: total,
+    page: page,
+    limit: limit,
+    total_halaman: Math.ceil(total / limit)
+  };
 }
 
 /** penjualan.detail — Lihat rincian transaksi lengkap untuk struk / audit. */

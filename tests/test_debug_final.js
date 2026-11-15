@@ -883,6 +883,12 @@ async function runAudit() {
     const resDetailJual = callApi('penjualan.detail', tokenKasir, { id: resJual.data.penjualan.id });
     assert.strictEqual(resDetailJual.ok, true);
     assert.strictEqual(resDetailJual.data.toko.nama, 'TB BINTANG TIMUR JAYA', 'Detail nota untuk cetak ulang memuat identitas toko kustom');
+
+    // 6. penjualan.list untuk mencari riwayat penjualan berdasarkan no_nota atau nama pelanggan
+    const resListJual = callApi('penjualan.list', tokenKasir, { cari: resJual.data.penjualan.no_nota });
+    assert.strictEqual(resListJual.ok, true);
+    assert.strictEqual(resListJual.data.items.length, 1);
+    assert.strictEqual(resListJual.data.items[0].no_nota, resJual.data.penjualan.no_nota);
   });
 
   test('14. Integrasi Upload Foto Produk ke Google Drive & Penyimpanan Foto URL Produk', () => {

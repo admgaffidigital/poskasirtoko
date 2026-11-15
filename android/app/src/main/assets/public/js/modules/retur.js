@@ -461,11 +461,30 @@ function bukaModalFormReturJual(container) {
     areaHasil.innerHTML = renderSkeleton(3);
 
     try {
-      // Ambil detail penjualan via penjualan.list pencarian no nota
-      const resList = await apiCall('penjualan.list', { cari: noNota, limit: 1 });
-      const notaDitemukan = (resList.items || []).find((x) => x.no_nota === noNota || x.id === noNota);
+      let pj = null;
+      let items = [];
+      let pel = {};
 
-      if (!notaDitemukan) {
+      try {
+        const resDetail = await apiCall('penjualan.detail', { no_nota: noNota });
+        if (resDetail && resDetail.penjualan && !resDetail.penjualan.void) {
+          pj = resDetail.penjualan;
+          items = resDetail.items || [];
+          pel = resDetail.pelanggan || {};
+        }
+      } catch (errDet) {
+        // Fallback cari lewat penjualan.list
+        const resList = await apiCall('penjualan.list', { cari: noNota, limit: 1 });
+        const notaDitemukan = (resList.items || []).find((x) => (x.no_nota === noNota || x.id === noNota) && !x.void);
+        if (notaDitemukan) {
+          const resDetail = await apiCall('penjualan.detail', { id: notaDitemukan.id });
+          pj = resDetail.penjualan || notaDitemukan;
+          items = resDetail.items || [];
+          pel = resDetail.pelanggan || {};
+        }
+      }
+
+      if (!pj) {
         btnCekNota.disabled = false;
         btnCekNota.innerHTML = 'Cek Nota';
         areaHasil.innerHTML = `
@@ -476,12 +495,6 @@ function bukaModalFormReturJual(container) {
         `;
         return;
       }
-
-      // Ambil rincian item nota
-      const resDetail = await apiCall('penjualan.detail', { id: notaDitemukan.id });
-      const pj = resDetail.penjualan || notaDitemukan;
-      const items = resDetail.items || [];
-      const pel = resDetail.pelanggan || {};
 
       // Cek apakah ada piutang aktif
       let adaPiutangAktif = false;

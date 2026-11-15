@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.37] - 2026-11-15
+
+### Fixed & Enhanced
+- [BACKEND] [API] **Implementasi Handler API `penjualan.list` & Penyelarasan Rute 100%**:
+  - Menambahkan handler backend `aksiPenjualanList_` pada `backend/kode.gs` lengkap dengan filter tanggal (`dari`, `sampai`), status bayar, filter pelanggan, pencarian no nota / nama pelanggan, pengurutan waktu `DESC`, serta paginasi data.
+  - Memperbarui modul `frontend/js/modules/retur.js` agar pencarian nota penjualan mendukung pencarian ganda (*direct `penjualan.detail`* dan *fallback `penjualan.list`*) dengan validasi status void transaksi.
+- [TEST] [AUDIT] **Otomatisasi Verifikasi Paritas API Frontend vs Backend**:
+  - Menambahkan script pengujian otomatis [tests/audit_api_parity.js](file:///c:/POS%20KASIR%20TOKO/tests/audit_api_parity.js) yang memvalidasi bahwa seluruh pemanggilan `apiCall` (55 aksi) pada frontend memiliki handler aktif yang terdaftar di objek `RUTE` Google Apps Script (66 rute).
+  - Menjalankan *full stress test* mencakup seluruh Fase 1 s/d Fase 6 dan Audit Finalisasi dengan hasil kelulusan 100% tanpa error.
+- [APK] [BUILD] Kompilasi ulang APK Android native **v1.0.37** berukuran **~4.02 MB** (VersionCode 24).
+
+---
+
 ## [1.0.36] - 2026-11-15
 
 ### Fixed
