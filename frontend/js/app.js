@@ -49,6 +49,12 @@ class App {
     syncStatusBarWithTheme();
     setupHardwareBackButton();
     this.renderShell();
+    // Pulihkan status sidebar collapsed pilihan user dari localStorage (Mode Accurate POS)
+    try {
+      if (localStorage.getItem('pos_sidebar_collapsed') === 'true') {
+        $('.app')?.classList.add('sidebar-collapsed');
+      }
+    } catch (_) {}
     this.updateBrandUI();
     this.bindGlobalEvents();
     this.initRouter();
@@ -382,7 +388,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.40'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.41'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -435,7 +441,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.40'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.41'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -475,14 +481,20 @@ class App {
 
     appEl.innerHTML = `
       <div class="app">
+        <!-- Backdrop Mobile Sidebar Drawer -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
         <!-- Sidebar Desktop / Tablet Rail -->
         <aside class="sidebar" id="sidebar">
           <div class="sidebar-brand">
-            <div class="brand-logo">${ICONS.store}</div>
+            <div class="brand-logo" id="brand-logo-sidebar" style="cursor: pointer;" title="Perkecil / Perluas Menu (Mode Accurate POS)">${ICONS.store}</div>
             <div class="brand-text">
               <span id="brand-nama-toko" title="${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')}">${escapeHtml(store.getNamaToko ? store.getNamaToko() : 'POS Toko')}</span>
               <small id="brand-sub-toko">POS Kasir Toko</small>
             </div>
+            <button type="button" class="sidebar-toggle-btn" id="btn-toggle-sidebar" title="Perkecil Menu (Mode Ikon Accurate POS)" aria-label="Buka Tutup Side Menu">
+              <span class="sidebar-toggle-icon">${ICONS.chevronLeft}</span>
+            </button>
           </div>
 
           <nav class="sidebar-nav" id="sidebar-nav">
@@ -509,6 +521,9 @@ class App {
         <div class="main">
           <!-- Top Bar -->
           <header class="topbar">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm btn-sidebar-toggle-top" id="btn-toggle-sidebar-top" title="Buka / Tutup Menu Samping" aria-label="Toggle Side Menu">
+              ${ICONS.menu}
+            </button>
             <div class="topbar-logo">
               <div class="brand-logo">${ICONS.store}</div>
             </div>
@@ -601,7 +616,7 @@ class App {
       html += `<div class="nav-group-title">${escapeHtml(groupName)}</div>`;
       items.forEach((r) => {
         html += `
-          <a href="${r.path}" class="nav-link" data-path="${r.path}" id="nav-side-${r.id}">
+          <a href="${r.path}" class="nav-link" data-path="${r.path}" id="nav-side-${r.id}" title="${escapeHtml(r.shortTitle || r.title)}" data-tooltip="${escapeHtml(r.shortTitle || r.title)}">
             ${r.icon}
             <span class="nav-label">${escapeHtml(r.shortTitle || r.title)}</span>
           </a>
@@ -663,11 +678,57 @@ class App {
     $('#btn-sync-top')?.addEventListener('click', triggerSyncHandler);
     $('#btn-sync-sidebar')?.addEventListener('click', triggerSyncHandler);
 
-    // Keyboard shortcut global: F5 atau Ctrl+R untuk reload / sinkronisasi data in-app
+    // Kontrol Buka/Tutup Sidebar (Mode Accurate POS untuk Desktop/Tablet & Drawer untuk Mobile)
+    const toggleSidebarHandler = () => {
+      const appContainer = $('.app');
+      const sidebarEl = $('#sidebar');
+      const backdropEl = $('#sidebar-backdrop');
+      const isMobile = window.innerWidth < 768;
+
+      if (isMobile) {
+        const isOpen = sidebarEl?.classList.toggle('is-mobile-open');
+        backdropEl?.classList.toggle('is-visible', Boolean(isOpen));
+      } else {
+        const isCollapsed = appContainer?.classList.toggle('sidebar-collapsed');
+        try {
+          localStorage.setItem('pos_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        } catch (_) {}
+        // Trigger resize event segera dan setelah animasi selesai untuk render ulang tabel & grafik
+        window.dispatchEvent(new Event('resize'));
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 250);
+      }
+      haptic.light();
+    };
+
+    const tutupMobileSidebar = () => {
+      $('#sidebar')?.classList.remove('is-mobile-open');
+      $('#sidebar-backdrop')?.classList.remove('is-visible');
+    };
+
+    $('#btn-toggle-sidebar-top')?.addEventListener('click', toggleSidebarHandler);
+    $('#btn-toggle-sidebar')?.addEventListener('click', toggleSidebarHandler);
+    $('#brand-logo-sidebar')?.addEventListener('click', () => {
+      if ($('.app')?.classList.contains('sidebar-collapsed')) {
+        toggleSidebarHandler();
+      }
+    });
+    $('#sidebar-backdrop')?.addEventListener('click', tutupMobileSidebar);
+
+    // Menutup mobile drawer ketika link menu sidebar diklik pada layar mobile
+    $('#sidebar-nav')?.addEventListener('click', (e) => {
+      if (e.target.closest('a') && window.innerWidth < 768) {
+        tutupMobileSidebar();
+      }
+    });
+
+    // Keyboard shortcut global: F5 atau Ctrl+R untuk reload / sinkronisasi data in-app; Ctrl+B untuk sidebar
     window.addEventListener('keydown', (e) => {
       if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
         e.preventDefault();
         this.sinkronkanDataGlobal();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebarHandler();
       }
     });
 

@@ -604,7 +604,19 @@ input[type="password"] {
   contain-intrinsic-size: 0 44px;
 }
 .table tbody tr:hover { background: var(--surface-2); }
-.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table .num,
+.table .tabular {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Penegakan presisi tabel desktop agar tidak terdistorsi/penceng */
+@media (min-width: 768px) {
+  .table-wrap:not(.keep-table) .table {
+    min-width: 960px;
+  }
+}
 
 /* Container nilai sel bertumpuk di sebelah kanan (misal HP + badge WA + alamat) */
 .pel-cell-val {
@@ -639,6 +651,8 @@ input[type="password"] {
   align-items: center;
   gap: 6px;
   justify-content: flex-end;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .pel-actions-row .btn,
 .table-actions .btn {
@@ -651,6 +665,7 @@ input[type="password"] {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Transformasi Tabel ke Native Card di Layar Mobile (< 768px) */

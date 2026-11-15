@@ -447,17 +447,17 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       let html = `
         <div class="card">
           <div class="table-wrap">
-            <table class="table">
+            <table class="table" style="min-width: 980px;">
               <thead>
                 <tr>
-                  <th>Nama Produk</th>
-                  <th>SKU / Barcode</th>
-                  <th>Satuan</th>
-                  ${!isKasir ? '<th style="text-align: right;">HPP</th>' : ''}
-                  <th style="text-align: right;">Harga Ritel</th>
-                  <th style="text-align: right;">Harga Grosir</th>
-                  <th style="text-align: center;">Stok</th>
-                  ${canEdit ? '<th style="width: 130px; text-align: right;">Aksi</th>' : ''}
+                  <th style="min-width: 220px;">Nama Produk</th>
+                  <th style="min-width: 140px; white-space: nowrap;">SKU / Barcode</th>
+                  <th style="min-width: 80px;">Satuan</th>
+                  ${!isKasir ? '<th style="text-align: right; min-width: 110px; white-space: nowrap;">HPP</th>' : ''}
+                  <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Ritel</th>
+                  <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Grosir</th>
+                  <th style="text-align: center; min-width: 80px; white-space: nowrap;">Stok</th>
+                  ${canEdit ? '<th style="width: 170px; min-width: 170px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
                 </tr>
               </thead>
               <tbody>
@@ -478,7 +478,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                 <div class="grow" style="min-width: 0;">
                   <div class="fw-bold text-md prd-table-nama">${escapeHtml(p.nama)}</div>
                   <div class="row" style="gap: 4px; margin-top: 3px; flex-wrap: wrap;">
-                    ${p.sku ? `<span class="mono text-xs text-muted">${escapeHtml(p.sku)}</span>` : ''}
+                    ${p.sku ? `<span class="mono text-xs text-muted" style="white-space: nowrap;">${escapeHtml(p.sku)}</span>` : ''}
                     ${p.punya_varian && p.varian && p.varian.length ? `<span class="badge badge-info badge-sm">${p.varian.length} Varian</span>` : ''}
                     ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge badge-sm">+${p.satuan_konversi.length} Satuan</span>` : ''}
                   </div>
@@ -488,19 +488,19 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                 </div>
               </div>
             </td>
-            <td data-label="SKU / Barcode" class="d-none-mobile">
-              <div class="mono text-xs">${escapeHtml(p.sku || '-')}</div>
-              <div class="text-xs text-muted">${escapeHtml(p.barcode || '')}</div>
+            <td data-label="SKU / Barcode" class="d-none-mobile" style="white-space: nowrap;">
+              <div class="mono text-xs" style="white-space: nowrap;">${escapeHtml(p.sku || '-')}</div>
+              <div class="text-xs text-muted" style="white-space: nowrap;">${escapeHtml(p.barcode || '')}</div>
             </td>
-            <td data-label="Satuan">${escapeHtml(p.satuan_dasar)}</td>
-            ${!isKasir ? `<td class="num" data-label="HPP">${formatRupiah(p.hpp)}</td>` : ''}
-            <td class="num fw-bold text-primary" data-label="Harga Ritel">${formatRupiah(p.harga_ritel)}</td>
-            <td class="num text-muted" data-label="Harga Grosir">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</td>
-            <td style="text-align: center;" data-label="Stok" class="d-none-mobile">
+            <td data-label="Satuan" style="white-space: nowrap;">${escapeHtml(p.satuan_dasar)}</td>
+            ${!isKasir ? `<td class="num" data-label="HPP" style="white-space: nowrap;">${formatRupiah(p.hpp)}</td>` : ''}
+            <td class="num fw-bold text-primary" data-label="Harga Ritel" style="white-space: nowrap;">${formatRupiah(p.harga_ritel)}</td>
+            <td class="num text-muted" data-label="Harga Grosir" style="white-space: nowrap;">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</td>
+            <td style="text-align: center; white-space: nowrap;" data-label="Stok" class="d-none-mobile">
               <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
             </td>
             ${canEdit ? `
-              <td style="text-align: right;" data-label="Aksi">
+              <td style="text-align: right; min-width: 170px; width: 170px; white-space: nowrap;" data-label="Aksi">
                 <div class="table-actions">
                   <button type="button" class="btn btn-secondary btn-sm btn-edit-prd" data-id="${p.id}" title="Edit Produk">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>

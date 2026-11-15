@@ -16,7 +16,25 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
-## [1.0.40] - 2026-11-15
+## [1.0.41] - 2026-11-15
+
+### Added & Fixed
+- [UI] [TABLE] **Presisi Tata Letak Tabel Desktop & Anti-Wrapping Kolom**:
+  - Mengatasi masalah tampilan tabel desktop yang berantakan (*penceng* dan terpotong):
+    - Menerapkan `white-space: nowrap;` pada seluruh sel numerik `.table .num, .table .tabular` di [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css), mencegah teks mata uang `Rp` dan nominal (misal `397.000`) terlipat menjadi 2 baris terpisah.
+    - Menetapkan lebar minimum desktop `.table-wrap:not(.keep-table) .table { min-width: 960px; }` sehingga kolom tabel tidak lagi tertekan (*squished*) pada layar desktop/laptop menengah, melainkan dapat digulir horizontal dengan mulus.
+    - Menambahkan `white-space: nowrap;` dan penetapan lebar minimum kolom SKU / Barcode (`min-width: 140px;`) dan Aksi (`min-width: 170px;`) di [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js), memastikan tombol "Ubah" dan "Hapus" selalu tampil utuh berdampingan tanpa terpotong di tepi kanan.
+- [UI] [SIDEBAR] **Fitur Buka-Tutup Side Menu & Mode Ikon Mini (Accurate POS Style)**:
+  - Mengimplementasikan sistem side menu panel responsif multi-device (Desktop, Tablet, Mobile) bergaya Accurate POS:
+    - **Desktop (>= 1024px)**: Mendukung mode *Full Sidebar* (248px) dan *Mini-Rail Icon Only* (76px). Tombol toggle di header sidebar (`#btn-toggle-sidebar`) dan topbar (`#btn-toggle-sidebar-top`) memungkinkan pengguna memperluas atau memperkecil side menu dengan sekali klik atau shortcut keyboard `Ctrl + B`.
+    - **Anotasi Tooltip Otomatis**: Saat sidebar dalam mode mini ikon Accurate POS, mengarahkan kursor (*hover*) pada ikon menu akan langsung memunculkan tooltip judul menu lengkap yang ramah pengguna.
+    - **Persistensi Preferensi**: Pilihan mode buka/tutup sidebar disimpan otomatis di `localStorage ('pos_sidebar_collapsed')` sehingga tampilan preferensi pengguna tetap dipertahankan saat membuka halaman atau sesi baru.
+    - **Tablet (768px - 1023px)**: Mode mini rail default yang hemat ruang dan dapat diperluas.
+    - **Mobile (< 768px)**: Topbar hamburger memicu *Off-Canvas Drawer* samping (280px) dengan efek backdrop gelap berbayang halus yang tertutup otomatis saat link menu atau backdrop disentuh, dipadukan dengan kemudahan Bottom Navigation Bar 5 menu utama.
+  - Menghubungkan event resize otomatis dengan transisi CSS halus `cubic-bezier(0.4, 0, 0.2, 1)` untuk menjaga presisi ukuran elemen tabel dan grafik di area utama (`.main`).
+- [APK] [BUILD] Kompilasi APK Android native **v1.0.41** berukuran **4.03 MB** (VersionCode 28).
+
+---
 
 ### Enhanced & Optimized
 - [PERFORMANCE] [API] **In-Flight Request Coalescing & Serialized Payload Cache**:
