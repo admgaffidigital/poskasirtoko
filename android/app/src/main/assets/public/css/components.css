@@ -1137,6 +1137,63 @@ input[type="password"] {
   min-width: 0;
 }
 
+/* Tombol Toggle Accordion / Lipat Sub Kategori */
+.btn-toggle-sub {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.btn-toggle-sub:hover {
+  background: var(--surface-3);
+  color: var(--primary);
+  border-color: var(--primary-soft);
+}
+
+.btn-toggle-sub svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.btn-toggle-sub.is-collapsed svg {
+  transform: rotate(-90deg);
+}
+
+/* Badge Interaktif untuk Toggle Sub Kategori */
+.badge-toggle-sub {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-toggle-sub:hover {
+  filter: brightness(0.92);
+}
+
+/* Highlight Teks Hasil Pencarian */
+.highlight-text {
+  background: rgba(234, 88, 12, 0.18);
+  color: var(--primary);
+  font-weight: var(--fw-bold);
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
 /* Transformasi Tabel ke Native Card di Layar Mobile (< 768px) */
 @media (max-width: 767px) {
   .kat-container-card,
