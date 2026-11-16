@@ -41,50 +41,38 @@ export async function renderLaporanModule(container) {
 
   container.innerHTML = `
     <div class="stack" id="modul-laporan-root">
-      <!-- Header Modul -->
-      <div class="page-header no-print">
-        <div>
-          <h2>Dashboard & Laporan Usaha</h2>
-          <p>Ringkasan performa penjualan, pembelian, arus kas, persediaan stok, dan laba kotor toko</p>
+      <!-- Header Modul: Judul & Tombol Segarkan Berdampingan -->
+      <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);">
+        <div style="min-width: 0;">
+          <h2 style="margin: 0; font-size: clamp(1.15rem, 1.8vw, var(--fs-xl)); font-weight: var(--fw-bold); letter-spacing: -0.02em;">Dashboard & Laporan Usaha</h2>
+          <p class="d-none-mobile" style="margin: 2px 0 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4;">Ringkasan performa penjualan, pembelian, arus kas, persediaan stok, dan laba toko</p>
         </div>
-        <div class="row" style="gap: var(--sp-2);">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-laporan" title="Cetak atau simpan sebagai PDF">
-            ${ICONS.printer}
-            <span>Cetak PDF</span>
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-ekspor-laporan" title="Unduh data dalam format CSV/Excel">
-            ${ICONS.download}
-            <span>Ekspor CSV</span>
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-segarkan-laporan" title="Muat ulang data terkini">
-            ${ICONS.refresh}
-            <span>Segarkan</span>
-          </button>
-        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-segarkan-laporan" title="Muat ulang data terkini" style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
+          ${ICONS.refresh}
+          <span>Segarkan</span>
+        </button>
       </div>
 
       <!-- Baris Filter Periode Cepat & Rentang Tanggal -->
       <div class="card no-print" style="margin-bottom: var(--sp-3);">
-        <div class="card-body" style="padding: var(--sp-3) var(--sp-4);">
-          <!-- Baris Utama: Preset & Badge Indikator -->
-          <div class="cluster" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-3);">
-            <div class="cluster" style="align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
-              <span style="font-weight: var(--fw-semibold); font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
-              <div class="segmented" id="seg-periode" role="group" style="overflow-x: auto; max-width: 100%;">
-                <button type="button" class="btn btn-sm ${stateLaporan.periode === 'hari_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="hari_ini">Hari Ini</button>
-                <button type="button" class="btn btn-sm ${stateLaporan.periode === '7_hari' ? 'btn-primary' : 'btn-ghost'}" data-periode="7_hari">7 Hari</button>
-                <button type="button" class="btn btn-sm ${stateLaporan.periode === '30_hari' ? 'btn-primary' : 'btn-ghost'}" data-periode="30_hari">30 Hari</button>
-                <button type="button" class="btn btn-sm ${stateLaporan.periode === 'bulan_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="bulan_ini">Bulan Ini</button>
-                <button type="button" class="btn btn-sm ${stateLaporan.periode === 'tahun_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="tahun_ini">Tahun Ini</button>
-                <button type="button" class="btn btn-sm ${stateLaporan.periode === 'kustom' ? 'btn-primary' : 'btn-ghost'}" data-periode="kustom">Kustom</button>
-              </div>
-            </div>
-
-            <!-- Badge Tanggal Berjalan Aktif -->
-            <div class="badge badge-secondary" id="badge-periode-aktif" style="padding: 6px 12px; font-size: var(--fs-xs); font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+        <div class="card-body" style="padding: var(--sp-3);">
+          <!-- Baris Atas: Label & Badge Rentang Tanggal Aktif -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-2); gap: var(--sp-2);">
+            <span style="font-weight: var(--fw-bold); font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
+            <div class="badge badge-secondary" id="badge-periode-aktif" style="padding: 4px 10px; font-size: var(--fs-xs); font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
               <span>${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}</span>
             </div>
+          </div>
+
+          <!-- Segmented Control Preset Periode -->
+          <div class="segmented" id="seg-periode" role="group" style="width: 100%; box-sizing: border-box;">
+            <button type="button" class="btn btn-sm ${stateLaporan.periode === 'hari_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="hari_ini">Hari Ini</button>
+            <button type="button" class="btn btn-sm ${stateLaporan.periode === '7_hari' ? 'btn-primary' : 'btn-ghost'}" data-periode="7_hari">7 Hari</button>
+            <button type="button" class="btn btn-sm ${stateLaporan.periode === '30_hari' ? 'btn-primary' : 'btn-ghost'}" data-periode="30_hari">30 Hari</button>
+            <button type="button" class="btn btn-sm ${stateLaporan.periode === 'bulan_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="bulan_ini">Bulan Ini</button>
+            <button type="button" class="btn btn-sm ${stateLaporan.periode === 'tahun_ini' ? 'btn-primary' : 'btn-ghost'}" data-periode="tahun_ini">Tahun Ini</button>
+            <button type="button" class="btn btn-sm ${stateLaporan.periode === 'kustom' ? 'btn-primary' : 'btn-ghost'}" data-periode="kustom">Kustom</button>
           </div>
 
           <!-- Bagian Pilihan Tanggal Manual (Hanya muncul jika mode Kustom) -->
@@ -293,22 +281,6 @@ function pasangEventHeader(container) {
     btnRefresh.addEventListener('click', () => {
       showToast('Memperbarui data laporan...', 'info', 1200);
       muatDataTabAktif(container);
-    });
-  }
-
-  // Tombol Cetak PDF
-  const btnCetak = $('#btn-cetak-laporan', container);
-  if (btnCetak) {
-    btnCetak.addEventListener('click', () => {
-      window.print();
-    });
-  }
-
-  // Tombol Ekspor CSV
-  const btnEkspor = $('#btn-ekspor-laporan', container);
-  if (btnEkspor) {
-    btnEkspor.addEventListener('click', () => {
-      jalankanEksporCsv();
     });
   }
 }

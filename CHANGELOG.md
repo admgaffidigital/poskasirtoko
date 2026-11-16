@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.56] - 2026-11-16
+
+### Removed
+- [DASHBOARD] [UI] **Eliminasi Tombol Cetak PDF & Ekspor CSV**:
+  - Menghapus tombol *Cetak PDF* dan *Ekspor CSV* pada [frontend/js/modules/laporan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/laporan.js) beserta event listener-nya untuk menyederhanakan alur kerja pengguna.
+
+### Changed
+- [DASHBOARD] [UI] **Restrukturisasi Tata Letak Header & Filter Periode Laporan**:
+  - Menata ulang header modul laporan menjadi 1 baris kompak: judul *Dashboard & Laporan Usaha* berdampingan langsung dengan tombol *Segarkan*, menghemat ruang vertikal secara drastis pada perangkat mobile.
+  - Merapikan kartu filter periode: baris atas menampilkan label *Periode Laporan* (kiri) dan badge rentang tanggal aktif (kanan); baris bawah menampilkan grid 6 tombol shortcut periode secara simetris tanpa elemen berantakan.
+
 ## [1.0.55] - 2026-11-16
 
 ### Fixed
