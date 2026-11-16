@@ -16,6 +16,30 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.55] - 2026-11-16
+
+### Fixed
+- [DASHBOARD] [UI] **Perataan Grid Kontrol Periode & Tab Navigasi Laporan Mobile**:
+  - Mengubah segmen filter `#seg-periode` menjadi CSS Grid 3×2 dan navigasi `#tabs-laporan` menjadi CSS Grid 2×3 pada layar perangkat mobile (`@media (max-width: 767px)` di [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css)), memastikan seluruh tombol tampil utuh tanpa terpotong atau menimbulkan scrollbar horizontal.
+- [DASHBOARD] [UI] **Grafik Tren Bebas Scroll & Penataan Komposisi Metode Bayar**:
+  - Mengoptimalkan perhitungan lebar grafik SVG tren harian di [frontend/js/modules/laporan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/laporan.js) agar sepenuhnya pas dengan kontainer (`width: 100%`) tanpa *overflow* horizontal.
+  - Menambahkan kelas utilitas `.cluster` di [frontend/css/layout.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/layout.css) untuk merapikan kartu rincian metode pembayaran dan modal nota.
+  - Memperbaiki perataan teks kode SKU dan batas stok pada kartu peringatan stok kritis agar sejajar ke kiri.
+- [DASHBOARD] [UI] **Penataan Tombol Aksi Header Laporan**:
+  - Merapikan susunan tombol aksi *Cetak PDF*, *Ekspor CSV*, dan *Segarkan* agar tersusun proporsional, rapi, dan mudah diakses pada layar smartphone.
+- [HUTANG-PIUTANG] **Ketahanan Akumulasi Saldo Sisa Hutang/Piutang**:
+  - Memperbaiki fallback kalkulasi total saldo berjalan di [frontend/js/modules/hutang-piutang.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/hutang-piutang.js) agar secara dinamis menghitung dari daftar faktur aktif saat backend mengembalikan nilai 0.
+
+## [1.0.54] - 2026-11-16
+
+### Fixed
+- [POS-BELI] [UI] **Segmented Control Navigasi Sejajar POS Pembelian**:
+  - Mengubah tab `Faktur Baru` dan `Riwayat Faktur` pada [frontend/js/modules/pembelian.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pembelian.js) menjadi `.segmented` sejajar 50:50 dengan ikon tematik, selaras dengan estetika *Native App*.
+- [POS-BELI] [UI] **Perataan Tengah Pesan Tabel Kosong & Tombol Aksi Cepat**:
+  - Menyelaraskan teks pesan keranjang dan riwayat faktur kosong dengan `.text-center` dan `min-height: 120px`.
+  - Menata tombol aksi cepat *Terapkan ke Semua*, *Bayar Lunas*, dan *Hutang (0)* agar memiliki ukuran tombol seragam dan perataan vertikal yang presisi.
+  - Menerapkan `.cell-stack` pada kolom daftar barang untuk mencegah loncatan teks multi-baris pada layar sempit.
+
 ## [1.0.53] - 2026-11-16
 
 ### Added

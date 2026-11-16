@@ -287,15 +287,15 @@ async function muatDataPiutang(container) {
 
     const items = (res.items || []).map((it) => ({
       ...it,
+      sisa: Number(it.sisa != null ? it.sisa : (it.sisa_piutang != null ? it.sisa_piutang : (Number(it.total || 0) - Number(it.terbayar || 0)))),
       nama_pelanggan: it.nama_pelanggan || it.pelanggan_nama || 'Pelanggan Umum',
       hp_pelanggan: it.hp_pelanggan || it.pelanggan_hp || '',
       tanggal_nota: it.tanggal_nota || it.tanggal_penjualan || it.created_at,
       jatuh_tempo_lewat: Boolean(it.jatuh_tempo_lewat || it.lewat_jatuh_tempo)
     }));
 
-    const totalSisa = res.total_sisa_piutang
-      ?? res.total_piutang_berjalan
-      ?? items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
+    const sumSisaPiutang = items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
+    const totalSisa = (Number(res.total_sisa_piutang) || Number(res.total_piutang_berjalan) || sumSisaPiutang);
     const overdueCount = items.filter((it) => it.jatuh_tempo_lewat && it.status !== 'lunas').length;
 
     // Perbarui stat cards
@@ -454,15 +454,15 @@ async function muatDataHutang(container) {
 
     const items = (res.items || []).map((it) => ({
       ...it,
+      sisa: Number(it.sisa != null ? it.sisa : (it.sisa_hutang != null ? it.sisa_hutang : (Number(it.total || 0) - Number(it.terbayar || 0)))),
       nama_supplier: it.nama_supplier || it.supplier_nama || 'Supplier Umum',
       hp_supplier: it.hp_supplier || it.supplier_hp || '',
       tanggal_faktur: it.tanggal_faktur || it.tanggal_pembelian || it.created_at,
       jatuh_tempo_lewat: Boolean(it.jatuh_tempo_lewat || it.lewat_jatuh_tempo)
     }));
 
-    const totalSisa = res.total_sisa_hutang
-      ?? res.total_hutang_berjalan
-      ?? items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
+    const sumSisaHutang = items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
+    const totalSisa = (Number(res.total_sisa_hutang) || Number(res.total_hutang_berjalan) || sumSisaHutang);
     const overdueCount = items.filter((it) => it.jatuh_tempo_lewat && it.status !== 'lunas').length;
 
     // Perbarui stat cards
