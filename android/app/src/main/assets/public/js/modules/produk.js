@@ -568,21 +568,21 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             </div>
 
             ${canEdit ? `
-              <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-1); flex-wrap: wrap;">
-                <button type="button" class="btn btn-outline-primary btn-sm grow btn-quick-edit-prd" data-id="${p.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  <span>Edit Cepat</span>
+              <div class="table-actions" style="display: flex; align-items: center; width: 100%; gap: 4px; margin-top: var(--sp-2);">
+                <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span>Cepat</span>
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm grow btn-edit-prd" data-id="${p.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                   <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   <span>Salin</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="display: inline-flex; align-items: center; justify-content: center;">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <button type="button" class="btn btn-ghost btn-xs text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="width: 32px; height: 32px; flex-shrink: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
               </div>
             ` : ''}
