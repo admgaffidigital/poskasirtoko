@@ -383,12 +383,10 @@ export function renderPosModule(container) {
       }
 
       if (reset) {
-        // Ambil kategori & produk aktif (batch pertama)
-        const [resKat, resProd, resPeng, resPending] = await Promise.all([
+        // Ambil kategori & produk aktif secara paralel tanpa diblokir oleh pending/pengaturan
+        const [resKat, resProd] = await Promise.all([
           api.post('kategori.list', { aktif_saja: true }),
-          api.post('produk.list', payloadPrd),
-          api.post('pengaturan.get'),
-          api.post('penjualan.pending.list')
+          api.post('produk.list', payloadPrd)
         ]);
 
         if (resKat.ok) state.kategori = resKat.data.items || [];
@@ -397,23 +395,30 @@ export function renderPosModule(container) {
           state.totalProduk = resProd.data.total ?? state.katalog.length;
           state.hasMore = resProd.data.has_more ?? (state.katalog.length < state.totalProduk);
         }
-        if (resPeng.ok) {
-          state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
-          store.set('pengaturan', state.pengaturan);
-          store.setToko({
-            nama: state.pengaturan.toko_nama,
-            alamat: state.pengaturan.toko_alamat,
-            hp: state.pengaturan.toko_hp,
-            nota_footer: state.pengaturan.nota_footer
-          });
-        }
-        if (resPending.ok) {
-          state.pendingCount = (resPending.data.items || []).length;
-          perbaruiBadgePending();
-        }
 
         renderKategoriBar();
         renderKatalog();
+
+        // Segarkan pengaturan & jumlah pending di latar belakang tanpa menahan katalog utama
+        api.post('pengaturan.get').then((resPeng) => {
+          if (resPeng.ok) {
+            state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
+            store.set('pengaturan', state.pengaturan);
+            store.setToko({
+              nama: state.pengaturan.toko_nama,
+              alamat: state.pengaturan.toko_alamat,
+              hp: state.pengaturan.toko_hp,
+              nota_footer: state.pengaturan.nota_footer
+            });
+          }
+        }).catch(() => {});
+
+        api.post('penjualan.pending.list').then((resPending) => {
+          if (resPending.ok) {
+            state.pendingCount = (resPending.data.items || []).length;
+            perbaruiBadgePending();
+          }
+        }).catch(() => {});
       } else {
         // Ambil produk halaman berikutnya (Load More)
         const resProd = await api.post('produk.list', payloadPrd);

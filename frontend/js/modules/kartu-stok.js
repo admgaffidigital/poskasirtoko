@@ -70,20 +70,21 @@ export async function renderKartuStokModule(container) {
     </div>
   `;
 
-  // Muat opsi dropdown produk
-  try {
-    const res = await apiCall('produk.list', { limit: 200, aktif_saja: false });
-    const selectProd = $('#filter-ks-produk', container);
-    if (selectProd) {
-      let opts = '<option value="">-- Semua Produk --</option>';
-      (res.items || []).forEach((p) => {
-        opts += `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.sku || '-')})</option>`;
-      });
-      selectProd.innerHTML = opts;
-    }
-  } catch (err) {
-    console.warn('Gagal memuat opsi filter produk:', err);
-  }
+  // Muat opsi dropdown produk secara paralel (non-blocking terhadap tabel kartu stok)
+  const muatDropdownProdukPromise = apiCall('produk.list', { limit: 200, aktif_saja: false })
+    .then((res) => {
+      const selectProd = $('#filter-ks-produk', container);
+      if (selectProd) {
+        let opts = '<option value="">-- Semua Produk --</option>';
+        (res.items || []).forEach((p) => {
+          opts += `<option value="${p.id}">${escapeHtml(p.nama)} (${escapeHtml(p.sku || '-')})</option>`;
+        });
+        selectProd.innerHTML = opts;
+      }
+    })
+    .catch((err) => {
+      console.warn('Gagal memuat opsi filter produk:', err);
+    });
 
   // Event Listeners
   const pemicuMuat = () => {
@@ -104,7 +105,7 @@ export async function renderKartuStokModule(container) {
     }, 300);
   });
 
-  await muatDataKartuStok(container);
+  await Promise.all([muatDataKartuStok(container), muatDropdownProdukPromise]);
 }
 
 async function muatDataKartuStok(container) {

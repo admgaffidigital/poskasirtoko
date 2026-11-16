@@ -181,16 +181,15 @@ export async function renderProdukModule(container) {
     </div>
   `;
 
-  // Muat opsi kategori ke dropdown filter
-  try {
-    const katRes = await apiCall('kategori.list', {});
-    const selKat = $('#filter-produk-kategori', container);
-    if (selKat) {
-      selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
-    }
-  } catch (e) {
-    // Abaikan jika gagal muat filter
-  }
+  // Muat opsi kategori ke dropdown filter secara paralel (non-blocking terhadap muatProduk)
+  const muatFilterKategoriPromise = apiCall('kategori.list', {})
+    .then((katRes) => {
+      const selKat = $('#filter-produk-kategori', container);
+      if (selKat) {
+        selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
+      }
+    })
+    .catch(() => {});
 
   // Pasang event filter
   let debounceTimer;
@@ -303,7 +302,7 @@ export async function renderProdukModule(container) {
   }
 
   perbaruiTampilanFilter(container);
-  await muatProduk(container, canEdit, isKasir);
+  await Promise.all([muatProduk(container, canEdit, isKasir), muatFilterKategoriPromise]);
 }
 
 function perbaruiTampilanFilter(c) {
@@ -381,13 +380,15 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
   if (!area) return;
 
   try {
+    const { view: _viewMode, ...payloadProduk } = filterState;
     if (!isAppend) {
-      const res = await apiCall('produk.list', filterState);
+      const res = await apiCall('produk.list', payloadProduk);
       cacheDaftarProduk = urutkanDaftarProdukLokal(res.items || [], filterState.sort);
       window._totalProdukTerakhir = res.total || 0;
     } else {
       filterState.page++;
-      const res = await apiCall('produk.list', filterState);
+      const { view: _v2, ...payloadNext } = filterState;
+      const res = await apiCall('produk.list', payloadNext);
       const itemsBaru = res.items || [];
       itemsBaru.forEach((p) => {
         if (!cacheDaftarProduk.some((x) => x.id === p.id)) {

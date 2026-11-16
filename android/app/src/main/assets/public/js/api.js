@@ -18,46 +18,156 @@ export class ApiError extends Error {
   }
 }
 
+// Kunci penyimpanan cache persisten di localStorage untuk fitur Stale-While-Revalidate (SWR)
+const PERSISTENT_CACHE_KEY = 'pos_api_cache_v1';
+
 // Cache respons in-memory di sisi klien untuk query baca (read queries)
 const memoryApiCache = new Map();
 
 // Koleksi request yang sedang berjalan untuk deduplikasi request identik (In-Flight Request Coalescing)
 const inFlightRequests = new Map();
 
-// Aksi yang dapat di-cache dengan aman (TTL dalam milidetik)
+// Aksi yang dapat di-cache dengan aman (TTL segar dalam milidetik; SWR stale window = 6x TTL hingga 15 menit)
 const CACHE_CONFIG = {
-  'kategori.list': 120000,   // 2 menit
-  'pengaturan.get': 180000,  // 3 menit
-  'produk.list': 60000,      // 1 menit (katalog instan per filter & paginasi)
-  'produk.detail': 60000,    // 1 menit
-  'pelanggan.list': 60000,   // 1 menit
-  'pelanggan.detail': 60000, // 1 menit
-  'supplier.list': 60000,    // 1 menit
-  'hadiah.list': 60000,      // 1 menit
-  'user.list': 45000,        // 45 detik
-  'auth.me': 20000,          // 20 detik
-  'sistem.status': 30000     // 30 detik
+  'kategori.list': 180000,         // 3 menit
+  'pengaturan.get': 300000,        // 5 menit
+  'produk.list': 90000,            // 1.5 menit (katalog instan per filter & paginasi)
+  'produk.detail': 90000,          // 1.5 menit
+  'pelanggan.list': 90000,         // 1.5 menit
+  'pelanggan.detail': 60000,       // 1 menit
+  'supplier.list': 90000,          // 1.5 menit
+  'hadiah.list': 90000,            // 1.5 menit
+  'user.list': 60000,              // 1 menit
+  'auth.me': 45000,                // 45 detik
+  'sistem.status': 45000,          // 45 detik
+  'stok.kartu': 60000,             // 1 menit
+  'opname.list': 60000,            // 1 menit
+  'pembelian.list': 60000,         // 1 menit
+  'pembelian.detail': 60000,       // 1 menit
+  'penjualan.list': 60000,         // 1 menit
+  'penjualan.detail': 60000,       // 1 menit
+  'penjualan.pending.list': 45000, // 45 detik
+  'penjualan.shift': 45000,        // 45 detik
+  'piutang.list': 60000,           // 1 menit
+  'piutang.detail': 60000,         // 1 menit
+  'hutang.list': 60000,            // 1 menit
+  'hutang.detail': 60000,          // 1 menit
+  'retur.list': 60000,             // 1 menit
+  'retur.detail': 60000,           // 1 menit
+  'member.riwayatPoin': 60000,     // 1 menit
+  'laporan.ringkasan': 60000,      // 1 menit
+  'laporan.penjualan': 60000,      // 1 menit
+  'laporan.pembelian': 60000,      // 1 menit
+  'laporan.kas': 60000,            // 1 menit
+  'laporan.laba_rugi': 60000,      // 1 menit
+  'laporan.stokValuasi': 60000     // 1 menit
 };
+
+// Aksi yang disimpan ke localStorage agar instan (0ms) saat halaman di-reload (F5)
+const PERSISTABLE_ACTIONS = new Set([
+  'kategori.list',
+  'pengaturan.get',
+  'produk.list',
+  'pelanggan.list',
+  'supplier.list',
+  'hadiah.list',
+  'penjualan.pending.list',
+  'laporan.ringkasan'
+]);
 
 // Pola mutasi data yang otomatis mengosongkan cache terkait secara instan
 const MUTATION_PATTERNS = [
-  { trigger: 'kategori.', target: 'kategori.' },
-  { trigger: 'produk.', target: 'produk.' },
-  { trigger: 'penjualan.', target: 'produk.' },     // penjualan mengurangi stok produk
-  { trigger: 'penjualan.', target: 'pelanggan.' },  // penjualan mempengaruhi poin/piutang
-  { trigger: 'pembelian.', target: 'produk.' },     // pembelian menambah stok produk
-  { trigger: 'pembelian.', target: 'supplier.' },   // pembelian mempengaruhi hutang supplier
-  { trigger: 'opname.', target: 'produk.' },        // opname menyesuaikan stok
-  { trigger: 'retur.', target: 'produk.' },         // retur mengembalikan stok
-  { trigger: 'pelanggan.', target: 'pelanggan.' },
-  { trigger: 'supplier.', target: 'supplier.' },
-  { trigger: 'hadiah.', target: 'hadiah.' },
-  { trigger: 'hadiah.', target: 'pelanggan.' },
-  { trigger: 'pengaturan.', target: 'pengaturan.' },
-  { trigger: 'user.', target: 'user.' },
-  { trigger: 'auth.logout', target: '' },           // bersihkan seluruh cache
-  { trigger: 'auth.login', target: '' }             // bersihkan seluruh cache
+  { trigger: 'kategori.', targets: ['kategori.', 'produk.', 'laporan.'] },
+  { trigger: 'produk.', targets: ['produk.', 'stok.', 'laporan.'] },
+  { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'piutang.', 'stok.', 'laporan.', 'member.'] },
+  { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'stok.', 'laporan.'] },
+  { trigger: 'opname.', targets: ['produk.', 'opname.', 'stok.', 'laporan.'] },
+  { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'stok.', 'laporan.', 'pelanggan.', 'supplier.'] },
+  { trigger: 'piutang.', targets: ['piutang.', 'pelanggan.', 'penjualan.', 'laporan.'] },
+  { trigger: 'hutang.', targets: ['hutang.', 'supplier.', 'pembelian.', 'laporan.'] },
+  { trigger: 'pelanggan.', targets: ['pelanggan.', 'piutang.', 'laporan.'] },
+  { trigger: 'supplier.', targets: ['supplier.', 'hutang.', 'laporan.'] },
+  { trigger: 'hadiah.', targets: ['hadiah.', 'pelanggan.', 'member.'] },
+  { trigger: 'member.', targets: ['pelanggan.', 'hadiah.', 'member.'] },
+  { trigger: 'pengaturan.', targets: ['pengaturan.'] },
+  { trigger: 'user.', targets: ['user.', 'auth.'] },
+  { trigger: 'auth.gantiPin', targets: ['auth.'] },
+  { trigger: 'auth.logout', targets: [''] },
+  { trigger: 'auth.login', targets: [''] }
 ];
+
+let persistTimer = null;
+
+function muatCachePersisten() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(PERSISTENT_CACHE_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const now = Date.now();
+    for (const [k, v] of Object.entries(obj)) {
+      if (v && v.staleExpiry && now < v.staleExpiry) {
+        memoryApiCache.set(k, v);
+      }
+    }
+  } catch (_) {}
+}
+
+function jadwalkanSimpanCachePersisten() {
+  if (typeof localStorage === 'undefined') return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      const obj = {};
+      const now = Date.now();
+      let count = 0;
+      for (const [k, v] of memoryApiCache.entries()) {
+        const act = k.split('::')[0] || '';
+        if (PERSISTABLE_ACTIONS.has(act) && v && now < v.staleExpiry && count < 40) {
+          obj[k] = v;
+          count++;
+        }
+      }
+      localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify(obj));
+    } catch (_) {}
+  }, 150);
+}
+
+// Hidrasi cache dari localStorage saat modul dimuat pertama kali
+muatCachePersisten();
+
+function ambilTokenAktif(explicitToken) {
+  let token = explicitToken;
+  if (!token && typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem('pos_token') || '';
+    if (raw.startsWith('"') && raw.endsWith('"')) {
+      try { token = JSON.parse(raw); } catch { token = raw; }
+    } else {
+      token = raw;
+    }
+  }
+  return (token || '').trim();
+}
+
+/**
+ * Isi cache API secara langsung (mis. dari hasil auth.me atau prefetch gabungan)
+ */
+export function seedApiCache(action, payload = {}, data, explicitToken = null) {
+  const ttl = CACHE_CONFIG[action];
+  if (!ttl || data === undefined) return;
+  const token = ambilTokenAktif(explicitToken);
+  const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
+  const cacheKey = `${action}::${token}::${payloadStr}`;
+  const now = Date.now();
+  memoryApiCache.set(cacheKey, {
+    data,
+    expiry: now + ttl,
+    staleExpiry: now + Math.max(ttl * 6, 900000)
+  });
+  if (PERSISTABLE_ACTIONS.has(action)) {
+    jadwalkanSimpanCachePersisten();
+  }
+}
 
 /**
  * Hapus entri cache API (semua atau berdasarkan awalan aksi)
@@ -66,6 +176,9 @@ const MUTATION_PATTERNS = [
 export function invalidateApiCache(prefix = null) {
   if (!prefix) {
     memoryApiCache.clear();
+    if (typeof localStorage !== 'undefined') {
+      try { localStorage.removeItem(PERSISTENT_CACHE_KEY); } catch (_) {}
+    }
     return;
   }
   for (const key of memoryApiCache.keys()) {
@@ -74,6 +187,13 @@ export function invalidateApiCache(prefix = null) {
       memoryApiCache.delete(key);
     }
   }
+  jadwalkanSimpanCachePersisten();
+}
+
+const READ_SUFFIXES = ['.list', '.get', '.detail', '.me', '.status', '.ping', '.kartu', '.shift', '.riwayatPoin', '.ringkasan', '.penjualan', '.pembelian', '.kas', '.laba_rugi', '.stokValuasi'];
+
+function adalahAksiMutasi(action) {
+  return !READ_SUFFIXES.some((s) => action.endsWith(s));
 }
 
 /**
@@ -92,145 +212,148 @@ export async function apiCall(action, payload = {}, options = {}) {
     );
   }
 
-  // Jika ini aksi mutasi (create/update/delete), hapus cache terkait seketika
-  MUTATION_PATTERNS.forEach(({ trigger, target }) => {
-    if (action.startsWith(trigger) && !action.endsWith('.list') && !action.endsWith('.get')) {
-      invalidateApiCache(target);
-    }
-  });
+  // Jika ini aksi mutasi (create/update/delete/bayar/void), hapus cache terkait seketika
+  if (adalahAksiMutasi(action)) {
+    MUTATION_PATTERNS.forEach(({ trigger, targets }) => {
+      if (action.startsWith(trigger)) {
+        targets.forEach((t) => invalidateApiCache(t));
+      }
+    });
+  }
+
+  const token = ambilTokenAktif(options.token);
+  const isCacheable = !options.skipCache && !!CACHE_CONFIG[action];
+  const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
+  const cacheKey = isCacheable ? `${action}::${token}::${payloadStr}` : null;
 
   if (!navigator.onLine) {
+    // Saat offline, kembalikan data dari cache bila tersedia
+    if (cacheKey && memoryApiCache.has(cacheKey)) {
+      return memoryApiCache.get(cacheKey).data;
+    }
     throw new ApiError(
       'Tidak ada koneksi internet. Pastikan perangkat Anda terhubung ke jaringan.',
       'OFFLINE'
     );
   }
 
-  // Ambil token dari options atau localStorage (dan bersihkan dari kutip ganda bila ada)
-  let token = options.token;
-  if (!token && typeof localStorage !== 'undefined') {
-    const raw = localStorage.getItem('pos_token') || '';
-    if (raw.startsWith('"') && raw.endsWith('"')) {
-      try { token = JSON.parse(raw); } catch { token = raw; }
-    } else {
-      token = raw;
+  // Eksekutor jaringan dengan deduplikasi In-Flight Coalescing
+  const eksekusiJaringan = () => {
+    if (cacheKey && inFlightRequests.has(cacheKey)) {
+      return inFlightRequests.get(cacheKey);
     }
-  }
-  token = (token || '').trim();
 
-  // Periksa cache in-memory untuk aksi baca aman (read queries)
-  const isCacheable = !options.skipCache && !!CACHE_CONFIG[action];
-  const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
-  const cacheKey = isCacheable ? `${action}::${token}::${payloadStr}` : null;
+    const timeoutMs = options.timeoutMs || CONFIG.API_TIMEOUT_MS || 30000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+    const requestBody = JSON.stringify({
+      action,
+      token,
+      payload
+    });
+
+    const fetchPromise = (async () => {
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            // Penting: text/plain mencegah browser mengirim CORS preflight (OPTIONS)
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: requestBody,
+          signal: controller.signal
+        });
+
+        clearTimeout(timer);
+
+        if (!res.ok) {
+          throw new ApiError(
+            `Server mengembalikan status HTTP ${res.status} (${res.statusText})`,
+            'HTTP_ERROR'
+          );
+        }
+
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (parseErr) {
+          console.error('[API] Respon bukan JSON valid:', text);
+          throw new ApiError(
+            'Format respons dari server tidak dapat dibaca.',
+            'PARSE_ERROR'
+          );
+        }
+
+        if (!data || typeof data !== 'object') {
+          throw new ApiError('Format respons server tidak sesuai standar.', 'INVALID_RESPONSE');
+        }
+
+        if (data.ok === true) {
+          if (CACHE_CONFIG[action]) {
+            const ttl = CACHE_CONFIG[action];
+            const now = Date.now();
+            const targetKey = `${action}::${token}::${payloadStr}`;
+            memoryApiCache.set(targetKey, {
+              data: data.data,
+              expiry: now + ttl,
+              staleExpiry: now + Math.max(ttl * 6, 900000)
+            });
+            if (PERSISTABLE_ACTIONS.has(action)) {
+              jadwalkanSimpanCachePersisten();
+            }
+          }
+          return data.data;
+        } else {
+          const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
+          const errCode = data.code || 'SERVER';
+          throw new ApiError(errMsg, errCode, data.data);
+        }
+      } catch (err) {
+        clearTimeout(timer);
+        if (err instanceof ApiError) throw err;
+        if (err.name === 'AbortError') {
+          throw new ApiError(
+            'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',
+            'TIMEOUT'
+          );
+        }
+        console.error('[API Error]', err);
+        throw new ApiError(
+          'Gagal menghubungi server. Periksa koneksi internet atau izin URL Web App.',
+          'NETWORK_ERROR'
+        );
+      } finally {
+        clearTimeout(timer);
+        if (cacheKey) {
+          inFlightRequests.delete(cacheKey);
+        }
+      }
+    })();
+
+    if (cacheKey) {
+      inFlightRequests.set(cacheKey, fetchPromise);
+    }
+    return fetchPromise;
+  };
+
+  // Periksa cache (Fresh Hit = 0ms; Stale Hit = 0ms + Revalidasi Latar Belakang SWR)
   if (isCacheable && memoryApiCache.has(cacheKey)) {
     const entry = memoryApiCache.get(cacheKey);
-    if (Date.now() < entry.expiry) {
+    const now = Date.now();
+    if (now < entry.expiry) {
+      return entry.data;
+    }
+    if (entry.staleExpiry && now < entry.staleExpiry) {
+      // Stale-While-Revalidate: Kembalikan data instan (0ms) dan segarkan di latar belakang
+      eksekusiJaringan().catch(() => {});
       return entry.data;
     }
     memoryApiCache.delete(cacheKey);
   }
 
-  // Deduplikasi: Jika request identik sedang berjalan di jaringan, bagikan Promise (In-Flight Coalescing)
-  if (isCacheable && inFlightRequests.has(cacheKey)) {
-    return inFlightRequests.get(cacheKey);
-  }
-
-  const timeoutMs = options.timeoutMs || CONFIG.API_TIMEOUT_MS || 30000;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  const requestBody = JSON.stringify({
-    action,
-    token,
-    payload
-  });
-
-  const fetchPromise = (async () => {
-    try {
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          // Penting: text/plain mencegah browser mengirim CORS preflight (OPTIONS)
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: requestBody,
-        signal: controller.signal
-      });
-
-      clearTimeout(timer);
-
-      if (!res.ok) {
-        throw new ApiError(
-          `Server mengembalikan status HTTP ${res.status} (${res.statusText})`,
-          'HTTP_ERROR'
-        );
-      }
-
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseErr) {
-        console.error('[API] Respon bukan JSON valid:', text);
-        throw new ApiError(
-          'Format respons dari server tidak dapat dibaca.',
-          'PARSE_ERROR'
-        );
-      }
-
-      // Periksa format respons seragam: { ok, data, error, code }
-      if (!data || typeof data !== 'object') {
-        throw new ApiError('Format respons server tidak sesuai standar.', 'INVALID_RESPONSE');
-      }
-
-      if (data.ok === true) {
-        if (isCacheable) {
-          memoryApiCache.set(cacheKey, {
-            data: data.data,
-            expiry: Date.now() + CACHE_CONFIG[action]
-          });
-        }
-        return data.data;
-      } else {
-        // Lempar error terkontrol dari backend
-        const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
-        const errCode = data.code || 'SERVER';
-        throw new ApiError(errMsg, errCode, data.data);
-      }
-    } catch (err) {
-      clearTimeout(timer);
-
-      if (err instanceof ApiError) {
-        throw err;
-      }
-
-      if (err.name === 'AbortError') {
-        throw new ApiError(
-          'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',
-          'TIMEOUT'
-        );
-      }
-
-      console.error('[API Error]', err);
-      throw new ApiError(
-        'Gagal menghubungi server. Periksa koneksi internet atau izin URL Web App.',
-        'NETWORK_ERROR'
-      );
-    } finally {
-      clearTimeout(timer);
-      if (cacheKey) {
-        inFlightRequests.delete(cacheKey);
-      }
-    }
-  })();
-
-  if (cacheKey) {
-    inFlightRequests.set(cacheKey, fetchPromise);
-  }
-
-  return await fetchPromise;
+  return await eksekusiJaringan();
 }
 
 /**

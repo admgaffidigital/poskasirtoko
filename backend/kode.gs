@@ -312,10 +312,14 @@ const RUTE = {
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */
 var _CACHE_BACA_REQ = {};
+var _SS_REQ = null;
+var _SHEET_MAP_REQ = {};
 
 /** Entry point Web App (semua aksi). */
 function doPost(e) {
   _CACHE_BACA_REQ = {};
+  _SS_REQ = null;
+  _SHEET_MAP_REQ = {};
   let action = '';
   try {
     const req = parseRequest_(e);
@@ -462,17 +466,21 @@ function validasiSesi_(token) {
 
 /** Spreadsheet database (ID disimpan oleh setupDatabase, fallback ke spreadsheet induk). */
 function ss_() {
+  if (_SS_REQ) return _SS_REQ;
   const id = PropertiesService.getScriptProperties().getProperty('DB_SPREADSHEET_ID');
   const ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) gagal_(KODE.SERVER, 'Database belum disiapkan. Jalankan setupDatabase() terlebih dahulu.');
+  _SS_REQ = ss;
   return ss;
 }
 
 /** Ambil sheet sesuai SKEMA; lempar error ramah bila belum dibuat. */
 function sheet_(namaSheet) {
   if (!SKEMA[namaSheet]) gagal_(KODE.SERVER, 'Sheet tidak dikenal: ' + namaSheet);
+  if (_SHEET_MAP_REQ && _SHEET_MAP_REQ[namaSheet]) return _SHEET_MAP_REQ[namaSheet];
   const sh = ss_().getSheetByName(namaSheet);
   if (!sh) gagal_(KODE.SERVER, 'Sheet "' + namaSheet + '" belum ada. Jalankan setupDatabase().');
+  if (_SHEET_MAP_REQ) _SHEET_MAP_REQ[namaSheet] = sh;
   return sh;
 }
 
@@ -548,6 +556,11 @@ function bacaSemua_(namaSheet, opsi) {
   if (_CACHE_BACA_REQ && _CACHE_BACA_REQ[cacheKey]) {
     return _CACHE_BACA_REQ[cacheKey];
   }
+  if (!opsi.termasukTerhapus && _CACHE_BACA_REQ && _CACHE_BACA_REQ[namaSheet + '_semua']) {
+    const aktif = _CACHE_BACA_REQ[namaSheet + '_semua'].filter(function (o) { return !o.deleted; });
+    _CACHE_BACA_REQ[cacheKey] = aktif;
+    return aktif;
+  }
 
   const sh = sheet_(namaSheet);
   const lastRow = sh.getLastRow();
@@ -591,7 +604,10 @@ function cariById_(namaSheet, id, opsi) {
  * @return {Object[]} objek yang tersimpan (dengan id).
  */
 function tambahBaris_(namaSheet, daftar, userId) {
-  _CACHE_BACA_REQ = {};
+  if (_CACHE_BACA_REQ) {
+    delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
+    delete _CACHE_BACA_REQ[namaSheet + '_semua'];
+  }
   if (!daftar || !daftar.length) return [];
   const sh = sheet_(namaSheet);
   const header = petaHeader_(sh);
@@ -632,13 +648,16 @@ function pastikanBaris_(sh, barisDibutuhkan) {
  * @return {Object[]} objek setelah diubah.
  */
 function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-unused-vars
-  _CACHE_BACA_REQ = {};
   if (!perubahan || !perubahan.length) return [];
   const sh = sheet_(namaSheet);
   const header = petaHeader_(sh);
   const lebar = sh.getLastColumn();
   const tipe = tipeKolom_(namaSheet);
   const semua = bacaSemua_(namaSheet, { termasukTerhapus: true });
+  if (_CACHE_BACA_REQ) {
+    delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
+    delete _CACHE_BACA_REQ[namaSheet + '_semua'];
+  }
   const indeks = {};
   semua.forEach(function (o) { indeks[o.id] = o; });
   const waktu = sekarang_();
@@ -6104,6 +6123,9 @@ function infoAdmin_(judul, pesan) {
  *  - membuat akun Owner awal (PIN acak) bila belum ada Owner aktif.
  */
 function setupDatabase() {
+  _CACHE_BACA_REQ = {};
+  _SS_REQ = null;
+  _SHEET_MAP_REQ = {};
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('Jalankan setupDatabase() dari Apps Script yang terikat ke Spreadsheet database.');
 

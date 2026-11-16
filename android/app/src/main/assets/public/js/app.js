@@ -5,7 +5,7 @@
 
 import { CONFIG, setApiUrl } from './config.js';
 import { ROUTES, cariRute } from './routes.js';
-import { apiCall, invalidateApiCache } from './api.js';
+import { apiCall, invalidateApiCache, seedApiCache } from './api.js';
 import { store } from './state.js';
 import {
   ICONS,
@@ -76,16 +76,16 @@ class App {
       }
     }
 
-    // Ambil identitas toko & pengaturan dari server
-    this.muatPengaturanToko();
-
-    // Verifikasi sesi saat aplikasi dimuat
+    // Verifikasi sesi & sinkronkan pengaturan toko dalam 1 request paralel saat aplikasi dimuat
     const token = store.get('token');
     if (token) {
       apiCall('auth.me', {})
         .then((res) => {
           store.set('user', res.user);
-          if (res.pengaturan) store.set('pengaturan', res.pengaturan);
+          if (res.pengaturan) {
+            store.set('pengaturan', res.pengaturan);
+            seedApiCache('pengaturan.get', {}, { pengaturan: res.pengaturan });
+          }
           if (res.toko) store.setToko(res.toko);
           this.updateUserUI(res.user);
           this.updateBrandUI();
@@ -109,6 +109,7 @@ class App {
         });
     } else {
       this.updateUserUI(null);
+      this.muatPengaturanToko();
     }
   }
 
@@ -131,19 +132,22 @@ class App {
   }
 
   /**
-   * Pemanasan cache in-memory di latar belakang saat CPU idle
-   * Memastikan pembukaan modul POS Kasir, Katalog, dan Satuan berlangsung instan (0ms)
+   * Pemanasan cache in-memory & persisten di latar belakang saat CPU idle
+   * Memastikan pembukaan modul POS Kasir, Katalog Produk, Kategori, dan Pelanggan berlangsung instan (0ms)
    */
   hangatkanCacheLatarBelakang() {
     const warmup = () => {
       if (!store.get('token')) return;
       apiCall('kategori.list', {}).catch(() => {});
-      apiCall('produk.list', { page: 1, limit: 30, sort: 'terbaru' }).catch(() => {});
+      apiCall('kategori.list', { aktif_saja: true }).catch(() => {});
+      apiCall('produk.list', { aktif_saja: true, page: 1, limit: 30 }).catch(() => {});
+      apiCall('produk.list', { q: '', kategori_id: '', filter_stok: '', status: '', sort: 'terbaru', aktif_saja: false, page: 1, limit: 20 }).catch(() => {});
+      apiCall('penjualan.pending.list', {}).catch(() => {});
     };
     if (typeof requestIdleCallback === 'function') {
-      requestIdleCallback(warmup, { timeout: 2500 });
+      requestIdleCallback(warmup, { timeout: 1500 });
     } else {
-      setTimeout(warmup, 800);
+      setTimeout(warmup, 400);
     }
   }
 
@@ -207,30 +211,32 @@ class App {
         navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => { });
       }
 
-      // 2. Ambil identitas toko & pengaturan terbaru dari server
-      await this.muatPengaturanToko();
-
-      // 3. Verifikasi & sinkronkan profil user jika sedang login
+      // 2. Jalankan sinkronisasi sesi/pengaturan DAN render ulang halaman aktif secara PARALEL (tanpa waterfall sekuensial)
       const token = store.get('token');
-      if (token) {
-        try {
-          const res = await apiCall('auth.me', {});
-          if (res && res.user) {
-            store.set('user', res.user);
-            if (res.pengaturan) store.set('pengaturan', res.pengaturan);
-            if (res.toko) store.setToko(res.toko);
-            this.updateUserUI(res.user);
-            this.updateBrandUI();
-          }
-        } catch (authErr) {
-          console.warn('Sync auth error:', authErr);
-        }
-      }
+      const syncSessionPromise = token
+        ? apiCall('auth.me', {}, { skipCache: true })
+            .then((res) => {
+              if (res && res.user) {
+                store.set('user', res.user);
+                if (res.pengaturan) {
+                  store.set('pengaturan', res.pengaturan);
+                  seedApiCache('pengaturan.get', {}, { pengaturan: res.pengaturan });
+                }
+                if (res.toko) store.setToko(res.toko);
+                this.updateUserUI(res.user);
+                this.updateBrandUI();
+              }
+            })
+            .catch(() => this.muatPengaturanToko())
+        : this.muatPengaturanToko();
 
-      // 4. Render ulang halaman aktif agar data baru segera tampil
+      // Render ulang halaman aktif bersamaan dengan sinkronisasi sesi
       if (this.currentRoute) {
         this.renderPage(this.currentRoute);
       }
+
+      await syncSessionPromise;
+      this.hangatkanCacheLatarBelakang();
 
       haptic.success();
       showToast('Sinkronisasi data berhasil! Data terbaru telah dimuat.', 'success', 2500);
@@ -388,7 +394,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.50'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.51'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -441,7 +447,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.50'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.51'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
