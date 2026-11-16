@@ -1476,6 +1476,121 @@ input[type="password"] {
     overflow: visible !important;
     white-space: normal !important;
   }
+
+  /* Layout 2 Kolom Kompak untuk Kartu Produk Mobile */
+  .table-produk tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px 12px !important;
+  }
+
+  .table-produk tbody tr td[data-label="Produk"] {
+    grid-column: 1 / -1 !important;
+  }
+
+  .table-produk tbody tr td[data-label="Satuan"],
+  .table-produk tbody tr td[data-label="HPP"],
+  .table-produk tbody tr td[data-label="Harga Ritel"],
+  .table-produk tbody tr td[data-label="Harga Grosir"] {
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+    min-height: 22px !important;
+  }
+
+  .table-produk tbody tr td[data-label="Aksi"] {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* Layout 2 Kolom Kompak untuk Kartu Stok Mobile Ala Mutasi Bank */
+  .table-kartu-stok tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px 12px !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Produk & Varian"] {
+    order: 1 !important;
+    grid-column: 1 / -1 !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding-bottom: var(--sp-2) !important;
+    margin-bottom: var(--sp-1) !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    min-height: auto !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Produk & Varian"]::before {
+    display: none !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Produk & Varian"] .cell-stack {
+    text-align: left !important;
+    align-items: flex-start !important;
+    max-width: 100% !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Waktu"] {
+    order: 2 !important;
+    grid-column: span 1 !important;
+    border-bottom: 0 !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 0 !important;
+    font-size: var(--fs-xs) !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Waktu"]::before {
+    display: inline-block !important;
+    content: "WAKTU" !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Jenis"] {
+    order: 3 !important;
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="No. Referensi"] {
+    order: 4 !important;
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Mutasi"] {
+    order: 5 !important;
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Saldo Akhir"] {
+    order: 6 !important;
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="HPP Mutasi"] {
+    order: 7 !important;
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Petugas"] {
+    order: 8 !important;
+    grid-column: span 1 !important;
+    padding: 2px 0 !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Keterangan"] {
+    order: 9 !important;
+    grid-column: 1 / -1 !important;
+    padding: 4px 0 !important;
+    border-top: 1px dashed var(--border) !important;
+  }
+
+  .table-kartu-stok tbody tr td[data-label="Aksi"] {
+    order: 10 !important;
+    grid-column: 1 / -1 !important;
+  }
 }
 
 /* Avatar Ikon Produk dalam Tabel / List Data */
@@ -3551,9 +3666,15 @@ a.list-item:hover {
 /* Filter Bar & Tabel Kartu Stok */
 .ks-filter-bar {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--sp-2);
   align-items: flex-end;
+}
+
+.ks-filter-bar > .field:first-child,
+.ks-filter-bar > .field:nth-child(2),
+.ks-filter-bar > .row {
+  grid-column: 1 / -1;
 }
 
 @media (min-width: 640px) {
@@ -3565,6 +3686,11 @@ a.list-item:hover {
 @media (min-width: 1024px) {
   .ks-filter-bar {
     grid-template-columns: 2fr 1.2fr 1fr 1fr auto;
+  }
+  .ks-filter-bar > .field:first-child,
+  .ks-filter-bar > .field:nth-child(2),
+  .ks-filter-bar > .row {
+    grid-column: auto;
   }
 }
 
