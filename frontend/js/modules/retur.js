@@ -209,11 +209,18 @@ async function muatDataReturJual(container) {
     const res = await apiCall('retur.list', {
       tipe: 'jual',
       cari,
+      q: cari,
       status,
       limit: 100
     });
 
-    const items = res.items || [];
+    const items = (res.items || []).map((it) => ({
+      ...it,
+      dibuat_at: it.dibuat_at || it.tanggal || it.created_at,
+      no_transaksi_asal: it.no_transaksi_asal || it.no_referensi_asal || '-',
+      nama_pihak: it.nama_pihak || it.pihak_nama || 'Pelanggan Umum',
+      nama_pembuat: it.nama_pembuat || '-'
+    }));
     if (items.length === 0) {
       area.innerHTML = renderEmpty('Belum ada data retur penjualan', 'Semua transaksi penjualan berjalan lancar tanpa retur');
       return;
@@ -340,11 +347,18 @@ async function muatDataReturBeli(container) {
     const res = await apiCall('retur.list', {
       tipe: 'beli',
       cari,
+      q: cari,
       status,
       limit: 100
     });
 
-    const items = res.items || [];
+    const items = (res.items || []).map((it) => ({
+      ...it,
+      dibuat_at: it.dibuat_at || it.tanggal || it.created_at,
+      no_transaksi_asal: it.no_transaksi_asal || it.no_referensi_asal || '-',
+      nama_pihak: it.nama_pihak || it.pihak_nama || 'Supplier Umum',
+      nama_pembuat: it.nama_pembuat || '-'
+    }));
     if (items.length === 0) {
       area.innerHTML = renderEmpty('Belum ada retur pembelian ke supplier', 'Tidak ada barang cacat atau barang yang dikembalikan ke vendor');
       return;
@@ -528,19 +542,26 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
   const isKasir = user && user.role === 'kasir';
 
   modalBody.innerHTML = `
-    <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-      <div class="row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
+    <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+      <div class="pel-modal-profile-top">
+        <div class="grow" style="min-width: 0;">
           <span class="text-xs text-muted">Nota Terverifikasi</span>
           <div class="fw-bold font-mono" style="font-size: var(--fs-base);">${escapeHtml(pj.no_nota)}</div>
-          <div class="text-xs text-muted">Tanggal: ${formatTanggal(pj.created_at, true)}</div>
+          <div class="text-xs text-muted">Tanggal: ${formatTanggal(pj.tanggal || pj.created_at, true)}</div>
         </div>
-        <div style="text-align: right;">
-          <span class="text-xs text-muted">Pelanggan</span>
-          <div class="fw-bold">${escapeHtml(pel.nama || pj.nama_pelanggan || 'Pelanggan Umum')}</div>
-          <div class="text-xs ${pel.tipe === 'member' ? 'text-primary fw-semibold' : 'text-muted'}">
-            ${pel.tipe === 'member' ? `Member Level: ${pel.level || 'Reguler'}` : 'Non-Member (Umum)'}
-          </div>
+        <span class="badge ${pel.tipe === 'member' ? 'badge-primary' : 'badge-info'}">
+          ${pel.tipe === 'member' ? `Member • ${escapeHtml(pel.level || 'Reguler')}` : 'Non-Member'}
+        </span>
+      </div>
+      <div class="pel-modal-profile-stats">
+        <div class="pel-modal-stat-item">
+          <span class="text-2xs text-muted uppercase fw-semibold">Pelanggan</span>
+          <div class="fw-bold" style="font-size: var(--fs-sm);">${escapeHtml(pel.nama || pj.nama_pelanggan || 'Pelanggan Umum')}</div>
+        </div>
+        <div class="pel-modal-stat-divider"></div>
+        <div class="pel-modal-stat-item" style="text-align: right;">
+          <span class="text-2xs text-muted uppercase fw-semibold">Total Nota Asal</span>
+          <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(pj.total || 0)}</div>
         </div>
       </div>
     </div>
@@ -565,13 +586,13 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
                 <tr>
                   <td data-label="Pilih">
                     <div class="row-between" style="width: 100%; align-items: center;">
-                      <span class="fw-bold d-none-desktop">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</span>
+                      <span class="fw-bold d-none-desktop">${escapeHtml(it.nama || it.nama_produk || it.produk_nama || 'Produk')}</span>
                       <input type="checkbox" class="cb-retur-item" data-idx="${idx}" checked style="width: 18px; height: 18px;">
                     </div>
                   </td>
                   <td data-label="Produk / Varian">
                     <div class="cell-stack">
-                      <div class="fw-semibold">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</div>
+                      <div class="fw-semibold">${escapeHtml(it.nama || it.nama_produk || it.produk_nama || 'Produk')}</div>
                       ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
                       <div class="text-xs text-muted font-mono">Snapshot HPP: ${formatRupiah(it.hpp_snapshot || it.hpp || 0)}</div>
                     </div>
@@ -629,7 +650,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
         <button type="button" class="btn btn-secondary" id="btn-batal-form-rj">Batal</button>
         <button type="submit" class="btn btn-primary" id="btn-submit-form-rj">
           ${ICONS.check}
-          <span>${isKasir ? 'Ajukan Retur ke Owner' : 'Simpan & Setujui Retur Langsung'}</span>
+          <span>${isKasir ? 'Ajukan Retur ke Owner' : 'Simpan & Setujui Retur'}</span>
         </button>
       </div>
     </form>
@@ -694,6 +715,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
           payloadItems.push({
             produk_id: item.produk_id,
             varian_id: item.varian_id || '',
+            nama: item.nama || item.nama_produk || item.produk_nama || '',
             satuan: item.satuan || '',
             faktor: item.faktor || 1,
             qty: qty,
@@ -731,7 +753,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
       showToast(err.message || 'Gagal membuat retur penjualan', 'error');
       if (btnSub) {
         btnSub.disabled = false;
-        btnSub.innerHTML = `${ICONS.check} <span>${isKasir ? 'Ajukan Retur ke Owner' : 'Simpan & Setujui Retur Langsung'}</span>`;
+        btnSub.innerHTML = `${ICONS.check} <span>${isKasir ? 'Ajukan Retur ke Owner' : 'Simpan & Setujui Retur'}</span>`;
       }
     }
   });
@@ -829,17 +851,24 @@ function bukaModalFormReturBeli(container) {
 
 function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, items, sup, adaHutangAktif, sisaHutang) {
   modalBody.innerHTML = `
-    <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-      <div class="row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
+    <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+      <div class="pel-modal-profile-top">
+        <div class="grow" style="min-width: 0;">
           <span class="text-xs text-muted">Faktur Pembelian</span>
           <div class="fw-bold font-mono" style="font-size: var(--fs-base);">${escapeHtml(pb.no_faktur)}</div>
-          <div class="text-xs text-muted">Tanggal: ${formatTanggal(pb.created_at, true)}</div>
+          <div class="text-xs text-muted">Tanggal: ${formatTanggal(pb.tanggal || pb.created_at, true)}</div>
         </div>
-        <div style="text-align: right;">
-          <span class="text-xs text-muted">Distributor / Supplier</span>
-          <div class="fw-bold">${escapeHtml(sup.nama || pb.nama_supplier || 'Supplier Umum')}</div>
-          <div class="text-xs text-muted">Faktur Vendor: ${escapeHtml(pb.no_faktur_supplier || '-')}</div>
+        ${pb.no_faktur_supplier ? `<span class="badge badge-info font-mono">Ref: ${escapeHtml(pb.no_faktur_supplier)}</span>` : ''}
+      </div>
+      <div class="pel-modal-profile-stats">
+        <div class="pel-modal-stat-item">
+          <span class="text-2xs text-muted uppercase fw-semibold">Distributor / Supplier</span>
+          <div class="fw-bold" style="font-size: var(--fs-sm);">${escapeHtml(sup.nama || pb.nama_supplier || 'Supplier Umum')}</div>
+        </div>
+        <div class="pel-modal-stat-divider"></div>
+        <div class="pel-modal-stat-item" style="text-align: right;">
+          <span class="text-2xs text-muted uppercase fw-semibold">Total Faktur Asal</span>
+          <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(pb.total || 0)}</div>
         </div>
       </div>
     </div>
@@ -864,13 +893,13 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
                 <tr>
                   <td data-label="Pilih">
                     <div class="row-between" style="width: 100%; align-items: center;">
-                      <span class="fw-bold d-none-desktop">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</span>
+                      <span class="fw-bold d-none-desktop">${escapeHtml(it.nama || it.nama_produk || it.produk_nama || 'Produk')}</span>
                       <input type="checkbox" class="cb-retur-item-beli" data-idx="${idx}" checked style="width: 18px; height: 18px;">
                     </div>
                   </td>
                   <td data-label="Produk / Varian">
                     <div class="cell-stack">
-                      <div class="fw-semibold">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</div>
+                      <div class="fw-semibold">${escapeHtml(it.nama || it.nama_produk || it.produk_nama || 'Produk')}</div>
                       ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
                     </div>
                   </td>
@@ -922,7 +951,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
         <button type="button" class="btn btn-secondary" id="btn-batal-form-rb">Batal</button>
         <button type="submit" class="btn btn-primary" id="btn-submit-form-rb">
           ${ICONS.check}
-          <span>Simpan & Setujui Retur Pembelian</span>
+          <span>Simpan & Setujui Retur</span>
         </button>
       </div>
     </form>
@@ -985,6 +1014,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
           payloadItems.push({
             produk_id: item.produk_id,
             varian_id: item.varian_id || '',
+            nama: item.nama || item.nama_produk || item.produk_nama || '',
             satuan: item.satuan || '',
             faktor: item.faktor || 1,
             qty: qty,
@@ -1022,7 +1052,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
       showToast(err.message || 'Gagal membuat retur pembelian', 'error');
       if (btnSub) {
         btnSub.disabled = false;
-        btnSub.innerHTML = `${ICONS.check} <span>Simpan & Setujui Retur Pembelian</span>`;
+        btnSub.innerHTML = `${ICONS.check} <span>Simpan & Setujui Retur</span>`;
       }
     }
   });
@@ -1058,34 +1088,41 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
     if (rt.status === 'ditolak') badgeStatus = '<span class="badge badge-danger">Ditolak</span>';
 
     const judulPihak = rt.tipe === 'jual' ? 'Pelanggan' : 'Supplier / Distributor';
-    const noTx = txAsal.no_nota || txAsal.no_faktur || rt.ref_id;
+    const noTx = txAsal.no_nota || txAsal.no_faktur || rt.ref_id || '-';
 
     modalBody.innerHTML = `
-      <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-        <div class="row" style="justify-content: space-between; align-items: flex-start;">
-          <div>
+      <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+        <div class="pel-modal-profile-top">
+          <div class="grow" style="min-width: 0;">
             <span class="text-xs text-muted">No Retur</span>
-            <div class="fw-bold font-mono" style="font-size: var(--fs-base);">${escapeHtml(rt.no_retur || '-')}</div>
-            <div class="text-xs text-muted">Tgl: ${formatTanggal(rt.created_at, true)}</div>
-            <div class="text-xs">Referensi: <span class="font-mono fw-semibold">${escapeHtml(noTx)}</span></div>
+            <div class="fw-bold font-mono" style="font-size: var(--fs-md); line-height: 1.3;">${escapeHtml(rt.no_retur || '-')}</div>
+            <div class="text-xs text-muted" style="margin-top: 2px;">Tgl: ${formatTanggal(rt.tanggal || rt.created_at, true)}</div>
+            <div class="text-xs" style="margin-top: 2px;">Referensi: <span class="font-mono fw-semibold">${escapeHtml(noTx)}</span></div>
           </div>
-          <div style="text-align: right;">
-            <div>${badgeStatus}</div>
-            <div class="fw-bold text-danger" style="font-size: var(--fs-lg); margin-top: 4px;">${formatRupiah(rt.total)}</div>
-            <div class="text-xs text-muted">Refund: <span class="badge badge-info">${escapeHtml(rt.metode_refund)}</span></div>
+          ${badgeStatus}
+        </div>
+        <div class="pel-modal-profile-stats">
+          <div class="pel-modal-stat-item">
+            <span class="text-2xs text-muted uppercase fw-semibold">Metode Refund</span>
+            <div style="margin-top: 2px;"><span class="badge badge-info">${escapeHtml(rt.metode_refund || 'kas')}</span></div>
+          </div>
+          <div class="pel-modal-stat-divider"></div>
+          <div class="pel-modal-stat-item" style="text-align: right;">
+            <span class="text-2xs text-muted uppercase fw-semibold">Total Nilai Retur</span>
+            <div class="fw-bold text-danger tabular" style="font-size: var(--fs-lg);">${formatRupiah(rt.total)}</div>
           </div>
         </div>
       </div>
 
-      <div class="row" style="gap: var(--sp-2); font-size: var(--fs-sm);">
-        <div class="grow">
+      <div class="row" style="gap: var(--sp-2); font-size: var(--fs-sm); flex-wrap: wrap;">
+        <div class="grow" style="min-width: 140px;">
           <span class="text-xs text-muted uppercase fw-semibold">${judulPihak}</span>
           <div class="fw-semibold">${escapeHtml(pihak.nama || '-')}</div>
           <div class="text-xs text-muted">${escapeHtml(pihak.hp || pihak.kontak || '-')}</div>
         </div>
-        <div>
+        <div class="grow" style="min-width: 140px;">
           <span class="text-xs text-muted uppercase fw-semibold">Alasan Retur</span>
-          <div class="fw-semibold" style="max-width: 280px;">${escapeHtml(rt.alasan || '-')}</div>
+          <div class="fw-semibold">${escapeHtml(rt.alasan || '-')}</div>
         </div>
       </div>
 
@@ -1106,13 +1143,13 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
                 <tr>
                   <td data-label="Produk / Varian">
                     <div class="cell-stack">
-                      <div class="fw-semibold">${escapeHtml(it.nama_produk || 'Produk')}</div>
+                      <div class="fw-semibold">${escapeHtml(it.nama_produk || it.nama || 'Produk')}</div>
                       ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
                     </div>
                   </td>
                   <td class="num font-mono" data-label="Qty Retur">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
                   <td class="num" data-label="Harga">${formatRupiah(it.harga)}</td>
-                  <td class="num fw-bold" data-label="Total">${formatRupiah(it.total)}</td>
+                  <td class="num fw-bold" data-label="Total">${formatRupiah(it.total || it.subtotal || (Number(it.qty) * Number(it.harga)))}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1120,13 +1157,11 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
         </div>
       </div>
 
-      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: space-between;">
+      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary" id="btn-tutup-detail-rt">Tutup</button>
         ${rt.status === 'diajukan' && isOwnerOrAdmin ? `
-          <div class="row" style="gap: var(--sp-2);">
-            <button type="button" class="btn btn-danger" id="btn-modal-tolak-rt">Tolak</button>
-            <button type="button" class="btn btn-success" id="btn-modal-setujui-rt">Setujui Retur</button>
-          </div>
+          <button type="button" class="btn btn-danger" id="btn-modal-tolak-rt">Tolak</button>
+          <button type="button" class="btn btn-success" id="btn-modal-setujui-rt">Setujui Retur</button>
         ` : ''}
       </div>
     `;

@@ -262,13 +262,24 @@ async function muatDataPiutang(container) {
   try {
     const res = await apiCall('piutang.list', {
       cari,
+      q: cari,
       status,
       jatuh_tempo_lewat,
+      lewat_jatuh_tempo: jatuh_tempo_lewat,
       limit: 100
     });
 
-    const items = res.items || [];
-    const totalSisa = res.total_sisa_piutang || 0;
+    const items = (res.items || []).map((it) => ({
+      ...it,
+      nama_pelanggan: it.nama_pelanggan || it.pelanggan_nama || 'Pelanggan Umum',
+      hp_pelanggan: it.hp_pelanggan || it.pelanggan_hp || '',
+      tanggal_nota: it.tanggal_nota || it.tanggal_penjualan || it.created_at,
+      jatuh_tempo_lewat: Boolean(it.jatuh_tempo_lewat || it.lewat_jatuh_tempo)
+    }));
+
+    const totalSisa = res.total_sisa_piutang
+      ?? res.total_piutang_berjalan
+      ?? items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
     const overdueCount = items.filter((it) => it.jatuh_tempo_lewat && it.status !== 'lunas').length;
 
     // Perbarui stat cards
@@ -418,13 +429,24 @@ async function muatDataHutang(container) {
   try {
     const res = await apiCall('hutang.list', {
       cari,
+      q: cari,
       status,
       jatuh_tempo_lewat,
+      lewat_jatuh_tempo: jatuh_tempo_lewat,
       limit: 100
     });
 
-    const items = res.items || [];
-    const totalSisa = res.total_sisa_hutang || 0;
+    const items = (res.items || []).map((it) => ({
+      ...it,
+      nama_supplier: it.nama_supplier || it.supplier_nama || 'Supplier Umum',
+      hp_supplier: it.hp_supplier || it.supplier_hp || '',
+      tanggal_faktur: it.tanggal_faktur || it.tanggal_pembelian || it.created_at,
+      jatuh_tempo_lewat: Boolean(it.jatuh_tempo_lewat || it.lewat_jatuh_tempo)
+    }));
+
+    const totalSisa = res.total_sisa_hutang
+      ?? res.total_hutang_berjalan
+      ?? items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
     const overdueCount = items.filter((it) => it.jatuh_tempo_lewat && it.status !== 'lunas').length;
 
     // Perbarui stat cards
@@ -555,18 +577,29 @@ async function muatDataHutang(container) {
 function bukaModalBayarPiutang(container, piutang) {
   const modalBody = document.createElement('div');
   modalBody.className = 'stack';
+  const namaPelanggan = piutang.nama_pelanggan || piutang.pelanggan_nama || 'Pelanggan Umum';
 
   modalBody.innerHTML = `
-    <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-      <div class="row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
+    <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+      <div class="pel-modal-profile-top">
+        <div class="grow" style="min-width: 0;">
           <span class="text-xs text-muted">No Nota Penjualan</span>
-          <div class="fw-bold">${escapeHtml(piutang.no_nota || '-')}</div>
-          <div class="text-xs">${escapeHtml(piutang.nama_pelanggan || 'Pelanggan Umum')}</div>
+          <div class="fw-bold font-mono" style="font-size: var(--fs-md);">${escapeHtml(piutang.no_nota || '-')}</div>
+          <div class="text-xs fw-medium" style="margin-top: 2px;">${escapeHtml(namaPelanggan)}</div>
         </div>
-        <div style="text-align: right;">
-          <span class="text-xs text-muted">Sisa Piutang Saat Ini</span>
-          <div class="fw-bold text-danger" style="font-size: var(--fs-lg);">${formatRupiah(piutang.sisa)}</div>
+        <span class="badge ${piutang.status === 'sebagian' ? 'badge-info' : 'badge-warning'}">
+          ${piutang.status === 'sebagian' ? 'Sebagian' : 'Belum Lunas'}
+        </span>
+      </div>
+      <div class="pel-modal-profile-stats">
+        <div class="pel-modal-stat-item">
+          <span class="text-2xs text-muted uppercase fw-semibold">Total Tagihan</span>
+          <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(piutang.total || 0)}</div>
+        </div>
+        <div class="pel-modal-stat-divider"></div>
+        <div class="pel-modal-stat-item" style="text-align: right;">
+          <span class="text-2xs text-muted uppercase fw-semibold">Sisa Piutang Saat Ini</span>
+          <div class="fw-bold text-danger tabular" style="font-size: var(--fs-lg);">${formatRupiah(piutang.sisa)}</div>
         </div>
       </div>
     </div>
@@ -692,18 +725,29 @@ function bukaModalBayarPiutang(container, piutang) {
 function bukaModalBayarHutang(container, hutang) {
   const modalBody = document.createElement('div');
   modalBody.className = 'stack';
+  const namaSupplier = hutang.nama_supplier || hutang.supplier_nama || 'Supplier Umum';
 
   modalBody.innerHTML = `
-    <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-      <div class="row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
+    <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+      <div class="pel-modal-profile-top">
+        <div class="grow" style="min-width: 0;">
           <span class="text-xs text-muted">No Faktur Pembelian</span>
-          <div class="fw-bold">${escapeHtml(hutang.no_faktur || '-')}</div>
-          <div class="text-xs">${escapeHtml(hutang.nama_supplier || 'Supplier Umum')}</div>
+          <div class="fw-bold font-mono" style="font-size: var(--fs-md);">${escapeHtml(hutang.no_faktur || '-')}</div>
+          <div class="text-xs fw-medium" style="margin-top: 2px;">${escapeHtml(namaSupplier)}</div>
         </div>
-        <div style="text-align: right;">
-          <span class="text-xs text-muted">Sisa Hutang Saat Ini</span>
-          <div class="fw-bold text-danger" style="font-size: var(--fs-lg);">${formatRupiah(hutang.sisa)}</div>
+        <span class="badge ${hutang.status === 'sebagian' ? 'badge-info' : 'badge-warning'}">
+          ${hutang.status === 'sebagian' ? 'Sebagian' : 'Belum Lunas'}
+        </span>
+      </div>
+      <div class="pel-modal-profile-stats">
+        <div class="pel-modal-stat-item">
+          <span class="text-2xs text-muted uppercase fw-semibold">Total Faktur</span>
+          <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(hutang.total || 0)}</div>
+        </div>
+        <div class="pel-modal-stat-divider"></div>
+        <div class="pel-modal-stat-item" style="text-align: right;">
+          <span class="text-2xs text-muted uppercase fw-semibold">Sisa Hutang Saat Ini</span>
+          <div class="fw-bold text-danger tabular" style="font-size: var(--fs-lg);">${formatRupiah(hutang.sisa)}</div>
         </div>
       </div>
     </div>
@@ -828,23 +872,34 @@ async function bukaModalDetailPiutang(piutangId) {
   try {
     const res = await apiCall('piutang.detail', { id: piutangId });
     const pt = res.piutang || {};
+    const pj = res.penjualan || {};
     const pel = res.pelanggan || {};
     const riwayat = res.riwayat_pembayaran || [];
+    const noNota = pt.no_nota || pj.no_nota || '-';
+    const labelStatus = pt.status === 'lunas' ? 'Lunas' : (pt.status === 'sebagian' ? 'Sebagian' : 'Belum Lunas');
+    const badgeClass = pt.status === 'lunas' ? 'badge-success' : (pt.status === 'sebagian' ? 'badge-info' : 'badge-warning');
 
     modalBody.innerHTML = `
-      <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-        <div class="row" style="justify-content: space-between;">
-          <div>
+      <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+        <div class="pel-modal-profile-top">
+          <div class="grow" style="min-width: 0;">
             <span class="text-xs text-muted">No Nota Penjualan</span>
-            <div class="fw-bold">${escapeHtml(pt.no_nota || '-')}</div>
-            <div class="text-xs">${escapeHtml(pel.nama || 'Pelanggan Umum')} (${escapeHtml(pel.hp || '-')})</div>
+            <div class="fw-bold font-mono" style="font-size: var(--fs-md); line-height: 1.3;">${escapeHtml(noNota)}</div>
+            <div class="text-xs fw-medium" style="margin-top: 2px;">${escapeHtml(pel.nama || 'Pelanggan Umum')}${pel.hp ? ` (${escapeHtml(pel.hp)})` : ''}</div>
           </div>
-          <div style="text-align: right;">
-            <span class="text-xs text-muted">Sisa Tagihan</span>
-            <div class="fw-bold ${pt.sisa > 0 ? 'text-danger' : 'text-success'}" style="font-size: var(--fs-lg);">
+          <span class="badge ${badgeClass}">${escapeHtml(labelStatus)}</span>
+        </div>
+        <div class="pel-modal-profile-stats">
+          <div class="pel-modal-stat-item">
+            <span class="text-2xs text-muted uppercase fw-semibold">Total Tagihan</span>
+            <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(pt.total || 0)}</div>
+          </div>
+          <div class="pel-modal-stat-divider"></div>
+          <div class="pel-modal-stat-item" style="text-align: right;">
+            <span class="text-2xs text-muted uppercase fw-semibold">Sisa Tagihan</span>
+            <div class="fw-bold tabular ${pt.sisa > 0 ? 'text-danger' : 'text-success'}" style="font-size: var(--fs-lg);">
               ${formatRupiah(pt.sisa)}
             </div>
-            <span class="badge ${pt.status === 'lunas' ? 'badge-success' : 'badge-warning'}">${pt.status.toUpperCase()}</span>
           </div>
         </div>
       </div>
@@ -868,7 +923,7 @@ async function bukaModalDetailPiutang(piutangId) {
               <tbody>
                 ${riwayat.map((rw) => `
                   <tr>
-                    <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.created_at, true)}</td>
+                    <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.tanggal || rw.created_at, true)}</td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
                     <td class="text-xs" data-label="Petugas">${escapeHtml(rw.nama_petugas || '-')}</td>
                     <td class="num fw-bold text-success" data-label="Nominal">${formatRupiah(rw.jumlah)}</td>
@@ -881,13 +936,13 @@ async function bukaModalDetailPiutang(piutangId) {
         `}
       </div>
 
-      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: space-between;">
+      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end;">
         ${pt.penjualan_id ? `
           <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-nota-piutang">
             ${ICONS.printer}
-            <span>Cetak Struk Nota</span>
+            <span>Cetak Nota</span>
           </button>
-        ` : '<div></div>'}
+        ` : ''}
         <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-detail-pt">Tutup</button>
       </div>
     `;
@@ -923,23 +978,36 @@ async function bukaModalDetailHutang(hutangId) {
   try {
     const res = await apiCall('hutang.detail', { id: hutangId });
     const ht = res.hutang || {};
+    const pb = res.pembelian || {};
     const sup = res.supplier || {};
     const riwayat = res.riwayat_pembayaran || [];
+    const noFaktur = ht.no_faktur || pb.no_faktur || '-';
+    const noFakturVendor = ht.no_faktur_supplier || pb.no_faktur_supplier || '';
+    const labelStatus = ht.status === 'lunas' ? 'Lunas' : (ht.status === 'sebagian' ? 'Sebagian' : 'Belum Lunas');
+    const badgeClass = ht.status === 'lunas' ? 'badge-success' : (ht.status === 'sebagian' ? 'badge-info' : 'badge-warning');
 
     modalBody.innerHTML = `
-      <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-        <div class="row" style="justify-content: space-between;">
-          <div>
+      <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+        <div class="pel-modal-profile-top">
+          <div class="grow" style="min-width: 0;">
             <span class="text-xs text-muted">No Faktur Pembelian</span>
-            <div class="fw-bold">${escapeHtml(ht.no_faktur || '-')}</div>
-            <div class="text-xs">${escapeHtml(sup.nama || 'Supplier Umum')} (PIC: ${escapeHtml(sup.kontak || '-')})</div>
+            <div class="fw-bold font-mono" style="font-size: var(--fs-md); line-height: 1.3;">${escapeHtml(noFaktur)}</div>
+            ${noFakturVendor ? `<div class="text-xs text-muted font-mono">Faktur Vendor: ${escapeHtml(noFakturVendor)}</div>` : ''}
+            <div class="text-xs fw-medium" style="margin-top: 2px;">${escapeHtml(sup.nama || 'Supplier Umum')}${sup.kontak ? ` (PIC: ${escapeHtml(sup.kontak)})` : ''}</div>
           </div>
-          <div style="text-align: right;">
-            <span class="text-xs text-muted">Sisa Hutang Toko</span>
-            <div class="fw-bold ${ht.sisa > 0 ? 'text-danger' : 'text-success'}" style="font-size: var(--fs-lg);">
+          <span class="badge ${badgeClass}">${escapeHtml(labelStatus)}</span>
+        </div>
+        <div class="pel-modal-profile-stats">
+          <div class="pel-modal-stat-item">
+            <span class="text-2xs text-muted uppercase fw-semibold">Total Faktur</span>
+            <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(ht.total || 0)}</div>
+          </div>
+          <div class="pel-modal-stat-divider"></div>
+          <div class="pel-modal-stat-item" style="text-align: right;">
+            <span class="text-2xs text-muted uppercase fw-semibold">Sisa Hutang Toko</span>
+            <div class="fw-bold tabular ${ht.sisa > 0 ? 'text-danger' : 'text-success'}" style="font-size: var(--fs-lg);">
               ${formatRupiah(ht.sisa)}
             </div>
-            <span class="badge ${ht.status === 'lunas' ? 'badge-success' : 'badge-warning'}">${ht.status.toUpperCase()}</span>
           </div>
         </div>
       </div>
@@ -963,7 +1031,7 @@ async function bukaModalDetailHutang(hutangId) {
               <tbody>
                 ${riwayat.map((rw) => `
                   <tr>
-                    <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.created_at, true)}</td>
+                    <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.tanggal || rw.created_at, true)}</td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
                     <td class="text-xs" data-label="Petugas">${escapeHtml(rw.nama_petugas || '-')}</td>
                     <td class="num fw-bold text-success" data-label="Nominal">${formatRupiah(rw.jumlah)}</td>
@@ -976,13 +1044,13 @@ async function bukaModalDetailHutang(hutangId) {
         `}
       </div>
 
-      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: space-between;">
+      <div class="modal-footer" style="padding: var(--sp-3) 0 0 0; justify-content: flex-end;">
         ${ht.pembelian_id ? `
           <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-faktur-hutang">
             ${ICONS.printer}
-            <span>Cetak Faktur Pembelian</span>
+            <span>Cetak Faktur</span>
           </button>
-        ` : '<div></div>'}
+        ` : ''}
         <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-detail-ht">Tutup</button>
       </div>
     `;
@@ -1009,13 +1077,16 @@ async function bukaModalDetailHutang(hutangId) {
 /* ========================================================================== */
 
 function kirimPesanWhatsAppTagihan(piutang) {
-  if (!piutang.hp_pelanggan) {
+  const hpPelanggan = piutang.hp_pelanggan || piutang.pelanggan_hp;
+  const namaPelanggan = piutang.nama_pelanggan || piutang.pelanggan_nama || 'Pelanggan';
+
+  if (!hpPelanggan) {
     showToast('Pelanggan ini tidak memiliki nomor HP', 'warning');
     return;
   }
 
   // Normalisasi no hp: 0812... -> 62812...
-  let hp = String(piutang.hp_pelanggan).replace(/[^0-9]/g, '');
+  let hp = String(hpPelanggan).replace(/[^0-9]/g, '');
   if (hp.startsWith('0')) {
     hp = '62' + hp.substring(1);
   } else if (!hp.startsWith('62')) {
@@ -1024,7 +1095,7 @@ function kirimPesanWhatsAppTagihan(piutang) {
 
   const tglJatuhTempo = piutang.jatuh_tempo ? formatTanggal(piutang.jatuh_tempo) : 'segera';
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
-  const pesan = `Halo Bpk/Ibu *${piutang.nama_pelanggan || 'Pelanggan'}*,\n\nKami dari *${namaToko}* ingin menginformasikan tagihan transaksi belanja tempo dengan rincian berikut:\n- No Nota: *${piutang.no_nota || '-'}*\n- Total Belanja: *${formatRupiah(piutang.total)}*\n- Sisa Tagihan: *${formatRupiah(piutang.sisa)}*\n- Jatuh Tempo: *${tglJatuhTempo}*\n\nPembayaran dapat dilakukan melalui kasir toko kami atau transfer bank. Mohon konfirmasi apabila pembayaran telah dilakukan.\n\nTerima kasih banyak atas kerja sama dan kepercayaan Anda.`;
+  const pesan = `Halo Bpk/Ibu *${namaPelanggan}*,\n\nKami dari *${namaToko}* ingin menginformasikan tagihan transaksi belanja tempo dengan rincian berikut:\n- No Nota: *${piutang.no_nota || '-'}*\n- Total Belanja: *${formatRupiah(piutang.total)}*\n- Sisa Tagihan: *${formatRupiah(piutang.sisa)}*\n- Jatuh Tempo: *${tglJatuhTempo}*\n\nPembayaran dapat dilakukan melalui kasir toko kami atau transfer bank. Mohon konfirmasi apabila pembayaran telah dilakukan.\n\nTerima kasih banyak atas kerja sama dan kepercayaan Anda.`;
 
   const url = `https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`;
   window.open(url, '_blank');

@@ -23,7 +23,7 @@
   color: var(--btn-text);
   font-weight: var(--fw-semibold);
   font-size: var(--fs-sm);
-  line-height: 1;
+  line-height: 1.25;
   white-space: nowrap;
   user-select: none;
   -webkit-user-select: none;
@@ -454,6 +454,7 @@ input[type="password"] {
   color: var(--text-muted);
   font-weight: var(--fw-semibold);
   font-size: var(--fs-sm);
+  line-height: 1.25;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1876,10 +1877,12 @@ a.list-item:hover {
 @media (max-width: 767px) {
   .dialog-footer>.btn,
   .modal-footer>.btn {
-    flex: 1;
+    flex: 1 1 0%;
+    min-width: 0;
     min-height: 44px;
+    padding: 0 var(--sp-3);
     border-radius: var(--radius-md);
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
   }
 }
 

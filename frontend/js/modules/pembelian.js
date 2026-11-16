@@ -980,7 +980,7 @@ async function bukaModalDetailPembelian(pembelianId) {
     footer: `
       <button type="button" class="btn btn-primary btn-sm" id="btn-modal-cetak-detail-beli">
         ${ICONS.printer}
-        <span>Cetak Struk Faktur</span>
+        <span>Cetak Faktur</span>
       </button>
       <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-tutup-detail-beli">Tutup</button>
     `
@@ -1023,17 +1023,26 @@ async function bukaModalDetailPembelian(pembelianId) {
     if (bodyEl) {
       bodyEl.innerHTML = `
         <div class="stack">
-          <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3);">
-            <div class="row-between" style="align-items: flex-start; gap: var(--sp-2);">
-              <div>
-                <div class="text-xs text-muted">Distributor / Supplier:</div>
-                <div class="fw-bold">${escapeHtml(sup.nama || '-')}</div>
-                <div class="text-xs text-muted">${escapeHtml(sup.alamat || '')}</div>
+          <div class="card card-body pel-modal-profile" style="background: var(--surface-2); padding: var(--sp-3);">
+            <div class="pel-modal-profile-top">
+              <div class="grow" style="min-width: 0;">
+                <span class="text-xs text-muted">Distributor / Supplier</span>
+                <div class="fw-bold" style="font-size: var(--fs-md); line-height: 1.3;">${escapeHtml(sup.nama || '-')}</div>
+                ${sup.alamat ? `<div class="text-xs text-muted" style="margin-top: 2px;">${escapeHtml(sup.alamat)}</div>` : ''}
               </div>
-              <div style="text-align: right;">
-                <div class="text-xs text-muted">Tanggal Faktur:</div>
-                <div class="fw-semibold">${formatTanggal(pb.tanggal)}</div>
-                ${pb.no_faktur_supplier ? `<div class="text-xs text-muted">Ref Asli: ${escapeHtml(pb.no_faktur_supplier)}</div>` : ''}
+              <span class="badge ${pb.status_bayar === 'lunas' ? 'badge-success' : 'badge-warning'}">
+                ${pb.status_bayar === 'lunas' ? 'Lunas' : (pb.status_bayar === 'sebagian' ? 'Sebagian' : 'Hutang')}
+              </span>
+            </div>
+            <div class="pel-modal-profile-stats">
+              <div class="pel-modal-stat-item">
+                <span class="text-2xs text-muted uppercase fw-semibold">Tanggal Faktur</span>
+                <div class="fw-bold" style="font-size: var(--fs-sm);">${formatTanggal(pb.tanggal)}</div>
+              </div>
+              <div class="pel-modal-stat-divider"></div>
+              <div class="pel-modal-stat-item" style="text-align: right;">
+                <span class="text-2xs text-muted uppercase fw-semibold">Ref Faktur Vendor</span>
+                <div class="fw-bold font-mono" style="font-size: var(--fs-sm);">${escapeHtml(pb.no_faktur_supplier || '-')}</div>
               </div>
             </div>
           </div>

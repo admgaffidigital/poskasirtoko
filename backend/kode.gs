@@ -3871,20 +3871,28 @@ function aksiPiutangList_(ctx) {
     const tJatuh = String(pt.jatuh_tempo || '').substring(0, 10);
     const sudahLewat = pt.status !== 'lunas' && tJatuh && tJatuh < hariIni;
 
+    const namaPelanggan = pel.nama || 'Pelanggan Umum';
+    const hpPelanggan = pel.hp || '';
+    const tglPenjualan = pj.tanggal || pt.created_at;
+
     return {
       id: pt.id,
       penjualan_id: pt.penjualan_id,
       no_nota: pj.no_nota || '-',
-      tanggal_penjualan: pj.tanggal || pt.created_at,
+      tanggal_penjualan: tglPenjualan,
+      tanggal_nota: tglPenjualan,
       pelanggan_id: pt.pelanggan_id,
-      pelanggan_nama: pel.nama || 'Pelanggan Umum',
+      pelanggan_nama: namaPelanggan,
+      nama_pelanggan: namaPelanggan,
       pelanggan_kode: pel.kode || '',
-      pelanggan_hp: pel.hp || '',
+      pelanggan_hp: hpPelanggan,
+      hp_pelanggan: hpPelanggan,
       total: Number(pt.total) || 0,
       terbayar: Number(pt.terbayar) || 0,
       sisa: sisa,
       jatuh_tempo: pt.jatuh_tempo || '',
       lewat_jatuh_tempo: sudahLewat,
+      jatuh_tempo_lewat: sudahLewat,
       status: pt.status
     };
   });
@@ -3899,13 +3907,13 @@ function aksiPiutangList_(ctx) {
     data = data.filter(function (pt) { return pt.pelanggan_id === p.pelanggan_id; });
   }
 
-  // Filter lewat jatuh tempo saja
-  if (p.lewat_jatuh_tempo === true) {
+  // Filter lewat jatuh tempo saja (mendukung lewat_jatuh_tempo & jatuh_tempo_lewat)
+  if (p.lewat_jatuh_tempo === true || p.jatuh_tempo_lewat === true) {
     data = data.filter(function (pt) { return pt.lewat_jatuh_tempo; });
   }
 
-  // Pencarian q (no_nota, nama pelanggan, no hp)
-  const q = String(p.q || '').trim().toLowerCase();
+  // Pencarian q / cari (no_nota, nama pelanggan, no hp)
+  const q = String(p.q || p.cari || '').trim().toLowerCase();
   if (q) {
     data = data.filter(function (pt) {
       return String(pt.no_nota || '').toLowerCase().indexOf(q) !== -1 ||
@@ -3929,6 +3937,7 @@ function aksiPiutangList_(ctx) {
     items: data.slice(mulai, mulai + limit),
     total: data.length,
     total_piutang_berjalan: totalPiutangBerjalan,
+    total_sisa_piutang: totalPiutangBerjalan,
     page: page,
     limit: limit
   };
@@ -3944,13 +3953,27 @@ function aksiPiutangDetail_(ctx) {
 
   const penjualan = cariById_('Penjualan', piutang.penjualan_id) || {};
   const pelanggan = cariById_('Pelanggan', piutang.pelanggan_id) || {};
+  const semuaUsers = bacaSemua_('Users');
+  const userPeta = {};
+  semuaUsers.forEach(function (u) { userPeta[u.id] = u.nama || u.username || '-'; });
+
   const semuaBayar = bacaSemua_('Pembayaran');
   const riwayatPembayaran = semuaBayar
     .filter(function (byr) { return byr.tipe === 'piutang' && byr.ref_id === piutang.id && !byr.deleted; })
-    .sort(function (a, b) { return String(b.tanggal || '').localeCompare(String(a.tanggal || '')); });
+    .map(function (byr) {
+      return Object.assign({}, byr, {
+        nama_petugas: byr.nama_petugas || userPeta[byr.created_by] || '-'
+      });
+    })
+    .sort(function (a, b) { return String(b.tanggal || b.created_at || '').localeCompare(String(a.tanggal || a.created_at || '')); });
+
+  const piutangLengkap = Object.assign({}, piutang, {
+    no_nota: piutang.no_nota || penjualan.no_nota || '-',
+    tanggal_nota: penjualan.tanggal || piutang.created_at
+  });
 
   return {
-    piutang: piutang,
+    piutang: piutangLengkap,
     penjualan: penjualan,
     pelanggan: pelanggan,
     riwayat_pembayaran: riwayatPembayaran
@@ -4103,20 +4126,28 @@ function aksiHutangList_(ctx) {
     const tJatuh = String(ht.jatuh_tempo || '').substring(0, 10);
     const sudahLewat = ht.status !== 'lunas' && tJatuh && tJatuh < hariIni;
 
+    const namaSupplier = sup.nama || 'Supplier Umum';
+    const hpSupplier = sup.hp || sup.kontak || '';
+    const tglPembelian = pb.tanggal || ht.created_at;
+
     return {
       id: ht.id,
       pembelian_id: ht.pembelian_id,
       no_faktur: pb.no_faktur || '-',
       no_faktur_supplier: pb.no_faktur_supplier || '',
-      tanggal_pembelian: pb.tanggal || ht.created_at,
+      tanggal_pembelian: tglPembelian,
+      tanggal_faktur: tglPembelian,
       supplier_id: ht.supplier_id,
-      supplier_nama: sup.nama || 'Supplier Umum',
-      supplier_hp: sup.hp || '',
+      supplier_nama: namaSupplier,
+      nama_supplier: namaSupplier,
+      supplier_hp: hpSupplier,
+      hp_supplier: hpSupplier,
       total: Number(ht.total) || 0,
       terbayar: Number(ht.terbayar) || 0,
       sisa: sisa,
       jatuh_tempo: ht.jatuh_tempo || '',
       lewat_jatuh_tempo: sudahLewat,
+      jatuh_tempo_lewat: sudahLewat,
       status: ht.status
     };
   });
@@ -4129,11 +4160,11 @@ function aksiHutangList_(ctx) {
     data = data.filter(function (ht) { return ht.supplier_id === p.supplier_id; });
   }
 
-  if (p.lewat_jatuh_tempo === true) {
+  if (p.lewat_jatuh_tempo === true || p.jatuh_tempo_lewat === true) {
     data = data.filter(function (ht) { return ht.lewat_jatuh_tempo; });
   }
 
-  const q = String(p.q || '').trim().toLowerCase();
+  const q = String(p.q || p.cari || '').trim().toLowerCase();
   if (q) {
     data = data.filter(function (ht) {
       return String(ht.no_faktur || '').toLowerCase().indexOf(q) !== -1 ||
@@ -4156,6 +4187,7 @@ function aksiHutangList_(ctx) {
     items: data.slice(mulai, mulai + limit),
     total: data.length,
     total_hutang_berjalan: totalHutangBerjalan,
+    total_sisa_hutang: totalHutangBerjalan,
     page: page,
     limit: limit
   };
@@ -4171,13 +4203,28 @@ function aksiHutangDetail_(ctx) {
 
   const pembelian = cariById_('Pembelian', hutang.pembelian_id) || {};
   const supplier = cariById_('Supplier', hutang.supplier_id) || {};
+  const semuaUsers = bacaSemua_('Users');
+  const userPeta = {};
+  semuaUsers.forEach(function (u) { userPeta[u.id] = u.nama || u.username || '-'; });
+
   const semuaBayar = bacaSemua_('Pembayaran');
   const riwayatPembayaran = semuaBayar
     .filter(function (byr) { return byr.tipe === 'hutang' && byr.ref_id === hutang.id && !byr.deleted; })
-    .sort(function (a, b) { return String(b.tanggal || '').localeCompare(String(a.tanggal || '')); });
+    .map(function (byr) {
+      return Object.assign({}, byr, {
+        nama_petugas: byr.nama_petugas || userPeta[byr.created_by] || '-'
+      });
+    })
+    .sort(function (a, b) { return String(b.tanggal || b.created_at || '').localeCompare(String(a.tanggal || a.created_at || '')); });
+
+  const hutangLengkap = Object.assign({}, hutang, {
+    no_faktur: hutang.no_faktur || pembelian.no_faktur || '-',
+    no_faktur_supplier: pembelian.no_faktur_supplier || '',
+    tanggal_faktur: pembelian.tanggal || hutang.created_at
+  });
 
   return {
-    hutang: hutang,
+    hutang: hutangLengkap,
     pembelian: pembelian,
     supplier: supplier,
     riwayat_pembayaran: riwayatPembayaran
@@ -4264,6 +4311,7 @@ function aksiReturList_(ctx) {
   const semuaSupplier = bacaSemua_('Supplier');
   const semuaPenjualan = bacaSemua_('Penjualan');
   const semuaPembelian = bacaSemua_('Pembelian');
+  const semuaUsers = bacaSemua_('Users');
 
   const pihakPeta = {};
   semuaPelanggan.forEach(function (pel) { pihakPeta[pel.id] = pel.nama; });
@@ -4273,16 +4321,28 @@ function aksiReturList_(ctx) {
   semuaPenjualan.forEach(function (pj) { refNotaPeta[pj.id] = pj.no_nota; });
   semuaPembelian.forEach(function (pb) { refNotaPeta[pb.id] = pb.no_faktur; });
 
+  const userPeta = {};
+  semuaUsers.forEach(function (u) { userPeta[u.id] = u.nama || u.username || '-'; });
+
   let data = semuaRetur.map(function (rt) {
+    const noRef = refNotaPeta[rt.ref_id] || rt.ref_id || '-';
+    const namaPihak = pihakPeta[rt.pihak_id] || (rt.tipe === 'jual' ? 'Pelanggan Umum' : 'Supplier Umum');
+    const tglRetur = rt.tanggal || rt.created_at;
+    const namaPembuat = userPeta[rt.created_by] || '-';
+
     return {
       id: rt.id,
       no_retur: rt.no_retur,
       tipe: rt.tipe,
       ref_id: rt.ref_id,
-      no_referensi_asal: refNotaPeta[rt.ref_id] || rt.ref_id || '-',
+      no_referensi_asal: noRef,
+      no_transaksi_asal: noRef,
       pihak_id: rt.pihak_id,
-      pihak_nama: pihakPeta[rt.pihak_id] || (rt.tipe === 'jual' ? 'Pelanggan Umum' : 'Supplier Umum'),
-      tanggal: rt.tanggal,
+      pihak_nama: namaPihak,
+      nama_pihak: namaPihak,
+      tanggal: tglRetur,
+      dibuat_at: tglRetur,
+      nama_pembuat: namaPembuat,
       total: Number(rt.total) || 0,
       metode_refund: rt.metode_refund,
       alasan: rt.alasan,
@@ -4300,7 +4360,7 @@ function aksiReturList_(ctx) {
     data = data.filter(function (rt) { return rt.status === p.status; });
   }
 
-  const q = String(p.q || '').trim().toLowerCase();
+  const q = String(p.q || p.cari || '').trim().toLowerCase();
   if (q) {
     data = data.filter(function (rt) {
       return String(rt.no_retur || '').toLowerCase().indexOf(q) !== -1 ||
@@ -4334,8 +4394,23 @@ function aksiReturDetail_(ctx) {
   const retur = cariById_('Retur', p.id);
   if (!retur) gagal_(KODE.NOT_FOUND, 'Data retur tidak ditemukan.');
 
+  const semuaProduk = bacaSemua_('Produk');
+  const produkPeta = {};
+  semuaProduk.forEach(function (pr) { produkPeta[pr.id] = pr.nama; });
+
   const semuaItems = bacaSemua_('Retur_Item');
-  const items = semuaItems.filter(function (it) { return it.retur_id === retur.id && !it.deleted; });
+  const items = semuaItems
+    .filter(function (it) { return it.retur_id === retur.id && !it.deleted; })
+    .map(function (it) {
+      const namaBarang = it.nama || it.nama_produk || produkPeta[it.produk_id] || 'Produk';
+      const sub = Number(it.subtotal || it.total || (Number(it.qty) * Number(it.harga))) || 0;
+      return Object.assign({}, it, {
+        nama: namaBarang,
+        nama_produk: namaBarang,
+        subtotal: sub,
+        total: sub
+      });
+    });
 
   let pihak = null;
   let transaksiAsal = null;
@@ -4423,7 +4498,7 @@ function aksiReturCreate_(ctx) {
       ref_item_id: it.ref_item_id || '',
       produk_id: it.produk_id,
       varian_id: it.varian_id || '',
-      nama: it.nama || '',
+      nama: it.nama || it.nama_produk || '',
       satuan: it.satuan || '',
       faktor: faktor,
       qty: qty,
