@@ -47,16 +47,16 @@ export async function renderLaporanModule(container) {
           <h2>Dashboard & Laporan Usaha</h2>
           <p>Ringkasan performa penjualan, pembelian, arus kas, persediaan stok, dan laba kotor toko</p>
         </div>
-        <div class="cluster" style="flex-wrap: wrap;">
-          <button type="button" class="btn btn-secondary" id="btn-cetak-laporan" title="Cetak atau simpan sebagai PDF">
+        <div class="row" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-laporan" title="Cetak atau simpan sebagai PDF">
             ${ICONS.printer}
             <span>Cetak PDF</span>
           </button>
-          <button type="button" class="btn btn-secondary" id="btn-ekspor-laporan" title="Unduh data dalam format CSV/Excel">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-ekspor-laporan" title="Unduh data dalam format CSV/Excel">
             ${ICONS.download}
             <span>Ekspor CSV</span>
           </button>
-          <button type="button" class="btn btn-primary" id="btn-segarkan-laporan" title="Muat ulang data terkini">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-segarkan-laporan" title="Muat ulang data terkini">
             ${ICONS.refresh}
             <span>Segarkan</span>
           </button>
@@ -488,7 +488,7 @@ function renderTabDashboard(container, data) {
             </span>
           </div>
         </div>
-        <div class="card-body" style="padding: var(--sp-4); overflow-x: auto;">
+        <div class="card-body" style="padding: var(--sp-4);">
           ${svgChartHtml}
         </div>
       </div>
@@ -526,7 +526,7 @@ function renderTabDashboard(container, data) {
                         <div style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</div>
                       </td>
                       <td data-label="Qty Terjual" style="text-align: right; font-weight: var(--fw-semibold);">
-                        ${formatAngka(p.qty_terjual)} <span style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(p.satuan || '')}</span>
+                        <span>${formatAngka(p.qty_terjual)} <small style="font-size: var(--fs-xs); color: var(--text-muted); font-weight: var(--fw-medium);">${escapeHtml(p.satuan || '')}</small></span>
                       </td>
                       <td data-label="Kontribusi Omset" style="text-align: right; font-weight: var(--fw-bold); color: var(--primary);">
                         ${formatRupiah(p.total_omset)}
@@ -666,12 +666,12 @@ function buatSvgTrenChart(tren, isOwner) {
   }
 
   const h = 200;
-  const w = Math.max(600, tren.length * 45);
+  const w = Math.max(320, tren.length * 42);
   const paddingBawah = 30;
   const paddingTop = 20;
-  const paddingKiri = 60;
+  const paddingKiri = 48;
   const chartHeight = h - paddingBawah - paddingTop;
-  const chartWidth = w - paddingKiri - 20;
+  const chartWidth = w - paddingKiri - 16;
 
   let maxVal = 0;
   tren.forEach((t) => {
@@ -726,7 +726,7 @@ function buatSvgTrenChart(tren, isOwner) {
 
   return `
     <div style="width: 100%; overflow-x: auto;">
-      <svg class="chart-svg" viewBox="0 0 ${w} ${h}" style="width: 100%; min-width: ${w}px; height: ${h}px; display: block; font-family: inherit;">
+      <svg class="chart-svg" viewBox="0 0 ${w} ${h}" style="width: 100%; ${tren.length > 8 ? `min-width: ${w}px;` : ''} height: ${h}px; display: block; font-family: inherit;">
         ${gridHtml}
         ${barsHtml}
         ${labelsHtml}
@@ -1662,8 +1662,10 @@ function renderTabStokValuasi(container, data) {
                 ` : items.map((it) => `
                   <tr>
                     <td data-label="SKU / Barcode">
-                      <div style="font-family: monospace; font-weight: var(--fw-medium);">${escapeHtml(it.sku || '-')}</div>
-                      ${it.barcode ? `<div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.barcode)}</div>` : ''}
+                      <div class="cell-stack">
+                        <div style="font-family: monospace; font-weight: var(--fw-medium);">${escapeHtml(it.sku || '-')}</div>
+                        ${it.barcode ? `<div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.barcode)}</div>` : ''}
+                      </div>
                     </td>
                     <td style="font-weight: var(--fw-medium);" data-label="Produk">${escapeHtml(it.nama)}</td>
                     <td data-label="Kategori"><span class="badge badge-info">${escapeHtml(it.kategori)}</span></td>

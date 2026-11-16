@@ -667,6 +667,14 @@
   }
 }
 
+/* Utilitas flex cluster & row */
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
 /* Utilitas visibilitas responsif */
 @media (max-width: 767px) {
   .d-none-mobile {
