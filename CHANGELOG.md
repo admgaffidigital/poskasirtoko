@@ -16,6 +16,37 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.53] - 2026-11-16
+
+### Added
+- [UI] [PWA] **Tombol Sinkronisasi Cepat di Topbar & Seluruh Modul**:
+  - Menambahkan tombol `#btn-sync-top` di bilah atas (*Topbar*) pada [frontend/js/app.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/app.js) serta tombol *refresh* langsung di halaman POS Kasir (`#btn-pos-refresh` di [frontend/js/modules/pos.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pos.js)), Katalog Produk (`#btn-refresh-produk` di [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js)), Kategori (`#btn-refresh-kategori` di [frontend/js/modules/kategori.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/kategori.js)), dan Pengguna (`#btn-refresh-users` di [frontend/js/modules/users.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/users.js)).
+
+### Fixed
+- [UI] [BACKEND] **Perbaikan Seluruh Ikon Sinkronisasi & Muat Ulang (*Force Network Bypass & Spin Animation*)**:
+  - Menambahkan interceptor *capture-phase* global dan `forceNextApiCallsFresh()` di [frontend/js/api.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/api.js) sehingga setiap klik pada tombol *refresh* atau sinkronisasi di seluruh modul otomatis mengosongkan *cache*, memutar animasi ikon (`.is-spinning`), mengambil data terbaru dari Google Sheets, dan menampilkan notifikasi *toast*.
+  - Melestarikan posisi tab aktif pada modul multi-tab (`hutang-piutang.js`, `pembelian.js`, `retur.js`, `loyalti.js`) saat sinkronisasi global dijalankan.
+
+## [1.0.52] - 2026-11-16
+
+### Fixed
+- [HUTANG-PIUTANG] [RETUR] [BACKEND] **Penyelarasan Properti API & Kartu Modal Native App**:
+  - Menyelaraskan field ringkasan `total_hutang_berjalan`/`total_sisa_hutang` dan `total_piutang_berjalan`/`total_sisa_piutang`, nomor nota/faktur (`no_faktur`, `no_nota`), serta nama/HP pelanggan & supplier antara [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs), [frontend/js/modules/hutang-piutang.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/hutang-piutang.js), dan [frontend/js/modules/retur.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/retur.js).
+  - Merombak kartu header di dalam modal Rincian Hutang, Rincian Piutang, Bayar Hutang, Bayar Piutang, Rincian Pembelian, dan Rincian Retur menggunakan struktur `.pel-modal-profile` agar nama supplier panjang tidak lagi mendorong nominal ke bawah secara timpang.
+  - Memperbaiki ukuran tombol `.modal-footer > .btn` di [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css) dan `line-height` tab `.segmented` di [frontend/css/layout.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/layout.css) agar teks tidak pernah terpotong.
+
+## [1.0.51] - 2026-11-16
+
+### Changed
+- [PWA] [BACKEND] **Akselerasi Kecepatan Reload & Pemanggilan Data (2-Tier Persistent SWR Cache & Parallel Fetch)**:
+  - Mengimplementasikan *Persistent LocalStorage Cache* (`pos_api_cache_v1`) + *Stale-While-Revalidate* (SWR) pada 32 endpoint baca di [frontend/js/api.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/api.js), pemanasan cache saat *idle* di [frontend/js/app.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/app.js), serta caching *per-request* (`_SS_REQ`, `_SHEET_MAP_REQ`, `_CACHE_BACA_REQ`) di [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs).
+
+## [1.0.47 - 1.0.50] - 2026-11-16
+
+### Fixed
+- [UI] [POS-BELI] [PRODUK] [PELANGGAN] **Transformasi Menyeluruh Tampilan Kartu Native App Mobile & Container Queries**:
+  - Menerapkan `@container pembelian` pada [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css), memperbaiki kartu Sub Kategori agar tidak terpotong di sisi kanan layar mobile, serta mengubah seluruh tabel di dalam modal detail (`pelanggan.js`, `hutang-piutang.js`, `pembelian.js`, `retur.js`) menjadi Kartu Native App vertikal bebas *scroll* horizontal.
+
 ## [1.0.46] - 2026-11-15
 
 ### Added
