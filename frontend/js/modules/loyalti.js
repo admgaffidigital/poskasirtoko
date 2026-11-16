@@ -9,6 +9,8 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatTanggal } from '../utils/format.js';
 
+let tabAktifLoyalti = 'katalog';
+
 export async function renderLoyaltiModule(container) {
   const user = store.get('user');
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin');
@@ -165,6 +167,7 @@ export async function renderLoyaltiModule(container) {
   const panelRiwayat = $('#panel-riwayat', container);
 
   const setTab = (aktif) => {
+    tabAktifLoyalti = aktif;
     btnKatalog.setAttribute('aria-pressed', aktif === 'katalog');
     btnTukar.setAttribute('aria-pressed', aktif === 'tukar');
     btnRiwayat.setAttribute('aria-pressed', aktif === 'riwayat');
@@ -189,8 +192,14 @@ export async function renderLoyaltiModule(container) {
     clearTimeout(timeoutCari);
     timeoutCari = setTimeout(() => muatDataHadiah(container), 300);
   });
-  $('#btn-refresh-hadiah', container)?.addEventListener('click', () => muatDataHadiah(container));
-  $('#btn-refresh-riwayat', container)?.addEventListener('click', () => muatRiwayatPenukaran(container));
+  $('#btn-refresh-hadiah', container)?.addEventListener('click', async () => {
+    await muatDataHadiah(container);
+    showToast('Katalog hadiah berhasil diperbarui', 'success', 1800);
+  });
+  $('#btn-refresh-riwayat', container)?.addEventListener('click', async () => {
+    await muatRiwayatPenukaran(container);
+    showToast('Riwayat klaim hadiah berhasil diperbarui', 'success', 1800);
+  });
 
   if (isOwnerOrAdmin) {
     $('#btn-tambah-hadiah', container)?.addEventListener('click', () => {
@@ -198,8 +207,8 @@ export async function renderLoyaltiModule(container) {
     });
   }
 
-  // Muat data awal
-  await muatDataHadiah(container);
+  // Muat data awal sesuai tab aktif
+  setTab(tabAktifLoyalti);
 }
 
 /* ========================================================================== */

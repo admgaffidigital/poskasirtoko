@@ -15,9 +15,12 @@ import { escapeHtml, formatRupiah, formatQty, parseRupiah, parseQty, formatTangg
 import { bukaKameraScanner } from '../utils/barcode.js';
 import { bukaModalPilihanCetakPembelian } from '../utils/printer.js';
 
+let tabAktifBeli = 'input';
+
 export async function renderPembelianModule(container) {
   const user = store.get('user');
   const canEdit = user && (user.role === 'owner' || user.role === 'admin');
+  const isRiwayat = tabAktifBeli === 'riwayat';
 
   container.innerHTML = `
     <div class="stack">
@@ -27,22 +30,22 @@ export async function renderPembelianModule(container) {
           <p>Pencatatan barang masuk dari distributor, update stok, dan penyesuaian HPP moving average</p>
         </div>
         <div class="row" style="gap: var(--sp-2);">
-          <button type="button" class="btn btn-secondary tab-beli-btn active" id="tab-btn-input">
+          <button type="button" class="btn ${!isRiwayat ? 'btn-secondary active' : 'btn-ghost'} tab-beli-btn" id="tab-btn-input">
             ${ICONS.shoppingBag}
             <span>Faktur Baru</span>
           </button>
-          <button type="button" class="btn btn-ghost tab-beli-btn" id="tab-btn-riwayat">
+          <button type="button" class="btn ${isRiwayat ? 'btn-secondary active' : 'btn-ghost'} tab-beli-btn" id="tab-btn-riwayat">
             ${ICONS.clipboard}
             <span>Riwayat Faktur</span>
           </button>
         </div>
       </div>
 
-      <div id="tab-content-input" class="tab-beli-view">
+      <div id="tab-content-input" class="tab-beli-view" style="${isRiwayat ? 'display: none;' : 'display: block;'}">
         ${renderFormInputBeli()}
       </div>
 
-      <div id="tab-content-riwayat" class="tab-beli-view" style="display: none;">
+      <div id="tab-content-riwayat" class="tab-beli-view" style="${isRiwayat ? 'display: block;' : 'display: none;'}">
         <div class="card card-body stack">
           <div class="row" style="gap: var(--sp-2); align-items: center;">
             <div class="input-group grow">
@@ -68,6 +71,7 @@ export async function renderPembelianModule(container) {
   const tabRiwayat = $('#tab-content-riwayat', container);
 
   btnTabInput?.addEventListener('click', () => {
+    tabAktifBeli = 'input';
     btnTabInput.classList.add('active', 'btn-secondary');
     btnTabInput.classList.remove('btn-ghost');
     btnTabRiwayat.classList.remove('active', 'btn-secondary');
@@ -77,6 +81,7 @@ export async function renderPembelianModule(container) {
   });
 
   btnTabRiwayat?.addEventListener('click', () => {
+    tabAktifBeli = 'riwayat';
     btnTabRiwayat.classList.add('active', 'btn-secondary');
     btnTabRiwayat.classList.remove('btn-ghost');
     btnTabInput.classList.remove('active', 'btn-secondary');
@@ -88,14 +93,20 @@ export async function renderPembelianModule(container) {
 
   // Inisialisasi Form Input Pembelian
   initFormInputBeli(container);
+  if (isRiwayat) {
+    muatRiwayatPembelian(container);
+  }
 
   // Inisialisasi Pencarian Riwayat
   $('#search-riwayat-beli', container)?.addEventListener('input', (e) => {
     muatRiwayatPembelian(container, e.target.value.trim());
   });
 
-  $('#btn-refresh-riwayat', container)?.addEventListener('click', () => {
-    muatRiwayatPembelian(container, $('#search-riwayat-beli', container)?.value.trim() || '');
+  $('#btn-refresh-riwayat', container)?.addEventListener('click', async () => {
+    const area = $('#area-riwayat-beli', container);
+    if (area) area.innerHTML = renderSkeleton(4);
+    await muatRiwayatPembelian(container, $('#search-riwayat-beli', container)?.value.trim() || '');
+    showToast('Riwayat pembelian berhasil diperbarui', 'success', 1800);
   });
 }
 

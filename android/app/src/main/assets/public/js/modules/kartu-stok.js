@@ -95,7 +95,10 @@ export async function renderKartuStokModule(container) {
   $('#filter-ks-tipe', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-dari', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sampai', container)?.addEventListener('change', pemicuMuat);
-  $('#btn-refresh-ks', container)?.addEventListener('click', pemicuMuat);
+  $('#btn-refresh-ks', container)?.addEventListener('click', async () => {
+    await muatDataKartuStok(container);
+    showToast('Data kartu stok berhasil diperbarui', 'success', 1800);
+  });
 
   let timeoutCari = null;
   $('#search-ks', container)?.addEventListener('input', (e) => {

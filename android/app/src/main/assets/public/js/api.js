@@ -169,6 +169,17 @@ export function seedApiCache(action, payload = {}, data, explicitToken = null) {
   }
 }
 
+let forceFreshUntil = 0;
+
+/**
+ * Paksa seluruh pemanggilan apiCall berikutnya selama durasi tertentu untuk melewati pembacaan cache
+ * dan mengambil data segar langsung dari server (kemudian memperbarui cache).
+ * @param {number} [durationMs=2000]
+ */
+export function forceNextApiCallsFresh(durationMs = 2000) {
+  forceFreshUntil = Date.now() + durationMs;
+}
+
 /**
  * Hapus entri cache API (semua atau berdasarkan awalan aksi)
  * @param {string} [prefix=null]
@@ -188,6 +199,32 @@ export function invalidateApiCache(prefix = null) {
     }
   }
   jadwalkanSimpanCachePersisten();
+}
+
+// Interceptor global (Capture Phase) agar seluruh tombol refresh/sinkronisasi di semua modul
+// otomatis mengosongkan cache, memutar animasi ikon, dan memuat data segar dari server.
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const btn = e.target && typeof e.target.closest === 'function'
+      ? e.target.closest('[id^="btn-refresh"], [id^="btn-segarkan"], [id^="btn-sync"], #btn-pos-refresh, .btn-refresh, .btn-sync, #btn-menu-sync')
+      : null;
+    if (!btn || btn.disabled) return;
+
+    invalidateApiCache();
+    forceNextApiCallsFresh(2500);
+    btn.classList.add('is-spinning');
+
+    setTimeout(() => {
+      const pending = Array.from(inFlightRequests.values());
+      if (pending.length > 0) {
+        Promise.allSettled(pending).finally(() => {
+          btn.classList.remove('is-spinning');
+        });
+      } else {
+        btn.classList.remove('is-spinning');
+      }
+    }, 550);
+  }, true);
 }
 
 const READ_SUFFIXES = ['.list', '.get', '.detail', '.me', '.status', '.ping', '.kartu', '.shift', '.riwayatPoin', '.ringkasan', '.penjualan', '.pembelian', '.kas', '.laba_rugi', '.stokValuasi'];
@@ -222,9 +259,10 @@ export async function apiCall(action, payload = {}, options = {}) {
   }
 
   const token = ambilTokenAktif(options.token);
-  const isCacheable = !options.skipCache && !!CACHE_CONFIG[action];
+  const bypassCacheRead = Boolean(options.skipCache) || Date.now() < forceFreshUntil;
+  const isCacheable = !bypassCacheRead && !!CACHE_CONFIG[action];
   const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
-  const cacheKey = isCacheable ? `${action}::${token}::${payloadStr}` : null;
+  const cacheKey = CACHE_CONFIG[action] ? `${action}::${token}::${payloadStr}` : null;
 
   if (!navigator.onLine) {
     // Saat offline, kembalikan data dari cache bila tersedia

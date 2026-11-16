@@ -1563,9 +1563,14 @@ a.list-item:hover {
 }
 
 /* Animasi Putar Tombol Sinkronisasi Data */
-.is-spinning svg,
-.btn-sync.is-spinning svg {
-  animation: putar 0.8s linear infinite !important;
+.is-spinning > svg,
+.is-spinning .menu-list-icon svg,
+.is-spinning .list-item-icon svg,
+.btn-sync.is-spinning svg,
+.btn-refresh.is-spinning svg {
+  animation: putar 0.75s linear infinite !important;
+  transform-origin: center center !important;
+  transform-box: fill-box !important;
 }
 
 .skeleton {

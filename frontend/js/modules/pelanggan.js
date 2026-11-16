@@ -126,7 +126,10 @@ export async function renderPelangganModule(container) {
   });
   selTipe?.addEventListener('change', triggerMuat);
   selLevel?.addEventListener('change', triggerMuat);
-  $('#btn-refresh-pel', container)?.addEventListener('click', triggerMuat);
+  $('#btn-refresh-pel', container)?.addEventListener('click', async () => {
+    await muatDataPelanggan(container);
+    showToast('Data pelanggan berhasil diperbarui', 'success', 1800);
+  });
 
   if (canEdit) {
     $('#btn-tambah-pelanggan', container)?.addEventListener('click', () => {

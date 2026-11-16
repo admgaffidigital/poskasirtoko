@@ -10,9 +10,12 @@ import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, parseRupiah, formatTanggal } from '../utils/format.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian } from '../utils/printer.js';
 
+let tabAktifHp = 'piutang';
+
 export async function renderHutangPiutangModule(container) {
   const user = store.get('user');
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin');
+  const isHutangTab = tabAktifHp === 'hutang';
 
   container.innerHTML = `
     <div class="stack">
@@ -22,11 +25,11 @@ export async function renderHutangPiutangModule(container) {
           <p>Pengelolaan tagihan tempo pelanggan, cicilan pelunasan, pengingat WhatsApp, dan hutang supplier</p>
         </div>
         <div class="segmented" id="tabs-hp" role="tablist">
-          <button type="button" id="tab-btn-piutang" class="btn btn-sm" aria-pressed="true">
+          <button type="button" id="tab-btn-piutang" class="btn btn-sm" aria-pressed="${!isHutangTab}">
             ${ICONS.wallet}
             <span>Piutang <span class="d-none-mobile">Pelanggan</span></span>
           </button>
-          <button type="button" id="tab-btn-hutang" class="btn btn-sm" aria-pressed="false">
+          <button type="button" id="tab-btn-hutang" class="btn btn-sm" aria-pressed="${isHutangTab}">
             ${ICONS.truck}
             <span>Hutang <span class="d-none-mobile">Supplier</span></span>
           </button>
@@ -34,7 +37,7 @@ export async function renderHutangPiutangModule(container) {
       </div>
 
       <!-- Konten Tab 1: Piutang Pelanggan -->
-      <div id="panel-piutang" class="stack">
+      <div id="panel-piutang" class="stack" style="${isHutangTab ? 'display: none;' : ''}">
         <!-- Stat Cards Piutang (Responsif Proporsional) -->
         <div class="stat-grid-3" id="stat-cards-piutang">
           <div class="stat-card-pro">
@@ -103,7 +106,7 @@ export async function renderHutangPiutangModule(container) {
       </div>
 
       <!-- Konten Tab 2: Hutang Supplier -->
-      <div id="panel-hutang" class="stack" style="display: none;">
+      <div id="panel-hutang" class="stack" style="${isHutangTab ? 'display: flex;' : 'display: none;'}">
         ${!isOwnerOrAdmin ? `
           <div class="card card-body text-center" style="padding: var(--sp-6);">
             <div style="font-size: 40px; margin-bottom: var(--sp-2); color: var(--warning-text);">${ICONS.alertTriangle}</div>
@@ -191,13 +194,16 @@ export async function renderHutangPiutangModule(container) {
   const panelHutang = $('#panel-hutang', container);
 
   btnTabPiutang?.addEventListener('click', () => {
+    tabAktifHp = 'piutang';
     btnTabPiutang.setAttribute('aria-pressed', 'true');
     btnTabHutang.setAttribute('aria-pressed', 'false');
     panelPiutang.style.display = 'flex';
     panelHutang.style.display = 'none';
+    muatDataPiutang(container);
   });
 
   btnTabHutang?.addEventListener('click', () => {
+    tabAktifHp = 'hutang';
     btnTabHutang.setAttribute('aria-pressed', 'true');
     btnTabPiutang.setAttribute('aria-pressed', 'false');
     panelHutang.style.display = 'flex';
@@ -221,7 +227,10 @@ export async function renderHutangPiutangModule(container) {
   });
   selStatusPt?.addEventListener('change', triggerMuatPt);
   chkOverduePt?.addEventListener('change', triggerMuatPt);
-  $('#btn-refresh-pt', container)?.addEventListener('click', triggerMuatPt);
+  $('#btn-refresh-pt', container)?.addEventListener('click', async () => {
+    await muatDataPiutang(container);
+    showToast('Data piutang berhasil diperbarui', 'success', 1800);
+  });
 
   // Event Listeners Filter Hutang (jika owner/admin)
   if (isOwnerOrAdmin) {
@@ -238,11 +247,18 @@ export async function renderHutangPiutangModule(container) {
     });
     selStatusHt?.addEventListener('change', triggerMuatHt);
     chkOverdueHt?.addEventListener('change', triggerMuatHt);
-    $('#btn-refresh-ht', container)?.addEventListener('click', triggerMuatHt);
+    $('#btn-refresh-ht', container)?.addEventListener('click', async () => {
+      await muatDataHutang(container);
+      showToast('Data hutang berhasil diperbarui', 'success', 1800);
+    });
   }
 
-  // Muat data awal tab piutang
-  await muatDataPiutang(container);
+  // Muat data awal sesuai tab aktif
+  if (isHutangTab && isOwnerOrAdmin) {
+    await muatDataHutang(container);
+  } else {
+    await muatDataPiutang(container);
+  }
 }
 
 /* ========================================================================== */

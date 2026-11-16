@@ -21,14 +21,17 @@ export async function renderKategoriModule(container) {
           <h2>Kategori Produk</h2>
           <p>Pengelompokan barang dan bahan bangunan untuk mempermudah pencarian kasir</p>
         </div>
-        ${canEdit ? `
-          <div>
-            <button type="button" class="btn btn-primary" id="btn-tambah-kategori">
+        <div class="row" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-kategori" title="Muat Ulang Kategori" aria-label="Muat Ulang Kategori">
+            ${ICONS.refresh}
+          </button>
+          ${canEdit ? `
+            <button type="button" class="btn btn-primary grow" id="btn-tambah-kategori">
               ${ICONS.plus || ''}
               <span>Tambah Kategori</span>
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+        </div>
       </div>
 
       <!-- Info Panduan Sub Kategori -->
@@ -55,6 +58,13 @@ export async function renderKategoriModule(container) {
   `;
 
   await muatKategori(container, canEdit);
+
+  $('#btn-refresh-kategori', container)?.addEventListener('click', async () => {
+    const area = $('#area-kategori', container);
+    if (area) area.innerHTML = renderSkeleton(3);
+    await muatKategori(container, canEdit);
+    showToast('Data kategori berhasil diperbarui', 'success', 1800);
+  });
 
   if (canEdit) {
     $('#btn-tambah-kategori', container)?.addEventListener('click', () => {

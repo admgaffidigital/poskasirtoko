@@ -56,8 +56,11 @@ export async function renderSupplierModule(container) {
     }, 300);
   });
 
-  $('#btn-refresh-supplier', container)?.addEventListener('click', () => {
-    muatSupplierList(container, canEdit, inputSearch ? inputSearch.value.trim() : '');
+  $('#btn-refresh-supplier', container)?.addEventListener('click', async () => {
+    const area = $('#area-supplier-list', container);
+    if (area) area.innerHTML = renderSkeleton(4);
+    await muatSupplierList(container, canEdit, inputSearch ? inputSearch.value.trim() : '');
+    showToast('Data supplier berhasil diperbarui', 'success', 1800);
   });
 
   if (canEdit) {

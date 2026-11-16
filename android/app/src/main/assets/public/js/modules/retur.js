@@ -9,9 +9,12 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, parseQty, formatTanggal } from '../utils/format.js';
 
+let tabAktifRetur = 'jual';
+
 export async function renderReturModule(container) {
   const user = store.get('user');
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin');
+  const isBeli = tabAktifRetur === 'beli';
 
   container.innerHTML = `
     <div class="stack">
@@ -22,23 +25,23 @@ export async function renderReturModule(container) {
         </div>
         <div class="row" style="gap: var(--sp-2);">
           <div class="segmented" id="tabs-retur" role="tablist">
-            <button type="button" id="tab-btn-retur-jual" class="btn btn-sm" aria-pressed="true">
+            <button type="button" id="tab-btn-retur-jual" class="btn btn-sm" aria-pressed="${!isBeli}">
               ${ICONS.rotateCcw}
               <span>Retur Penjualan <span class="d-none-mobile">(Pelanggan)</span></span>
             </button>
-            <button type="button" id="tab-btn-retur-beli" class="btn btn-sm" aria-pressed="false">
+            <button type="button" id="tab-btn-retur-beli" class="btn btn-sm" aria-pressed="${isBeli}">
               ${ICONS.truck}
               <span>Retur Pembelian <span class="d-none-mobile">(Supplier)</span></span>
             </button>
           </div>
-          <button type="button" class="btn btn-primary" id="btn-tambah-retur">
-            <span>+ Buat Retur Baru</span>
+          <button type="button" class="btn btn-primary" id="btn-tambah-retur" style="${isBeli && !isOwnerOrAdmin ? 'display: none;' : ''}">
+            <span>${isBeli ? '+ Buat Retur Pembelian' : '+ Buat Retur Baru'}</span>
           </button>
         </div>
       </div>
 
       <!-- Panel Retur Penjualan -->
-      <div id="panel-retur-jual" class="card card-body stack">
+      <div id="panel-retur-jual" class="card card-body stack" style="${isBeli ? 'display: none;' : 'display: flex;'}">
         <!-- Filter Bar Jual -->
         <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
           <div class="field" style="width: 170px;">
@@ -70,7 +73,7 @@ export async function renderReturModule(container) {
       </div>
 
       <!-- Panel Retur Pembelian -->
-      <div id="panel-retur-beli" class="card card-body stack" style="display: none;">
+      <div id="panel-retur-beli" class="card card-body stack" style="${isBeli ? 'display: flex;' : 'display: none;'}">
         ${!isOwnerOrAdmin ? `
           <div class="text-center" style="padding: var(--sp-6);">
             <div style="font-size: 40px; margin-bottom: var(--sp-2); color: var(--warning-text);">${ICONS.alertTriangle}</div>
@@ -113,8 +116,6 @@ export async function renderReturModule(container) {
     </div>
   `;
 
-  let tabAktif = 'jual';
-
   // Binding Tab Switching
   const btnTabJual = $('#tab-btn-retur-jual', container);
   const btnTabBeli = $('#tab-btn-retur-beli', container);
@@ -123,16 +124,20 @@ export async function renderReturModule(container) {
   const btnTambah = $('#btn-tambah-retur', container);
 
   btnTabJual?.addEventListener('click', () => {
-    tabAktif = 'jual';
+    tabAktifRetur = 'jual';
     btnTabJual.setAttribute('aria-pressed', 'true');
     btnTabBeli.setAttribute('aria-pressed', 'false');
     panelJual.style.display = 'flex';
     panelBeli.style.display = 'none';
-    if (btnTambah) btnTambah.innerHTML = '<span>+ Buat Retur Penjualan</span>';
+    if (btnTambah) {
+      btnTambah.style.display = 'inline-flex';
+      btnTambah.innerHTML = '<span>+ Buat Retur Penjualan</span>';
+    }
+    muatDataReturJual(container);
   });
 
   btnTabBeli?.addEventListener('click', () => {
-    tabAktif = 'beli';
+    tabAktifRetur = 'beli';
     btnTabBeli.setAttribute('aria-pressed', 'true');
     btnTabJual.setAttribute('aria-pressed', 'false');
     panelBeli.style.display = 'flex';
@@ -151,7 +156,7 @@ export async function renderReturModule(container) {
   });
 
   btnTambah?.addEventListener('click', () => {
-    if (tabAktif === 'jual') {
+    if (tabAktifRetur === 'jual') {
       bukaModalFormReturJual(container);
     } else {
       bukaModalFormReturBeli(container);
@@ -170,7 +175,10 @@ export async function renderReturModule(container) {
     timeoutCariRj = setTimeout(triggerMuatRj, 300);
   });
   selStatusRj?.addEventListener('change', triggerMuatRj);
-  $('#btn-refresh-rj', container)?.addEventListener('click', triggerMuatRj);
+  $('#btn-refresh-rj', container)?.addEventListener('click', async () => {
+    await muatDataReturJual(container);
+    showToast('Data retur penjualan berhasil diperbarui', 'success', 1800);
+  });
 
   // Filter Event Listeners Beli
   if (isOwnerOrAdmin) {
@@ -185,11 +193,18 @@ export async function renderReturModule(container) {
       timeoutCariRb = setTimeout(triggerMuatRb, 300);
     });
     selStatusRb?.addEventListener('change', triggerMuatRb);
-    $('#btn-refresh-rb', container)?.addEventListener('click', triggerMuatRb);
+    $('#btn-refresh-rb', container)?.addEventListener('click', async () => {
+      await muatDataReturBeli(container);
+      showToast('Data retur pembelian berhasil diperbarui', 'success', 1800);
+    });
   }
 
-  // Muat data awal tab retur jual
-  await muatDataReturJual(container);
+  // Muat data awal sesuai tab aktif
+  if (isBeli && isOwnerOrAdmin) {
+    await muatDataReturBeli(container);
+  } else {
+    await muatDataReturJual(container);
+  }
 }
 
 /* ========================================================================== */

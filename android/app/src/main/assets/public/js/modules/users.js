@@ -30,8 +30,11 @@ export async function renderUsersModule(container) {
           <h2>Manajemen Pengguna</h2>
           <p>Kelola akun kasir, admin, hak akses peran, dan reset PIN keamanan</p>
         </div>
-        <div>
-          <button type="button" class="btn btn-primary" id="btn-tambah-user">
+        <div class="row" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-users" title="Muat Ulang Pengguna" aria-label="Muat Ulang Pengguna">
+            ${ICONS.refresh}
+          </button>
+          <button type="button" class="btn btn-primary grow" id="btn-tambah-user">
             <span>+ Tambah Pengguna</span>
           </button>
         </div>
@@ -45,6 +48,13 @@ export async function renderUsersModule(container) {
 
   $('#btn-tambah-user', container)?.addEventListener('click', () => {
     bukaModalFormUser(container, null);
+  });
+
+  $('#btn-refresh-users', container)?.addEventListener('click', async () => {
+    const area = $('#area-tabel-users', container);
+    if (area) area.innerHTML = renderSkeleton(3);
+    await muatUsers(container);
+    showToast('Data pengguna berhasil diperbarui', 'success', 1800);
   });
 
   await muatUsers(container);

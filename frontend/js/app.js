@@ -5,7 +5,7 @@
 
 import { CONFIG, setApiUrl } from './config.js';
 import { ROUTES, cariRute } from './routes.js';
-import { apiCall, invalidateApiCache, seedApiCache } from './api.js';
+import { apiCall, invalidateApiCache, seedApiCache, forceNextApiCallsFresh } from './api.js';
 import { store } from './state.js';
 import {
   ICONS,
@@ -186,12 +186,14 @@ class App {
     if (this._isSyncing) return;
     this._isSyncing = true;
 
-    const btnTop = $('#btn-sync-top');
-    const btnSidebar = $('#btn-sync-sidebar');
-    const btnTile = $('#btn-sync-tile');
-    const btnSistem = $('#btn-sync-sistem');
+    const setSpinning = (aktif) => {
+      ['#btn-sync-top', '#btn-sync-sidebar', '#btn-sync-tile', '#btn-sync-sistem'].forEach((sel) => {
+        const el = $(sel);
+        if (el) el.classList.toggle('is-spinning', aktif);
+      });
+    };
 
-    [btnTop, btnSidebar, btnTile, btnSistem].forEach((b) => b?.classList.add('is-spinning'));
+    setSpinning(true);
 
     haptic.medium();
     showToast('Menyinkronkan data dari server...', 'info', 2000);
@@ -199,19 +201,20 @@ class App {
     try {
       if (!navigator.onLine) {
         showToast('Sedang mode offline. Memuat data dari cache lokal...', 'warning', 3000);
-        if (this.currentRoute) this.renderPage(this.currentRoute);
+        if (this.currentRoute) await this.renderPage(this.currentRoute);
         return;
       }
 
-      // Kosongkan cache API in-memory agar seluruh request memuat data segar dari server
+      // Kosongkan cache API in-memory & paksa pemanggilan berikutnya mengambil data segar dari server
       invalidateApiCache();
+      forceNextApiCallsFresh(3500);
 
       // 1. Periksa pembaruan Service Worker PWA di latar belakang
       if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
         navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => { });
       }
 
-      // 2. Jalankan sinkronisasi sesi/pengaturan DAN render ulang halaman aktif secara PARALEL (tanpa waterfall sekuensial)
+      // 2. Jalankan sinkronisasi sesi/pengaturan DAN render ulang halaman aktif secara PARALEL
       const token = store.get('token');
       const syncSessionPromise = token
         ? apiCall('auth.me', {}, { skipCache: true })
@@ -231,11 +234,23 @@ class App {
         : this.muatPengaturanToko();
 
       // Render ulang halaman aktif bersamaan dengan sinkronisasi sesi
-      if (this.currentRoute) {
-        this.renderPage(this.currentRoute);
-      }
+      const renderPromise = this.currentRoute
+        ? Promise.resolve(this.renderPage(this.currentRoute))
+        : Promise.resolve();
 
-      await syncSessionPromise;
+      // Pastikan tombol yang baru di-render ulang (seperti #btn-sync-tile / #btn-sync-sistem) tetap berputar
+      setSpinning(true);
+
+      // Jika berada di halaman Lainnya atau Sistem, muat juga data master di latar depan agar sinkronisasi nyata
+      const isStaticMenuRoute = this.currentRoute && (this.currentRoute.id === 'lainnya' || this.currentRoute.id === 'sistem');
+      const syncCloudMasterPromise = (isStaticMenuRoute && token)
+        ? Promise.allSettled([
+            apiCall('kategori.list', {}, { skipCache: true }),
+            apiCall('produk.list', { aktif_saja: true, page: 1, limit: 30 }, { skipCache: true })
+          ])
+        : Promise.resolve();
+
+      await Promise.all([renderPromise, syncSessionPromise, syncCloudMasterPromise]);
       this.hangatkanCacheLatarBelakang();
 
       haptic.success();
@@ -245,7 +260,7 @@ class App {
       showToast('Gagal sinkronisasi: ' + (err.message || 'Koneksi terganggu'), 'error', 3500);
     } finally {
       this._isSyncing = false;
-      [btnTop, btnSidebar, btnTile, btnSistem].forEach((b) => b?.classList.remove('is-spinning'));
+      setSpinning(false);
     }
   }
 
@@ -394,7 +409,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.52'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.53'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -447,7 +462,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.52'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.53'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -537,6 +552,11 @@ class App {
 
             <div class="topbar-actions">
               <span class="badge badge-warning net-pill ${typeof navigator !== 'undefined' && navigator.onLine ? '' : 'is-offline'}" id="net-pill">Offline</span>
+
+              <!-- Tombol Sinkronisasi Data Cepat di Topbar -->
+              <button type="button" class="btn btn-ghost btn-icon btn-sm btn-sync" id="btn-sync-top" title="Sinkronisasi Data Global (F5)" aria-label="Sinkronisasi Data">
+                ${ICONS.refresh}
+              </button>
 
               <!-- Tombol Profil Pengguna / Login (Ringkas & Bersih) -->
               <button type="button" class="btn btn-ghost btn-sm" id="btn-user-top" style="gap: 6px; padding: 0 10px; border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border);" title="Akun Pengguna">

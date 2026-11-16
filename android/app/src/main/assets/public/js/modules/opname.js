@@ -63,7 +63,10 @@ export async function renderOpnameModule(container) {
   `;
 
   $('#filter-opname-status', container)?.addEventListener('change', () => muatDataOpname(container, canEdit));
-  $('#btn-refresh-opname', container)?.addEventListener('click', () => muatDataOpname(container, canEdit));
+  $('#btn-refresh-opname', container)?.addEventListener('click', async () => {
+    await muatDataOpname(container, canEdit);
+    showToast('Data opname berhasil diperbarui', 'success', 1800);
+  });
 
   let timeoutCari = null;
   $('#search-opname', container)?.addEventListener('input', (e) => {
