@@ -270,6 +270,9 @@ class App {
       navigator.serviceWorker.register('./sw.js').then((registration) => {
         window.swRegistration = registration;
 
+        // Cek update segera saat registrasi berhasil
+        registration.update().catch(() => {});
+
         // Cek jika sudah ada worker baru yang menunggu
         if (registration.waiting) {
           window.swWaitingWorker = registration.waiting;
@@ -290,11 +293,26 @@ class App {
             }
           };
         };
+
+        // Cek pembaruan realtime saat tab dibuka kembali / kembali dari latar belakang
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update().catch(() => {});
+          }
+        });
+        window.addEventListener('focus', () => {
+          registration.update().catch(() => {});
+        });
+
+        // Cek pembaruan berkala otomatis setiap 5 menit
+        setInterval(() => {
+          registration.update().catch(() => {});
+        }, 5 * 60 * 1000);
       }).catch((err) => {
         console.warn('Registrasi Service Worker gagal:', err);
       });
 
-      // Deteksi jika service worker controller berubah
+      // Deteksi jika service worker controller berubah (langsung reload otomatis saat update aktif)
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
