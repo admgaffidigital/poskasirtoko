@@ -153,11 +153,15 @@ export function renderPosModule(container) {
             </button>
           </div>
 
-          <!-- Quick Actions Toolbar: 4 Tombol Operasional POS (Shift, Struk, Printer, Pending) -->
+          <!-- Quick Actions Toolbar: 5 Tombol Operasional POS (Shift, Biaya, Struk, Printer, Pending) -->
           <div class="pos-cart-quickbar">
             <button type="button" id="btn-pos-shift" class="pos-quick-btn" title="Kas & Rekap Shift Kasir (F3)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
               <span>Shift <span class="pos-kbd-hint">(F3)</span></span>
+            </button>
+            <button type="button" id="btn-pos-kas-keluar" class="pos-quick-btn" title="Catat Pengeluaran Kasir / Petty Cash">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span>Biaya</span>
             </button>
             <button type="button" id="btn-pos-reprint" class="pos-quick-btn" title="Cetak Ulang Transaksi Terakhir (F9)">
               ${ICONS.printer}
@@ -2275,7 +2279,8 @@ export function renderPosModule(container) {
     }
 
     const renderShiftBody = () => {
-      const totalLaci = modalAwal + Number(reportData.total_tunai || 0);
+      const totalBiayaKasir = Number(reportData.total_biaya_kasir || 0);
+      const totalLaci = Math.max(0, modalAwal + Number(reportData.total_tunai || 0) - totalBiayaKasir);
       reportData.modal_awal = modalAwal;
       reportData.total_laci = totalLaci;
 
@@ -2297,7 +2302,13 @@ export function renderPosModule(container) {
 
           <!-- Input Modal Awal / Float Uang Kasir -->
           <div style="background: var(--surface-1); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
-            <label class="form-label fw-bold text-xs" style="margin-bottom: 4px;">Modal Awal / Kas Kasir (Float Laci):</label>
+            <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label fw-bold text-xs" style="margin: 0;">Modal Awal / Kas Kasir (Float Laci):</label>
+              <button type="button" class="btn btn-secondary btn-xs text-danger" id="btn-tambah-kas-keluar-shift" style="display: inline-flex; align-items: center; gap: 4px;">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>+ Kas Keluar</span>
+              </button>
+            </div>
             <div class="row" style="gap: var(--sp-2); align-items: center;">
               <input type="number" id="input-shift-modal-awal" class="input fw-bold mono" value="${modalAwal}" min="0" step="10000" style="flex: 1;" placeholder="Rp 0" />
             </div>
@@ -2318,8 +2329,8 @@ export function renderPosModule(container) {
             <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary); margin: 4px 0;" id="display-total-laci">
               ${formatRupiah(totalLaci)}
             </div>
-            <div class="text-xs text-muted">
-              (Modal Awal: ${formatRupiah(modalAwal)} + Kas Tunai: ${formatRupiah(reportData.total_tunai || 0)})
+            <div class="text-xs text-muted" id="display-rumus-laci">
+              (Modal: ${formatRupiah(modalAwal)} + Tunai: ${formatRupiah(reportData.total_tunai || 0)}${totalBiayaKasir > 0 ? ` - Kas Keluar: ${formatRupiah(totalBiayaKasir)}` : ''})
             </div>
           </div>
 
@@ -2343,6 +2354,22 @@ export function renderPosModule(container) {
                 <span class="fw-bold mono text-warning">${formatRupiah(reportData.total_tempo || 0)}</span>
               </div>
             ` : ''}
+            ${totalBiayaKasir > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-danger fw-semibold">(-) Kas Keluar Kasir:</span>
+                <span class="fw-bold mono text-danger">-${formatRupiah(totalBiayaKasir)}</span>
+              </div>
+              ${Array.isArray(reportData.rincian_biaya_kasir) && reportData.rincian_biaya_kasir.length > 0 ? `
+                <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs);">
+                  ${reportData.rincian_biaya_kasir.map(rb => `
+                    <div class="row" style="justify-content: space-between; padding: 2px 0;">
+                      <span class="text-muted">• ${escapeHtml(rb.kategori)}${rb.keterangan ? ` (${escapeHtml(rb.keterangan)})` : ''}</span>
+                      <span class="mono fw-semibold text-danger">-${formatRupiah(rb.nominal)}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            ` : ''}
             ${reportData.total_diskon > 0 ? `
               <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
                 <span class="text-muted">Total Diskon Diberikan:</span>
@@ -2361,11 +2388,13 @@ export function renderPosModule(container) {
       inputModal?.addEventListener('input', () => {
         modalAwal = Math.max(0, parseRupiah(inputModal.value));
         localStorage.setItem(storageKey, String(modalAwal));
-        const laciBaru = modalAwal + Number(reportData.total_tunai || 0);
+        const laciBaru = Math.max(0, modalAwal + Number(reportData.total_tunai || 0) - totalBiayaKasir);
         reportData.modal_awal = modalAwal;
         reportData.total_laci = laciBaru;
         const displayLaci = elContainer.querySelector('#display-total-laci');
         if (displayLaci) displayLaci.textContent = formatRupiah(laciBaru);
+        const displayRumus = elContainer.querySelector('#display-rumus-laci');
+        if (displayRumus) displayRumus.textContent = `(Modal: ${formatRupiah(modalAwal)} + Tunai: ${formatRupiah(reportData.total_tunai || 0)}${totalBiayaKasir > 0 ? ` - Kas Keluar: ${formatRupiah(totalBiayaKasir)}` : ''})`;
       });
 
       elContainer.querySelectorAll('.btn-preset-modal').forEach((btn) => {
@@ -2384,6 +2413,13 @@ export function renderPosModule(container) {
         if (inputModal) inputModal.value = 0;
         inputModal?.dispatchEvent(new Event('input'));
       });
+
+      elContainer.querySelector('#btn-tambah-kas-keluar-shift')?.addEventListener('click', () => {
+        bukaModalKasKeluarKasir(() => {
+          modal.close();
+          bukaModalShiftKasir();
+        });
+      });
     };
 
     renderShiftBody();
@@ -2396,6 +2432,98 @@ export function renderPosModule(container) {
   // Bind tombol Shift Kasir di Header POS Cart
   container.querySelector('#btn-pos-shift')?.addEventListener('click', bukaModalShiftKasir);
   window.bukaModalShiftKasirGlobal = bukaModalShiftKasir;
+
+  // ---------- Modal Kas Keluar Kasir (Petty Cash Laci) ----------
+  function bukaModalKasKeluarKasir(onSuccess) {
+    const modal = showModal({
+      title: '💸 Catat Kas Keluar Kasir (Petty Cash)',
+      size: 'sm',
+      body: `
+        <form id="form-kas-keluar-kasir" class="stack" style="gap: var(--sp-3);">
+          <div class="alert alert-warning" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
+            Kas keluar ini memotong uang fisik kasir di laci dan tercatat dalam buku biaya operasional toko.
+          </div>
+          <div>
+            <label class="form-label required text-xs">Kategori Pengeluaran</label>
+            <select name="kategori" id="input-kk-kategori" class="select w-full" required>
+              <option value="Transportasi & Pengiriman">Transportasi & Pengiriman (Bensin/Parkir/Tol)</option>
+              <option value="Upah Angkut / Kuli Bongkar">Upah Angkut / Kuli Bongkar Muat</option>
+              <option value="Konsumsi & Dapur Toko">Konsumsi & Dapur Toko (Air Galon/Snack)</option>
+              <option value="Perlengkapan & Kebersihan">Perlengkapan Kasir & Kebersihan</option>
+              <option value="Lain-lain">Lain-lain / Keperluan Mendesak</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label required text-xs">Nominal (Rp)</label>
+            <input type="text" inputmode="numeric" name="nominal" id="input-kk-nominal" class="input w-full fw-bold mono" placeholder="Contoh: 25.000" required autocomplete="off" />
+          </div>
+          <div>
+            <label class="form-label required text-xs">Keterangan / Keperluan</label>
+            <textarea name="keterangan" id="input-kk-keterangan" class="input w-full" rows="2" placeholder="Contoh: Beli bensin pickup kirim semen ke Proyek Pak Joko" required></textarea>
+          </div>
+          <div class="row" style="justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-kk-batal">Batal</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="btn-kk-simpan">Simpan Kas Keluar</button>
+          </div>
+        </form>
+      `
+    });
+
+    const form = modal.el.querySelector('#form-kas-keluar-kasir');
+    const inputNominal = modal.el.querySelector('#input-kk-nominal');
+    const btnBatal = modal.el.querySelector('#btn-kk-batal');
+    const btnSimpan = modal.el.querySelector('#btn-kk-simpan');
+
+    btnBatal?.addEventListener('click', () => modal.close());
+
+    // Format Rupiah saat mengetik
+    inputNominal?.addEventListener('input', () => {
+      const raw = parseRupiah(inputNominal.value);
+      inputNominal.value = raw > 0 ? formatRupiah(raw).replace('Rp ', '') : '';
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const kat = modal.el.querySelector('#input-kk-kategori').value;
+      const nom = parseRupiah(inputNominal.value);
+      const ket = modal.el.querySelector('#input-kk-keterangan').value.trim();
+
+      if (!nom || nom < 100) {
+        showToast('Nominal pengeluaran minimal Rp 100', 'warning');
+        inputNominal?.focus();
+        return;
+      }
+      if (!ket) {
+        showToast('Keterangan pengeluaran wajib diisi', 'warning');
+        return;
+      }
+
+      btnSimpan.disabled = true;
+      btnSimpan.textContent = 'Menyimpan...';
+
+      try {
+        const res = await apiCall('biaya.create', {
+          kategori: kat,
+          nominal: nom,
+          keterangan: ket,
+          sumber_dana: 'kas_kasir'
+        });
+        showToast(res.pesan || 'Kas keluar kasir berhasil dicatat!', 'success');
+        modal.close();
+        if (typeof onSuccess === 'function') {
+          onSuccess();
+        }
+      } catch (err) {
+        showToast(err.message || 'Gagal mencatat kas keluar kasir', 'danger');
+        btnSimpan.disabled = false;
+        btnSimpan.textContent = 'Simpan Kas Keluar';
+      }
+    });
+  }
+
+  // Bind tombol Kas Keluar di Quickbar POS
+  container.querySelector('#btn-pos-kas-keluar')?.addEventListener('click', () => bukaModalKasKeluarKasir());
+  window.bukaModalKasKeluarKasirGlobal = bukaModalKasKeluarKasir;
 
   // ---------- Cetak Ulang Struk Transaksi Terakhir POS ----------
   container.querySelector('#btn-pos-reprint')?.addEventListener('click', () => {

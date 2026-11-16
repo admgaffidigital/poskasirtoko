@@ -16,6 +16,29 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.57] - 2026-11-16
+
+### Added
+- [BACKEND] [DB] **Modul Biaya Operasional & Pengeluaran Toko (OPEX)**:
+  - Menambahkan sheet baru `Biaya` pada `SKEMA` [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs) dengan struktur: `no_transaksi`, `tanggal`, `kategori`, `nominal`, `keterangan`, `sumber_dana`, `shift_id`, `user_id`, `user_nama`, `bukti_url`, `status`.
+  - Mendaftarkan counter prefix `'EXP'` pada `nomorBerikut_` untuk penomoran dokumen otomatis standar toko (`EXP-YYYYMMDD-XXXX`).
+  - Menambahkan endpoint API baru: `biaya.list` (filter rentang, kategori, sumber dana, dan pencarian teks), `biaya.create` (pencatatan pengeluaran baru), dan `biaya.delete` (pembatalan pengeluaran khusus Owner & Admin).
+  - Integrasi warna tab sheet `'Biaya': '#EF4444'` pada engine `percantikTampilanSpreadsheet()`.
+- [POS-JUAL] [UI] **Tombol & Modal Aksi Cepat Kas Keluar Kasir (Petty Cash)**:
+  - Menambahkan tombol `[-] Biaya` pada toolbar quick actions cart [frontend/js/modules/pos.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pos.js) untuk pencatatan instan pengeluaran kasir (bensin pickup, kuli bongkar, konsumsi).
+  - Menambahkan tombol `+ Kas Keluar` di dalam modal shift kasir.
+  - Integrasi otomatis pemotongan kasir ke perhitungan uang fisik laci: `Total Laci = Modal Awal + Total Kas Tunai - Kas Keluar Kasir`.
+- [CETAK] [POS-JUAL] **Pembaruan Struk Rekap Shift Kasir (X-Report)**:
+  - Memperbarui `susunTeksXReport` di [frontend/js/utils/printer.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/utils/printer.js) untuk mencetak baris `(-) Kas Keluar Kasir`, rincian pengeluaran per item, dan total uang fisik laci aktual.
+- [BIAYA] [UI] **Modul Khusus Manajemen Biaya Operasional (`frontend/js/modules/biaya.js`)**:
+  - Menyediakan tampilan komprehensif riwayat pengeluaran kas dengan 4 kartu metrik (Total Biaya, Kasir, Toko, Bank), filter periode preset & kustom, filter kategori, breakdown persentase pengeluaran, tabel transaksi, dan modal input lengkap.
+  - Mendaftarkan rute `#/biaya` di [frontend/js/routes.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/routes.js) dan navigasi di [frontend/js/app.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/app.js).
+- [DASHBOARD] **Integrasi Laba Bersih Riil Toko & Arus Kas**:
+  - Menghitung Laba Bersih Riil Toko (`Laba Bersih Riil = Laba Kotor Bersih - Total Biaya Operasional`) dan Margin Bersih Riil pada tab Laba Rugi dan Ringkasan Eksekutif di [frontend/js/modules/laporan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/laporan.js) dan [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs).
+  - Menyematkan rincian biaya operasional tunai dan bank pada Laporan Arus Kas Keluar.
+- [TEST] **Suite Pengujian Otomatis Biaya Operasional**:
+  - Menambahkan `tests/test_biaya_operasional.js` (17 skenario pengujian komprehensif) ke dalam alur `npm test`.
+
 ## [1.0.56] - 2026-11-16
 
 ### Added

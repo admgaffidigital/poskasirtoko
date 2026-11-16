@@ -2911,12 +2911,18 @@ a.list-item:hover {
   background: var(--danger-soft, rgba(239, 68, 68, 0.1));
 }
 
-/* Quickbar 4 Tombol Operasional POS */
+/* Quickbar Tombol Operasional POS (Shift, Kas Keluar, Struk, Printer, Pending) */
 .pos-cart-quickbar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   width: 100%;
+}
+
+@media (max-width: 480px) {
+  .pos-cart-quickbar {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .pos-quick-btn {

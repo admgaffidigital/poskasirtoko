@@ -1292,7 +1292,8 @@ export function susunTeksXReport(data, ukuran = '58') {
   const totalTransfer = Number(data.total_transfer || 0);
   const totalTempo = Number(data.total_tempo || 0);
   const totalPenjualan = Number(data.total_penjualan || 0);
-  const totalLaci = Number(data.total_laci || (modalAwal + totalTunai));
+  const totalBiayaKasir = Number(data.total_biaya_kasir || 0);
+  const totalLaci = Number(data.total_laci !== undefined ? data.total_laci : Math.max(0, modalAwal + totalTunai - totalBiayaKasir));
 
   const baris = [];
 
@@ -1325,13 +1326,23 @@ export function susunTeksXReport(data, ukuran = '58') {
   if (totalTempo > 0) {
     baris.push(formatDuaKolom('Piutang (Tempo Bon)', formatRupiah(totalTempo), lebar));
   }
+  if (totalBiayaKasir > 0) {
+    baris.push(buatGaris(lebar, '.'));
+    baris.push(formatDuaKolom('(-) Kas Keluar Kasir', '-' + formatRupiah(totalBiayaKasir), lebar));
+    if (Array.isArray(data.rincian_biaya_kasir)) {
+      data.rincian_biaya_kasir.forEach((rb) => {
+        const ket = rb.kategori + (rb.keterangan ? ' ' + rb.keterangan : '');
+        baris.push(formatDuaKolom('  ' + ket.substring(0, Math.floor(lebar * 0.55)), '-' + formatRupiah(rb.nominal), lebar));
+      });
+    }
+  }
   baris.push(buatGaris(lebar, '-'));
   baris.push(formatDuaKolom('TOTAL OMSET SHIFT', formatRupiah(totalPenjualan), lebar));
   baris.push(buatGaris(lebar, '='));
 
   // Saldo Akhir Uang Fisik di Laci
   baris.push(formatDuaKolom('UANG FISIK LACI', formatRupiah(totalLaci), lebar));
-  baris.push(formatTengah('(Modal Awal + Kas Tunai)', lebar));
+  baris.push(formatTengah(totalBiayaKasir > 0 ? '(Modal + Tunai - Kas Keluar)' : '(Modal Awal + Kas Tunai)', lebar));
   baris.push(buatGaris(lebar, '='));
 
   // Tanda Tangan Serah Terima

@@ -32,6 +32,7 @@ import { renderKartuStokModule } from './modules/kartu-stok.js';
 import { renderOpnameModule } from './modules/opname.js';
 import { renderHutangPiutangModule } from './modules/hutang-piutang.js';
 import { renderReturModule } from './modules/retur.js';
+import { renderBiayaModule } from './modules/biaya.js';
 import { renderPelangganModule } from './modules/pelanggan.js';
 import { renderLoyaltiModule } from './modules/loyalti.js';
 import { renderPriceTagModule } from './modules/pricetag.js';
@@ -409,7 +410,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.56'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.57'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -462,7 +463,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.56'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.57'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -987,6 +988,8 @@ class App {
       renderHutangPiutangModule(content);
     } else if (rute.id === 'retur') {
       renderReturModule(content);
+    } else if (rute.id === 'biaya') {
+      renderBiayaModule(content);
     } else if (rute.id === 'pelanggan') {
       renderPelangganModule(content);
     } else if (rute.id === 'loyalti') {
@@ -1221,6 +1224,7 @@ class App {
       loyalti: 'Katalog reward penukaran poin member & kupon diskon',
       supplier: 'Daftar distributor rekanan toko & kontak vendor',
       'hutang-piutang': 'Buku tempo pelanggan, cicilan pembayaran & hutang',
+      biaya: 'Pencatatan kas operasional, petty cash kasir & beban toko',
       retur: 'Pengembalian barang rusak pelanggan & retur ke supplier',
       pengaturan: 'Profil toko, struk nota, printer & preferensi sistem',
       users: 'Manajemen pengguna, peran kasir/admin & ganti PIN',

@@ -428,6 +428,14 @@ function renderTabDashboard(container, data) {
           </div>
         </div>
 
+        <div class="card stat">
+          <div class="stat-label">Biaya Operasional Toko</div>
+          <div class="stat-value" style="color: var(--danger);">${formatRupiah(r.total_biaya_operasional || 0)}</div>
+          <div class="stat-delta">
+            <span class="badge badge-danger">Beban Operasional</span>
+          </div>
+        </div>
+
         ${isOwner ? `
           <div class="card stat">
             <div class="stat-label">Nilai Aset Persediaan</div>
@@ -438,10 +446,10 @@ function renderTabDashboard(container, data) {
           </div>
 
           <div class="card stat">
-            <div class="stat-label">Laba Kotor Berjalan</div>
-            <div class="stat-value" style="color: var(--success);">${formatRupiah(r.laba_kotor || 0)}</div>
+            <div class="stat-label">Laba Bersih Riil Toko</div>
+            <div class="stat-value" style="color: ${(r.laba_bersih_riil || 0) >= 0 ? 'var(--primary)' : 'var(--danger)'};">${formatRupiah(r.laba_bersih_riil || 0)}</div>
             <div class="stat-delta">
-              <span class="badge badge-success">Margin ${r.margin_persen || 0}%</span>
+              <span class="badge badge-primary">Margin Bersih ${r.margin_bersih_persen || 0}%</span>
             </div>
           </div>
         ` : ''}
@@ -1421,6 +1429,14 @@ function renderTabArusKas(container, data) {
                     <td>Refund Retur Penjualan (Kas)</td>
                     <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--danger);">${formatRupiah(keluar.refund_retur_tunai || 0)}</td>
                   </tr>
+                  <tr>
+                    <td>Biaya Operasional Toko (Tunai Kasir / Toko)</td>
+                    <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--danger);">${formatRupiah(keluar.biaya_operasional_tunai || 0)}</td>
+                  </tr>
+                  <tr>
+                    <td>Biaya Operasional Toko (Transfer Bank)</td>
+                    <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--danger);">${formatRupiah(keluar.biaya_operasional_bank || 0)}</td>
+                  </tr>
                   <tr style="background: var(--bg-surface-variant); font-weight: var(--fw-bold);">
                     <td>TOTAL KAS KELUAR</td>
                     <td style="text-align: right; color: var(--danger);">${formatRupiah(r.total_kas_keluar || 0)}</td>
@@ -1442,6 +1458,7 @@ function renderTabLabaRugi(container, data) {
   const r = data.ringkasan || {};
   const kategoriList = data.analisis_kategori || [];
   const produkMargin = data.produk_margin_teratas || [];
+  const analisisBiaya = data.analisis_biaya || [];
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
@@ -1479,15 +1496,25 @@ function renderTabLabaRugi(container, data) {
               <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_retur_penjualan || 0)}</span>
             </div>
 
-            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-xl); font-weight: var(--fw-bold); background: var(--bg-surface-variant); padding: var(--sp-3); border-radius: var(--radius-md); margin-top: var(--sp-2);">
-              <span>LABA KOTOR BERSIH:</span>
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-lg); font-weight: var(--fw-bold); background: var(--bg-surface-variant); padding: var(--sp-3); border-radius: var(--radius-md); margin-top: var(--sp-2);">
+              <span>Laba Kotor Bersih Produk:</span>
               <span style="color: var(--success);">${formatRupiah(r.laba_kotor_bersih || 0)} (${r.margin_persen || 0}%)</span>
+            </div>
+
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--danger); margin-top: var(--sp-1);">
+              <span>Pengurang: Total Biaya Operasional:</span>
+              <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_biaya_operasional || 0)}</span>
+            </div>
+
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-xl); font-weight: var(--fw-bold); background: var(--primary-soft); border: 2px solid var(--primary); padding: var(--sp-3); border-radius: var(--radius-md); margin-top: var(--sp-2);">
+              <span style="color: var(--primary);">LABA BERSIH RIIL TOKO:</span>
+              <span style="color: ${(r.laba_bersih_riil || 0) >= 0 ? 'var(--primary)' : 'var(--danger)'};">${formatRupiah(r.laba_bersih_riil || 0)} (${r.margin_bersih_persen || 0}%)</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Grid: Analisis Kategori & Produk Margin Tertinggi -->
+      <!-- Grid Analisis: Kategori Produk, Produk Laba Tertinggi, & Biaya Operasional -->
       <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
         <!-- Laba & Margin per Kategori -->
         <div class="card">
@@ -1522,8 +1549,39 @@ function renderTabLabaRugi(container, data) {
           </div>
         </div>
 
-        <!-- 10 Produk Kontribusi Laba Tertinggi -->
+        <!-- Rincian Pengeluaran Biaya Operasional -->
         <div class="card">
+          <div class="card-header">
+            <h3 class="card-title" style="color: var(--danger);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Rincian Biaya Operasional per Kategori</h3>
+          </div>
+          <div class="card-body card-table-body" style="padding: 0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Kategori Pengeluaran</th>
+                    <th style="text-align: right;">Total Biaya</th>
+                    <th style="text-align: right;">Porsi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${analisisBiaya.length === 0 ? `
+                    <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada pengeluaran operasional</td></tr>
+                  ` : analisisBiaya.map((b) => `
+                    <tr>
+                      <td data-label="Kategori Pengeluaran" style="font-weight: var(--fw-medium);">${escapeHtml(b.kategori)}</td>
+                      <td data-label="Total Biaya" style="text-align: right; font-weight: var(--fw-bold); color: var(--danger);">${formatRupiah(b.nominal)}</td>
+                      <td data-label="Porsi" style="text-align: right;"><span class="badge badge-secondary">${b.persen}%</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10 Produk Kontribusi Laba Tertinggi -->
+        <div class="card" style="grid-column: 1 / -1;">
           <div class="card-header">
             <h3 class="card-title">${ICONS.award} 10 Produk Penyumbang Laba Terbesar</h3>
           </div>

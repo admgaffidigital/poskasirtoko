@@ -146,6 +146,9 @@ const SKEMA = {
   Retur_Item: [['retur_id', 's'], ['ref_item_id', 's'], ['produk_id', 's'], ['varian_id', 's'], ['nama', 's'],
     ['satuan', 's'], ['faktor', 'n'], ['qty', 'n'], ['qty_dasar', 'n'], ['harga', 'n'], ['hpp', 'n'],
     ['subtotal', 'n']],
+  Biaya: [['no_transaksi', 's'], ['tanggal', 'd'], ['kategori', 's'], ['nominal', 'n'], ['keterangan', 's'],
+    ['sumber_dana', 's'], ['shift_id', 's'], ['user_id', 's'], ['user_nama', 's'], ['bukti_url', 's'],
+    ['status', 's']],
   Pengaturan: [['key', 's'], ['value', 'j']],
   Log_Audit: [['user_id', 's'], ['aksi', 's'], ['modul', 's'], ['ref_id', 's'], ['detail_json', 'j']],
   Counter: [['key', 's'], ['nilai', 'n']]
@@ -307,7 +310,12 @@ const RUTE = {
   'laporan.pembelian': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiLaporanPembelian_ },
   'laporan.labaRugi': { publik: false, roles: [ROLE.OWNER], handler: aksiLaporanLabaRugi_ },
   'laporan.arusKas': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiLaporanArusKas_ },
-  'laporan.stokValuasi': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiLaporanStokValuasi_ }
+  'laporan.stokValuasi': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiLaporanStokValuasi_ },
+
+  // Biaya Operasional & Kas Keluar
+  'biaya.list': { publik: false, roles: SEMUA_ROLE, handler: aksiBiayaList_ },
+  'biaya.create': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiBiayaCreate_ },
+  'biaya.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiBiayaDelete_ }
 };
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */
@@ -786,7 +794,7 @@ function cacheHapus_(key) {
  * WAJIB dipanggil di dalam denganKunci_ agar tidak ada nomor ganda.
  */
 function nomorBerikut_(prefix) {
-  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG'];
+  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP'];
   if (valid.indexOf(prefix) === -1) gagal_(KODE.SERVER, 'Prefix nomor tidak dikenal: ' + prefix);
   const key = prefix + '-' + Utilities.formatDate(new Date(), APP.TZ, 'yyyyMMdd');
   const baris = bacaSemua_('Counter').filter(function (c) { return c.key === key; })[0];
@@ -2827,7 +2835,33 @@ function aksiPenjualanShiftKasir_(ctx) {
   });
 
   const modalAwal = Number(p.modal_awal) || 0;
-  const totalLaci = modalAwal + totalTunai;
+
+  // Pengeluaran Kasir (Petty Cash / Kas Keluar dari Laci Kasir)
+  const semuaBiaya = bacaSemua_('Biaya');
+  let totalBiayaKasir = 0;
+  const rincianBiayaKasir = [];
+
+  semuaBiaya.forEach(function (b) {
+    if (b.deleted || b.status === 'batal') return;
+    const tgl = String(b.tanggal || b.created_at || '').substring(0, 10);
+    if (tgl !== targetTgl) return;
+    if (targetKasirId && b.user_id !== targetKasirId) return;
+    const sumber = String(b.sumber_dana || 'kas_kasir').toLowerCase();
+    if (sumber === 'kas_kasir') {
+      const nom = Number(b.nominal) || 0;
+      totalBiayaKasir += nom;
+      rincianBiayaKasir.push({
+        id: b.id,
+        no_transaksi: b.no_transaksi || ('EXP-' + String(b.id || '').substring(0, 6)),
+        kategori: b.kategori,
+        nominal: nom,
+        keterangan: b.keterangan || '',
+        waktu: String(b.created_at || b.tanggal || '').substring(11, 16)
+      });
+    }
+  });
+
+  const totalLaci = Math.max(0, modalAwal + totalTunai - totalBiayaKasir);
 
   return {
     tanggal: targetTgl,
@@ -2842,6 +2876,8 @@ function aksiPenjualanShiftKasir_(ctx) {
     total_transfer: totalTransfer,
     total_tempo: totalTempo,
     total_diskon: totalDiskon,
+    total_biaya_kasir: totalBiayaKasir,
+    rincian_biaya_kasir: rincianBiayaKasir,
     total_laci: totalLaci
   };
 }
@@ -5543,9 +5579,21 @@ function aksiLaporanDashboard_(ctx) {
     return a.tanggal.localeCompare(b.tanggal);
   });
 
-  // Hitung Laba Kotor (Khusus Owner)
+  // Hitung Laba Kotor & Biaya Operasional (Khusus Owner)
+  const semuaBiaya = bacaSemua_('Biaya');
+  let totalBiayaOperasional = 0;
+  semuaBiaya.forEach(function (b) {
+    if (b.deleted || b.status === 'batal') return;
+    const tgl = String(b.tanggal || b.created_at || '').substring(0, 10);
+    if (tgl >= rentang.dari && tgl <= rentang.sampai) {
+      totalBiayaOperasional += (Number(b.nominal) || 0);
+    }
+  });
+
   const labaKotor = isOwner ? Math.round(totalPenjualan - totalHpp) : null;
   const marginPersen = isOwner ? (totalPenjualan > 0 ? Math.round((labaKotor / totalPenjualan) * 10000) / 100 : 0) : null;
+  const labaBersihRiil = isOwner ? Math.round((labaKotor || 0) - totalBiayaOperasional) : null;
+  const marginBersihPersen = isOwner ? (totalPenjualan > 0 ? Math.round((labaBersihRiil / totalPenjualan) * 10000) / 100 : 0) : null;
 
   return {
     rentang: rentang,
@@ -5564,7 +5612,10 @@ function aksiLaporanDashboard_(ctx) {
       count_hutang_aktif: countHutangAktif,
       total_nilai_aset_stok: isOwner ? Math.round(totalAsetStok) : null,
       laba_kotor: labaKotor,
-      margin_persen: marginPersen
+      margin_persen: marginPersen,
+      total_biaya_operasional: totalBiayaOperasional,
+      laba_bersih_riil: labaBersihRiil,
+      margin_bersih_persen: marginBersihPersen
     },
     produk_terlaris: produkTerlaris,
     pelanggan_terbaik: pelangganTerbaik,
@@ -5878,6 +5929,33 @@ function aksiLaporanLabaRugi_(ctx) {
     return it;
   }).sort(function (a, b) { return b.laba - a.laba; }).slice(0, 10);
 
+  // Hitung Biaya Operasional Toko dalam Rentang
+  const semuaBiaya = bacaSemua_('Biaya');
+  let totalBiayaOperasional = 0;
+  const biayaKatAgg = {};
+
+  semuaBiaya.forEach(function (b) {
+    if (b.deleted || b.status === 'batal') return;
+    const tgl = String(b.tanggal || b.created_at || '').substring(0, 10);
+    if (tgl >= rentang.dari && tgl <= rentang.sampai) {
+      const nom = Number(b.nominal) || 0;
+      totalBiayaOperasional += nom;
+      const kat = b.kategori || 'Lain-lain';
+      biayaKatAgg[kat] = (biayaKatAgg[kat] || 0) + nom;
+    }
+  });
+
+  const labaBersihRiil = Math.round(labaKotorBersih - totalBiayaOperasional);
+  const marginBersihPersen = omsetBersih > 0 ? Math.round((labaBersihRiil / omsetBersih) * 10000) / 100 : 0;
+
+  const rincianBiayaList = Object.keys(biayaKatAgg).map(function (kat) {
+    return {
+      kategori: kat,
+      nominal: biayaKatAgg[kat],
+      persen: totalBiayaOperasional > 0 ? Math.round((biayaKatAgg[kat] / totalBiayaOperasional) * 100) : 0
+    };
+  }).sort(function (a, b) { return b.nominal - a.nominal; });
+
   return {
     rentang: rentang,
     ringkasan: {
@@ -5889,9 +5967,13 @@ function aksiLaporanLabaRugi_(ctx) {
       laba_kotor_sebelum_retur: labaKotorKotor,
       total_retur_penjualan: totalReturJual,
       laba_kotor_bersih: labaKotorBersih,
-      margin_persen: marginPersen
+      margin_persen: marginPersen,
+      total_biaya_operasional: totalBiayaOperasional,
+      laba_bersih_riil: labaBersihRiil,
+      margin_bersih_persen: marginBersihPersen
     },
     analisis_kategori: kategoriList,
+    analisis_biaya: rincianBiayaList,
     produk_margin_teratas: produkLabaTertinggi
   };
 }
@@ -5981,12 +6063,29 @@ function aksiLaporanArusKas_(ctx) {
     }
   });
 
+  // 4. Kas Keluar Biaya Operasional Toko
+  const semuaBiaya = bacaSemua_('Biaya');
+  let keluarBiayaTunai = 0;
+  let keluarBiayaBank = 0;
+  semuaBiaya.forEach(function (b) {
+    if (b.deleted || b.status === 'batal') return;
+    const tgl = String(b.tanggal || b.created_at || '').substring(0, 10);
+    if (tgl < rentang.dari || tgl > rentang.sampai) return;
+    const sumber = String(b.sumber_dana || 'kas_toko').toLowerCase();
+    const nom = Number(b.nominal) || 0;
+    if (sumber === 'bank' || sumber === 'transfer') {
+      keluarBiayaBank += nom;
+    } else {
+      keluarBiayaTunai += nom;
+    }
+  });
+
   const totalMasukTunai = masukJualTunai + masukPiutangTunai;
   const totalMasukBank = masukJualTransfer + masukPiutangTransfer + masukJualQris + masukPiutangQris;
   const totalKasMasuk = totalMasukTunai + totalMasukBank;
 
-  const totalKeluarTunai = keluarBeliTunai + keluarHutangTunai + keluarRefundRetur;
-  const totalKeluarBank = keluarBeliTransfer + keluarHutangTransfer;
+  const totalKeluarTunai = keluarBeliTunai + keluarHutangTunai + keluarRefundRetur + keluarBiayaTunai;
+  const totalKeluarBank = keluarBeliTransfer + keluarHutangTransfer + keluarBiayaBank;
   const totalKasKeluar = totalKeluarTunai + totalKeluarBank;
 
   const arusKasBersih = totalKasMasuk - totalKasKeluar;
@@ -6018,6 +6117,8 @@ function aksiLaporanArusKas_(ctx) {
       hutang_tunai: keluarHutangTunai,
       hutang_transfer: keluarHutangTransfer,
       refund_retur_tunai: keluarRefundRetur,
+      biaya_operasional_tunai: keluarBiayaTunai,
+      biaya_operasional_bank: keluarBiayaBank,
       subtotal_tunai: totalKeluarTunai,
       subtotal_bank: totalKeluarBank
     }
@@ -6158,6 +6259,190 @@ function aksiLaporanStokValuasi_(ctx) {
     page: page,
     limit: limit
   };
+}
+
+/* ========================================================================== */
+/* 9.7 FASE 7: BIAYA OPERASIONAL & PENGELUARAN KAS                           */
+/* ========================================================================== */
+
+/**
+ * biaya.list — Mengambil riwayat pengeluaran kas operasional dengan filter rentang, kategori, dan sumber dana.
+ */
+function aksiBiayaList_(ctx) {
+  const p = ctx.payload || {};
+  const rentang = hitungRentangTanggal_(p.dari, p.sampai, p.periode);
+  const targetKategori = p.kategori ? String(p.kategori).trim().toLowerCase() : null;
+  const targetSumber = p.sumber_dana ? String(p.sumber_dana).trim().toLowerCase() : null;
+  const targetQ = p.q ? String(p.q).trim().toLowerCase() : null;
+
+  const semuaBiaya = bacaSemua_('Biaya');
+  let totalNominal = 0;
+  let totalKasKasir = 0;
+  let totalKasToko = 0;
+  let totalBank = 0;
+  const kategoriAgg = {};
+
+  const filtered = [];
+
+  semuaBiaya.forEach(function (b) {
+    if (b.deleted || b.status === 'batal') return;
+    const tgl = String(b.tanggal || b.created_at || '').substring(0, 10);
+    if (tgl < rentang.dari || tgl > rentang.sampai) return;
+
+    const kat = b.kategori || 'Lain-lain';
+    const sumber = String(b.sumber_dana || 'kas_toko').toLowerCase();
+    const nom = Number(b.nominal) || 0;
+
+    // Filter kategori jika diberikan
+    if (targetKategori && kat.toLowerCase() !== targetKategori) return;
+
+    // Filter sumber dana jika diberikan
+    if (targetSumber && sumber !== targetSumber) return;
+
+    // Filter pencarian query
+    if (targetQ) {
+      const hay = (String(b.no_transaksi || '') + ' ' + kat + ' ' + String(b.keterangan || '') + ' ' + String(b.user_nama || '')).toLowerCase();
+      if (hay.indexOf(targetQ) === -1) return;
+    }
+
+    totalNominal += nom;
+    if (sumber === 'kas_kasir') totalKasKasir += nom;
+    else if (sumber === 'bank' || sumber === 'transfer') totalBank += nom;
+    else totalKasToko += nom;
+
+    kategoriAgg[kat] = (kategoriAgg[kat] || 0) + nom;
+
+    filtered.push({
+      id: b.id,
+      no_transaksi: b.no_transaksi || ('EXP-' + String(b.id || '').substring(0, 6)),
+      tanggal: b.tanggal || b.created_at,
+      kategori: kat,
+      nominal: nom,
+      keterangan: b.keterangan || '',
+      sumber_dana: sumber,
+      shift_id: b.shift_id || '',
+      user_id: b.user_id || '',
+      user_nama: b.user_nama || '',
+      bukti_url: b.bukti_url || '',
+      status: b.status || 'aktif',
+      created_at: b.created_at
+    });
+  });
+
+  // Urutkan dari yang terbaru (descending)
+  filtered.sort(function (a, b) {
+    const tA = String(a.tanggal || a.created_at || '');
+    const tB = String(b.tanggal || b.created_at || '');
+    return tB.localeCompare(tA);
+  });
+
+  const limit = Math.min(Math.max(parseInt(p.limit, 10) || 50, 1), 500);
+  const page = Math.max(parseInt(p.page, 10) || 1, 1);
+  const mulai = (page - 1) * limit;
+
+  const rincianKategori = Object.keys(kategoriAgg).map(function (k) {
+    return {
+      kategori: k,
+      nominal: kategoriAgg[k],
+      persen: totalNominal > 0 ? Math.round((kategoriAgg[k] / totalNominal) * 100) : 0
+    };
+  }).sort(function (a, b) { return b.nominal - a.nominal; });
+
+  return {
+    rentang: rentang,
+    ringkasan: {
+      total_nominal: totalNominal,
+      total_transaksi: filtered.length,
+      total_kas_kasir: totalKasKasir,
+      total_kas_toko: totalKasToko,
+      total_bank: totalBank,
+      analisis_kategori: rincianKategori
+    },
+    items: filtered.slice(mulai, mulai + limit),
+    total: filtered.length,
+    page: page,
+    limit: limit
+  };
+}
+
+/**
+ * biaya.create — Mencatat transaksi pengeluaran kas / biaya operasional baru.
+ */
+function aksiBiayaCreate_(ctx) {
+  const p = ctx.payload || {};
+
+  const kategori = V_.teks(p.kategori, 'Kategori Biaya', { min: 2, maks: 100 });
+  const nominal = V_.angka(p.nominal, 'Nominal Biaya', { min: 100 });
+  const keterangan = V_.teks(p.keterangan, 'Keterangan', { min: 2, maks: 500 });
+  let sumberDana = String(p.sumber_dana || 'kas_toko').trim().toLowerCase();
+  if (sumberDana !== 'kas_kasir' && sumberDana !== 'bank' && sumberDana !== 'kas_toko') {
+    sumberDana = 'kas_toko';
+  }
+
+  const shiftId = p.shift_id ? String(p.shift_id).trim() : '';
+  const buktiUrl = p.bukti_url ? String(p.bukti_url).trim() : '';
+
+  return denganKunci_(function () {
+    const noTransaksi = nomorBerikut_('EXP');
+    const waktuSkrg = sekarang_();
+
+    const dataBiaya = {
+      no_transaksi: noTransaksi,
+      tanggal: waktuSkrg,
+      kategori: kategori,
+      nominal: nominal,
+      keterangan: keterangan,
+      sumber_dana: sumberDana,
+      shift_id: shiftId,
+      user_id: ctx.user.id,
+      user_nama: ctx.user.nama || ctx.user.username,
+      bukti_url: buktiUrl,
+      status: 'aktif'
+    };
+
+    const baru = tambahBaris_('Biaya', [dataBiaya], ctx.user.id);
+    const itemCreated = baru && baru[0] ? baru[0] : dataBiaya;
+
+    catatAudit_(ctx.user.id, 'biaya_create', 'BIAYA', noTransaksi, {
+      kategori: kategori,
+      nominal: nominal,
+      sumber_dana: sumberDana,
+      keterangan: keterangan
+    });
+
+    return {
+      pesan: 'Pengeluaran kas ' + noTransaksi + ' berhasil dicatat.',
+      no_transaksi: noTransaksi,
+      item: itemCreated
+    };
+  });
+}
+
+/**
+ * biaya.delete — Membatalkan pencatatan biaya operasional (Hanya Owner & Admin).
+ */
+function aksiBiayaDelete_(ctx) {
+  const p = ctx.payload || {};
+  if (!p.id) gagal_(KODE.VALIDATION, 'ID biaya wajib diberikan.');
+
+  return denganKunci_(function () {
+    const item = cariById_('Biaya', p.id);
+    if (!item || item.deleted) gagal_(KODE.NOT_FOUND, 'Data biaya tidak ditemukan.');
+
+    // Soft delete menggunakan hapusLunak_
+    hapusLunak_('Biaya', item.id, ctx.user.id);
+
+    catatAudit_(ctx.user.id, 'biaya_delete', 'BIAYA', item.no_transaksi || item.id, {
+      kategori: item.kategori,
+      nominal: item.nominal,
+      alasan: p.alasan || 'Dibatalkan oleh ' + ctx.user.username
+    });
+
+    return {
+      pesan: 'Biaya ' + (item.no_transaksi || item.id) + ' berhasil dibatalkan.',
+      id: item.id
+    };
+  });
 }
 
 /* ========================================================================== */
@@ -6457,10 +6742,11 @@ function percantikTampilanSpreadsheet() {
     'Pembelian': '#EA580C',
     'Pembelian_Item': '#F97316',
 
-    // 4. Keuangan & Tagihan (Ungu Violet)
+    // 4. Keuangan & Tagihan (Ungu Violet & Merah)
     'Hutang': '#7C3AED',
     'Piutang': '#8B5CF6',
     'Pembayaran': '#A78BFA',
+    'Biaya': '#EF4444',
 
     // 5. Inventori Gudang & Stok (Amber Emas)
     'Kartu_Stok': '#D97706',
