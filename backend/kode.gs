@@ -6496,9 +6496,13 @@ function percantikTampilanSpreadsheet() {
       sh.setTabColor(warnaTab);
     } catch (e) {}
 
-    // 2. Pastikan Baris 1 Dibekukan (Freeze Header)
-    sh.setFrozenRows(1);
-    sh.setHideGridlines(false);
+    // 2. Pastikan Baris 1 Dibekukan (Freeze Header) & Gridlines Aktif
+    try {
+      sh.setFrozenRows(1);
+    } catch (e) {}
+    try {
+      sh.setHiddenGridlines(false);
+    } catch (e) {}
 
     // 3. Format Header (Row 1): Dark Slate Header Elegan
     const headerRange = sh.getRange(1, 1, 1, lastCol);
@@ -6540,11 +6544,15 @@ function percantikTampilanSpreadsheet() {
 
       // Terapkan Tinggi Baris Data Nyaman (26px)
       try {
-        const batasBaris = Math.min(lastRow, 250);
-        for (let r = 2; r <= batasBaris; r++) {
-          sh.setRowHeight(r, 26);
-        }
-      } catch (e) {}
+        sh.setRowHeights(2, Math.min(lastRow - 1, 500), 26);
+      } catch (e) {
+        try {
+          const batasBaris = Math.min(lastRow, 50);
+          for (let r = 2; r <= batasBaris; r++) {
+            sh.setRowHeight(r, 26);
+          }
+        } catch (e2) {}
+      }
 
       // 5. Format Angka, Uang, Tanggal, dan Status Berdasarkan Nama Kolom
       headerValues.forEach(function (h, idx) {
