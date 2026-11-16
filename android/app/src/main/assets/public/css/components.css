@@ -1347,14 +1347,17 @@ input[type="password"] {
 
   /* Baris kosong / tidak ada data */
   .table-wrap:not(.keep-table) .table tbody tr td[colspan] {
-    display: block;
-    text-align: center;
-    border-bottom: 0;
-    padding: var(--sp-6) var(--sp-3);
+    display: block !important;
+    text-align: center !important;
+    justify-content: center !important;
+    border-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    padding: var(--sp-3) var(--sp-2) !important;
+    font-size: var(--fs-sm) !important;
   }
 
   .table-wrap:not(.keep-table) .table tbody tr td[colspan]::before {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -3461,11 +3464,19 @@ a.list-item:hover {
 .beli-diskon-massal-aksi {
   display: flex;
   gap: var(--sp-2);
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
 }
 
 .beli-diskon-massal-aksi .input {
   max-width: 120px;
+}
+
+@media (max-width: 639px) {
+  .beli-diskon-massal-aksi .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }
 
 /* ---------- Price Tag & Label Rak UI ---------- */

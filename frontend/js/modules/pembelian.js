@@ -29,12 +29,12 @@ export async function renderPembelianModule(container) {
           <h2>POS Pembelian & Pengadaan Barang</h2>
           <p>Pencatatan barang masuk dari distributor, update stok, dan penyesuaian HPP moving average</p>
         </div>
-        <div class="row" style="gap: var(--sp-2);">
-          <button type="button" class="btn ${!isRiwayat ? 'btn-secondary active' : 'btn-ghost'} tab-beli-btn" id="tab-btn-input">
+        <div class="segmented" id="tabs-pembelian" role="tablist">
+          <button type="button" class="btn btn-sm tab-beli-btn ${!isRiwayat ? 'active' : ''}" id="tab-btn-input" aria-pressed="${!isRiwayat}">
             ${ICONS.shoppingBag}
             <span>Faktur Baru</span>
           </button>
-          <button type="button" class="btn ${isRiwayat ? 'btn-secondary active' : 'btn-ghost'} tab-beli-btn" id="tab-btn-riwayat">
+          <button type="button" class="btn btn-sm tab-beli-btn ${isRiwayat ? 'active' : ''}" id="tab-btn-riwayat" aria-pressed="${isRiwayat}">
             ${ICONS.clipboard}
             <span>Riwayat Faktur</span>
           </button>
@@ -72,20 +72,20 @@ export async function renderPembelianModule(container) {
 
   btnTabInput?.addEventListener('click', () => {
     tabAktifBeli = 'input';
-    btnTabInput.classList.add('active', 'btn-secondary');
-    btnTabInput.classList.remove('btn-ghost');
-    btnTabRiwayat.classList.remove('active', 'btn-secondary');
-    btnTabRiwayat.classList.add('btn-ghost');
+    btnTabInput.classList.add('active');
+    btnTabInput.setAttribute('aria-pressed', 'true');
+    btnTabRiwayat.classList.remove('active');
+    btnTabRiwayat.setAttribute('aria-pressed', 'false');
     tabInput.style.display = 'block';
     tabRiwayat.style.display = 'none';
   });
 
   btnTabRiwayat?.addEventListener('click', () => {
     tabAktifBeli = 'riwayat';
-    btnTabRiwayat.classList.add('active', 'btn-secondary');
-    btnTabRiwayat.classList.remove('btn-ghost');
-    btnTabInput.classList.remove('active', 'btn-secondary');
-    btnTabInput.classList.add('btn-ghost');
+    btnTabRiwayat.classList.add('active');
+    btnTabRiwayat.setAttribute('aria-pressed', 'true');
+    btnTabInput.classList.remove('active');
+    btnTabInput.setAttribute('aria-pressed', 'false');
     tabInput.style.display = 'none';
     tabRiwayat.style.display = 'block';
     muatRiwayatPembelian(container);
@@ -144,7 +144,7 @@ function renderFormInputBeli() {
               <span style="color: var(--primary);">${ICONS.package || ICONS.box}</span>
               <span>Tambah Barang ke Faktur Pembelian</span>
             </div>
-            <button type="button" class="btn btn-ghost btn-sm btn-icon" id="btn-scan-barcode-beli" title="Pindai Barcode Kamera">
+            <button type="button" class="btn btn-secondary btn-sm btn-icon" id="btn-scan-barcode-beli" title="Pindai Barcode Kamera">
               ${ICONS.scan || ICONS.box}
             </button>
           </div>
@@ -190,7 +190,7 @@ function renderFormInputBeli() {
             <label class="text-sm fw-semibold" for="beli-diskon-semua">Diskon supplier untuk semua barang (%)</label>
             <div class="beli-diskon-massal-aksi">
               <input type="number" class="input tabular" id="beli-diskon-semua" min="0" max="100" step="any" placeholder="cth: 5" inputmode="decimal">
-              <button type="button" class="btn btn-ghost btn-sm" id="btn-terapkan-diskon-semua">Terapkan ke Semua</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-terapkan-diskon-semua" style="min-height: 42px;">Terapkan ke Semua</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -253,9 +253,9 @@ function renderFormInputBeli() {
         <div class="field">
           <label class="field-label" for="beli-nominal-bayar">Nominal Dibayar (Rp)</label>
           <input type="text" class="input tabular fw-bold" id="beli-nominal-bayar" value="0">
-          <div class="row" style="gap: var(--sp-1); margin-top: 4px;">
-            <button type="button" class="btn btn-ghost btn-xs grow" id="btn-quick-lunas">Lunas</button>
-            <button type="button" class="btn btn-ghost btn-xs grow" id="btn-quick-tempo">Hutang (0)</button>
+          <div class="row" style="gap: var(--sp-2); margin-top: 6px;">
+            <button type="button" class="btn btn-secondary btn-xs grow" id="btn-quick-lunas">Bayar Lunas (100%)</button>
+            <button type="button" class="btn btn-secondary btn-xs grow" id="btn-quick-tempo">Hutang (Rp 0)</button>
           </div>
         </div>
 
@@ -672,27 +672,38 @@ function renderTabelKeranjangBeli(container) {
     html += `
       <tr>
         <td data-label="Barang">
-          <div class="fw-semibold">${escapeHtml(it.nama)}</div>
-          ${it.faktor > 1 ? `<div class="text-xs text-muted">1 ${escapeHtml(it.satuan)} = ${it.faktor} ${escapeHtml(it.satuan_dasar)}</div>` : ''}
+          <div class="cell-stack">
+            <div class="fw-semibold">${escapeHtml(it.nama)}</div>
+            ${it.faktor > 1 ? `<div class="text-xs text-muted">1 ${escapeHtml(it.satuan)} = ${it.faktor} ${escapeHtml(it.satuan_dasar)}</div>` : ''}
+          </div>
         </td>
         <td data-label="Satuan"><span class="badge">${escapeHtml(it.satuan)}</span></td>
         <td style="text-align: right;" class="tabular" data-label="Qty Beli">
-          <div class="fw-semibold">${formatQty(it.qty)}</div>
-          ${it.faktor > 1 ? `<div class="text-xs text-muted">(${formatQty(it.qty_dasar)} ${escapeHtml(it.satuan_dasar)})</div>` : ''}
+          <div class="cell-stack">
+            <div class="fw-semibold">${formatQty(it.qty)}</div>
+            ${it.faktor > 1 ? `<div class="text-xs text-muted">(${formatQty(it.qty_dasar)} ${escapeHtml(it.satuan_dasar)})</div>` : ''}
+          </div>
         </td>
         <td style="text-align: right;" class="tabular" data-label="Harga Satuan">${formatRupiah(it.harga_beli)}</td>
         <td style="text-align: right;" class="tabular" data-label="Disk. (%)">
-          <input type="number" class="input input-sm tabular input-diskon-item-beli" data-index="${idx}" min="0" max="100" step="any" value="${it.diskon_persen || 0}" inputmode="decimal" style="width: 72px; text-align: right;">
-          ${it.diskon_rp > 0 ? `<div class="text-xs text-danger">- ${formatRupiah(it.diskon_rp)}</div>` : ''}
+          <div class="cell-stack">
+            <input type="number" class="input input-sm tabular input-diskon-item-beli" data-index="${idx}" min="0" max="100" step="any" value="${it.diskon_persen || 0}" inputmode="decimal" style="width: 72px; text-align: right;">
+            ${it.diskon_rp > 0 ? `<div class="text-xs text-danger">- ${formatRupiah(it.diskon_rp)}</div>` : ''}
+          </div>
         </td>
         <td style="text-align: right;" class="tabular fw-bold" data-label="Subtotal">
-          ${it.diskon_rp > 0 ? `<div class="text-xs text-muted" style="text-decoration: line-through;">${formatRupiah(it.subtotal_kotor)}</div>` : ''}
-          ${formatRupiah(it.subtotal)}
+          <div class="cell-stack">
+            ${it.diskon_rp > 0 ? `<div class="text-xs text-muted" style="text-decoration: line-through;">${formatRupiah(it.subtotal_kotor)}</div>` : ''}
+            <div>${formatRupiah(it.subtotal)}</div>
+          </div>
         </td>
         <td style="text-align: center;" data-label="Aksi">
-          <button type="button" class="btn btn-ghost btn-sm text-danger btn-icon btn-hapus-item-beli" data-index="${idx}" title="Hapus">
-            ${ICONS.x}
-          </button>
+          <div class="table-actions">
+            <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-item-beli" data-index="${idx}" title="Hapus">
+              ${ICONS.trash || ICONS.x}
+              <span class="d-none-desktop">Hapus Barang</span>
+            </button>
+          </div>
         </td>
       </tr>
     `;
