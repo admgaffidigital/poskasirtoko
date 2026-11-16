@@ -193,7 +193,7 @@ export async function renderProdukModule(container) {
         selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
       }
     })
-    .catch(() => {});
+    .catch(() => { });
 
   // Pasang event filter
   let debounceTimer;
@@ -272,7 +272,7 @@ export async function renderProdukModule(container) {
           selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     await muatProduk(container, canEdit, isKasir);
     showToast('Katalog produk berhasil diperbarui', 'success', 1800);
   });
