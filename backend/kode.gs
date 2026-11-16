@@ -6807,9 +6807,13 @@ function percantikTampilanSpreadsheet() {
     // Baca nama-nama kolom di Baris 1
     const headerValues = headerRange.getValues()[0];
 
-    // 4. Format Data Rows (Row 2 ke bawah jika ada data)
-    if (lastRow >= 2) {
-      const dataRange = sh.getRange(2, 1, lastRow - 1, lastCol);
+    // 4. Format Data Rows (Format Baris 2 ke Bawah, Minimal 50 Baris agar Sheet Baru Langsung Cantik)
+    const maxRows = sh.getMaxRows();
+    const barisTarget = Math.max(lastRow, Math.min(maxRows, 50));
+    const jumlahData = barisTarget - 1;
+
+    if (jumlahData >= 1) {
+      const dataRange = sh.getRange(2, 1, jumlahData, lastCol);
       dataRange
         .setFontFamily('Roboto')
         .setFontSize(10)
@@ -6821,19 +6825,25 @@ function percantikTampilanSpreadsheet() {
         for (let b = 0; b < existingBandings.length; b++) {
           existingBandings[b].remove();
         }
-        sh.getRange(1, 1, lastRow, lastCol)
+        sh.getRange(1, 1, barisTarget, lastCol)
           .applyRowBanding()
           .setHeaderRowColor('#1E293B')
           .setFirstRowColor('#FFFFFF')
           .setSecondRowColor('#F8FAFC');
       } catch (e) {}
 
+      // Terapkan Garis Grid Halus Antar Baris
+      try {
+        sh.getRange(1, 1, barisTarget, lastCol)
+          .setBorder(null, null, null, null, null, true, '#E2E8F0', SpreadsheetApp.BorderStyle.SOLID);
+      } catch (e) {}
+
       // Terapkan Tinggi Baris Data Nyaman (26px)
       try {
-        sh.setRowHeights(2, Math.min(lastRow - 1, 500), 26);
+        sh.setRowHeights(2, jumlahData, 26);
       } catch (e) {
         try {
-          const batasBaris = Math.min(lastRow, 50);
+          const batasBaris = Math.min(barisTarget, 50);
           for (let r = 2; r <= batasBaris; r++) {
             sh.setRowHeight(r, 26);
           }
@@ -6844,10 +6854,18 @@ function percantikTampilanSpreadsheet() {
       headerValues.forEach(function (h, idx) {
         const colIdx = idx + 1;
         const colName = String(h || '').trim().toLowerCase();
-        const colRange = sh.getRange(2, colIdx, lastRow - 1, 1);
+        const colRange = sh.getRange(2, colIdx, jumlahData, 1);
 
-        // Kolom Mata Uang (Harga, HPP, Total, Bayar, Sisa, Subtotal, Nilai)
-        if (/harga|hpp|total|subtotal|bayar|sisa|kembalian|nominal|diskon|terbayar|limit_kredit|nilai_aset|saldo/i.test(colName)) {
+        // Kolom Nominal Khusus Biaya (Rupiah, Tebal, Merah Elegan)
+        if (nama === 'Biaya' && colName === 'nominal') {
+          colRange
+            .setNumberFormat('"Rp"#,##0')
+            .setHorizontalAlignment('right')
+            .setFontWeight('bold')
+            .setFontColor('#DC2626');
+        }
+        // Kolom Mata Uang Standar Lainnya
+        else if (/harga|hpp|total|subtotal|bayar|sisa|kembalian|nominal|diskon|terbayar|limit_kredit|nilai_aset|saldo/i.test(colName)) {
           colRange.setNumberFormat('"Rp"#,##0').setHorizontalAlignment('right');
         }
         // Kolom Kuantitas / Angka (Qty, Stok, Poin, Faktor, Hari)
@@ -6858,12 +6876,16 @@ function percantikTampilanSpreadsheet() {
         else if (/tanggal|jatuh_tempo|created_at|updated_at|waktu|expired/i.test(colName)) {
           colRange.setNumberFormat('yyyy-mm-dd hh:mm').setHorizontalAlignment('center');
         }
-        // Kolom Kode / ID / SKU / Nomor Faktur / Barcode
-        else if (/id|kode|no_faktur|no_nota|sku|barcode/i.test(colName)) {
+        // Kolom Kode / ID / SKU / Nomor Transaksi / Barcode
+        else if (/id|kode|no_faktur|no_nota|no_transaksi|no_retur|sku|barcode/i.test(colName)) {
           colRange.setHorizontalAlignment('center');
         }
-        // Kolom Status / Tipe / Role / Metode
-        else if (/status|tipe|role|metode/i.test(colName)) {
+        // Kolom Keterangan / Deskripsi / Alamat (Wrap Text Rapi)
+        else if (/keterangan|catatan|deskripsi|alamat/i.test(colName)) {
+          colRange.setHorizontalAlignment('left').setWrap(true);
+        }
+        // Kolom Status / Sumber Dana / Metode / Tipe / Role
+        else if (/status|sumber_dana|metode|tipe|role/i.test(colName)) {
           colRange.setHorizontalAlignment('center');
         }
       });
@@ -6874,13 +6896,13 @@ function percantikTampilanSpreadsheet() {
       });
 
       if (statusColIdx !== -1) {
-        const statusRange = sh.getRange(2, statusColIdx + 1, lastRow - 1, 1);
+        const statusRange = sh.getRange(2, statusColIdx + 1, jumlahData, 1);
         try {
           const rules = [];
 
-          // Hijau Pastel: Lunas, Selesai, Aktif, Setuju
+          // Hijau Pastel: Aktif, Lunas, Selesai, Setuju
           rules.push(SpreadsheetApp.newConditionalFormatRule()
-            .whenTextMatches('(?i)^(lunas|selesai|aktif|setuju)$')
+            .whenTextMatches('(?i)^(aktif|lunas|selesai|setuju)$')
             .setBackground('#DCFCE7')
             .setFontColor('#166534')
             .setBold(true)
@@ -6896,18 +6918,18 @@ function percantikTampilanSpreadsheet() {
             .setRanges([statusRange])
             .build());
 
-          // Merah Muda Pastel: Belum, Kritis, Habis, Tolak, Hutang
+          // Merah Muda Pastel: Batal, Belum, Kritis, Habis, Tolak, Hutang
           rules.push(SpreadsheetApp.newConditionalFormatRule()
-            .whenTextMatches('(?i)^(belum|kritis|habis|tolak|hutang)$')
+            .whenTextMatches('(?i)^(batal|belum|kritis|habis|tolak|hutang)$')
             .setBackground('#FEE2E2')
             .setFontColor('#991B1B')
             .setBold(true)
             .setRanges([statusRange])
             .build());
 
-          // Abu-abu Lembut: Batal, Void, Nonaktif
+          // Abu-abu Lembut: Void, Nonaktif
           rules.push(SpreadsheetApp.newConditionalFormatRule()
-            .whenTextMatches('(?i)^(batal|void|nonaktif)$')
+            .whenTextMatches('(?i)^(void|nonaktif)$')
             .setBackground('#F1F5F9')
             .setFontColor('#64748B')
             .setItalic(true)
@@ -6919,14 +6941,29 @@ function percantikTampilanSpreadsheet() {
       }
     }
 
-    // 7. Auto-Fit Lebar Kolom dengan Ruang Padding
-    try {
-      for (let c = 1; c <= lastCol; c++) {
-        sh.autoResizeColumn(c);
-        const w = sh.getColumnWidth(c);
-        sh.setColumnWidth(c, Math.max(w + 14, 85));
-      }
-    } catch (e) {}
+    // 7. Auto-Fit & Penyetelan Lebar Kolom Proporsional (Anti-Terpotong)
+    headerValues.forEach(function (h, idx) {
+      const colIdx = idx + 1;
+      const colName = String(h || '').trim().toLowerCase();
+      try {
+        sh.autoResizeColumn(colIdx);
+        const lebarAuto = sh.getColumnWidth(colIdx);
+
+        let minLebar = 95;
+        if (/keterangan|catatan|deskripsi|alamat/i.test(colName)) minLebar = 280;
+        else if (/no_transaksi|no_faktur|no_nota|no_retur/i.test(colName)) minLebar = 165;
+        else if (/tanggal|jatuh_tempo|created_at|updated_at|waktu/i.test(colName)) minLebar = 145;
+        else if (/nominal|harga|hpp|total|subtotal|bayar|sisa|nilai/i.test(colName)) minLebar = 135;
+        else if (/kategori/i.test(colName)) minLebar = 180;
+        else if (/nama/i.test(colName)) minLebar = 210;
+        else if (/sumber_dana|metode/i.test(colName)) minLebar = 125;
+        else if (/status/i.test(colName)) minLebar = 105;
+        else if (/bukti_url|foto/i.test(colName)) minLebar = 150;
+        else if (/id|sku|barcode|kode/i.test(colName)) minLebar = 130;
+
+        sh.setColumnWidth(colIdx, Math.max(lebarAuto + 16, minLebar));
+      } catch (e) {}
+    });
 
     totalDitata++;
   });
