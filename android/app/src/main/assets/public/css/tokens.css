@@ -125,9 +125,16 @@
   --border: var(--slate-200);
   --border-strong: var(--slate-300);
   --text: var(--slate-900);
+  --text-heading: var(--text);
+  --text-body: var(--text);
+  --text-main: var(--text);
   --text-muted: var(--slate-500);
   --text-subtle: var(--slate-400);
   --text-on-primary: #ffffff;
+  --surface-1: var(--surface);
+  --bg-surface-variant: var(--surface-2);
+  --clr-border: var(--border);
+  --clr-surface-muted: var(--surface-2);
 
   --primary: var(--orange-600);
   --primary-hover: var(--orange-700);
@@ -178,9 +185,16 @@
   --border: #24324f;
   --border-strong: #31416a;
   --text: var(--slate-100);
+  --text-heading: var(--text);
+  --text-body: var(--text);
+  --text-main: var(--text);
   --text-muted: var(--slate-400);
   --text-subtle: var(--slate-500);
   --text-on-primary: #ffffff;
+  --surface-1: var(--surface);
+  --bg-surface-variant: var(--surface-2);
+  --clr-border: var(--border);
+  --clr-surface-muted: var(--surface-2);
 
   --primary: #f76b1c;
   --primary-hover: #ff8a3d;

@@ -1106,7 +1106,8 @@ input[type="password"] {
 
 /* Transformasi Tabel ke Native Card di Layar Mobile (< 768px) */
 @media (max-width: 767px) {
-  .kat-container-card {
+  .kat-container-card,
+  .card-table-body {
     padding: var(--sp-3) !important;
   }
 
@@ -3407,6 +3408,7 @@ a.list-item:hover {
 .modal-body .table-wrap:not(.keep-table) .table,
 .dialog .table-wrap:not(.keep-table) .table,
 .dialog-body .table-wrap:not(.keep-table) .table,
+.card-grid .table-wrap:not(.keep-table) .table,
 .pembelian-layout .table-wrap:not(.keep-table) .table {
   min-width: 0 !important;
   width: 100% !important;

@@ -500,7 +500,7 @@ function renderTabDashboard(container, data) {
           <div class="card-header">
             <h3 class="card-title">${ICONS.award} Produk Paling Laris (Top 10)</h3>
           </div>
-          <div class="card-body" style="padding: 0;">
+          <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -516,14 +516,19 @@ function renderTabDashboard(container, data) {
                     <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada penjualan di periode ini</td></tr>
                   ` : (data.produk_terlaris || []).map((p, idx) => `
                     <tr>
-                      <td style="font-weight: var(--fw-bold); color: var(--text-muted);">${idx + 1}</td>
-                      <td>
+                      <td data-label="No" style="font-weight: var(--fw-bold); color: var(--text-muted);">
+                        <div class="row-between" style="width: 100%; align-items: center;">
+                          <span>#${idx + 1}</span>
+                          <span class="fw-bold d-none-desktop" style="color: var(--text);">${escapeHtml(p.nama)}</span>
+                        </div>
+                      </td>
+                      <td class="d-none-mobile" data-label="Nama Material">
                         <div style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</div>
                       </td>
-                      <td style="text-align: right; font-weight: var(--fw-semibold);">
+                      <td data-label="Qty Terjual" style="text-align: right; font-weight: var(--fw-semibold);">
                         ${formatAngka(p.qty_terjual)} <span style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(p.satuan || '')}</span>
                       </td>
-                      <td style="text-align: right; font-weight: var(--fw-bold); color: var(--primary);">
+                      <td data-label="Kontribusi Omset" style="text-align: right; font-weight: var(--fw-bold); color: var(--primary);">
                         ${formatRupiah(p.total_omset)}
                       </td>
                     </tr>
@@ -539,7 +544,7 @@ function renderTabDashboard(container, data) {
           <div class="card-header">
             <h3 class="card-title">${ICONS.users} Pelanggan Belanja Terbesar (Top 10)</h3>
           </div>
-          <div class="card-body" style="padding: 0;">
+          <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -556,20 +561,25 @@ function renderTabDashboard(container, data) {
                     <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada transaksi member di periode ini</td></tr>
                   ` : (data.pelanggan_terbaik || []).map((m, idx) => `
                     <tr>
-                      <td style="font-weight: var(--fw-bold); color: var(--text-muted);">${idx + 1}</td>
-                      <td>
+                      <td data-label="No" style="font-weight: var(--fw-bold); color: var(--text-muted);">
+                        <div class="row-between" style="width: 100%; align-items: center;">
+                          <span>#${idx + 1} — ${escapeHtml(m.nama)}</span>
+                          <span class="badge d-none-desktop ${m.tipe === 'member' ? 'badge-primary' : 'badge-info'}">${escapeHtml(m.level || m.tipe)}</span>
+                        </div>
+                      </td>
+                      <td class="d-none-mobile" data-label="Pelanggan">
                         <div style="font-weight: var(--fw-medium);">${escapeHtml(m.nama)}</div>
                         <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(m.kode || '-')}</div>
                       </td>
-                      <td>
+                      <td class="d-none-mobile" data-label="Tipe / Level">
                         <span class="badge ${m.tipe === 'member' ? 'badge-primary' : 'badge-info'}">
                           ${escapeHtml(m.level || m.tipe)}
                         </span>
                       </td>
-                      <td style="text-align: right; font-weight: var(--fw-semibold);">
+                      <td data-label="Transaksi" style="text-align: right; font-weight: var(--fw-semibold);">
                         ${formatAngka(m.total_transaksi)}x
                       </td>
-                      <td style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">
+                      <td data-label="Total Belanja" style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">
                         ${formatRupiah(m.total_belanja)}
                       </td>
                     </tr>
@@ -599,7 +609,7 @@ function renderTabDashboard(container, data) {
             <h3 class="card-title">${ICONS.alertTriangle} Peringatan Stok Menipis / Habis</h3>
             <a href="#/pembelian" class="btn btn-sm btn-secondary no-print" style="text-decoration: none;">+ Order Supplier</a>
           </div>
-          <div class="card-body" style="padding: 0;">
+          <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -620,17 +630,19 @@ function renderTabDashboard(container, data) {
                     </td></tr>
                   ` : (data.stok_kritis || []).map((s) => `
                     <tr>
-                      <td>
-                        <div style="font-weight: var(--fw-medium);">${escapeHtml(s.nama)}</div>
-                        <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(s.sku || '')}</div>
+                      <td data-label="Produk Material">
+                        <div class="cell-stack" style="align-items: flex-start; text-align: left;">
+                          <div style="font-weight: var(--fw-medium);">${escapeHtml(s.nama)}</div>
+                          <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(s.sku || '')}</div>
+                        </div>
                       </td>
-                      <td style="text-align: right; font-weight: var(--fw-bold); color: ${s.stok <= 0 ? 'var(--danger)' : 'var(--warning)'};">
+                      <td data-label="Stok Fisik" style="text-align: right; font-weight: var(--fw-bold); color: ${s.stok <= 0 ? 'var(--danger)' : 'var(--warning)'};">
                         ${formatAngka(s.stok)} ${escapeHtml(s.satuan)}
                       </td>
-                      <td style="text-align: right; color: var(--text-muted);">
+                      <td data-label="Batas Min" style="text-align: right; color: var(--text-muted);">
                         ${formatAngka(s.stok_min)} ${escapeHtml(s.satuan)}
                       </td>
-                      <td style="text-align: center;">
+                      <td data-label="Status" style="text-align: center;">
                         <span class="badge ${s.status === 'habis' ? 'badge-danger' : 'badge-warning'}">
                           ${s.status === 'habis' ? 'HABIS' : 'KRITIS'}
                         </span>
@@ -1123,13 +1135,15 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
             <tbody>
               ${items.map((it) => `
                 <tr>
-                  <td>
-                    <div style="font-weight: var(--fw-medium);">${escapeHtml(it.nama)}</div>
-                    <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.satuan || '')}</div>
+                  <td data-label="Item Barang">
+                    <div class="row-between" style="width: 100%; align-items: center; gap: 8px;">
+                      <span style="font-weight: var(--fw-medium);">${escapeHtml(it.nama)}</span>
+                      <span style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.satuan || '')}</span>
+                    </div>
                   </td>
-                  <td style="text-align: right;">${formatAngka(it.qty)}</td>
-                  <td style="text-align: right;">${formatRupiah(it.harga)}</td>
-                  <td style="text-align: right; font-weight: var(--fw-semibold);">${formatRupiah(it.subtotal)}</td>
+                  <td data-label="Qty" style="text-align: right;">${formatAngka(it.qty)} ${escapeHtml(it.satuan || '')}</td>
+                  <td data-label="Harga Satuan" style="text-align: right;">${formatRupiah(it.harga)}</td>
+                  <td data-label="Subtotal" style="text-align: right; font-weight: var(--fw-semibold);">${formatRupiah(it.subtotal)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1508,7 +1522,7 @@ function renderTabLabaRugi(container, data) {
           <div class="card-header">
             <h3 class="card-title">${ICONS.tag} Analisis Laba & Margin per Kategori</h3>
           </div>
-          <div class="card-body" style="padding: 0;">
+          <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -1524,10 +1538,10 @@ function renderTabLabaRugi(container, data) {
                     <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada data kategori</td></tr>
                   ` : kategoriList.map((k) => `
                     <tr>
-                      <td style="font-weight: var(--fw-medium);">${escapeHtml(k.kategori)}</td>
-                      <td style="text-align: right;">${formatRupiah(k.omset)}</td>
-                      <td style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(k.laba)}</td>
-                      <td style="text-align: right;"><span class="badge badge-success">${k.margin_persen}%</span></td>
+                      <td data-label="Kategori Material" style="font-weight: var(--fw-medium);">${escapeHtml(k.kategori)}</td>
+                      <td data-label="Omset" style="text-align: right;">${formatRupiah(k.omset)}</td>
+                      <td data-label="Laba Kotor" style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(k.laba)}</td>
+                      <td data-label="Margin" style="text-align: right;"><span class="badge badge-success">${k.margin_persen}%</span></td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -1541,7 +1555,7 @@ function renderTabLabaRugi(container, data) {
           <div class="card-header">
             <h3 class="card-title">${ICONS.award} 10 Produk Penyumbang Laba Terbesar</h3>
           </div>
-          <div class="card-body" style="padding: 0;">
+          <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
               <table class="table">
                 <thead>
@@ -1557,10 +1571,10 @@ function renderTabLabaRugi(container, data) {
                     <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada data produk</td></tr>
                   ` : produkMargin.map((p) => `
                     <tr>
-                      <td style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</td>
-                      <td style="text-align: right;">${formatAngka(p.qty)}</td>
-                      <td style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(p.laba)}</td>
-                      <td style="text-align: right;"><span class="badge badge-info">${p.margin_persen}%</span></td>
+                      <td data-label="Produk Material" style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</td>
+                      <td data-label="Qty Terjual" style="text-align: right;">${formatAngka(p.qty)}</td>
+                      <td data-label="Total Laba" style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(p.laba)}</td>
+                      <td data-label="Margin" style="text-align: right;"><span class="badge badge-info">${p.margin_persen}%</span></td>
                     </tr>
                   `).join('')}
                 </tbody>

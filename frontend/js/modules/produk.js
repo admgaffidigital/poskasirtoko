@@ -756,8 +756,8 @@ export function bukaModalPanduanVarianSatuan() {
           <div class="fw-bold" style="margin-bottom: var(--sp-2); font-size: var(--fs-base);">
             Tabel Komparasi Fitur
           </div>
-          <div class="table-responsive" style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
-            <table class="table" style="margin: 0; font-size: var(--fs-xs);">
+          <div class="table-wrap" style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
+            <table class="table" style="margin: 0; font-size: var(--fs-xs); min-width: 0; width: 100%;">
               <thead style="background: var(--surface-2);">
                 <tr>
                   <th style="width: 22%;">Aspek</th>
@@ -767,38 +767,42 @@ export function bukaModalPanduanVarianSatuan() {
               </thead>
               <tbody>
                 <tr>
-                  <td class="fw-semibold">Fungsi Utama</td>
-                  <td>Membedakan jenis barang dengan spesifikasi berbeda.</td>
-                  <td>Menjual barang yang sama dalam kemasan grosir / partai besar.</td>
+                  <td data-label="Aspek" class="fw-semibold">Fungsi Utama</td>
+                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;">Membedakan jenis barang dengan spesifikasi berbeda.</span></td>
+                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;">Menjual barang yang sama dalam kemasan grosir / partai besar.</span></td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Pengelolaan Stok</td>
-                  <td><b>Terpisah per varian</b>. Jika Cat Putih laku 1 kaleng, hanya stok Cat Putih yang berkurang.</td>
-                  <td><b>Satu stok fisik induk</b> (satuan dasar). Jual 1 Ikat Pipa (isi 25 btg) otomatis memotong 25 btg dari stok pipa.</td>
+                  <td data-label="Aspek" class="fw-semibold">Pengelolaan Stok</td>
+                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;"><b>Terpisah per varian</b>. Jika Cat Putih laku 1 kaleng, hanya stok Cat Putih yang berkurang.</span></td>
+                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;"><b>Satu stok fisik induk</b> (satuan dasar). Jual 1 Ikat Pipa (isi 25 btg) otomatis memotong 25 btg dari stok pipa.</span></td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Barcode & SKU</td>
-                  <td>Tiap varian memiliki barcode dan SKU mandiri.</td>
-                  <td>Tiap kemasan bisa memiliki barcode kemasan tersendiri (misal barcode di kardus luar).</td>
+                  <td data-label="Aspek" class="fw-semibold">Barcode & SKU</td>
+                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;">Tiap varian memiliki barcode dan SKU mandiri.</span></td>
+                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;">Tiap kemasan bisa memiliki barcode kemasan tersendiri (misal barcode di kardus luar).</span></td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Contoh Kasus Toko Bangunan</td>
-                  <td>
-                    • Cat: <i>Putih 5kg</i>, <i>Krem 5kg</i>, <i>Abu-abu 5kg</i><br>
-                    • Besi Beton: <i>8mm</i>, <i>10mm</i>, <i>12mm</i><br>
-                    • Pipa PVC: <i>Tebal C</i>, <i>Tebal D</i>, <i>Tebal AW</i>
+                  <td data-label="Aspek" class="fw-semibold">Contoh Kasus Toko Bangunan</td>
+                  <td data-label="Varian Produk">
+                    <div class="cell-stack">
+                      <span>• Cat: <i>Putih 5kg</i>, <i>Krem 5kg</i>, <i>Abu-abu 5kg</i></span>
+                      <span>• Besi Beton: <i>8mm</i>, <i>10mm</i>, <i>12mm</i></span>
+                      <span>• Pipa PVC: <i>Tebal C</i>, <i>Tebal D</i>, <i>Tebal AW</i></span>
+                    </div>
                   </td>
-                  <td>
-                    • Pipa: 1 Ikat = 25 Batang (Faktor: 25)<br>
-                    • Kabel: 1 Rol = 50 Meter (Faktor: 50)<br>
-                    • Semen: 1 Truk = 100 Sak (Faktor: 100)<br>
-                    • Keramik: 1 Dus = 1.44 m² (Faktor: 1.44)
+                  <td data-label="Multi Satuan">
+                    <div class="cell-stack">
+                      <span>• Pipa: 1 Ikat = 25 Batang (Faktor: 25)</span>
+                      <span>• Kabel: 1 Rol = 50 Meter (Faktor: 50)</span>
+                      <span>• Semen: 1 Truk = 100 Sak (Faktor: 100)</span>
+                      <span>• Keramik: 1 Dus = 1.44 m² (Faktor: 1.44)</span>
+                    </div>
                   </td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Di Kasir POS</td>
-                  <td>Kasir memilih varian saat item ditambahkan ke keranjang.</td>
-                  <td>Kasir dapat beralih satuan langsung di keranjang belanja melalui tombol badge <code>[ BTG ▾ ]</code>.</td>
+                  <td data-label="Aspek" class="fw-semibold">Di Kasir POS</td>
+                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;">Kasir memilih varian saat item ditambahkan ke keranjang.</span></td>
+                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;">Kasir dapat beralih satuan langsung di keranjang belanja melalui tombol badge <code>[ BTG ▾ ]</code>.</span></td>
                 </tr>
               </tbody>
             </table>

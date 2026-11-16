@@ -101,6 +101,53 @@ assert.ok(lapJs.includes('btn-cetak-nota'), 'laporan.js wajib memiliki tombol ce
 assert.ok(lapJs.includes('btn-cetak-laporan-beli'), 'laporan.js wajib memiliki tombol cetak faktur pada tab pembelian');
 console.log('  ✔ LULUS: Fitur cetak struk faktur pembelian & riwayat transaksi penjualan/pembelian teruji 100%.');
 
+// Audit Presisi Kartu Native App Mobile (data-label tabel, CSS tokens, & dialog selectors)
+const tokensCss = fs.readFileSync('frontend/css/tokens.css', 'utf8') + compCss;
+const definedCssVars = new Set();
+let mVar;
+const defVarRe = /(--[a-zA-Z0-9-]+)\s*:/g;
+while ((mVar = defVarRe.exec(tokensCss)) !== null) definedCssVars.add(mVar[1]);
+
+const modFiles = fs.readdirSync('frontend/js/modules').filter(f => f.endsWith('.js'));
+let missingDataLabels = 0;
+let undefinedVars = 0;
+let invalidModalSelectors = 0;
+
+for (const mf of modFiles) {
+  const mSrc = fs.readFileSync('frontend/js/modules/' + mf, 'utf8');
+  const twRe = /<div class="table-wrap([^"]*)"[\s\S]*?<table[\s\S]*?<\/table>/g;
+  let twm;
+  while ((twm = twRe.exec(mSrc)) !== null) {
+    if (twm[1].includes('keep-table')) continue;
+    const tdRe = /<td\b((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/td>/g;
+    let tdm;
+    while ((tdm = tdRe.exec(twm[0])) !== null) {
+      if (!tdm[1].includes('data-label') && !tdm[1].includes('colspan')) {
+        console.error(`  ✖ Missing data-label in ${mf}: ${tdm[0].replace(/\s+/g, ' ').substring(0, 80)}`);
+        missingDataLabels++;
+      }
+    }
+  }
+
+  const useVarRe = /var\((--[a-zA-Z0-9-]+)/g;
+  let um;
+  while ((um = useVarRe.exec(mSrc)) !== null) {
+    if (!definedCssVars.has(um[1])) {
+      console.error(`  ✖ Undefined CSS var in ${mf}: ${um[1]}`);
+      undefinedVars++;
+    }
+  }
+
+  if (mSrc.includes("querySelector('.modal-body')") || mSrc.includes("querySelector('.modal-title')")) {
+    console.error(`  ✖ Invalid selector .modal-body/.modal-title in ${mf}`);
+    invalidModalSelectors++;
+  }
+}
+assert.strictEqual(missingDataLabels, 0, 'Seluruh tabel non-keep-table wajib memiliki atribut data-label untuk kartu Native App mobile!');
+assert.strictEqual(undefinedVars, 0, 'Seluruh CSS variable pada modul JS wajib terdefinisi di tokens.css!');
+assert.strictEqual(invalidModalSelectors, 0, 'Seluruh modal wajib menggunakan .dialog-body dan .dialog-title!');
+console.log('  ✔ LULUS: Seluruh tabel di 16 modul siap transformasi Kartu Native App (0 missing data-label, 0 undefined CSS vars).');
+
 console.log('  ✔ LULUS: Label SKU bersih, floating cart fixed di viewport, dan fitur sinkronisasi global aktif.');
 console.log('  ✔ LULUS: Fitur koneksi & uji printer Bluetooth RawBT terintegrasi lengkap di seluruh modul.');
 

@@ -978,13 +978,11 @@ async function bukaModalDetailPembelian(pembelianId) {
     title: 'Memuat Rincian Faktur...',
     body: renderSkeleton(4),
     footer: `
-      <div class="row" style="width: 100%; justify-content: space-between; gap: var(--sp-2);">
-        <button type="button" class="btn btn-primary btn-sm" id="btn-modal-cetak-detail-beli">
-          ${ICONS.printer}
-          <span>Cetak Struk Faktur</span>
-        </button>
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-tutup-detail-beli">Tutup</button>
-      </div>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-modal-cetak-detail-beli">
+        ${ICONS.printer}
+        <span>Cetak Struk Faktur</span>
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-tutup-detail-beli">Tutup</button>
     `
   });
 
@@ -1002,7 +1000,8 @@ async function bukaModalDetailPembelian(pembelianId) {
       modal.close();
     });
 
-    modal.el.querySelector('.modal-title').textContent = `Faktur Pembelian: ${pb.no_faktur}`;
+    const titleEl = modal.el.querySelector('.dialog-title');
+    if (titleEl) titleEl.textContent = `Faktur Pembelian: ${pb.no_faktur}`;
 
     let itemHtml = '';
     items.forEach((it) => {
@@ -1011,7 +1010,7 @@ async function bukaModalDetailPembelian(pembelianId) {
           <td data-label="Barang">
             <div class="fw-semibold">${escapeHtml(it.nama)}</div>
           </td>
-          <td data-label="Satuan">${escapeHtml(it.satuan)}</td>
+          <td data-label="Satuan"><span class="badge">${escapeHtml(it.satuan)}</span></td>
           <td style="text-align: right;" class="tabular" data-label="Qty">${formatQty(it.qty)}</td>
           <td style="text-align: right;" class="tabular" data-label="Harga Satuan">${formatRupiah(it.harga_beli)}</td>
           <td style="text-align: right;" class="tabular" data-label="Disk. (%)">${Number(it.diskon_persen) > 0 ? `${formatQty(it.diskon_persen)}%` : '-'}</td>
@@ -1020,80 +1019,88 @@ async function bukaModalDetailPembelian(pembelianId) {
       `;
     });
 
-    modal.el.querySelector('.modal-body').innerHTML = `
-      <div class="stack">
-        <div class="row-between">
-          <div>
-            <div class="text-sm text-muted">Distributor / Supplier:</div>
-            <div class="fw-bold">${escapeHtml(sup.nama || '-')}</div>
-            <div class="text-xs text-muted">${escapeHtml(sup.alamat || '')}</div>
+    const bodyEl = modal.el.querySelector('.dialog-body');
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <div class="stack">
+          <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3);">
+            <div class="row-between" style="align-items: flex-start; gap: var(--sp-2);">
+              <div>
+                <div class="text-xs text-muted">Distributor / Supplier:</div>
+                <div class="fw-bold">${escapeHtml(sup.nama || '-')}</div>
+                <div class="text-xs text-muted">${escapeHtml(sup.alamat || '')}</div>
+              </div>
+              <div style="text-align: right;">
+                <div class="text-xs text-muted">Tanggal Faktur:</div>
+                <div class="fw-semibold">${formatTanggal(pb.tanggal)}</div>
+                ${pb.no_faktur_supplier ? `<div class="text-xs text-muted">Ref Asli: ${escapeHtml(pb.no_faktur_supplier)}</div>` : ''}
+              </div>
+            </div>
           </div>
-          <div style="text-align: right;">
-            <div class="text-sm text-muted">Tanggal Faktur:</div>
-            <div class="fw-semibold">${formatTanggal(pb.tanggal)}</div>
-            ${pb.no_faktur_supplier ? `<div class="text-xs text-muted">Ref Asli: ${escapeHtml(pb.no_faktur_supplier)}</div>` : ''}
-          </div>
-        </div>
 
-        <div class="table-wrap" style="max-height: 280px; overflow-y: auto;">
-          <table class="table" style="min-width: 0; width: 100%;">
-            <thead>
-              <tr>
-                <th>Nama Barang</th>
-                <th>Satuan</th>
-                <th style="text-align: right;">Qty</th>
-                <th style="text-align: right;">Harga Satuan</th>
-                <th style="text-align: right;">Disk. (%)</th>
-                <th style="text-align: right;">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemHtml}
-            </tbody>
-          </table>
-        </div>
+          <div class="table-wrap">
+            <table class="table" style="min-width: 0; width: 100%;">
+              <thead>
+                <tr>
+                  <th>Nama Barang</th>
+                  <th>Satuan</th>
+                  <th style="text-align: right;">Qty</th>
+                  <th style="text-align: right;">Harga Satuan</th>
+                  <th style="text-align: right;">Disk. (%)</th>
+                  <th style="text-align: right;">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemHtml}
+              </tbody>
+            </table>
+          </div>
 
-        <div class="stack" style="background: var(--clr-surface-muted); padding: var(--sp-3); border-radius: var(--radius-md);">
-          <div class="row-between text-sm">
-            <span class="text-muted">Subtotal Kotor:</span>
-            <span class="tabular fw-semibold">${formatRupiah(pb.subtotal)}</span>
+          <div class="stack" style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border); gap: var(--sp-1);">
+            <div class="row-between text-sm">
+              <span class="text-muted">Subtotal Kotor:</span>
+              <span class="tabular fw-semibold">${formatRupiah(pb.subtotal)}</span>
+            </div>
+            ${Number(pb.diskon_item) > 0 ? `
+            <div class="row-between text-sm">
+              <span class="text-muted">Diskon Supplier (per barang):</span>
+              <span class="tabular text-danger">- ${formatRupiah(pb.diskon_item)}</span>
+            </div>` : ''}
+            <div class="row-between text-sm">
+              <span class="text-muted">Diskon Faktur:</span>
+              <span class="tabular text-danger">- ${formatRupiah(pb.diskon || 0)}</span>
+            </div>
+            <div class="row-between fw-bold text-base" style="padding-top: 4px; border-top: 1px solid var(--border);">
+              <span>Total Tagihan:</span>
+              <span class="tabular text-primary">${formatRupiah(pb.total)}</span>
+            </div>
+            <div class="row-between text-sm">
+              <span class="text-muted">Dibayar Saat Masuk:</span>
+              <span class="tabular">${formatRupiah(pb.bayar || 0)}</span>
+            </div>
+            ${hutang ? `
+              <div class="row-between text-sm fw-bold text-danger" style="border-top: 1px dashed var(--border); padding-top: 4px; margin-top: 4px;">
+                <span>Sisa Saldo Hutang:</span>
+                <span class="tabular">${formatRupiah(hutang.sisa)} (Jatuh Tempo: ${formatTanggal(hutang.jatuh_tempo || '-')})</span>
+              </div>
+            ` : ''}
           </div>
-          ${Number(pb.diskon_item) > 0 ? `
-          <div class="row-between text-sm">
-            <span class="text-muted">Diskon Supplier (per barang):</span>
-            <span class="tabular text-danger">- ${formatRupiah(pb.diskon_item)}</span>
-          </div>` : ''}
-          <div class="row-between text-sm">
-            <span class="text-muted">Diskon Faktur:</span>
-            <span class="tabular text-danger">- ${formatRupiah(pb.diskon || 0)}</span>
-          </div>
-          <div class="row-between fw-bold text-base">
-            <span>Total Tagihan:</span>
-            <span class="tabular text-primary">${formatRupiah(pb.total)}</span>
-          </div>
-          <div class="row-between text-sm">
-            <span class="text-muted">Dibayar Saat Masuk:</span>
-            <span class="tabular">${formatRupiah(pb.bayar || 0)}</span>
-          </div>
-          ${hutang ? `
-            <div class="row-between text-sm fw-bold text-danger" style="border-top: 1px dashed var(--clr-border); padding-top: 4px; margin-top: 4px;">
-              <span>Sisa Saldo Hutang:</span>
-              <span class="tabular">${formatRupiah(hutang.sisa)} (Jatuh Tempo: ${formatTanggal(hutang.jatuh_tempo || '-')})</span>
+
+          ${pb.catatan ? `
+            <div class="text-xs text-muted">
+              <strong>Catatan:</strong> ${escapeHtml(pb.catatan)}
             </div>
           ` : ''}
         </div>
-
-        ${pb.catatan ? `
-          <div class="text-xs text-muted">
-            <strong>Catatan:</strong> ${escapeHtml(pb.catatan)}
-          </div>
-        ` : ''}
-      </div>
-    `;
+      `;
+    }
   } catch (err) {
-    modal.el.querySelector('.modal-body').innerHTML = `
-      <div class="alert alert-danger">${escapeHtml(err.message)}</div>
-    `;
+    const bodyEl = modal.el.querySelector('.dialog-body');
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <div class="alert alert-danger">${escapeHtml(err.message)}</div>
+      `;
+    }
   }
 }
 
