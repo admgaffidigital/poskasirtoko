@@ -117,6 +117,19 @@
   box-shadow: var(--shadow-xs);
 }
 
+.btn-outline-success {
+  --btn-bg: transparent;
+  --btn-text: var(--success);
+  --btn-border: rgba(22, 163, 74, 0.45);
+  --btn-bg-hover: rgba(22, 163, 74, 0.12);
+}
+
+[data-theme="dark"] .btn-outline-success {
+  --btn-text: #4ade80;
+  --btn-border: rgba(74, 222, 128, 0.45);
+  --btn-bg-hover: rgba(74, 222, 128, 0.16);
+}
+
 .btn-xs {
   min-height: 28px;
   padding: 0 10px;
@@ -941,6 +954,42 @@ input[type="password"] {
   }
 }
 
+/* Kartu Profil Pelanggan ala Native App di dalam Modal Detail */
+.pel-modal-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.pel-modal-profile-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  min-width: 0;
+}
+
+.pel-modal-profile-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border);
+}
+
+.pel-modal-stat-item {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.pel-modal-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
 /* Toolbar tombol aksi tabel yang seragam dan rapi */
 .pel-actions-row,
 .table-actions {
@@ -1237,8 +1286,8 @@ input[type="password"] {
   }
 
   /* Baris aksi di footer kartu */
-  .table-wrap:not(.keep-table) .table td:last-child,
-  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] {
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"],
+  .table-wrap:not(.keep-table) .table td:last-child:has(.btn) {
     border-top: 1px solid var(--border) !important;
     border-bottom: 0 !important;
     padding-top: var(--sp-3) !important;
@@ -1249,20 +1298,20 @@ input[type="password"] {
     min-height: auto !important;
   }
 
-  .table-wrap:not(.keep-table) .table td:last-child::before,
-  .table-wrap:not(.keep-table) .table td[data-label="Aksi"]::before {
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"]::before,
+  .table-wrap:not(.keep-table) .table td:last-child:has(.btn)::before {
     display: none !important;
   }
 
-  .table-wrap:not(.keep-table) .table td:last-child .row,
-  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .row {
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .row,
+  .table-wrap:not(.keep-table) .table td:last-child:has(.btn) .row {
     width: 100% !important;
     display: flex !important;
     gap: var(--sp-2) !important;
   }
 
-  .table-wrap:not(.keep-table) .table td:last-child .btn,
-  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .btn {
+  .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .btn,
+  .table-wrap:not(.keep-table) .table td:last-child:has(.btn) .btn {
     flex: 1 1 0% !important;
     min-width: 0 !important;
     padding: 0 8px !important;
@@ -1812,7 +1861,8 @@ a.list-item:hover {
   padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
 }
 
-.dialog-footer {
+.dialog-footer,
+.modal-footer {
   display: flex;
   gap: var(--sp-3);
   justify-content: flex-end;
@@ -1823,7 +1873,8 @@ a.list-item:hover {
 }
 
 @media (max-width: 767px) {
-  .dialog-footer>.btn {
+  .dialog-footer>.btn,
+  .modal-footer>.btn {
     flex: 1;
     min-height: 44px;
     border-radius: var(--radius-md);
@@ -1837,7 +1888,8 @@ a.list-item:hover {
   box-shadow: 0 16px 48px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-[data-theme="dark"] .dialog-footer {
+[data-theme="dark"] .dialog-footer,
+[data-theme="dark"] .modal-footer {
   background: #111a2e;
   border-top-color: rgba(255, 255, 255, 0.08);
 }
@@ -3353,9 +3405,11 @@ a.list-item:hover {
 /* Pertahankan agar tabel dalam modal atau tata letak multi-kolom tidak meledak ke min-width 960px */
 .modal .table-wrap:not(.keep-table) .table,
 .modal-body .table-wrap:not(.keep-table) .table,
+.dialog .table-wrap:not(.keep-table) .table,
+.dialog-body .table-wrap:not(.keep-table) .table,
 .pembelian-layout .table-wrap:not(.keep-table) .table {
-  min-width: 0;
-  width: 100%;
+  min-width: 0 !important;
+  width: 100% !important;
 }
 
 /* Filter Bar & Tabel Kartu Stok */

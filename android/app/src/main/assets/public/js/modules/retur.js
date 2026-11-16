@@ -548,7 +548,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
     <form id="form-submit-retur-jual" class="stack">
       <div class="stack" style="gap: var(--sp-1);">
         <label class="field-label">Pilih Item & Jumlah yang Diretur *</label>
-        <div class="table-wrap keep-table">
+        <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
@@ -563,21 +563,26 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
             <tbody>
               ${items.map((it, idx) => `
                 <tr>
-                  <td>
-                    <input type="checkbox" class="cb-retur-item" data-idx="${idx}" checked>
+                  <td data-label="Pilih">
+                    <div class="row-between" style="width: 100%; align-items: center;">
+                      <span class="fw-bold d-none-desktop">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</span>
+                      <input type="checkbox" class="cb-retur-item" data-idx="${idx}" checked style="width: 18px; height: 18px;">
+                    </div>
                   </td>
-                  <td>
-                    <div class="fw-semibold">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</div>
-                    ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
-                    <div class="text-xs text-muted font-mono">Snapshot HPP: ${formatRupiah(it.hpp_snapshot || it.hpp || 0)}</div>
+                  <td data-label="Produk / Varian">
+                    <div class="cell-stack">
+                      <div class="fw-semibold">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</div>
+                      ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
+                      <div class="text-xs text-muted font-mono">Snapshot HPP: ${formatRupiah(it.hpp_snapshot || it.hpp || 0)}</div>
+                    </div>
                   </td>
-                  <td class="num">${formatRupiah(it.harga)}</td>
-                  <td class="num font-mono">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
-                  <td class="num">
+                  <td class="num" data-label="Harga Jual">${formatRupiah(it.harga)}</td>
+                  <td class="num font-mono" data-label="Qty Beli">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
+                  <td class="num" data-label="Qty Retur">
                     <input type="number" class="input input-sm input-num input-qty-retur" data-idx="${idx}"
                            min="0.001" max="${it.qty}" step="any" value="${it.qty}" style="width: 90px;">
                   </td>
-                  <td class="num fw-bold subtotal-retur-item" data-idx="${idx}">${formatRupiah(it.harga * it.qty)}</td>
+                  <td class="num fw-bold subtotal-retur-item" data-idx="${idx}" data-label="Subtotal">${formatRupiah(it.harga * it.qty)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -842,7 +847,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
     <form id="form-submit-retur-beli" class="stack">
       <div class="stack" style="gap: var(--sp-1);">
         <label class="field-label">Pilih Item Pembelian yang Diretur ke Vendor *</label>
-        <div class="table-wrap keep-table">
+        <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
@@ -857,20 +862,25 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
             <tbody>
               ${items.map((it, idx) => `
                 <tr>
-                  <td>
-                    <input type="checkbox" class="cb-retur-item-beli" data-idx="${idx}" checked>
+                  <td data-label="Pilih">
+                    <div class="row-between" style="width: 100%; align-items: center;">
+                      <span class="fw-bold d-none-desktop">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</span>
+                      <input type="checkbox" class="cb-retur-item-beli" data-idx="${idx}" checked style="width: 18px; height: 18px;">
+                    </div>
                   </td>
-                  <td>
-                    <div class="fw-semibold">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</div>
-                    ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
+                  <td data-label="Produk / Varian">
+                    <div class="cell-stack">
+                      <div class="fw-semibold">${escapeHtml(it.nama_produk || it.produk_nama || 'Produk')}</div>
+                      ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
+                    </div>
                   </td>
-                  <td class="num">${formatRupiah(it.harga_beli)}</td>
-                  <td class="num font-mono">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
-                  <td class="num">
+                  <td class="num" data-label="Harga Beli">${formatRupiah(it.harga_beli)}</td>
+                  <td class="num font-mono" data-label="Qty Beli">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
+                  <td class="num" data-label="Qty Retur">
                     <input type="number" class="input input-sm input-num input-qty-retur-beli" data-idx="${idx}"
                            min="0.001" max="${it.qty}" step="any" value="${it.qty}" style="width: 90px;">
                   </td>
-                  <td class="num fw-bold subtotal-retur-beli-item" data-idx="${idx}">${formatRupiah(it.harga_beli * it.qty)}</td>
+                  <td class="num fw-bold subtotal-retur-beli-item" data-idx="${idx}" data-label="Subtotal">${formatRupiah(it.harga_beli * it.qty)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1081,7 +1091,7 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
 
       <div class="stack" style="gap: var(--sp-1); margin-top: var(--sp-2);">
         <span class="fw-semibold text-xs text-muted uppercase">ITEM BARANG YANG DIRETUR</span>
-        <div class="table-wrap keep-table">
+        <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
@@ -1095,8 +1105,10 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
               ${items.map((it) => `
                 <tr>
                   <td data-label="Produk / Varian">
-                    <div class="fw-semibold">${escapeHtml(it.nama_produk || 'Produk')}</div>
-                    ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
+                    <div class="cell-stack">
+                      <div class="fw-semibold">${escapeHtml(it.nama_produk || 'Produk')}</div>
+                      ${it.nama_varian ? `<div class="text-xs text-muted">Varian: ${escapeHtml(it.nama_varian)}</div>` : ''}
+                    </div>
                   </td>
                   <td class="num font-mono" data-label="Qty Retur">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
                   <td class="num" data-label="Harga">${formatRupiah(it.harga)}</td>

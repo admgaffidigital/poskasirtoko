@@ -854,7 +854,7 @@ async function bukaModalDetailPiutang(piutangId) {
         ${riwayat.length === 0 ? `
           <div class="text-muted text-xs" style="padding: var(--sp-3); text-align: center;">Belum ada cicilan tercatat.</div>
         ` : `
-          <div class="table-wrap keep-table">
+          <div class="table-wrap">
             <table class="table" style="min-width: 0; width: 100%;">
               <thead>
                 <tr>
@@ -949,7 +949,7 @@ async function bukaModalDetailHutang(hutangId) {
         ${riwayat.length === 0 ? `
           <div class="text-muted text-xs" style="padding: var(--sp-3); text-align: center;">Belum ada pembayaran tercatat.</div>
         ` : `
-          <div class="table-wrap keep-table">
+          <div class="table-wrap">
             <table class="table" style="min-width: 0; width: 100%;">
               <thead>
                 <tr>

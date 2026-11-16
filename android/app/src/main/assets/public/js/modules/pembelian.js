@@ -182,7 +182,7 @@ function renderFormInputBeli() {
               <button type="button" class="btn btn-ghost btn-sm" id="btn-terapkan-diskon-semua">Terapkan ke Semua</button>
             </div>
           </div>
-          <div class="table-wrap keep-table">
+          <div class="table-wrap">
             <table class="table tabel-keranjang-beli" id="tabel-keranjang-beli">
               <thead>
                 <tr>
@@ -1035,7 +1035,7 @@ async function bukaModalDetailPembelian(pembelianId) {
           </div>
         </div>
 
-        <div class="table-wrap keep-table" style="max-height: 280px; overflow-y: auto;">
+        <div class="table-wrap" style="max-height: 280px; overflow-y: auto;">
           <table class="table" style="min-width: 0; width: 100%;">
             <thead>
               <tr>

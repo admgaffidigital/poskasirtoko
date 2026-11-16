@@ -616,36 +616,48 @@ async function bukaModalDetailPelanggan(pelangganId) {
     const isMember = pel.tipe === 'member';
 
     modalBody.innerHTML = `
-      <div class="card card-body" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
-        <div class="row" style="justify-content: space-between; align-items: flex-start;">
-          <div>
-            <div class="fw-bold" style="font-size: var(--fs-lg);">${escapeHtml(pel.nama)}</div>
-            <div class="text-xs font-mono text-muted">Kode: ${escapeHtml(pel.kode || '-')}</div>
-            <div class="text-xs">${escapeHtml(pel.hp || '-')} | ${escapeHtml(pel.alamat || 'Alamat belum diatur')}</div>
+      <div class="card card-body pel-modal-profile" style="background: var(--surface-2); margin-bottom: var(--sp-2);">
+        <div class="pel-modal-profile-top">
+          <div class="prd-table-avatar" style="width: 44px; height: 44px; border-radius: var(--radius-lg);">
+            ${ICONS.users}
           </div>
-          <div style="text-align: right;">
-            <span class="badge ${isMember ? 'badge-primary' : 'badge-info'}">${escapeHtml(pel.tipe.toUpperCase())} ${isMember ? `(${pel.level || 'Reguler'})` : ''}</span>
-            <div class="fw-bold text-warning" style="font-size: var(--fs-lg); margin-top: 4px;">
+          <div class="grow" style="min-width: 0;">
+            <div class="row" style="align-items: center; gap: 6px; flex-wrap: wrap;">
+              <div class="fw-bold" style="font-size: var(--fs-lg); line-height: 1.25;">${escapeHtml(pel.nama)}</div>
+              <span class="badge ${isMember ? 'badge-primary' : 'badge-info'}">${escapeHtml((pel.tipe || 'umum').toUpperCase())}${isMember ? ` • ${escapeHtml(pel.level || 'Reguler')}` : ''}</span>
+            </div>
+            <div class="text-xs font-mono text-muted" style="margin-top: 2px;">Kode: ${escapeHtml(pel.kode || '-')}</div>
+            <div class="text-xs text-muted" style="margin-top: 2px;">${escapeHtml(pel.hp || '-')} • ${escapeHtml(pel.alamat || 'Alamat belum diatur')}</div>
+          </div>
+        </div>
+        <div class="pel-modal-profile-stats">
+          <div class="pel-modal-stat-item">
+            <span class="text-2xs text-muted uppercase fw-semibold">Poin Loyalitas</span>
+            <div class="fw-bold text-warning tabular" style="font-size: var(--fs-md);">
               ${(pel.poin || 0).toLocaleString('id-ID')} <small style="font-size: var(--fs-2xs);">POIN</small>
             </div>
-            <div class="text-xs text-muted">Belanja Lunas: ${formatRupiah(pel.total_belanja || 0)}</div>
+          </div>
+          <div class="pel-modal-stat-divider"></div>
+          <div class="pel-modal-stat-item">
+            <span class="text-2xs text-muted uppercase fw-semibold">Total Belanja Lunas</span>
+            <div class="fw-bold tabular" style="font-size: var(--fs-md);">${formatRupiah(pel.total_belanja || 0)}</div>
           </div>
         </div>
       </div>
 
       ${isMember ? `
         <div class="stat-grid-3" style="margin-bottom: var(--sp-2);">
-          <div class="card card-body stat-card" style="padding: var(--sp-2);">
+          <div class="card card-body stat-card" style="padding: var(--sp-2) var(--sp-3);">
             <span class="text-xs text-muted">LIMIT KREDIT</span>
-            <div class="fw-bold">${formatRupiah(pel.limit_kredit || 0)}</div>
+            <div class="fw-bold tabular">${formatRupiah(pel.limit_kredit || 0)}</div>
           </div>
-          <div class="card card-body stat-card" style="padding: var(--sp-2);">
+          <div class="card card-body stat-card" style="padding: var(--sp-2) var(--sp-3);">
             <span class="text-xs text-muted">PIUTANG BERJALAN</span>
-            <div class="fw-bold ${res.piutang_berjalan > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(res.piutang_berjalan || 0)}</div>
+            <div class="fw-bold tabular ${res.piutang_berjalan > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(res.piutang_berjalan || 0)}</div>
           </div>
-          <div class="card card-body stat-card" style="padding: var(--sp-2);">
+          <div class="card card-body stat-card" style="padding: var(--sp-2) var(--sp-3);">
             <span class="text-xs text-muted">SISA LIMIT</span>
-            <div class="fw-bold text-primary">${formatRupiah(res.sisa_limit || 0)}</div>
+            <div class="fw-bold tabular text-primary">${formatRupiah(res.sisa_limit || 0)}</div>
           </div>
         </div>
       ` : ''}
@@ -656,7 +668,7 @@ async function bukaModalDetailPelanggan(pelangganId) {
         ${riwayatJual.length === 0 ? `
           <div class="text-xs text-muted" style="padding: var(--sp-2); text-align: center;">Belum ada riwayat transaksi belanja.</div>
         ` : `
-          <div class="table-wrap keep-table">
+          <div class="table-wrap">
             <table class="table" style="min-width: 0; width: 100%;">
               <thead>
                 <tr>
@@ -671,16 +683,21 @@ async function bukaModalDetailPelanggan(pelangganId) {
                 ${riwayatJual.map((pj) => `
                   <tr>
                     <td data-label="No Nota & Tgl">
-                      <div class="fw-semibold font-mono text-xs">${escapeHtml(pj.no_nota)}</div>
-                      <div class="text-xs text-muted">${formatTanggal(pj.created_at, true)}</div>
+                      <div class="row-between" style="width: 100%; align-items: center; gap: 8px;">
+                        <span class="fw-bold font-mono text-xs">${escapeHtml(pj.no_nota)}</span>
+                        <span class="text-xs text-muted">${formatTanggal(pj.created_at, true)}</span>
+                      </div>
                     </td>
                     <td class="num fw-bold" data-label="Total Belanja">${formatRupiah(pj.total)}</td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(pj.metode_bayar)}</span></td>
                     <td data-label="Status"><span class="badge ${pj.status_bayar === 'lunas' ? 'badge-success' : 'badge-warning'}">${escapeHtml(pj.status_bayar)}</span></td>
                     <td class="no-print" style="text-align: right;" data-label="Aksi">
-                      <button type="button" class="btn btn-sm btn-primary btn-cetak-riwayat-pelanggan" data-id="${escapeHtml(pj.id)}" title="Cetak Struk Transaksi">
-                        ${ICONS.printer}
-                      </button>
+                      <div class="table-actions">
+                        <button type="button" class="btn btn-sm btn-primary btn-cetak-riwayat-pelanggan" data-id="${escapeHtml(pj.id)}" title="Cetak Struk Transaksi">
+                          ${ICONS.printer}
+                          <span class="d-none-desktop">Cetak Struk</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -697,7 +714,7 @@ async function bukaModalDetailPelanggan(pelangganId) {
           ${riwayatPoin.length === 0 ? `
             <div class="text-xs text-muted" style="padding: var(--sp-2); text-align: center;">Belum ada mutasi poin tercatat.</div>
           ` : `
-            <div class="table-wrap keep-table">
+            <div class="table-wrap">
               <table class="table" style="min-width: 0; width: 100%;">
                 <thead>
                   <tr>
@@ -711,8 +728,13 @@ async function bukaModalDetailPelanggan(pelangganId) {
                 <tbody>
                   ${riwayatPoin.map((pl) => `
                     <tr>
-                      <td class="text-xs" data-label="Waktu">${formatTanggal(pl.created_at, true)}</td>
-                      <td data-label="Jenis"><span class="badge ${pl.jumlah > 0 ? 'badge-success' : 'badge-warning'}">${escapeHtml(pl.jenis)}</span></td>
+                      <td class="text-xs" data-label="Waktu">
+                        <div class="row-between" style="width: 100%; align-items: center; gap: 8px;">
+                          <span class="fw-semibold">${formatTanggal(pl.created_at, true)}</span>
+                          <span class="badge ${pl.jumlah > 0 ? 'badge-success' : 'badge-warning'}">${escapeHtml(pl.jenis)}</span>
+                        </div>
+                      </td>
+                      <td class="d-none-mobile" data-label="Jenis"><span class="badge ${pl.jumlah > 0 ? 'badge-success' : 'badge-warning'}">${escapeHtml(pl.jenis)}</span></td>
                       <td class="text-xs font-mono" data-label="No Ref">${escapeHtml(pl.ref_id || '-')}</td>
                       <td class="num fw-bold ${pl.jumlah > 0 ? 'text-success' : 'text-danger'}" data-label="Jumlah">
                         ${pl.jumlah > 0 ? `+${pl.jumlah}` : pl.jumlah}
