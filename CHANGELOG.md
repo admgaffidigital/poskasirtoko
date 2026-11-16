@@ -16,6 +16,29 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Added
+- [PRODUK] [UI] **Searchable Category Combobox (Dropdown Kategori dengan Pencarian Cepat)**:
+  - Mengganti elemen dropdown klasik `<select>` kategori pada modal Tambah/Ubah Produk (`bukaModalFormProduk`) dengan komponen interaktif berarsitektur searchable combobox.
+  - Mendukung penataan hirarkis `Induk > Sub` dengan penanda visual status badge `Utama` dan indentasi `↳` untuk sub-kategori.
+  - Dilengkapi fitur live search instan dwiarah (mencari nama induk menampilkan sub-kategori; mencari nama sub-kategori otomatis menyertakan induknya).
+  - Teks hasil pencarian yang cocok disorot dengan highlight `<mark>`.
+  - Dilengkapi tombol reset/clear `[x]` untuk mengosongkan pilihan kembali ke `-- Tanpa Kategori --`.
+  - 100% konsisten menggunakan ikon SVG native (`ICONS.tag`, `ICONS.folder`, `ICONS.chevronDown`, `ICONS.x`, `ICONS.check`), bebas emoji.
+  - File terdampak: [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js), [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css).
+
+- [BACKEND] [KATEGORI] **Validasi Anti-Duplikat Kategori Utama & Sub-Kategori**:
+  - Backend `backend/kode.gs` (`aksiKategoriCreate_` & `aksiKategoriUpdate_`) memvalidasi keunikan nama kategori utama (tidak boleh kembar, case-insensitive, dan di-trim).
+  - Memvalidasi keunikan nama sub-kategori di bawah induk yang sama (tidak boleh kembar di bawah kategori utama yang sama).
+  - Frontend [frontend/js/modules/kategori.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/kategori.js) memberikan validasi instan *real-time* saat pengetikan dengan pesan error merah dan *disable* tombol simpan jika nama kategori terdeteksi duplikat.
+  - File terdampak: [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs), [frontend/js/modules/kategori.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/kategori.js).
+
+### Changed
+- [PRODUK] **Satuan Otomatis Huruf Besar (UPPERCASE) & Batas Stok Minimum Default 0**:
+  - Satuan dasar (`prd-satuan`) dan satuan konversi (`sat-nama`) otomatis dikonversi menjadi huruf kapital/besar (UPPERCASE) baik saat pengetikan di antarmuka maupun saat disimpan ke database.
+  - Nilai bawaan default satuan dasar diubah menjadi `PCS`.
+  - Batas stok minimum (`prd-stok-min`) diubah dari default `5` menjadi `0`, memberikan kebebasan penuh kepada pengguna untuk menentukan batas peringatan stok menipis sesuai kebutuhan masing-masing produk.
+  - File terdampak: [frontend/js/modules/produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js), [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs).
+
 ## [1.0.58] - 2026-11-16
 
 ### Changed

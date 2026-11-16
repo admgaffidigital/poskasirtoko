@@ -638,6 +638,7 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
       <div class="field">
         <label class="field-label" for="kat-nama">Nama Kategori <span class="wajib">*</span></label>
         <input type="text" class="input" id="kat-nama" value="${isEdit ? escapeHtml(kat.nama) : ''}" placeholder="Cth: PIPA AW, SEMEN GRESIK, CAT TEMBOK" required data-autofocus>
+        <div id="err-kat-nama" class="text-danger text-xs fw-semibold" style="display: none; margin-top: 4px;"></div>
       </div>
 
       <div class="field">
@@ -668,25 +669,85 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
   });
 
   const form = $('#form-kategori', modal.el);
+  const inputNama = $('#kat-nama', form);
+  const selectParent = $('#kat-parent', form);
+  const errNamaEl = $('#err-kat-nama', form);
+  const btnSimpan = $('#btn-simpan-kat', form);
+
   $('#btn-batal-kat', modal.el)?.addEventListener('click', () => modal.close());
 
+  function validasiDuplikatNama() {
+    const namaVal = inputNama.value.trim();
+    const parentVal = selectParent.value.trim();
+
+    if (!namaVal) {
+      if (errNamaEl) errNamaEl.style.display = 'none';
+      if (btnSimpan) btnSimpan.disabled = false;
+      return true;
+    }
+
+    const namaLower = namaVal.toLowerCase();
+    let duplikat = false;
+    let pesan = '';
+
+    if (!parentVal) {
+      // Pengecekan Kategori Utama
+      duplikat = (semuaKategori || []).some(k => {
+        if (isEdit && k.id === kat.id) return false;
+        return !k.parent_id && String(k.nama || '').trim().toLowerCase() === namaLower;
+      });
+      if (duplikat) {
+        pesan = `Kategori utama "${namaVal}" sudah terdaftar. Gunakan nama lain.`;
+      }
+    } else {
+      // Pengecekan Sub Kategori di bawah Induk yang sama
+      const parentObj = (semuaKategori || []).find(k => k.id === parentVal);
+      duplikat = (semuaKategori || []).some(k => {
+        if (isEdit && k.id === kat.id) return false;
+        return k.parent_id === parentVal && String(k.nama || '').trim().toLowerCase() === namaLower;
+      });
+      if (duplikat) {
+        pesan = `Sub-kategori "${namaVal}" di bawah induk "${parentObj ? parentObj.nama : ''}" sudah terdaftar.`;
+      }
+    }
+
+    if (duplikat) {
+      if (errNamaEl) {
+        errNamaEl.textContent = pesan;
+        errNamaEl.style.display = 'block';
+      }
+      if (btnSimpan) btnSimpan.disabled = true;
+      return false;
+    } else {
+      if (errNamaEl) errNamaEl.style.display = 'none';
+      if (btnSimpan) btnSimpan.disabled = false;
+      return true;
+    }
+  }
+
+  inputNama?.addEventListener('input', validasiDuplikatNama);
+
   // Update hint saat dropdown induk berubah
-  $('#kat-parent', form)?.addEventListener('change', (e) => {
+  selectParent?.addEventListener('change', (e) => {
     const val = e.target.value;
     const hintEl = $('#hint-kat-parent', form);
-    if (!hintEl) return;
-    if (val) {
-      const selectedParent = (semuaKategori || []).find((k) => k.id === val);
-      hintEl.innerHTML = `Akan disimpan sebagai <strong>Sub-Kategori</strong> di bawah induk <em>${escapeHtml(selectedParent?.nama || '')}</em>.`;
-    } else {
-      hintEl.innerHTML = `Akan disimpan sebagai <strong>Kategori Utama</strong> (level teratas tanpa induk).`;
+    if (hintEl) {
+      if (val) {
+        const selectedParent = (semuaKategori || []).find((k) => k.id === val);
+        hintEl.innerHTML = `Akan disimpan sebagai <strong>Sub-Kategori</strong> di bawah induk <em>${escapeHtml(selectedParent?.nama || '')}</em>.`;
+      } else {
+        hintEl.innerHTML = `Akan disimpan sebagai <strong>Kategori Utama</strong> (level teratas tanpa induk).`;
+      }
     }
+    validasiDuplikatNama();
   });
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const nama = $('#kat-nama', form).value.trim();
-    const parent_id = $('#kat-parent', form).value.trim();
+    if (!validasiDuplikatNama()) return;
+
+    const nama = inputNama.value.trim();
+    const parent_id = selectParent.value.trim();
     const urutan = parseInt($('#kat-urutan', form).value, 10) || 0;
 
     if (!nama) {

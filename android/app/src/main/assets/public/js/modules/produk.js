@@ -887,6 +887,229 @@ export function bukaModalPanduanVarianSatuan() {
 }
 
 /**
+ * Inisialisasi Searchable Category Combobox (Dropdown Kategori dengan Pencarian Cepat)
+ * Menampilkan hirarki Induk > Sub, highlight pencarian, dan integrasi input hidden #prd-kategori
+ */
+function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = '') {
+  const wrap = $('#cat-picker-wrap', modalEl);
+  if (!wrap) return;
+
+  const inputHidden = $('#prd-kategori', modalEl);
+  const btnTrigger = $('#cat-picker-btn', modalEl);
+  const lblTrigger = $('#cat-picker-label', modalEl);
+  const btnClear = $('#cat-picker-clear', modalEl);
+  const dropdown = $('#cat-picker-dropdown', modalEl);
+  const searchInput = $('#cat-picker-search', modalEl);
+  const listEl = $('#cat-picker-list', modalEl);
+
+  const katMap = new Map();
+  (daftarKategori || []).forEach((k) => katMap.set(k.id, k));
+
+  const parents = (daftarKategori || []).filter((k) => !k.parent_id);
+  parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+
+  const subsByParent = {};
+  (daftarKategori || []).forEach((k) => {
+    if (k.parent_id) {
+      if (!subsByParent[k.parent_id]) subsByParent[k.parent_id] = [];
+      subsByParent[k.parent_id].push(k);
+    }
+  });
+  Object.keys(subsByParent).forEach((pid) => {
+    subsByParent[pid].sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+  });
+
+  const orphans = (daftarKategori || []).filter((k) => k.parent_id && !katMap.has(k.parent_id));
+
+  function getCategoryDisplay(id) {
+    if (!id || !katMap.has(id)) return '-- Tanpa Kategori --';
+    const k = katMap.get(id);
+    if (k.parent_id && katMap.has(k.parent_id)) {
+      const parent = katMap.get(k.parent_id);
+      return `${parent.nama} > ${k.nama}`;
+    }
+    return k.nama;
+  }
+
+  function updateSelected(id) {
+    inputHidden.value = id || '';
+    if (id && katMap.has(id)) {
+      lblTrigger.textContent = getCategoryDisplay(id);
+      lblTrigger.classList.remove('text-muted');
+      if (btnClear) btnClear.style.display = 'inline-flex';
+    } else {
+      inputHidden.value = '';
+      lblTrigger.textContent = '-- Tanpa Kategori --';
+      lblTrigger.classList.add('text-muted');
+      if (btnClear) btnClear.style.display = 'none';
+    }
+  }
+
+  function highlightMatch(text, query) {
+    if (!query) return escapeHtml(text);
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return escapeHtml(text).replace(regex, '<mark style="background: rgba(234, 88, 12, 0.25); color: inherit; padding: 0 2px; border-radius: 2px;">$1</mark>');
+  }
+
+  function renderList(query = '') {
+    const q = (query || '').trim().toLowerCase();
+    const currentId = inputHidden.value;
+    let html = '';
+
+    // Opsi: Tanpa Kategori
+    if (!q || '-- tanpa kategori --'.includes(q) || 'tanpa kategori'.includes(q)) {
+      const isSel = !currentId;
+      html += `
+        <div class="cat-picker-item ${isSel ? 'is-selected' : ''}" data-id="" role="option" aria-selected="${isSel}">
+          <span class="cat-picker-item-icon" style="color: var(--text-muted);">${ICONS.tag}</span>
+          <span class="grow" style="font-style: italic; color: var(--text-muted);">-- Tanpa Kategori --</span>
+          ${isSel ? `<span class="cat-picker-check">${ICONS.check}</span>` : ''}
+        </div>
+      `;
+    }
+
+    let matchCount = 0;
+
+    parents.forEach((p) => {
+      const pNama = String(p.nama || '');
+      const pMatches = !q || pNama.toLowerCase().includes(q);
+      const subs = subsByParent[p.id] || [];
+      const matchingSubs = subs.filter((s) => !q || String(s.nama || '').toLowerCase().includes(q));
+
+      if (pMatches || matchingSubs.length > 0) {
+        matchCount++;
+        const isParentSel = currentId === p.id;
+        html += `
+          <div class="cat-picker-item is-parent ${isParentSel ? 'is-selected' : ''}" data-id="${p.id}" role="option" aria-selected="${isParentSel}">
+            <span class="cat-picker-item-icon" style="color: var(--primary);">${ICONS.folder}</span>
+            <span class="grow fw-semibold">${highlightMatch(pNama, q)} <span class="badge badge-subtle text-2xs" style="margin-left: 4px; font-weight: normal;">Utama</span></span>
+            ${isParentSel ? `<span class="cat-picker-check">${ICONS.check}</span>` : ''}
+          </div>
+        `;
+
+        const subsToShow = q ? (pMatches ? subs : matchingSubs) : subs;
+        subsToShow.forEach((s) => {
+          matchCount++;
+          const sNama = String(s.nama || '');
+          const isSubSel = currentId === s.id;
+          html += `
+            <div class="cat-picker-item is-sub ${isSubSel ? 'is-selected' : ''}" data-id="${s.id}" role="option" aria-selected="${isSubSel}">
+              <span class="cat-picker-indent">↳</span>
+              <span class="cat-picker-item-icon" style="color: var(--text-muted);">${ICONS.tag}</span>
+              <span class="grow">${highlightMatch(sNama, q)}</span>
+              ${isSubSel ? `<span class="cat-picker-check">${ICONS.check}</span>` : ''}
+            </div>
+          `;
+        });
+      }
+    });
+
+    if (orphans.length > 0) {
+      orphans.forEach((o) => {
+        const oNama = String(o.nama || '');
+        if (!q || oNama.toLowerCase().includes(q)) {
+          matchCount++;
+          const isSel = currentId === o.id;
+          html += `
+            <div class="cat-picker-item ${isSel ? 'is-selected' : ''}" data-id="${o.id}" role="option" aria-selected="${isSel}">
+              <span class="cat-picker-item-icon" style="color: var(--text-muted);">${ICONS.tag}</span>
+              <span class="grow">${highlightMatch(oNama, q)}</span>
+              ${isSel ? `<span class="cat-picker-check">${ICONS.check}</span>` : ''}
+            </div>
+          `;
+        }
+      });
+    }
+
+    if (matchCount === 0 && q) {
+      html = `<div class="cat-picker-empty">Tidak ada kategori yang cocok dengan "${escapeHtml(q)}"</div>`;
+    }
+
+    listEl.innerHTML = html;
+
+    listEl.querySelectorAll('.cat-picker-item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = item.getAttribute('data-id') || '';
+        updateSelected(id);
+        closeDropdown();
+        btnTrigger?.focus();
+      });
+    });
+  }
+
+  function openDropdown() {
+    wrap.classList.add('is-open');
+    dropdown.style.display = 'flex';
+    btnTrigger?.setAttribute('aria-expanded', 'true');
+    searchInput.value = '';
+    renderList('');
+    setTimeout(() => searchInput?.focus(), 50);
+  }
+
+  function closeDropdown() {
+    wrap.classList.remove('is-open');
+    dropdown.style.display = 'none';
+    btnTrigger?.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleDropdown() {
+    if (wrap.classList.contains('is-open')) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  }
+
+  btnTrigger?.addEventListener('click', (e) => {
+    if (e.target.closest('#cat-picker-clear')) return;
+    toggleDropdown();
+  });
+
+  btnTrigger?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      openDropdown();
+    }
+  });
+
+  btnClear?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    updateSelected('');
+    renderList(searchInput?.value || '');
+  });
+
+  searchInput?.addEventListener('input', () => {
+    renderList(searchInput.value);
+  });
+
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeDropdown();
+      btnTrigger?.focus();
+    }
+  });
+
+  const onDocClick = (e) => {
+    if (!wrap.contains(e.target)) {
+      closeDropdown();
+    }
+  };
+  document.addEventListener('click', onDocClick);
+
+  const observer = new MutationObserver((mutations, obs) => {
+    if (!document.body.contains(wrap)) {
+      document.removeEventListener('click', onDocClick);
+      obs.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  updateSelected(initialId);
+}
+
+/**
  * Modal Form Tambah / Edit Produk Lengkap
  */
 async function bukaModalFormProduk(container, produk) {
@@ -897,8 +1120,6 @@ async function bukaModalFormProduk(container, produk) {
     const kRes = await apiCall('kategori.list', {});
     daftarKategori = kRes.items || [];
   } catch (e) { }
-
-  const optionsKat = susunOpsiKategoriHtml(daftarKategori, isEdit ? produk.kategori_id : '', '-- Tanpa Kategori --');
 
   const bodyHtml = `
     <form id="form-produk" class="stack" novalidate>
@@ -977,12 +1198,31 @@ async function bukaModalFormProduk(container, produk) {
 
         <div class="form-grid cols-2">
           <div class="field">
-            <label class="field-label" for="prd-kategori">Kategori</label>
-            <select class="select" id="prd-kategori">${optionsKat}</select>
+            <label class="field-label" for="cat-picker-btn">Kategori</label>
+            <div class="cat-picker-container" id="cat-picker-wrap">
+              <input type="hidden" id="prd-kategori" name="kategori_id" value="${isEdit ? escapeHtml(produk.kategori_id || '') : ''}">
+              <div class="cat-picker-trigger" id="cat-picker-btn" tabindex="0" role="combobox" aria-haspopup="listbox" aria-expanded="false" title="Pilih Kategori Produk">
+                <span class="cat-picker-icon">${ICONS.tag}</span>
+                <span class="cat-picker-label grow" id="cat-picker-label">-- Tanpa Kategori --</span>
+                <button type="button" class="cat-picker-clear" id="cat-picker-clear" title="Hapus Kategori" style="display: none;" aria-label="Hapus Kategori">
+                  ${ICONS.x}
+                </button>
+                <span class="cat-picker-arrow">${ICONS.chevronDown}</span>
+              </div>
+              <div class="cat-picker-dropdown" id="cat-picker-dropdown" style="display: none;">
+                <div class="cat-picker-search-wrap">
+                  <span class="input-icon">${ICONS.search}</span>
+                  <input type="text" class="input input-sm cat-picker-search-input" id="cat-picker-search" placeholder="Cari kategori atau sub..." autocomplete="off">
+                </div>
+                <div class="cat-picker-list" id="cat-picker-list" role="listbox">
+                  <!-- Diisi secara dinamis -->
+                </div>
+              </div>
+            </div>
           </div>
           <div class="field">
             <label class="field-label" for="prd-satuan">Satuan Dasar <span class="wajib">*</span></label>
-            <input type="text" class="input" id="prd-satuan" value="${isEdit ? escapeHtml(produk.satuan_dasar) : 'pcs'}" placeholder="Cth: sak, kg, dus, batang, meter">
+            <input type="text" class="input uppercase" id="prd-satuan" value="${isEdit ? escapeHtml((produk.satuan_dasar || 'PCS').toUpperCase()) : 'PCS'}" placeholder="Cth: SAK, KG, DUS, BATANG, METER, PCS">
           </div>
         </div>
 
@@ -1119,7 +1359,7 @@ async function bukaModalFormProduk(container, produk) {
 
           <div class="field">
             <label class="field-label" for="prd-stok-min">Batas Stok Minimum</label>
-            <input type="number" class="input input-num" id="prd-stok-min" value="${isEdit ? produk.stok_min || 0 : 5}">
+            <input type="number" class="input input-num" id="prd-stok-min" value="${isEdit ? (produk.stok_min !== undefined && produk.stok_min !== null ? produk.stok_min : 0) : 0}">
             <span class="field-hint">Peringatan stok menipis muncul jika saldo di bawah batas ini.</span>
           </div>
         </div>
@@ -1194,6 +1434,9 @@ async function bukaModalFormProduk(container, produk) {
   });
 
   const form = $('#form-produk', modal.el);
+
+  // Inisialisasi Searchable Category Combobox (Dropdown dengan Pencarian Cepat)
+  initSearchableCategoryPicker(modal.el, daftarKategori, isEdit ? (produk.kategori_id || '') : '');
 
   // Tombol Batal Form Produk
   $('#btn-batal-produk', modal.el)?.addEventListener('click', () => {
@@ -1485,7 +1728,7 @@ async function bukaModalFormProduk(container, produk) {
       <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 120px;">
           <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Nama Satuan Kemasan *</label>
-          <input type="text" class="input sat-nama" placeholder="Cth: Dus / Ikat / Rol" value="${escapeHtml(s.satuan || '')}">
+          <input type="text" class="input uppercase sat-nama" placeholder="Cth: DUS / IKAT / ROL" value="${escapeHtml((s.satuan || '').toUpperCase())}">
         </div>
         <div style="padding-bottom: 10px; font-weight: bold; font-size: var(--fs-base);">=</div>
         <div style="width: 100px;">
@@ -1493,7 +1736,7 @@ async function bukaModalFormProduk(container, produk) {
           <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Cth: 24" value="${s.faktor || ''}">
         </div>
         <div style="padding-bottom: 10px;" class="text-xs fw-semibold text-muted satuan-dasar-label">
-          ${escapeHtml($('#prd-satuan', form).value || 'pcs')}
+          ${escapeHtml(($('#prd-satuan', form).value || 'PCS').toUpperCase())}
         </div>
         <div style="flex: 1; min-width: 130px;">
           <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Barcode Kemasan (Auto)</label>
@@ -1509,6 +1752,9 @@ async function bukaModalFormProduk(container, produk) {
         <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-satuan" title="Hapus Satuan Kemasan" style="height: 38px; margin-bottom: 1px;">Hapus</button>
       </div>
     `;
+    row.querySelector('.sat-nama')?.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
     formatInputRp(row.querySelector('.sat-ritel'));
     row.querySelector('.btn-hapus-baris-satuan').addEventListener('click', () => row.remove());
     wadahSatuan.appendChild(row);
@@ -1524,9 +1770,10 @@ async function bukaModalFormProduk(container, produk) {
     bukaModalPanduanVarianSatuan();
   });
 
-  // Sinkronisasi dinamis nama satuan dasar ke baris konversi
+  // Sinkronisasi dinamis nama satuan dasar ke baris konversi (selalu uppercase)
   $('#prd-satuan', form)?.addEventListener('input', (e) => {
-    const val = (e.target.value || '').trim() || 'pcs';
+    e.target.value = e.target.value.toUpperCase();
+    const val = (e.target.value || '').trim() || 'PCS';
     form.querySelectorAll('.satuan-dasar-label').forEach((el) => {
       el.textContent = val;
     });
@@ -1545,7 +1792,7 @@ async function bukaModalFormProduk(container, produk) {
       return;
     }
 
-    const satuan_dasar = ($('#prd-satuan', form).value || '').trim() || 'pcs';
+    const satuan_dasar = ($('#prd-satuan', form).value || '').trim().toUpperCase() || 'PCS';
     const hpp = parseRupiah($('#prd-hpp', form).value);
     const harga_ritel = parseRupiah($('#prd-ritel', form).value);
 
@@ -1645,7 +1892,7 @@ async function bukaModalFormProduk(container, produk) {
     const satuan_konversi = [];
     const barisSatuan = form.querySelectorAll('.baris-satuan');
     for (const s of barisSatuan) {
-      const sNama = s.querySelector('.sat-nama').value.trim();
+      const sNama = s.querySelector('.sat-nama').value.trim().toUpperCase();
       const sFaktor = parseFloat(s.querySelector('.sat-faktor').value);
       const sRitel = parseRupiah(s.querySelector('.sat-ritel').value);
       if (!sNama && isNaN(sFaktor) && sRitel === 0) continue;

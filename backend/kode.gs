@@ -1192,6 +1192,27 @@ function aksiKategoriCreate_(ctx) {
   const parentId = p.parent_id ? String(p.parent_id).trim() : '';
   const urutan = V_.angka(p.urutan, 'Urutan', { bawaan: 0 });
 
+  const namaTrim = nama.trim().toLowerCase();
+  const kategoriSemua = bacaSemua_('Kategori');
+
+  if (!parentId) {
+    // Validasi Kategori Utama tidak boleh duplikat nama (case-insensitive & trimmed)
+    const adaDuplikat = kategoriSemua.some(function (k) {
+      return !k.deleted && !k.parent_id && String(k.nama || '').trim().toLowerCase() === namaTrim;
+    });
+    if (adaDuplikat) {
+      gagal_(KODE.CONFLICT, 'Kategori utama "' + nama + '" sudah terdaftar. Silakan gunakan nama lain.');
+    }
+  } else {
+    // Validasi Sub-Kategori tidak boleh kembar di bawah kategori induk yang sama
+    const adaDuplikat = kategoriSemua.some(function (k) {
+      return !k.deleted && String(k.parent_id || '') === parentId && String(k.nama || '').trim().toLowerCase() === namaTrim;
+    });
+    if (adaDuplikat) {
+      gagal_(KODE.CONFLICT, 'Sub-kategori "' + nama + '" di bawah kategori induk ini sudah terdaftar. Silakan gunakan nama lain.');
+    }
+  }
+
   const dibuat = tambahBaris_('Kategori', [{
     nama: nama,
     parent_id: parentId,
@@ -1212,6 +1233,27 @@ function aksiKategoriUpdate_(ctx) {
 
   if (parentId === id) {
     gagal_(KODE.VALIDATION, 'Kategori tidak dapat menjadi induk dirinya sendiri.');
+  }
+
+  const namaTrim = nama.trim().toLowerCase();
+  const kategoriSemua = bacaSemua_('Kategori');
+
+  if (!parentId) {
+    // Validasi Kategori Utama tidak boleh duplikat nama (selain dirinya sendiri)
+    const adaDuplikat = kategoriSemua.some(function (k) {
+      return !k.deleted && k.id !== id && !k.parent_id && String(k.nama || '').trim().toLowerCase() === namaTrim;
+    });
+    if (adaDuplikat) {
+      gagal_(KODE.CONFLICT, 'Kategori utama "' + nama + '" sudah terdaftar. Silakan gunakan nama lain.');
+    }
+  } else {
+    // Validasi Sub-Kategori tidak boleh kembar di bawah kategori induk yang sama (selain dirinya sendiri)
+    const adaDuplikat = kategoriSemua.some(function (k) {
+      return !k.deleted && k.id !== id && String(k.parent_id || '') === parentId && String(k.nama || '').trim().toLowerCase() === namaTrim;
+    });
+    if (adaDuplikat) {
+      gagal_(KODE.CONFLICT, 'Sub-kategori "' + nama + '" di bawah kategori induk ini sudah terdaftar. Silakan gunakan nama lain.');
+    }
   }
 
   const diubah = ubahBaris_('Kategori', [{
@@ -1403,7 +1445,7 @@ function aksiProdukCreate_(ctx) {
   }
 
   const kategoriId = p.kategori_id ? String(p.kategori_id).trim() : '';
-  const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 });
+  const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 }).toUpperCase();
   const hpp = V_.rupiah(p.hpp, 'HPP', { bawaan: 0 });
   const hargaRitel = V_.rupiah(p.harga_ritel, 'Harga Ritel', { wajib: true });
   const hargaGrosir = V_.rupiah(p.harga_grosir, 'Harga Grosir', { bawaan: hargaRitel });
@@ -1499,7 +1541,7 @@ function aksiProdukCreate_(ctx) {
 
       return {
         produk_id: produkBaru.id,
-        satuan: V_.teks(s.satuan, 'Nama Satuan Konversi', { wajib: true }),
+        satuan: V_.teks(s.satuan, 'Nama Satuan Konversi', { wajib: true }).toUpperCase(),
         faktor: faktor,
         barcode: sBarcode,
         harga_ritel: sRitel,
@@ -1546,7 +1588,7 @@ function aksiProdukUpdate_(ctx) {
     barcode = lama.barcode || barcodeBerikut_();
   }
   const kategoriId = p.kategori_id ? String(p.kategori_id).trim() : '';
-  const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 });
+  const satuanDasar = V_.teks(p.satuan_dasar, 'Satuan Dasar', { wajib: true, maks: 30 }).toUpperCase();
   const hpp = V_.rupiah(p.hpp, 'HPP', { bawaan: lama.hpp });
   const hargaRitel = V_.rupiah(p.harga_ritel, 'Harga Ritel', { wajib: true });
   const hargaGrosir = V_.rupiah(p.harga_grosir, 'Harga Grosir', { bawaan: hargaRitel });
@@ -1665,7 +1707,7 @@ function aksiProdukUpdate_(ctx) {
 
       return {
         produk_id: id,
-        satuan: V_.teks(s.satuan, 'Nama Satuan', { wajib: true }),
+        satuan: V_.teks(s.satuan, 'Nama Satuan', { wajib: true }).toUpperCase(),
         faktor: faktor,
         barcode: sBarcode,
         harga_ritel: sRitel,
