@@ -6172,6 +6172,8 @@ function onOpen() {
       .addItem('1. Setup / perbarui database', 'setupDatabase')
       .addItem('2. Pasang trigger backup harian', 'setupTriggers')
       .addSeparator()
+      .addItem('🎨 Percantik Tampilan Spreadsheet', 'percantikTampilanSpreadsheet')
+      .addSeparator()
       .addItem('Backup sekarang', 'backupSekarang')
       .addItem('Reset PIN Owner (darurat)', 'resetPinOwner')
       .addToUi();
@@ -6415,4 +6417,229 @@ function resetPinOwner() {
   }
   infoAdmin_('Reset PIN Owner', 'Username: ' + owner.username + '\nPIN baru: ' + pin +
     '\nWajib diganti saat login berikutnya.');
+}
+
+/* ========================================================================== */
+/* PERCANTIK TAMPILAN SPREADSHEET (BEAUTIFIER DATABASE ENGINE)                */
+/* ========================================================================== */
+
+/**
+ * Menata otomatis seluruh 26 sheet agar tampil profesional, estetik,
+ * dan rapi ala database modern (Airtable / Notion style):
+ *  - Warna tab sheet per kategori modul
+ *  - Freeze header baris 1 & gridlines aktif
+ *  - Header dark slate elegan (#1E293B) dengan teks putih bold
+ *  - Zebra striping halus (#FFFFFF & #F8FAFC)
+ *  - Format angka mata uang Rupiah & format tanggal rapi
+ *  - Badge warna bersyarat otomatis untuk kolom status
+ *  - Auto-fit lebar kolom dengan ruang padding nyaman
+ */
+function percantikTampilanSpreadsheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Fungsi ini harus dijalankan dari Google Spreadsheet database.');
+
+  // Peta Warna Tab per Kelompok Modul
+  const TAB_WARNA = {
+    // 1. Master Data (Biru Elegan)
+    'Produk': '#2563EB',
+    'Kategori': '#2563EB',
+    'Varian': '#3B82F6',
+    'Satuan_Konversi': '#60A5FA',
+    'Pelanggan': '#1D4ED8',
+    'Supplier': '#1E40AF',
+
+    // 2. Transaksi Kasir & Penjualan (Hijau Emerald)
+    'Penjualan': '#059669',
+    'Penjualan_Item': '#10B981',
+    'Penjualan_Bayar': '#34D399',
+
+    // 3. Pengadaan & Pembelian (Oranye Hangat)
+    'Pembelian': '#EA580C',
+    'Pembelian_Item': '#F97316',
+
+    // 4. Keuangan & Tagihan (Ungu Violet)
+    'Hutang': '#7C3AED',
+    'Piutang': '#8B5CF6',
+    'Pembayaran': '#A78BFA',
+
+    // 5. Inventori Gudang & Stok (Amber Emas)
+    'Kartu_Stok': '#D97706',
+    'Opname': '#F59E0B',
+    'Retur': '#B45309',
+    'Retur_Item': '#78350F',
+
+    // 6. Loyalitas & Hadiah Member (Pink Magenta)
+    'Hadiah': '#DB2777',
+    'Penukaran_Hadiah': '#EC4899',
+    'Poin_Log': '#F472B6',
+
+    // 7. Pengaturan & Sistem (Dark Slate)
+    'Users': '#334155',
+    'Sesi': '#475569',
+    'Pengaturan': '#64748B',
+    'Log_Audit': '#1E293B',
+    'Counter': '#0F172A'
+  };
+
+  const sheets = ss.getSheets();
+  let totalDitata = 0;
+
+  sheets.forEach(function (sh) {
+    const nama = sh.getName();
+    const lastRow = sh.getLastRow();
+    const lastCol = sh.getLastColumn();
+    if (lastCol < 1) return;
+
+    // 1. Set Warna Tab Sheet
+    const warnaTab = TAB_WARNA[nama] || '#64748B';
+    try {
+      sh.setTabColor(warnaTab);
+    } catch (e) {}
+
+    // 2. Pastikan Baris 1 Dibekukan (Freeze Header)
+    sh.setFrozenRows(1);
+    sh.setHideGridlines(false);
+
+    // 3. Format Header (Row 1): Dark Slate Header Elegan
+    const headerRange = sh.getRange(1, 1, 1, lastCol);
+    headerRange
+      .setBackground('#1E293B')
+      .setFontColor('#F8FAFC')
+      .setFontFamily('Roboto')
+      .setFontSize(10)
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle')
+      .setHorizontalAlignment('center');
+    try {
+      sh.setRowHeight(1, 32);
+    } catch (e) {}
+
+    // Baca nama-nama kolom di Baris 1
+    const headerValues = headerRange.getValues()[0];
+
+    // 4. Format Data Rows (Row 2 ke bawah jika ada data)
+    if (lastRow >= 2) {
+      const dataRange = sh.getRange(2, 1, lastRow - 1, lastCol);
+      dataRange
+        .setFontFamily('Roboto')
+        .setFontSize(10)
+        .setVerticalAlignment('middle');
+
+      // Terapkan Zebra Striping Halus (Alternating Colors)
+      try {
+        const existingBandings = sh.getBandings();
+        for (let b = 0; b < existingBandings.length; b++) {
+          existingBandings[b].remove();
+        }
+        sh.getRange(1, 1, lastRow, lastCol)
+          .applyRowBanding()
+          .setHeaderRowColor('#1E293B')
+          .setFirstRowColor('#FFFFFF')
+          .setSecondRowColor('#F8FAFC');
+      } catch (e) {}
+
+      // Terapkan Tinggi Baris Data Nyaman (26px)
+      try {
+        const batasBaris = Math.min(lastRow, 250);
+        for (let r = 2; r <= batasBaris; r++) {
+          sh.setRowHeight(r, 26);
+        }
+      } catch (e) {}
+
+      // 5. Format Angka, Uang, Tanggal, dan Status Berdasarkan Nama Kolom
+      headerValues.forEach(function (h, idx) {
+        const colIdx = idx + 1;
+        const colName = String(h || '').trim().toLowerCase();
+        const colRange = sh.getRange(2, colIdx, lastRow - 1, 1);
+
+        // Kolom Mata Uang (Harga, HPP, Total, Bayar, Sisa, Subtotal, Nilai)
+        if (/harga|hpp|total|subtotal|bayar|sisa|kembalian|nominal|diskon|terbayar|limit_kredit|nilai_aset|saldo/i.test(colName)) {
+          colRange.setNumberFormat('"Rp"#,##0').setHorizontalAlignment('right');
+        }
+        // Kolom Kuantitas / Angka (Qty, Stok, Poin, Faktor, Hari)
+        else if (/qty|stok|stok_min|poin|faktor|tempo_hari/i.test(colName)) {
+          colRange.setNumberFormat('#,##0').setHorizontalAlignment('right');
+        }
+        // Kolom Tanggal & Waktu (Created, Updated, Tanggal, Jatuh Tempo)
+        else if (/tanggal|jatuh_tempo|created_at|updated_at|waktu|expired/i.test(colName)) {
+          colRange.setNumberFormat('yyyy-mm-dd hh:mm').setHorizontalAlignment('center');
+        }
+        // Kolom Kode / ID / SKU / Nomor Faktur / Barcode
+        else if (/id|kode|no_faktur|no_nota|sku|barcode/i.test(colName)) {
+          colRange.setHorizontalAlignment('center');
+        }
+        // Kolom Status / Tipe / Role / Metode
+        else if (/status|tipe|role|metode/i.test(colName)) {
+          colRange.setHorizontalAlignment('center');
+        }
+      });
+
+      // 6. Aturan Format Bersyarat (Badge Status)
+      const statusColIdx = headerValues.findIndex(function (h) {
+        return String(h || '').trim().toLowerCase() === 'status';
+      });
+
+      if (statusColIdx !== -1) {
+        const statusRange = sh.getRange(2, statusColIdx + 1, lastRow - 1, 1);
+        try {
+          const rules = [];
+
+          // Hijau Pastel: Lunas, Selesai, Aktif, Setuju
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenTextMatches('(?i)^(lunas|selesai|aktif|setuju)$')
+            .setBackground('#DCFCE7')
+            .setFontColor('#166534')
+            .setBold(true)
+            .setRanges([statusRange])
+            .build());
+
+          // Kuning/Amber Pastel: Tempo, Sebagian, Draft, Pending
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenTextMatches('(?i)^(tempo|sebagian|draft|pending)$')
+            .setBackground('#FEF3C7')
+            .setFontColor('#92400E')
+            .setBold(true)
+            .setRanges([statusRange])
+            .build());
+
+          // Merah Muda Pastel: Belum, Kritis, Habis, Tolak, Hutang
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenTextMatches('(?i)^(belum|kritis|habis|tolak|hutang)$')
+            .setBackground('#FEE2E2')
+            .setFontColor('#991B1B')
+            .setBold(true)
+            .setRanges([statusRange])
+            .build());
+
+          // Abu-abu Lembut: Batal, Void, Nonaktif
+          rules.push(SpreadsheetApp.newConditionalFormatRule()
+            .whenTextMatches('(?i)^(batal|void|nonaktif)$')
+            .setBackground('#F1F5F9')
+            .setFontColor('#64748B')
+            .setItalic(true)
+            .setRanges([statusRange])
+            .build());
+
+          sh.setConditionalFormatRules(rules);
+        } catch (e) {}
+      }
+    }
+
+    // 7. Auto-Fit Lebar Kolom dengan Ruang Padding
+    try {
+      for (let c = 1; c <= lastCol; c++) {
+        sh.autoResizeColumn(c);
+        const w = sh.getColumnWidth(c);
+        sh.setColumnWidth(c, Math.max(w + 14, 85));
+      }
+    } catch (e) {}
+
+    totalDitata++;
+  });
+
+  SpreadsheetApp.flush();
+  try {
+    ss.toast('Semua ' + totalDitata + ' sheet berhasil dipercantik dengan desain modern! ✨', 'Sukses', 5);
+  } catch (e) {}
+  infoAdmin_('Tampilan Dipercantik ✨', 'Berhasil mempercantik tampilan ' + totalDitata + ' sheet!\n\nFitur yang diterapkan:\n- Warna Header Dark Slate Modern & Freeze Baris 1\n- Warna Tab Sheet per Modul (Master, Kasir, Pengadaan, Keuangan, Gudang)\n- Zebra Striping Halus (Banding Row)\n- Format Angka Rupiah & Tanggal Rapi\n- Badge Warna Otomatis untuk Kolom Status');
 }
