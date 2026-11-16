@@ -41,20 +41,31 @@ export function renderSkeleton(count = 3) {
 }
 
 /**
- * Render Empty State
- * @param {Object} options
- * @param {string} options.title
- * @param {string} options.text
- * @param {string} [options.icon]
- * @param {string} [options.actionButton]
+ * Render Empty State (Mendukung pemanggilan objek { title, text, icon, actionButton } maupun parameter posisional)
+ * @param {Object|string} [titleOrOpts]
+ * @param {string} [textParam]
+ * @param {string} [iconParam]
+ * @param {string} [actionButtonParam]
  * @returns {string}
  */
-export function renderEmpty({
-  title = 'Belum Ada Data',
-  text = 'Data belum tersedia atau tidak ditemukan.',
-  icon = ICONS.box,
-  actionButton = ''
-}) {
+export function renderEmpty(titleOrOpts = {}, textParam = '', iconParam = '', actionButtonParam = '') {
+  let title = 'Belum Ada Data';
+  let text = 'Data belum tersedia atau tidak ditemukan.';
+  let icon = ICONS.box;
+  let actionButton = '';
+
+  if (typeof titleOrOpts === 'string') {
+    title = titleOrOpts;
+    if (textParam) text = textParam;
+    if (iconParam) icon = iconParam;
+    if (actionButtonParam) actionButton = actionButtonParam;
+  } else if (titleOrOpts && typeof titleOrOpts === 'object') {
+    if (titleOrOpts.title) title = titleOrOpts.title;
+    if (titleOrOpts.text) text = titleOrOpts.text;
+    if (titleOrOpts.icon) icon = titleOrOpts.icon;
+    if (titleOrOpts.actionButton) actionButton = titleOrOpts.actionButton;
+  }
+
   return `
     <div class="empty">
       <div class="empty-icon">${icon}</div>

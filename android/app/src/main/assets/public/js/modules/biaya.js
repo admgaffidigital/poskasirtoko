@@ -30,101 +30,141 @@ const DAFTAR_KATEGORI = [
   'Lain-lain'
 ];
 
+function getLabelPeriode() {
+  if (filterPeriode === 'today') return 'Hari Ini';
+  if (filterPeriode === '7d') return '7 Hari Terakhir';
+  if (filterPeriode === '30d') return '30 Hari Terakhir';
+  if (filterPeriode === 'bulan_ini') return 'Bulan Ini';
+  if (filterPeriode === 'tahun_ini') return 'Tahun Ini';
+  if (filterPeriode === 'custom') {
+    if (customDari && customSampai) {
+      return `${formatTanggal(customDari)} s/d ${formatTanggal(customSampai)}`;
+    }
+    return 'Rentang Kustom';
+  }
+  return '30 Hari Terakhir';
+}
+
 export async function renderBiayaModule(container) {
   const user = store.get('user') || {};
   const isOwnerOrAdmin = user.role === 'owner' || user.role === 'admin';
 
   container.innerHTML = `
-    <div class="stack" style="gap: var(--sp-4);">
-      <!-- Header Modul -->
+    <div class="stack" style="gap: var(--sp-3);">
+      <!-- Header Modul (Ramping & Proporsional Ala Native App) -->
       <div class="page-header">
         <div>
-          <h2 style="display: flex; align-items: center; gap: 8px;">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span>Biaya Operasional Toko</span>
-          </h2>
-          <p>Pencatatan pengeluaran kas operasional, petty cash kasir, transportasi pengiriman, dan biaya rutin</p>
+          <h2>Biaya Operasional Toko</h2>
+          <p class="d-none-mobile">Pencatatan pengeluaran kas operasional, petty cash kasir, transportasi, dan biaya rutin</p>
         </div>
-        <div class="row" style="gap: var(--sp-2);">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-biaya" title="Segarkan Data">
-            ${ICONS.rotateCcw}
-            <span>Segarkan</span>
-          </button>
+        <div>
           <button type="button" class="btn btn-primary" id="btn-tambah-biaya">
-            <span>+ Catat Biaya Baru</span>
+            ${ICONS.plus}
+            <span>Catat Biaya</span>
           </button>
         </div>
       </div>
 
       <!-- Filter Card -->
       <div class="card card-body stack" style="gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);">
-        <!-- Baris 1: Preset Rentang Tanggal -->
-        <div class="row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
-          <div class="row" style="gap: 6px; align-items: center; flex-wrap: wrap;">
-            <span class="text-xs text-muted fw-semibold">PERIODE:</span>
-            <div class="segmented" id="biaya-preset-group">
-              <button type="button" class="btn btn-xs ${filterPeriode === 'today' ? 'active' : ''}" data-p="today">Hari Ini</button>
-              <button type="button" class="btn btn-xs ${filterPeriode === '7d' ? 'active' : ''}" data-p="7d">7 Hari</button>
-              <button type="button" class="btn btn-xs ${filterPeriode === '30d' ? 'active' : ''}" data-p="30d">30 Hari</button>
-              <button type="button" class="btn btn-xs ${filterPeriode === 'bulan_ini' ? 'active' : ''}" data-p="bulan_ini">Bulan Ini</button>
-              <button type="button" class="btn btn-xs ${filterPeriode === 'tahun_ini' ? 'active' : ''}" data-p="tahun_ini">Tahun Ini</button>
-              <button type="button" class="btn btn-xs ${filterPeriode === 'custom' ? 'active' : ''}" data-p="custom">Kustom</button>
-            </div>
-          </div>
-          <div id="biaya-custom-range" class="row" style="gap: 6px; align-items: center; ${filterPeriode === 'custom' ? '' : 'display: none;'}">
-            <input type="date" id="biaya-tgl-dari" class="input input-sm" value="${customDari}" />
-            <span class="text-xs text-muted">s/d</span>
-            <input type="date" id="biaya-tgl-sampai" class="input input-sm" value="${customSampai}" />
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-terapkan-tgl">Terapkan</button>
+        <!-- Baris 1: Label Periode & Badge Rentang Aktif -->
+        <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-2);">
+          <span style="font-weight: var(--fw-bold); font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
+          <div class="badge badge-secondary" id="badge-biaya-periode" style="padding: 4px 10px; font-size: var(--fs-xs); font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.calendar}
+            <span id="label-biaya-periode-aktif">${getLabelPeriode()}</span>
           </div>
         </div>
 
-        <!-- Baris 2: Filter Dropdown & Search -->
-        <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
-          <div style="min-width: 180px; flex: 1;">
+        <!-- Baris 2: Segmented Preset Buttons (Grid 3x2 Simetris di Mobile) -->
+        <div class="biaya-preset-group" id="biaya-preset-group">
+          <button type="button" class="${filterPeriode === 'today' ? 'active' : ''}" data-p="today">Hari Ini</button>
+          <button type="button" class="${filterPeriode === '7d' ? 'active' : ''}" data-p="7d">7 Hari</button>
+          <button type="button" class="${filterPeriode === '30d' ? 'active' : ''}" data-p="30d">30 Hari</button>
+          <button type="button" class="${filterPeriode === 'bulan_ini' ? 'active' : ''}" data-p="bulan_ini">Bulan Ini</button>
+          <button type="button" class="${filterPeriode === 'tahun_ini' ? 'active' : ''}" data-p="tahun_ini">Tahun Ini</button>
+          <button type="button" class="${filterPeriode === 'custom' ? 'active' : ''}" data-p="custom">Kustom</button>
+        </div>
+
+        <!-- Baris Kustom Tanggal (Jika Mode Kustom Aktif) -->
+        <div id="biaya-custom-range" style="${filterPeriode === 'custom' ? 'display: flex;' : 'display: none;'} align-items: center; gap: var(--sp-2); padding-top: var(--sp-2); border-top: 1px dashed var(--border); flex-wrap: wrap;">
+          <span class="text-xs text-muted fw-semibold">Rentang:</span>
+          <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
+            <input type="date" id="biaya-tgl-dari" class="input input-sm" value="${customDari}" style="width: 135px;" />
+            <span class="text-xs text-muted">s/d</span>
+            <input type="date" id="biaya-tgl-sampai" class="input input-sm" value="${customSampai}" style="width: 135px;" />
+            <button type="button" class="btn btn-primary btn-sm" id="btn-terapkan-tgl">Terapkan</button>
+          </div>
+        </div>
+
+        <!-- Baris 3: Filter Kategori, Sumber Dana, dan Pencarian -->
+        <div class="filter-bar-responsive">
+          <div class="field filter-tipe" style="margin-bottom: 0;">
+            <label class="field-label text-xs fw-semibold" for="filter-biaya-kategori">Kategori Biaya</label>
             <select class="input input-sm w-full" id="filter-biaya-kategori">
-              <option value="">Semua Kategori Biaya</option>
+              <option value="">Semua Kategori</option>
               ${DAFTAR_KATEGORI.map(k => `<option value="${escapeHtml(k)}" ${filterKategori === k ? 'selected' : ''}>${escapeHtml(k)}</option>`).join('')}
             </select>
           </div>
-          <div style="min-width: 160px;">
+
+          <div class="field filter-level" style="margin-bottom: 0;">
+            <label class="field-label text-xs fw-semibold" for="filter-biaya-sumber">Sumber Dana</label>
             <select class="input input-sm w-full" id="filter-biaya-sumber">
-              <option value="">Semua Sumber Dana</option>
+              <option value="">Semua Sumber</option>
               <option value="kas_kasir" ${filterSumber === 'kas_kasir' ? 'selected' : ''}>Kas Kasir (Petty Cash)</option>
               <option value="kas_toko" ${filterSumber === 'kas_toko' ? 'selected' : ''}>Kas Besar Toko</option>
-              <option value="bank" ${filterSumber === 'bank' ? 'selected' : ''}>Transfer / Rekening Bank</option>
+              <option value="bank" ${filterSumber === 'bank' ? 'selected' : ''}>Transfer Bank</option>
             </select>
           </div>
-          <div style="min-width: 220px; flex: 2;">
-            <div class="input-group">
-              <span class="input-icon">${ICONS.search}</span>
-              <input type="search" id="search-biaya" class="input input-sm w-full" placeholder="Cari nomor biaya, keterangan, atau kasir..." value="${escapeHtml(searchKeyword)}" />
+
+          <div class="filter-search-wrap">
+            <div class="field grow" style="margin-bottom: 0;">
+              <label class="field-label text-xs fw-semibold" for="search-biaya">Cari Pengeluaran</label>
+              <div class="input-group">
+                <span class="input-icon">${ICONS.search}</span>
+                <input type="search" id="search-biaya" class="input input-sm w-full" placeholder="Cari nomor biaya, keterangan, atau kasir..." value="${escapeHtml(searchKeyword)}" />
+              </div>
             </div>
+            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-biaya" title="Muat Ulang Data" style="height: var(--control-h-sm); width: var(--control-h-sm); flex-shrink: 0; margin-bottom: 2px;">
+              ${ICONS.refresh}
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Ringkasan Metrik Finansial -->
-      <div id="biaya-cards-container" class="grid grid-4" style="gap: var(--sp-3);">
-        <div class="card card-body stat-card" style="border-top: 3px solid var(--danger);">
-          <div class="stat-label">TOTAL PENGELUARAN BIAYA</div>
-          <div class="stat-value mono text-danger" id="stat-total-biaya">Rp 0</div>
-          <div class="stat-sub text-muted" id="stat-count-biaya">0 Transaksi</div>
+      <!-- Ringkasan Metrik Finansial (Grid 2x2 Simetris di Mobile) -->
+      <div id="biaya-cards-container" class="stat-grid">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Pengeluaran</span>
+            <div class="stat-card-icon icon-rose">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value text-danger" id="stat-total-biaya">Rp 0</div>
+          <div class="stat-card-desc" id="stat-count-biaya">0 Pengeluaran</div>
         </div>
-        <div class="card card-body stat-card" style="border-top: 3px solid #F59E0B;">
-          <div class="stat-label">KAS KASIR (PETTY CASH)</div>
-          <div class="stat-value mono text-warning" id="stat-kasir-biaya">Rp 0</div>
-          <div class="stat-sub text-muted">Uang laci kasir</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Petty Cash Kasir</span>
+            <div class="stat-card-icon icon-amber">${ICONS.cashier}</div>
+          </div>
+          <div class="stat-card-value text-warning" id="stat-kasir-biaya">Rp 0</div>
+          <div class="stat-card-desc">Uang laci kasir</div>
         </div>
-        <div class="card card-body stat-card" style="border-top: 3px solid #3B82F6;">
-          <div class="stat-label">KAS BESAR TOKO</div>
-          <div class="stat-value mono text-primary" id="stat-toko-biaya">Rp 0</div>
-          <div class="stat-sub text-muted">Kas operasional toko</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Kas Besar Toko</span>
+            <div class="stat-card-icon icon-blue">${ICONS.store}</div>
+          </div>
+          <div class="stat-card-value text-primary" id="stat-toko-biaya">Rp 0</div>
+          <div class="stat-card-desc">Kas operasional toko</div>
         </div>
-        <div class="card card-body stat-card" style="border-top: 3px solid #8B5CF6;">
-          <div class="stat-label">TRANSFER BANK</div>
-          <div class="stat-value mono text-info" id="stat-bank-biaya">Rp 0</div>
-          <div class="stat-sub text-muted">Rekening toko</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Transfer Bank</span>
+            <div class="stat-card-icon icon-purple">${ICONS.arrowUpRight}</div>
+          </div>
+          <div class="stat-card-value" style="color: #a855f7;" id="stat-bank-biaya">Rp 0</div>
+          <div class="stat-card-desc">Rekening bank toko</div>
         </div>
       </div>
 
@@ -134,30 +174,10 @@ export async function renderBiayaModule(container) {
         <div id="biaya-breakdown-container" class="row" style="gap: 8px; flex-wrap: wrap;"></div>
       </div>
 
-      <!-- Tabel Daftar Pengeluaran -->
-      <div class="card">
-        <div class="table-container">
-          <table class="table" id="tabel-biaya">
-            <thead>
-              <tr>
-                <th>No Transaksi</th>
-                <th>Tanggal & Waktu</th>
-                <th>Kategori</th>
-                <th>Keterangan</th>
-                <th>Sumber Dana</th>
-                <th class="text-right">Nominal</th>
-                <th>Petugas</th>
-                <th class="text-center" style="width: 80px;">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-biaya">
-              <tr>
-                <td colspan="8" class="text-center" style="padding: var(--sp-6);">
-                  ${renderSkeleton('table', 5)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- Area Tabel & Kartu Daftar Pengeluaran -->
+      <div class="card card-body" id="area-tabel-biaya" style="padding: 0; overflow: hidden;">
+        <div style="padding: var(--sp-4);">
+          ${renderSkeleton('table', 5)}
         </div>
       </div>
     </div>
@@ -171,6 +191,11 @@ export async function renderBiayaModule(container) {
   const elFilterKategori = container.querySelector('#filter-biaya-kategori');
   const elFilterSumber = container.querySelector('#filter-biaya-sumber');
   const elSearch = container.querySelector('#search-biaya');
+  const elLabelPeriode = container.querySelector('#label-biaya-periode-aktif');
+
+  function perbaruiLabelPeriode() {
+    if (elLabelPeriode) elLabelPeriode.textContent = getLabelPeriode();
+  }
 
   elPresetGroup?.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-p]');
@@ -181,8 +206,10 @@ export async function renderBiayaModule(container) {
 
     if (filterPeriode === 'custom') {
       elCustomRange.style.display = 'flex';
+      perbaruiLabelPeriode();
     } else {
       elCustomRange.style.display = 'none';
+      perbaruiLabelPeriode();
       muatDataBiaya();
     }
   });
@@ -194,6 +221,7 @@ export async function renderBiayaModule(container) {
       showToast('Pilih tanggal dari dan sampai', 'warning');
       return;
     }
+    perbaruiLabelPeriode();
     muatDataBiaya();
   });
 
@@ -218,6 +246,7 @@ export async function renderBiayaModule(container) {
 
   container.querySelector('#btn-refresh-biaya')?.addEventListener('click', () => {
     muatDataBiaya();
+    showToast('Data biaya berhasil diperbarui', 'success', 1800);
   });
 
   container.querySelector('#btn-tambah-biaya')?.addEventListener('click', () => {
@@ -228,8 +257,8 @@ export async function renderBiayaModule(container) {
   await muatDataBiaya();
 
   async function muatDataBiaya() {
-    const tbody = container.querySelector('#tbody-biaya');
-    if (!tbody) return;
+    const areaTabel = container.querySelector('#area-tabel-biaya');
+    if (!areaTabel) return;
 
     try {
       const payload = {
@@ -248,13 +277,17 @@ export async function renderBiayaModule(container) {
       renderTabel(res.items || []);
     } catch (err) {
       console.error('Gagal memuat data biaya:', err);
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8" class="text-center text-danger" style="padding: var(--sp-6);">
-            Gagal memuat data biaya: ${escapeHtml(err.message || 'Terjadi kesalahan.')}
-          </td>
-        </tr>
+      areaTabel.innerHTML = `
+        <div style="padding: var(--sp-4);">
+          ${renderEmpty({
+            title: 'Gagal Memuat Data Biaya',
+            text: err.message || 'Terjadi gangguan saat mengambil data dari server.',
+            icon: ICONS.alertTriangle,
+            actionButton: `<button type="button" class="btn btn-secondary btn-sm" id="btn-retry-biaya">${ICONS.refresh} Coba Lagi</button>`
+          })}
+        </div>
       `;
+      areaTabel.querySelector('#btn-retry-biaya')?.addEventListener('click', () => muatDataBiaya());
     }
   }
 
@@ -292,55 +325,77 @@ export async function renderBiayaModule(container) {
   }
 
   function renderTabel(items) {
-    const tbody = container.querySelector('#tbody-biaya');
-    if (!tbody) return;
+    const areaTabel = container.querySelector('#area-tabel-biaya');
+    if (!areaTabel) return;
 
     if (!items || items.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8" class="text-center" style="padding: var(--sp-6);">
-            ${renderEmpty('Belum ada transaksi biaya pengeluaran pada periode ini.', '+ Catat Pengeluaran Baru', () => bukaModalTambahBiaya(() => muatDataBiaya()))}
-          </td>
-        </tr>
-      `;
+      areaTabel.innerHTML = renderEmpty({
+        title: 'Belum Ada Transaksi Biaya',
+        text: 'Tidak ada catatan pengeluaran biaya operasional pada periode ini.',
+        icon: ICONS.wallet,
+        actionButton: `<button type="button" class="btn btn-primary btn-sm" id="btn-empty-catat">${ICONS.plus} <span>Catat Biaya Baru</span></button>`
+      });
+      areaTabel.querySelector('#btn-empty-catat')?.addEventListener('click', () => {
+        bukaModalTambahBiaya(() => muatDataBiaya());
+      });
       return;
     }
 
-    tbody.innerHTML = items.map(item => {
-      let badgeSumber = '';
-      if (item.sumber_dana === 'kas_kasir') {
-        badgeSumber = '<span class="badge badge-warning">Kas Kasir</span>';
-      } else if (item.sumber_dana === 'bank') {
-        badgeSumber = '<span class="badge badge-info">Transfer Bank</span>';
-      } else {
-        badgeSumber = '<span class="badge badge-primary">Kas Toko</span>';
-      }
+    areaTabel.innerHTML = `
+      <div class="table-wrap">
+        <table class="table" id="tabel-biaya">
+          <thead>
+            <tr>
+              <th style="min-width: 140px;">No Transaksi</th>
+              <th style="min-width: 130px;">Tanggal & Waktu</th>
+              <th style="min-width: 150px;">Kategori</th>
+              <th style="min-width: 200px;">Keterangan</th>
+              <th style="min-width: 110px;">Sumber Dana</th>
+              <th class="num text-right" style="min-width: 120px;">Nominal</th>
+              <th style="min-width: 100px;">Petugas</th>
+              <th style="text-align: right; min-width: 80px; width: 80px;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-biaya">
+            ${items.map(item => {
+              let badgeSumber = '';
+              if (item.sumber_dana === 'kas_kasir') {
+                badgeSumber = '<span class="badge badge-warning">Kas Kasir</span>';
+              } else if (item.sumber_dana === 'bank') {
+                badgeSumber = '<span class="badge badge-info">Transfer Bank</span>';
+              } else {
+                badgeSumber = '<span class="badge badge-primary">Kas Toko</span>';
+              }
 
-      return `
-        <tr>
-          <td class="mono fw-bold">${escapeHtml(item.no_transaksi)}</td>
-          <td class="mono text-xs">${formatTanggal(item.tanggal || item.created_at, true)}</td>
-          <td><span class="badge badge-secondary">${escapeHtml(item.kategori)}</span></td>
-          <td style="max-width: 280px; word-break: break-word;">
-            <div>${escapeHtml(item.keterangan || '-')}</div>
-            ${item.bukti_url ? `<a href="${escapeHtml(item.bukti_url)}" target="_blank" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">Lihat Bukti Foto</a>` : ''}
-          </td>
-          <td>${badgeSumber}</td>
-          <td class="text-right mono fw-bold text-danger" style="font-size: var(--fs-sm);">${formatRupiah(item.nominal)}</td>
-          <td class="text-xs text-muted">${escapeHtml(item.user_nama || '-')}</td>
-          <td class="text-center">
-            ${isOwnerOrAdmin ? `
-              <button type="button" class="btn btn-ghost btn-xs text-danger btn-hapus-biaya" data-id="${item.id}" data-no="${escapeHtml(item.no_transaksi)}" title="Batalkan Biaya">
-                ${ICONS.trash}
-              </button>
-            ` : '<span class="text-muted text-xs">-</span>'}
-          </td>
-        </tr>
-      `;
-    }).join('');
+              return `
+                <tr>
+                  <td data-label="No Transaksi" class="mono fw-bold">${escapeHtml(item.no_transaksi)}</td>
+                  <td data-label="Tanggal & Waktu" class="mono text-xs">${formatTanggal(item.tanggal || item.created_at, true)}</td>
+                  <td data-label="Kategori"><span class="badge badge-secondary">${escapeHtml(item.kategori)}</span></td>
+                  <td data-label="Keterangan" style="max-width: 280px; word-break: break-word;">
+                    <div>${escapeHtml(item.keterangan || '-')}</div>
+                    ${item.bukti_url ? `<a href="${escapeHtml(item.bukti_url)}" target="_blank" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">Lihat Bukti Foto</a>` : ''}
+                  </td>
+                  <td data-label="Sumber Dana">${badgeSumber}</td>
+                  <td data-label="Nominal" class="num text-right mono fw-bold text-danger">${formatRupiah(item.nominal)}</td>
+                  <td data-label="Petugas" class="text-xs text-muted">${escapeHtml(item.user_nama || '-')}</td>
+                  <td data-label="Aksi" style="text-align: right;">
+                    ${isOwnerOrAdmin ? `
+                      <button type="button" class="btn btn-ghost btn-xs text-danger btn-hapus-biaya" data-id="${item.id}" data-no="${escapeHtml(item.no_transaksi)}" title="Batalkan Biaya">
+                        ${ICONS.trash}
+                      </button>
+                    ` : '<span class="text-muted text-xs">-</span>'}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
 
     // Bind tombol hapus
-    tbody.querySelectorAll('.btn-hapus-biaya').forEach(btn => {
+    areaTabel.querySelectorAll('.btn-hapus-biaya').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-id');
         const no = btn.getAttribute('data-no');
@@ -366,7 +421,7 @@ export async function renderBiayaModule(container) {
  */
 export function bukaModalTambahBiaya(onSuccess) {
   const modal = showModal({
-    title: '💸 Catat Pengeluaran & Biaya Toko',
+    title: 'Catat Pengeluaran & Biaya Toko',
     size: 'md',
     body: `
       <form id="form-tambah-biaya" class="stack" style="gap: var(--sp-3);">
@@ -405,7 +460,10 @@ export function bukaModalTambahBiaya(onSuccess) {
 
         <div class="row" style="justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-2);">
           <button type="button" class="btn btn-secondary" id="modal-biaya-batal">Batal</button>
-          <button type="submit" class="btn btn-primary" id="modal-biaya-simpan">Simpan Pengeluaran</button>
+          <button type="submit" class="btn btn-primary" id="modal-biaya-simpan">
+            ${ICONS.plus}
+            <span>Simpan Pengeluaran</span>
+          </button>
         </div>
       </form>
     `
@@ -418,7 +476,7 @@ export function bukaModalTambahBiaya(onSuccess) {
 
   btnBatal?.addEventListener('click', () => modal.close());
 
-  // Input mask Rupiah
+  // Input mask Rupiah saat mengetik
   inputNominal?.addEventListener('input', () => {
     const raw = parseRupiah(inputNominal.value);
     inputNominal.value = raw > 0 ? formatRupiah(raw).replace('Rp ', '') : '';
@@ -443,7 +501,7 @@ export function bukaModalTambahBiaya(onSuccess) {
     }
 
     btnSimpan.disabled = true;
-    btnSimpan.textContent = 'Menyimpan...';
+    btnSimpan.innerHTML = `<span>Menyimpan...</span>`;
 
     try {
       const res = await apiCall('biaya.create', {
@@ -460,7 +518,7 @@ export function bukaModalTambahBiaya(onSuccess) {
     } catch (err) {
       showToast(err.message || 'Gagal menyimpan pengeluaran', 'danger');
       btnSimpan.disabled = false;
-      btnSimpan.textContent = 'Simpan Pengeluaran';
+      btnSimpan.innerHTML = `${ICONS.plus} <span>Simpan Pengeluaran</span>`;
     }
   });
 }

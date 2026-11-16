@@ -2221,7 +2221,7 @@ export function renderPosModule(container) {
     let modalAwal = Number(localStorage.getItem(storageKey) || 0);
 
     const modal = showModal({
-      title: '💵 Kas & Shift Kasir (X-Report)',
+      title: 'Kas & Shift Kasir (X-Report)',
       size: 'md',
       body: `
         <div class="stack" style="gap: var(--sp-4);" id="shift-kasir-container">
@@ -2436,7 +2436,7 @@ export function renderPosModule(container) {
   // ---------- Modal Kas Keluar Kasir (Petty Cash Laci) ----------
   function bukaModalKasKeluarKasir(onSuccess) {
     const modal = showModal({
-      title: '💸 Catat Kas Keluar Kasir (Petty Cash)',
+      title: 'Catat Kas Keluar Kasir (Petty Cash)',
       size: 'sm',
       body: `
         <form id="form-kas-keluar-kasir" class="stack" style="gap: var(--sp-3);">

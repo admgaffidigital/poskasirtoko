@@ -3570,3 +3570,85 @@ a.list-item:hover {
     top: calc(var(--topbar-h) + var(--sp-4));
   }
 }
+
+/* ---------- Modul Biaya Operasional Toko (Mobile Native App Layout) ---------- */
+.biaya-preset-group {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-3);
+  padding: 3px;
+  border-radius: var(--radius-md);
+}
+
+.biaya-preset-group button {
+  flex: 1 1 0;
+  min-height: calc(var(--control-h) - 8px);
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: calc(var(--radius-md) - 3px);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.biaya-preset-group button.active {
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: var(--fw-bold);
+  box-shadow: var(--shadow-xs);
+}
+
+@media (max-width: 767px) {
+  .biaya-preset-group {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .biaya-preset-group button {
+    width: 100% !important;
+    min-height: 32px !important;
+    padding: 4px 2px !important;
+    font-size: 11.5px !important;
+    text-align: center !important;
+  }
+}
+
+.biaya-filter-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .biaya-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-2);
+  }
+
+  .biaya-filter-row .field-kategori {
+    width: 200px;
+  }
+
+  .biaya-filter-row .field-sumber {
+    width: 180px;
+  }
+
+  .biaya-filter-row .filter-search-wrap {
+    flex: 1;
+    min-width: 240px;
+  }
+}

@@ -752,7 +752,7 @@ function generateSkuCode(prefix = 'SKU') {
  */
 export function bukaModalPanduanVarianSatuan() {
   showModal({
-    title: '💡 Panduan & Tata Cara: Varian dan Satuan Kemasan',
+    title: 'Panduan & Tata Cara: Varian dan Satuan Kemasan',
     size: 'lg',
     body: `
       <div class="stack" style="gap: var(--sp-4); font-size: var(--fs-sm); line-height: 1.6;">
@@ -865,7 +865,7 @@ export function bukaModalPanduanVarianSatuan() {
         <!-- Tips Kasir POS -->
         <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border-left: 4px solid var(--primary);">
           <div class="fw-bold" style="margin-bottom: 2px;">
-            💡 Tips Penggunaan di Kasir POS:
+            Tips Penggunaan di Kasir POS:
           </div>
           <div class="text-xs text-muted" style="line-height: 1.5;">
             Saat transaksi di kasir:
@@ -1131,7 +1131,7 @@ async function bukaModalFormProduk(container, produk) {
         <div class="alert alert-info alert-block" style="display: block !important; width: 100% !important; border: 1px solid rgba(232, 89, 12, 0.35); border-left: 4px solid var(--primary); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); box-sizing: border-box;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed rgba(232, 89, 12, 0.25);">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span style="font-size: 16px;">💡</span>
+              <span style="display: inline-flex; align-items: center; color: var(--primary);">${ICONS.info}</span>
               <span class="fw-bold" style="color: var(--primary); font-size: var(--fs-xs);">Tata Cara Penggunaan Varian &amp; Satuan Kemasan</span>
             </div>
             <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-buka-panduan-lengkap-varian" style="font-size: var(--fs-xs); font-weight: 600; text-decoration: underline; padding: 3px 8px; background: rgba(232, 89, 12, 0.08); border-radius: var(--radius-sm);">
