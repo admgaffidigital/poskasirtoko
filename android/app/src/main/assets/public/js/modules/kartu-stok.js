@@ -181,9 +181,11 @@ async function muatDataKartuStok(container) {
             ${formatTanggal(ks.created_at)}
           </td>
           <td data-label="Produk & Varian">
-            <div class="fw-semibold">${escapeHtml(ks.produk_nama)}</div>
-            ${ks.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(ks.varian_nama)}</div>` : ''}
-            <div class="text-xs text-muted">SKU: ${escapeHtml(ks.produk_sku || '-')}</div>
+            <div class="cell-stack">
+              <div class="fw-semibold">${escapeHtml(ks.produk_nama)}</div>
+              ${ks.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(ks.varian_nama)}</div>` : ''}
+              <div class="text-xs text-muted">SKU: ${escapeHtml(ks.produk_sku || '-')}</div>
+            </div>
           </td>
           <td data-label="Jenis">
             <span class="badge ${badgeClass}">${labelTipe}</span>

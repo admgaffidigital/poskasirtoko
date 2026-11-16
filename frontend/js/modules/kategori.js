@@ -48,7 +48,7 @@ export async function renderKategoriModule(container) {
         </div>
       </div>
 
-      <div class="card card-body" id="area-kategori">
+      <div class="card card-body kat-container-card" id="area-kategori">
         ${renderSkeleton(3)}
       </div>
     </div>
@@ -109,7 +109,7 @@ async function muatKategori(container, canEdit) {
 
     let html = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-kategori">
           <thead>
             <tr>
               <th>Nama Kategori</th>
@@ -127,7 +127,7 @@ async function muatKategori(container, canEdit) {
       html += `
         <tr class="kat-row-parent" style="border-top: 1px solid var(--border);">
           <td data-label="Kategori">
-            <div class="row" style="align-items: center; gap: var(--sp-2);">
+            <div class="kat-title-row">
               <div class="prd-table-avatar" style="width: 36px; height: 36px; background: var(--primary-soft); color: var(--primary);">
                 ${ICONS.folder || ICONS.tag}
               </div>
@@ -137,7 +137,7 @@ async function muatKategori(container, canEdit) {
             </div>
           </td>
           <td data-label="Tipe & Hirarki">
-            <div class="row" style="align-items: center; gap: 6px; flex-wrap: wrap;">
+            <div class="kat-hirarki-parent">
               <span class="badge badge-primary">Kategori Utama</span>
               ${subs.length > 0
                 ? `<span class="badge badge-info">${subs.length} Sub Kategori</span>`
@@ -172,19 +172,21 @@ async function muatKategori(container, canEdit) {
         html += `
           <tr class="kat-row-sub" style="background-color: var(--surface-2); border-left: 3px solid var(--primary-soft);">
             <td data-label="Kategori">
-              <div class="row" style="align-items: center; gap: var(--sp-2); padding-left: var(--sp-4);">
-                <span style="color: var(--primary); font-weight: bold; font-family: monospace; font-size: 1.15rem; line-height: 1;">↳</span>
+              <div class="kat-title-row kat-sub-indent">
+                <span class="kat-sub-arrow">↳</span>
                 <div class="prd-table-avatar" style="width: 28px; height: 28px; background: var(--surface-3); color: var(--text-muted);">
                   ${ICONS.tag}
                 </div>
                 <div class="grow">
-                  <div class="fw-medium text-sm" style="color: var(--text-body);">${escapeHtml(c.nama)}</div>
+                  <div class="fw-semibold text-sm" style="color: var(--text-body);">${escapeHtml(c.nama)}</div>
                 </div>
               </div>
             </td>
             <td data-label="Tipe & Hirarki">
-              <span class="badge badge-sm" style="background: var(--surface-3); border: 1px solid var(--border);">Sub Kategori</span>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Induk: <strong>${escapeHtml(p.nama)}</strong></div>
+              <div class="kat-hirarki-val">
+                <span class="badge badge-sm" style="background: var(--surface-3); border: 1px solid var(--border);">Sub Kategori</span>
+                <div class="text-xs text-muted" style="line-height: 1.35;">Induk: <strong style="color: var(--text);">${escapeHtml(p.nama)}</strong></div>
+              </div>
             </td>
             <td class="num" data-label="Urutan">${c.urutan || 0}</td>
             ${canEdit ? `
@@ -211,9 +213,11 @@ async function muatKategori(container, canEdit) {
       html += `
         <tr class="kat-row-orphan" style="background-color: var(--warning-soft); border-left: 3px solid var(--warning);">
           <td data-label="Kategori">
-            <div class="row" style="align-items: center; gap: var(--sp-2); padding-left: var(--sp-2);">
+            <div class="kat-title-row kat-sub-indent">
               <div class="prd-table-avatar" style="width: 28px; height: 28px;">${ICONS.alertTriangle}</div>
-              <div class="fw-medium">${escapeHtml(o.nama)}</div>
+              <div class="grow">
+                <div class="fw-medium text-sm">${escapeHtml(o.nama)}</div>
+              </div>
             </div>
           </td>
           <td data-label="Tipe & Hirarki">

@@ -1000,10 +1000,67 @@ input[type="password"] {
   .table-riwayat-beli {
     min-width: 820px;
   }
+
+  .table-kategori {
+    min-width: 680px !important;
+  }
+}
+
+/* Struktur Hierarki Kategori & Sub-Kategori */
+.kat-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.kat-title-row .grow {
+  flex: 1 1 0%;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.kat-sub-indent {
+  padding-left: var(--sp-4);
+}
+
+.kat-sub-arrow {
+  color: var(--primary);
+  font-weight: var(--fw-bold);
+  font-family: monospace;
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.kat-hirarki-parent {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.kat-hirarki-val,
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 3px;
+  min-width: 0;
 }
 
 /* Transformasi Tabel ke Native Card di Layar Mobile (< 768px) */
 @media (max-width: 767px) {
+  .kat-container-card {
+    padding: var(--sp-3) !important;
+  }
+
   .table-wrap:not(.keep-table) {
     overflow-x: hidden !important;
     background: transparent;
@@ -1055,17 +1112,29 @@ input[type="password"] {
     background: var(--surface-2) !important;
   }
 
-  /* Indentasi kartu sub-kategori pada tampilan mobile ala native tree */
+  /* Indentasi kartu sub-kategori pada tampilan mobile ala native tree tanpa memotong sisi kanan */
   .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub {
-    margin-left: 14px;
+    margin-left: 12px !important;
+    width: calc(100% - 12px) !important;
+    max-width: calc(100% - 12px) !important;
     border-left: 3px solid var(--primary) !important;
     background: var(--surface-2) !important;
-    box-shadow: none;
-    border-top-left-radius: var(--radius-xs);
-    border-bottom-left-radius: var(--radius-xs);
+    box-shadow: none !important;
+    border-top-left-radius: var(--radius-xs) !important;
+    border-bottom-left-radius: var(--radius-xs) !important;
+    padding: var(--sp-3) var(--sp-4) !important;
   }
 
-  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub td:first-child .row {
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-orphan {
+    margin-left: 12px !important;
+    width: calc(100% - 12px) !important;
+    max-width: calc(100% - 12px) !important;
+    padding: var(--sp-3) var(--sp-4) !important;
+  }
+
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub td:first-child .row,
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub .kat-sub-indent,
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-orphan .kat-sub-indent {
     padding-left: 0 !important;
   }
 
@@ -1073,10 +1142,25 @@ input[type="password"] {
     font-size: var(--fs-sm);
   }
 
+  .kat-hirarki-parent {
+    justify-content: flex-end !important;
+    text-align: right !important;
+    max-width: 72%;
+  }
+
+  .kat-hirarki-val,
+  .cell-stack {
+    align-items: flex-end !important;
+    text-align: right !important;
+    max-width: 72%;
+    word-break: break-word;
+  }
+
   .table-wrap:not(.keep-table) .table td:not(.d-none-mobile) {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    gap: var(--sp-2) !important;
     padding: 3px 0 !important;
     border: 0 !important;
     text-align: right !important;
@@ -1086,6 +1170,14 @@ input[type="password"] {
     min-width: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub td[data-label="Tipe & Hirarki"] {
+    align-items: flex-start !important;
+  }
+
+  .table-wrap:not(.keep-table) .table tbody tr.kat-row-sub td[data-label="Tipe & Hirarki"]::before {
+    padding-top: 2px;
   }
 
   .table-wrap:not(.keep-table) .table td.d-none-mobile {
@@ -1101,7 +1193,7 @@ input[type="password"] {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     text-align: left;
-    margin-right: var(--sp-3);
+    margin-right: var(--sp-2);
     flex-shrink: 0;
   }
 
@@ -1171,7 +1263,9 @@ input[type="password"] {
 
   .table-wrap:not(.keep-table) .table td:last-child .btn,
   .table-wrap:not(.keep-table) .table td[data-label="Aksi"] .btn {
-    flex: 1 !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    padding: 0 8px !important;
     min-height: 38px !important;
     justify-content: center !important;
     border-radius: var(--radius-md) !important;
@@ -1185,11 +1279,14 @@ input[type="password"] {
     display: flex;
     width: 100%;
     gap: var(--sp-2);
+    min-width: 0;
   }
 
   .pel-actions-row .btn,
   .table-actions .btn {
-    flex: 1;
+    flex: 1 1 0%;
+    min-width: 0;
+    padding: 0 8px;
     min-height: 40px;
     justify-content: center;
     border-radius: var(--radius-md);

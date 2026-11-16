@@ -139,8 +139,10 @@ async function muatDataOpname(container, canEdit) {
             ${formatTanggal(op.tanggal)}
           </td>
           <td data-label="Produk & Varian">
-            <div class="fw-semibold">${escapeHtml(op.produk_nama)}</div>
-            ${op.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(op.varian_nama)}</div>` : ''}
+            <div class="cell-stack">
+              <div class="fw-semibold">${escapeHtml(op.produk_nama)}</div>
+              ${op.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(op.varian_nama)}</div>` : ''}
+            </div>
           </td>
           <td style="text-align: right;" class="tabular" data-label="Stok Sistem">
             ${formatQty(op.qty_sistem)} ${escapeHtml(op.satuan_dasar)}
@@ -155,10 +157,12 @@ async function muatDataOpname(container, canEdit) {
             ${escapeHtml(op.alasan || '-')}
           </td>
           <td style="text-align: center;" data-label="Status">
-            <span class="badge ${badgeStatus}">
-              ${op.status === 'disetujui' ? 'Disetujui' : 'Draft'}
-            </span>
-            ${op.penyetuju_nama ? `<div class="text-xs text-muted" style="margin-top: 2px;">oleh ${escapeHtml(op.penyetuju_nama)}</div>` : ''}
+            <div class="cell-stack" style="align-items: center;">
+              <span class="badge ${badgeStatus}">
+                ${op.status === 'disetujui' ? 'Disetujui' : 'Draft'}
+              </span>
+              ${op.penyetuju_nama ? `<div class="text-xs text-muted" style="margin-top: 2px;">oleh ${escapeHtml(op.penyetuju_nama)}</div>` : ''}
+            </div>
           </td>
           ${canEdit ? `
             <td style="text-align: right;" data-label="Aksi">

@@ -319,8 +319,10 @@ async function muatDataPiutang(container) {
                     <div class="text-xs text-muted">${formatTanggal(it.tanggal_nota, true)}</div>
                   </td>
                   <td data-label="Pelanggan">
-                    <div class="fw-semibold">${escapeHtml(it.nama_pelanggan || 'Pelanggan Umum')}</div>
-                    <div class="text-xs text-muted">${escapeHtml(it.hp_pelanggan || '-')}</div>
+                    <div class="cell-stack">
+                      <div class="fw-semibold">${escapeHtml(it.nama_pelanggan || 'Pelanggan Umum')}</div>
+                      <div class="text-xs text-muted">${escapeHtml(it.hp_pelanggan || '-')}</div>
+                    </div>
                   </td>
                   <td class="num fw-semibold" data-label="Total Tagihan">${formatRupiah(it.total)}</td>
                   <td class="num" data-label="Sisa Piutang">
@@ -328,10 +330,12 @@ async function muatDataPiutang(container) {
                   </td>
                   <td data-label="Status">${badgeStatus}</td>
                   <td data-label="Jatuh Tempo">
-                    <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
-                      ${tglJatuhTempo}
+                    <div class="cell-stack">
+                      <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
+                        ${tglJatuhTempo}
+                      </div>
+                      ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                     </div>
-                    ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                   </td>
                   <td style="text-align: right;" data-label="Aksi">
                     <div class="table-actions">
@@ -472,8 +476,10 @@ async function muatDataHutang(container) {
                     <div class="text-xs text-muted">${formatTanggal(it.tanggal_faktur, true)}</div>
                   </td>
                   <td data-label="Supplier">
-                    <div class="fw-semibold">${escapeHtml(it.nama_supplier || 'Supplier Umum')}</div>
-                    <div class="text-xs text-muted">${escapeHtml(it.hp_supplier || '-')}</div>
+                    <div class="cell-stack">
+                      <div class="fw-semibold">${escapeHtml(it.nama_supplier || 'Supplier Umum')}</div>
+                      <div class="text-xs text-muted">${escapeHtml(it.hp_supplier || '-')}</div>
+                    </div>
                   </td>
                   <td data-label="No Faktur Vendor">
                     <span class="text-xs font-mono">${escapeHtml(it.no_faktur_supplier || '-')}</span>
@@ -484,10 +490,12 @@ async function muatDataHutang(container) {
                   </td>
                   <td data-label="Status">${badgeStatus}</td>
                   <td data-label="Jatuh Tempo">
-                    <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
-                      ${tglJatuhTempo}
+                    <div class="cell-stack">
+                      <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
+                        ${tglJatuhTempo}
+                      </div>
+                      ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                     </div>
-                    ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
                   </td>
                   <td style="text-align: right;" data-label="Aksi">
                     <div class="table-actions">
