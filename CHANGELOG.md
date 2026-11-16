@@ -18,6 +18,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [1.0.56] - 2026-11-16
 
+### Added
+- [BACKEND] [DB] **Engine Pemercantik Spreadsheet Otomatis (Beautifier Database Engine)**:
+  - Menambahkan menu `🎨 Percantik Tampilan Spreadsheet` dan fungsi `percantikTampilanSpreadsheet()` di [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs) untuk menata otomatis seluruh 26 sheet:
+    - Pewarnaan tab sheet per kategori modul (Master, Kasir, Pembelian, Keuangan, Gudang, Hadiah, Sistem).
+    - Header Dark Slate elegan (`#1E293B`) dengan teks putih tebal dan pembekuan baris pertama (*freeze header*).
+    - Zebra striping halus (`#FFFFFF` & `#F8FAFC`) untuk kenyamanan mata membaca data.
+    - Format otomatis mata uang Rupiah (`"Rp"#,##0`), kuantitas (`#,##0`), dan tanggal (`yyyy-mm-dd hh:mm`).
+    - Pewarnaan bersyarat (*conditional formatting*) badge status otomatis (hijau, kuning, merah, abu-abu).
+    - Penyesuaian tinggi baris batch (`26px`) dan pelebaran kolom proporsional dengan ruang padding.
+
 ### Removed
 - [DASHBOARD] [UI] **Eliminasi Tombol Cetak PDF & Ekspor CSV**:
   - Menghapus tombol *Cetak PDF* dan *Ekspor CSV* pada [frontend/js/modules/laporan.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/laporan.js) beserta event listener-nya untuk menyederhanakan alur kerja pengguna.
