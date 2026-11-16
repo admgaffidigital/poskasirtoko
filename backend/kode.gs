@@ -1561,7 +1561,7 @@ function aksiProdukCreate_(ctx) {
       qty: saldoAkhir,
       saldo: saldoAkhir,
       hpp: hpp,
-      ref_id: produkBaru.id,
+      ref_id: 'STOK-AWAL',
       user_id: ctx.user.id,
       keterangan: 'Saldo stok awal saat produk dibuat'
     }], ctx.user.id);
@@ -3575,9 +3575,9 @@ function aksiPembelianCreate_(ctx) {
 function aksiKartuStokList_(ctx) {
   const p = ctx.payload || {};
   const semuaKartu = bacaSemua_('Kartu_Stok');
-  const semuaProduk = bacaSemua_('Produk');
-  const semuaVarian = bacaSemua_('Varian');
-  const semuaUsers = bacaSemua_('Users');
+  const semuaProduk = bacaSemua_('Produk', { termasukTerhapus: true });
+  const semuaVarian = bacaSemua_('Varian', { termasukTerhapus: true });
+  const semuaUsers = bacaSemua_('Users', { termasukTerhapus: true });
 
   const produkPeta = {};
   semuaProduk.forEach(function (pr) { produkPeta[pr.id] = pr; });
@@ -3591,13 +3591,15 @@ function aksiKartuStokList_(ctx) {
   let data = semuaKartu.map(function (ks) {
     const pr = produkPeta[ks.produk_id];
     const vr = ks.varian_id ? varianPeta[ks.varian_id] : null;
+    let namaPr = pr ? pr.nama : 'Produk Tidak Ditemukan';
+    if (pr && pr.deleted) namaPr += ' (Dihapus)';
     return {
       id: ks.id,
       created_at: ks.created_at,
       produk_id: ks.produk_id,
-      produk_nama: pr ? pr.nama : 'Produk Tidak Ditemukan',
-      produk_sku: pr ? pr.sku : '',
-      satuan_dasar: pr ? pr.satuan_dasar : '',
+      produk_nama: namaPr,
+      produk_sku: pr ? pr.sku : '-',
+      satuan_dasar: pr ? (pr.satuan_dasar || 'PCS').toUpperCase() : 'PCS',
       varian_id: ks.varian_id || '',
       varian_nama: vr ? vr.nama_varian : '',
       tipe: ks.tipe,
@@ -3666,9 +3668,9 @@ function aksiKartuStokList_(ctx) {
 function aksiOpnameList_(ctx) {
   const p = ctx.payload || {};
   const semuaOpname = bacaSemua_('Opname');
-  const semuaProduk = bacaSemua_('Produk');
-  const semuaVarian = bacaSemua_('Varian');
-  const semuaUsers = bacaSemua_('Users');
+  const semuaProduk = bacaSemua_('Produk', { termasukTerhapus: true });
+  const semuaVarian = bacaSemua_('Varian', { termasukTerhapus: true });
+  const semuaUsers = bacaSemua_('Users', { termasukTerhapus: true });
 
   const produkPeta = {};
   semuaProduk.forEach(function (pr) { produkPeta[pr.id] = pr; });
@@ -3682,14 +3684,16 @@ function aksiOpnameList_(ctx) {
   let data = semuaOpname.map(function (op) {
     const pr = produkPeta[op.produk_id];
     const vr = op.varian_id ? varianPeta[op.varian_id] : null;
+    let namaPr = pr ? pr.nama : 'Produk Tidak Ditemukan';
+    if (pr && pr.deleted) namaPr += ' (Dihapus)';
     return {
       id: op.id,
       no_opname: op.no_opname,
       tanggal: op.tanggal,
       produk_id: op.produk_id,
-      produk_nama: pr ? pr.nama : 'Produk Tidak Ditemukan',
-      produk_sku: pr ? pr.sku : '',
-      satuan_dasar: pr ? pr.satuan_dasar : '',
+      produk_nama: namaPr,
+      produk_sku: pr ? pr.sku : '-',
+      satuan_dasar: pr ? (pr.satuan_dasar || 'PCS').toUpperCase() : 'PCS',
       varian_id: op.varian_id || '',
       varian_nama: vr ? vr.nama_varian : '',
       qty_sistem: op.qty_sistem,

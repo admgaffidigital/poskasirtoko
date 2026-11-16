@@ -1076,7 +1076,19 @@ input[type="password"] {
   }
 
   .table-kartu-stok {
-    min-width: 860px;
+    min-width: 820px;
+    width: 100%;
+  }
+
+  .ks-cell-keterangan {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.35;
+    cursor: help;
   }
 
   .table-riwayat-beli {
@@ -1453,6 +1465,15 @@ input[type="password"] {
 
   .table-wrap:not(.keep-table) .table tbody tr td[colspan]::before {
     display: none !important;
+  }
+
+  /* Kolom keterangan kartu stok mobile: tampil utuh tanpa terpotong */
+  .table-wrap:not(.keep-table) .ks-cell-keterangan {
+    -webkit-line-clamp: unset !important;
+    display: block !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    white-space: normal !important;
   }
 }
 

@@ -36,6 +36,7 @@ export async function renderKartuStokModule(container) {
               <option value="beli">Beli (Masuk)</option>
               <option value="jual">Jual (Keluar)</option>
               <option value="opname">Stok Opname</option>
+              <option value="koreksi">Saldo Awal / Koreksi</option>
               <option value="void">Void Transaksi</option>
               <option value="retur_jual">Retur Jual</option>
               <option value="retur_beli">Retur Beli</option>
@@ -71,7 +72,7 @@ export async function renderKartuStokModule(container) {
   `;
 
   // Muat opsi dropdown produk secara paralel (non-blocking terhadap tabel kartu stok)
-  const muatDropdownProdukPromise = apiCall('produk.list', { limit: 200, aktif_saja: false })
+  const muatDropdownProdukPromise = apiCall('produk.list', { limit: 500, aktif_saja: false })
     .then((res) => {
       const selectProd = $('#filter-ks-produk', container);
       if (selectProd) {
@@ -146,14 +147,14 @@ async function muatDataKartuStok(container) {
         <table class="table table-kartu-stok">
           <thead>
             <tr>
-              <th style="width: 120px; min-width: 120px; white-space: nowrap;">Waktu</th>
-              <th style="min-width: 160px;">Nama Produk & Varian</th>
-              <th style="width: 80px; text-align: center;">Jenis</th>
-              <th style="width: 130px; min-width: 130px; white-space: nowrap;">No. Referensi</th>
-              <th style="text-align: right; min-width: 90px;">Mutasi (+/-)</th>
-              <th style="text-align: right; min-width: 90px;">Saldo Akhir</th>
-              <th style="text-align: right; min-width: 100px;">HPP Mutasi</th>
-              <th style="min-width: 90px;">Petugas</th>
+              <th style="width: 85px; min-width: 80px; white-space: nowrap;">Waktu</th>
+              <th style="min-width: 170px;">Nama Produk & Varian</th>
+              <th style="width: 85px; text-align: center; white-space: nowrap;">Jenis</th>
+              <th style="width: 115px; min-width: 105px; white-space: nowrap;">No. Referensi</th>
+              <th style="text-align: right; width: 85px; min-width: 80px; white-space: nowrap;">Mutasi</th>
+              <th style="text-align: right; width: 85px; min-width: 80px; white-space: nowrap;">Saldo</th>
+              <th style="text-align: right; width: 95px; min-width: 90px; white-space: nowrap;">HPP</th>
+              <th style="width: 90px; min-width: 85px; white-space: nowrap;">Petugas</th>
               <th style="min-width: 130px; max-width: 220px;">Keterangan</th>
             </tr>
           </thead>
@@ -163,7 +164,7 @@ async function muatDataKartuStok(container) {
     items.forEach((ks) => {
       const isMasuk = ks.qty > 0;
       let badgeClass = 'badge-info';
-      let labelTipe = ks.tipe;
+      let labelTipe = ks.tipe || 'Mutasi';
 
       if (ks.tipe === 'beli') {
         badgeClass = 'badge-success';
@@ -177,40 +178,67 @@ async function muatDataKartuStok(container) {
       } else if (ks.tipe === 'void') {
         badgeClass = 'badge-warning';
         labelTipe = 'Void';
+      } else if (ks.tipe === 'koreksi') {
+        badgeClass = 'badge-secondary';
+        labelTipe = 'Saldo Awal';
+      } else if (ks.tipe === 'retur_jual') {
+        badgeClass = 'badge-success';
+        labelTipe = 'Retur Jual';
+      } else if (ks.tipe === 'retur_beli') {
+        badgeClass = 'badge-danger';
+        labelTipe = 'Retur Beli';
       }
+
+      // Pemisahan Tanggal & Waktu agar hemat ruang horizontal
+      const rawTgl = formatTanggal(ks.created_at) || '-';
+      const partsTgl = rawTgl.split(' ');
+      const tglOnly = partsTgl[0] || rawTgl;
+      const jamOnly = partsTgl.slice(1).join(' ');
+
+      // Format No. Referensi (bersihkan UUID acak pada Saldo Awal)
+      let tampilanRef = ks.ref_id || '-';
+      const isSaldoAwal = ks.tipe === 'koreksi' && (tampilanRef === 'STOK-AWAL' || tampilanRef === ks.produk_id || /^[0-9a-f-]{36}$/i.test(tampilanRef));
+      const refHtml = isSaldoAwal
+        ? '<span class="badge badge-secondary" style="font-size: 11px; font-weight: 600; padding: 2px 7px;">STOK-AWAL</span>'
+        : `<span class="tabular font-mono fw-bold text-xs" style="white-space: nowrap;">${escapeHtml(tampilanRef)}</span>`;
 
       html += `
         <tr>
-          <td class="text-xs text-muted" data-label="Waktu">
-            ${formatTanggal(ks.created_at)}
+          <td data-label="Waktu" style="white-space: nowrap;">
+            <div class="tabular font-mono text-xs fw-semibold" style="line-height: 1.2;">${escapeHtml(tglOnly)}</div>
+            ${jamOnly ? `<div class="tabular font-mono text-2xs text-muted" style="line-height: 1.2; margin-top: 2px;">${escapeHtml(jamOnly)}</div>` : ''}
           </td>
           <td data-label="Produk & Varian">
-            <div class="cell-stack">
-              <div class="fw-semibold">${escapeHtml(ks.produk_nama)}</div>
-              ${ks.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(ks.varian_nama)}</div>` : ''}
-              <div class="text-xs text-muted">SKU: ${escapeHtml(ks.produk_sku || '-')}</div>
+            <div class="cell-stack" style="gap: 2px;">
+              <div class="fw-semibold text-sm" style="line-height: 1.25;">${escapeHtml(ks.produk_nama)}</div>
+              ${ks.varian_nama ? `<div class="text-xs text-primary fw-medium">${escapeHtml(ks.varian_nama)}</div>` : ''}
+              <div class="text-2xs text-muted font-mono">SKU: ${escapeHtml(ks.produk_sku || '-')}</div>
             </div>
           </td>
-          <td data-label="Jenis">
-            <span class="badge ${badgeClass}">${labelTipe}</span>
+          <td data-label="Jenis" style="text-align: center; white-space: nowrap;">
+            <span class="badge ${badgeClass}" style="font-size: 11px; padding: 2px 7px;">${labelTipe}</span>
           </td>
           <td data-label="No. Referensi">
-            <span class="tabular fw-bold text-sm">${escapeHtml(ks.ref_id || '-')}</span>
+            ${refHtml}
           </td>
-          <td style="text-align: right;" class="tabular fw-bold ${isMasuk ? 'text-success' : 'text-danger'}" data-label="Mutasi">
-            ${isMasuk ? '+' : ''}${formatQty(ks.qty)} ${escapeHtml(ks.satuan_dasar)}
+          <td style="text-align: right; white-space: nowrap;" class="tabular font-mono text-xs fw-bold ${isMasuk ? 'text-success' : 'text-danger'}" data-label="Mutasi">
+            ${isMasuk ? '+' : ''}${formatQty(ks.qty)} <span class="text-2xs fw-normal text-muted">${escapeHtml(ks.satuan_dasar)}</span>
           </td>
-          <td style="text-align: right;" class="tabular fw-semibold" data-label="Saldo Akhir">
-            ${formatQty(ks.saldo)} ${escapeHtml(ks.satuan_dasar)}
+          <td style="text-align: right; white-space: nowrap;" class="tabular font-mono text-xs fw-semibold" data-label="Saldo Akhir">
+            ${formatQty(ks.saldo)} <span class="text-2xs fw-normal text-muted">${escapeHtml(ks.satuan_dasar)}</span>
           </td>
-          <td style="text-align: right;" class="tabular" data-label="HPP Mutasi">
+          <td style="text-align: right; white-space: nowrap;" class="tabular font-mono text-xs" data-label="HPP Mutasi">
             ${formatRupiah(ks.hpp)}
           </td>
-          <td class="text-sm" data-label="Petugas">
-            ${escapeHtml(ks.petugas_nama || '-')}
+          <td data-label="Petugas" style="white-space: nowrap;">
+            <div class="text-xs" style="max-width: 90px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(ks.petugas_nama || '-')}">
+              ${escapeHtml(ks.petugas_nama || '-')}
+            </div>
           </td>
-          <td class="text-xs text-muted" style="max-width: 200px;" data-label="Keterangan">
-            ${escapeHtml(ks.keterangan || '-')}
+          <td data-label="Keterangan" style="min-width: 130px; max-width: 220px;">
+            <div class="text-xs text-muted ks-cell-keterangan" title="${escapeHtml(ks.keterangan || '-')}">
+              ${escapeHtml(ks.keterangan || '-')}
+            </div>
           </td>
         </tr>
       `;

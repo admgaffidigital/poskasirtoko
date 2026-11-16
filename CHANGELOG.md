@@ -17,6 +17,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- [KARTU-STOK] [UI] [BACKEND] **Optimasi Menyeluruh Buku Besar Kartu Stok & Tampilan 1 Layar**:
+  - **Tampilan Muat 1 Layar Tanpa Geser Horizontal**: Menata ulang proporsi dan lebar 9 kolom tabel kartu stok (Waktu, Nama Produk & Varian, Jenis, No. Referensi, Mutasi, Saldo, HPP, Petugas, Keterangan) dengan menumpuk tanggal & jam secara vertikal dan merampingkan kolom angka tabular, sehingga seluruh data terlihat utuh di layar laptop/desktop tanpa terpotong ke kanan.
+  - **Penyempurnaan Jenis Mutasi & Filter**: Menambahkan pemetaan resmi jenis mutasi `koreksi` ber-badge rapi `Saldo Awal` (menggunakan `badge-secondary`) serta menambahkan opsi `Saldo Awal / Koreksi` ke dalam dropdown filter Jenis Mutasi.
+  - **Pembersihan No. Referensi UUID**: Menghilangkan tampilan kode UUID database 36 karakter mentah pada saldo awal produk dan menggantinya dengan badge profesional `STOK-AWAL`.
+  - **Perbaikan Teks Keterangan**: Menata kolom keterangan dengan pembungkusan kata rapi (`word-break: break-word`), batasan 2 baris proporsional di desktop dengan tooltip `title` lengkap saat diarahkan mouse, dan tampilan teks utuh pada kartu mobile.
+  - **Audit Retensi Produk Terhapus**: Backend `aksiKartuStokList_` dan `aksiOpnameList_` di `backend/kode.gs` diperbarui untuk tetap membaca produk terhapus (`{ termasukTerhapus: true }`), sehingga riwayat mutasi barang yang sudah dihapus tidak lagi berstatus "Produk Tidak Ditemukan", melainkan tetap menampilkan nama asli barang, kode SKU, dan satuan dasarnya dengan penanda `(Dihapus)`.
+  - File terdampak: [frontend/js/modules/kartu-stok.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/kartu-stok.js), [frontend/css/components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css), [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs).
+
 - [PRODUK] [UI] **Fitur Duplikat / Salin Produk (Product Cloning)**:
   - Tombol aksi `Salin` (`btn-duplikat-prd`) dengan ikon SVG murni (`ICONS.copy`) pada setiap baris tabel dan kartu produk.
   - Membuka formulir produk lengkap dengan seluruh atribut telah terisi otomatis (HPP, margin, harga ritel, harga grosir, min grosir qty, kategori, satuan konversi, serta daftar varian).
