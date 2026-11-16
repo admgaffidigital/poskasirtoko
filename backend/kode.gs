@@ -269,6 +269,8 @@ const RUTE = {
 
   // Kartu Stok (Fase 3)
   'kartuStok.list': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiKartuStokList_ },
+  'kartuStok.delete': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiKartuStokDelete_ },
+  'kartuStok.bersihkanSampah': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiKartuStokBersihkanSampah_ },
 
   // Stok Opname (Fase 3)
   'opname.list': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiOpnameList_ },
@@ -3647,6 +3649,14 @@ function aksiKartuStokList_(ctx) {
     });
   }
 
+  // Filter sembunyikan produk terhapus (opsional)
+  if (p.sembunyikan_terhapus) {
+    data = data.filter(function (ks) {
+      const pr = produkPeta[ks.produk_id];
+      return pr && !pr.deleted;
+    });
+  }
+
   // Urutkan terbaru di atas
   data.sort(function (a, b) {
     return String(b.created_at || '').localeCompare(String(a.created_at || ''));
@@ -3662,6 +3672,50 @@ function aksiKartuStokList_(ctx) {
     page: page,
     limit: limit
   };
+}
+
+/** kartuStok.delete — Hapus (soft-delete) satu catatan kartu stok (Khusus Owner). */
+function aksiKartuStokDelete_(ctx) {
+  if (ctx.user.role !== ROLE.OWNER) gagal_(KODE.FORBIDDEN, 'Hanya Owner yang berhak menghapus riwayat kartu stok.');
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Kartu Stok', { wajib: true });
+
+  const ks = cariById_('Kartu_Stok', id);
+  if (!ks) gagal_(KODE.NOT_FOUND, 'Catatan kartu stok tidak ditemukan.');
+
+  hapusLunak_('Kartu_Stok', id, ctx.user.id);
+  catatAudit_(ctx.user.id, 'kartu_stok_hapus', 'KARTU_STOK', id, { produk_id: ks.produk_id, tipe: ks.tipe, qty: ks.qty, ref_id: ks.ref_id });
+  return { pesan: 'Catatan kartu stok berhasil dihapus.' };
+}
+
+/** kartuStok.bersihkanSampah — Bersihkan seluruh mutasi dari produk yang sudah terhapus (Khusus Owner). */
+function aksiKartuStokBersihkanSampah_(ctx) {
+  if (ctx.user.role !== ROLE.OWNER) gagal_(KODE.FORBIDDEN, 'Hanya Owner yang berhak membersihkan riwayat kartu stok.');
+
+  const semuaKartu = bacaSemua_('Kartu_Stok');
+  const semuaProduk = bacaSemua_('Produk', { termasukTerhapus: true });
+
+  const produkPeta = {};
+  semuaProduk.forEach(function (pr) { produkPeta[pr.id] = pr; });
+
+  const idDihapus = [];
+  semuaKartu.forEach(function (ks) {
+    const pr = produkPeta[ks.produk_id];
+    if (!pr || pr.deleted) {
+      idDihapus.push(ks.id);
+    }
+  });
+
+  if (idDihapus.length === 0) {
+    return { pesan: 'Tidak ada catatan kartu stok dari produk terhapus.', total_dibersihkan: 0 };
+  }
+
+  idDihapus.forEach(function (id) {
+    hapusLunak_('Kartu_Stok', id, ctx.user.id);
+  });
+
+  catatAudit_(ctx.user.id, 'kartu_stok_bersihkan_sampah', 'KARTU_STOK', '', { total_dibersihkan: idDihapus.length });
+  return { pesan: idDihapus.length + ' catatan kartu stok dari produk terhapus berhasil dibersihkan.', total_dibersihkan: idDihapus.length };
 }
 
 /** opname.list — Daftar dokumen stok opname fisik vs sistem. */

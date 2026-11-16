@@ -16,9 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.59] - 2026-11-17
+
 ### Added
+- [KARTU-STOK] [BACKEND] [SECURITY] **Fitur Hapus & Bersihkan Sampah Mutasi Stok (Role Owner Only)**:
+  - **API Rute Baru**: Menambahkan endpoint `kartuStok.delete` dan `kartuStok.bersihkanSampah` di `backend/kode.gs` dengan validasi peran ketat (`roles: [ROLE.OWNER]`).
+  - **Hapus Satuan per Baris**: Tombol hapus baris mutasi stok (`.btn-del-ks`) berikon SVG tong sampah merah pada setiap baris tabel kartu stok (khusus sesi Owner), dilengkapi modal konfirmasi dialog custom (`showConfirm`) dan audit log `kartu_stok_hapus`.
+  - **Bersihkan Sampah Otomatis**: Tombol "Bersihkan Sampah" (`#btn-bersihkan-sampah-ks`) pada bilah filter kartu stok untuk membersihkan seluruh riwayat mutasi dari produk yang sudah dihapus (`deleted === true`) dalam 1 kali klik aman dengan modal konfirmasi.
+  - **Sakelar Filter Sembunyikan Terhapus**: Menambahkan sakelar switch `#filter-ks-sembunyikan-terhapus` agar kartu stok dapat menyaring atau menampilkan mutasi produk terhapus sesuai preferensi.
 - [KARTU-STOK] [UI] [BACKEND] **Optimasi Menyeluruh Buku Besar Kartu Stok & Tampilan 1 Layar**:
-  - **Tampilan Muat 1 Layar Tanpa Geser Horizontal**: Menata ulang proporsi dan lebar 9 kolom tabel kartu stok (Waktu, Nama Produk & Varian, Jenis, No. Referensi, Mutasi, Saldo, HPP, Petugas, Keterangan) dengan menumpuk tanggal & jam secara vertikal dan merampingkan kolom angka tabular, sehingga seluruh data terlihat utuh di layar laptop/desktop tanpa terpotong ke kanan.
+  - **Tampilan Muat 1 Layar Tanpa Geser Horizontal**: Menata ulang proporsi dan lebar 10 kolom tabel kartu stok (Waktu, Nama Produk & Varian, Jenis, No. Referensi, Mutasi, Saldo, HPP, Petugas, Keterangan, Aksi) dengan menumpuk tanggal & jam secara vertikal dan merampingkan kolom angka tabular, sehingga seluruh data terlihat utuh di layar laptop/desktop tanpa terpotong ke kanan.
   - **Penyempurnaan Jenis Mutasi & Filter**: Menambahkan pemetaan resmi jenis mutasi `koreksi` ber-badge rapi `Saldo Awal` (menggunakan `badge-secondary`) serta menambahkan opsi `Saldo Awal / Koreksi` ke dalam dropdown filter Jenis Mutasi.
   - **Pembersihan No. Referensi UUID**: Menghilangkan tampilan kode UUID database 36 karakter mentah pada saldo awal produk dan menggantinya dengan badge profesional `STOK-AWAL`.
   - **Perbaikan Teks Keterangan**: Menata kolom keterangan dengan pembungkusan kata rapi (`word-break: break-word`), batasan 2 baris proporsional di desktop dengan tooltip `title` lengkap saat diarahkan mouse, dan tampilan teks utuh pada kartu mobile.
@@ -53,6 +60,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   - File terdampak: [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs), [frontend/js/modules/kategori.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/kategori.js).
 
 ### Changed
+- [PRODUK] [UI] **Penataan Ramping Kolom Aksi Tabel Produk (Zero Overflow)**:
+  - Mengatasi masalah tombol aksi terpotong di tepi kanan layar (`Cepat` dan `Ubah` tampil, sedangkan `Salin` dan `Hapus` terdorong keluar layar).
+  - Menggunakan tombol `btn-xs` berukuran ringkas (`height: 26px`, padding ramping, gap 3px) dan ikon SVG murni.
+  - Menyesuaikan proporsi kolom tabel produk (`Nama Produk`, `SKU / Barcode`, `Satuan`, `HPP`, `Harga Ritel`, `Harga Grosir`, `Stok`, dan `Aksi`) serta menurunkan `min-width` `.table-produk` dari `960px` menjadi `800px`, sehingga seluruh tabel dan 4 tombol aksi (`Cepat`, `Ubah`, `Salin`, `Hapus`) muat 100% di layar desktop/laptop standar (1280px / 1366px dengan sidebar 240px) tanpa ada elemen yang terpotong.
 - [PRODUK] **Satuan Otomatis Huruf Besar (UPPERCASE) & Batas Stok Minimum Default 0**:
   - Satuan dasar (`prd-satuan`) dan satuan konversi (`sat-nama`) otomatis dikonversi menjadi huruf kapital/besar (UPPERCASE) baik saat pengetikan di antarmuka maupun saat disimpan ke database.
   - Nilai bawaan default satuan dasar diubah menjadi `PCS`.

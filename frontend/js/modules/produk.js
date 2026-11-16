@@ -451,14 +451,14 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             <table class="table table-produk">
               <thead>
                 <tr>
-                  <th style="min-width: 220px;">Nama Produk</th>
-                  <th style="min-width: 140px; white-space: nowrap;">SKU / Barcode</th>
-                  <th style="min-width: 80px;">Satuan</th>
-                  ${!isKasir ? '<th style="text-align: right; min-width: 110px; white-space: nowrap;">HPP</th>' : ''}
-                  <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Ritel</th>
-                  <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Grosir</th>
-                  <th style="text-align: center; min-width: 80px; white-space: nowrap;">Stok</th>
-                  ${canEdit ? '<th style="min-width: 260px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
+                  <th style="min-width: 150px;">Nama Produk</th>
+                  <th style="width: 120px; min-width: 110px; white-space: nowrap;">SKU / Barcode</th>
+                  <th style="width: 65px; min-width: 60px; text-align: center;">Satuan</th>
+                  ${!isKasir ? '<th style="text-align: right; width: 95px; min-width: 85px; white-space: nowrap;">HPP</th>' : ''}
+                  <th style="text-align: right; width: 100px; min-width: 90px; white-space: nowrap;">Harga Ritel</th>
+                  <th style="text-align: right; width: 100px; min-width: 90px; white-space: nowrap;">Harga Grosir</th>
+                  <th style="text-align: center; width: 65px; min-width: 60px; white-space: nowrap;">Stok</th>
+                  ${canEdit ? '<th style="width: 175px; min-width: 170px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
                 </tr>
               </thead>
               <tbody>

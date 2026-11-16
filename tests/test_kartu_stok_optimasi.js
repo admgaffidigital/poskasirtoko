@@ -49,6 +49,25 @@ const kodeGs = fs.readFileSync(path.join(__dirname, '../backend/kode.gs'), 'utf8
 assert(kodeGs.includes("bacaSemua_('Produk', { termasukTerhapus: true })"), 'Backend harus membaca produk termasuk yang terhapus untuk audit');
 console.log('  ✔ [PASS] 7. Backend kartu stok mempertahankan nama produk asli dan satuan untuk barang terhapus');
 
+// Tes 8: Fitur Hapus & Bersihkan Sampah Khusus Owner
+assert(ksJs.includes('btn-del-ks'), 'Tombol hapus baris mutasi stok harus ada untuk Owner');
+assert(ksJs.includes('btn-bersihkan-sampah-ks'), 'Tombol bersihkan sampah mutasi harus ada untuk Owner');
+assert(kodeGs.includes("'kartuStok.delete'"), 'Backend harus mendaftarkan rute kartuStok.delete');
+assert(kodeGs.includes("'kartuStok.bersihkanSampah'"), 'Backend harus mendaftarkan rute kartuStok.bersihkanSampah');
+assert(kodeGs.includes('aksiKartuStokDelete_'), 'Fungsi aksiKartuStokDelete_ harus terdefinisi');
+assert(kodeGs.includes('aksiKartuStokBersihkanSampah_'), 'Fungsi aksiKartuStokBersihkanSampah_ harus terdefinisi');
+console.log('  ✔ [PASS] 8. Fitur Hapus Catatan Mutasi & Bersihkan Sampah Produk Terhapus Khusus Owner terverifikasi');
+
+// Tes 9: Tabel Produk Kolom Aksi Ramping & Tidak Terpotong
+const prdJs = fs.readFileSync(path.join(__dirname, '../frontend/js/modules/produk.js'), 'utf8');
+assert(prdJs.includes('btn-quick-edit-prd'), 'Tombol Cepat harus ada');
+assert(prdJs.includes('btn-edit-prd'), 'Tombol Ubah harus ada');
+assert(prdJs.includes('btn-duplikat-prd'), 'Tombol Salin harus ada');
+assert(prdJs.includes('btn-del-prd'), 'Tombol Hapus harus ada');
+assert(!prdJs.includes('min-width: 260px'), 'Kolom Aksi tabel produk tidak boleh 260px (harus ramping agar tidak terpotong)');
+assert(cssContent.includes('.table-produk'), 'CSS harus memuat aturan table-produk');
+console.log('  ✔ [PASS] 9. Seluruh 4 tombol Aksi Produk (Cepat, Ubah, Salin, Hapus) terpasang ramping tanpa terpotong');
+
 console.log('\n=============================================');
-console.log('TOTAL UJI: 7 | LULUS: 7 | GAGAL: 0');
+console.log('TOTAL UJI: 9 | LULUS: 9 | GAGAL: 0');
 console.log('=============================================\n');

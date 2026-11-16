@@ -1060,7 +1060,8 @@ input[type="password"] {
 /* Min-width tabel desktop agar kolom tidak terhimpit dan pas di layar */
 @media (min-width: 768px) {
   .table-produk {
-    min-width: 960px;
+    min-width: 800px;
+    width: 100%;
   }
 
   .table-pelanggan {
@@ -1076,7 +1077,7 @@ input[type="password"] {
   }
 
   .table-kartu-stok {
-    min-width: 820px;
+    min-width: 780px;
     width: 100%;
   }
 

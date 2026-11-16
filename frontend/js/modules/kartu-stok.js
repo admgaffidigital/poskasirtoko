@@ -5,11 +5,14 @@
 
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
-import { ICONS, showToast } from '../utils/ui.js';
+import { ICONS, showToast, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, formatTanggal } from '../utils/format.js';
 
 export async function renderKartuStokModule(container) {
+  const user = store.getState().user;
+  const isOwner = user && user.role === 'owner';
+
   container.innerHTML = `
     <div class="stack">
       <div class="page-header">
@@ -53,14 +56,29 @@ export async function renderKartuStokModule(container) {
             <input type="date" class="input" id="filter-ks-sampai">
           </div>
 
-          <button type="button" class="btn btn-secondary btn-icon ks-btn-refresh" id="btn-refresh-ks" title="Muat Ulang">
-            ${ICONS.refresh}
-          </button>
+          <div class="row items-center" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-icon ks-btn-refresh" id="btn-refresh-ks" title="Muat Ulang">
+              ${ICONS.refresh}
+            </button>
+            ${isOwner ? `
+              <button type="button" class="btn btn-outline-danger btn-sm" id="btn-bersihkan-sampah-ks" title="Bersihkan Mutasi Produk Terhapus (Khusus Owner)" style="display: inline-flex; align-items: center; gap: 6px; height: 40px; white-space: nowrap; padding: 0 12px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Bersihkan Sampah</span>
+              </button>
+            ` : ''}
+          </div>
         </div>
 
-        <div class="input-group" style="margin-top: var(--sp-1);">
-          <span class="input-icon">${ICONS.search}</span>
-          <input type="search" class="input" id="search-ks" placeholder="Cari nomor dokumen referensi, nama barang, SKU, atau keterangan mutasi...">
+        <div class="row-between items-center" style="margin-top: var(--sp-1); gap: var(--sp-2); flex-wrap: wrap;">
+          <div class="input-group" style="flex: 1; min-width: 260px;">
+            <span class="input-icon">${ICONS.search}</span>
+            <input type="search" class="input" id="search-ks" placeholder="Cari nomor dokumen referensi, nama barang, SKU, atau keterangan mutasi...">
+          </div>
+          <label class="switch" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; user-select: none;">
+            <input type="checkbox" id="filter-ks-sembunyikan-terhapus" checked>
+            <span class="switch-track"></span>
+            <span class="text-xs fw-medium text-muted">Sembunyikan Produk Terhapus</span>
+          </label>
         </div>
 
         <!-- Tabel Riwayat Mutasi -->
@@ -96,10 +114,32 @@ export async function renderKartuStokModule(container) {
   $('#filter-ks-tipe', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-dari', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sampai', container)?.addEventListener('change', pemicuMuat);
+  $('#filter-ks-sembunyikan-terhapus', container)?.addEventListener('change', pemicuMuat);
   $('#btn-refresh-ks', container)?.addEventListener('click', async () => {
     await muatDataKartuStok(container);
     showToast('Data kartu stok berhasil diperbarui', 'success', 1800);
   });
+
+  if (isOwner) {
+    $('#btn-bersihkan-sampah-ks', container)?.addEventListener('click', async () => {
+      const setuju = await showConfirm({
+        title: 'Bersihkan Seluruh Mutasi Produk Terhapus?',
+        message: 'Sistem akan menghapus seluruh catatan kartu stok dari produk yang sudah dihapus dari master produk toko (data sampah uji coba). Tindakan ini khusus Owner.',
+        confirmText: 'Ya, Bersihkan Sampah',
+        danger: true
+      });
+
+      if (!setuju) return;
+
+      try {
+        const res = await apiCall('kartuStok.bersihkanSampah', {});
+        showToast(res.pesan || 'Mutasi produk terhapus berhasil dibersihkan.', 'success', 3000);
+        await muatDataKartuStok(container);
+      } catch (err) {
+        showToast(err.message || 'Gagal membersihkan sampah kartu stok.', 'error');
+      }
+    });
+  }
 
   let timeoutCari = null;
   $('#search-ks', container)?.addEventListener('input', (e) => {
@@ -116,10 +156,12 @@ async function muatDataKartuStok(container) {
   const area = $('#area-tabel-kartu-stok', container);
   if (!area) return;
 
+  const isOwner = store.getState().user?.role === 'owner';
   const produkId = $('#filter-ks-produk', container)?.value || '';
   const tipe = $('#filter-ks-tipe', container)?.value || '';
   const dari = $('#filter-ks-dari', container)?.value || '';
   const sampai = $('#filter-ks-sampai', container)?.value || '';
+  const sembunyikanTerhapus = $('#filter-ks-sembunyikan-terhapus', container)?.checked ?? true;
   const q = $('#search-ks', container)?.value.trim() || '';
 
   try {
@@ -128,6 +170,7 @@ async function muatDataKartuStok(container) {
       tipe: tipe,
       dari: dari,
       sampai: sampai,
+      sembunyikan_terhapus: sembunyikanTerhapus,
       q: q,
       limit: 100
     });
@@ -147,15 +190,16 @@ async function muatDataKartuStok(container) {
         <table class="table table-kartu-stok">
           <thead>
             <tr>
-              <th style="width: 85px; min-width: 80px; white-space: nowrap;">Waktu</th>
-              <th style="min-width: 170px;">Nama Produk & Varian</th>
-              <th style="width: 85px; text-align: center; white-space: nowrap;">Jenis</th>
-              <th style="width: 115px; min-width: 105px; white-space: nowrap;">No. Referensi</th>
-              <th style="text-align: right; width: 85px; min-width: 80px; white-space: nowrap;">Mutasi</th>
-              <th style="text-align: right; width: 85px; min-width: 80px; white-space: nowrap;">Saldo</th>
-              <th style="text-align: right; width: 95px; min-width: 90px; white-space: nowrap;">HPP</th>
-              <th style="width: 90px; min-width: 85px; white-space: nowrap;">Petugas</th>
-              <th style="min-width: 130px; max-width: 220px;">Keterangan</th>
+              <th style="width: 80px; min-width: 75px; white-space: nowrap;">Waktu</th>
+              <th style="min-width: 140px;">Nama Produk & Varian</th>
+              <th style="width: 80px; min-width: 75px; text-align: center; white-space: nowrap;">Jenis</th>
+              <th style="width: 110px; min-width: 95px; white-space: nowrap;">No. Referensi</th>
+              <th style="text-align: right; width: 75px; min-width: 70px; white-space: nowrap;">Mutasi</th>
+              <th style="text-align: right; width: 75px; min-width: 70px; white-space: nowrap;">Saldo</th>
+              <th style="text-align: right; width: 85px; min-width: 80px; white-space: nowrap;">HPP</th>
+              <th style="width: 85px; min-width: 75px; white-space: nowrap;">Petugas</th>
+              <th style="min-width: 110px; max-width: 180px;">Keterangan</th>
+              ${isOwner ? '<th style="width: 44px; min-width: 40px; text-align: center; white-space: nowrap;">Aksi</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -235,11 +279,18 @@ async function muatDataKartuStok(container) {
               ${escapeHtml(ks.petugas_nama || '-')}
             </div>
           </td>
-          <td data-label="Keterangan" style="min-width: 130px; max-width: 220px;">
+          <td data-label="Keterangan" style="min-width: 110px; max-width: 180px;">
             <div class="text-xs text-muted ks-cell-keterangan" title="${escapeHtml(ks.keterangan || '-')}">
               ${escapeHtml(ks.keterangan || '-')}
             </div>
           </td>
+          ${isOwner ? `
+            <td data-label="Aksi" style="text-align: center; white-space: nowrap;">
+              <button type="button" class="btn btn-ghost btn-xs text-danger btn-del-ks" data-id="${ks.id}" data-nama="${escapeHtml(ks.produk_nama)}" data-ref="${escapeHtml(ks.ref_id || '-')}" title="Hapus Catatan Mutasi (Khusus Owner)" style="padding: 4px; border-radius: var(--radius-sm);">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </td>
+          ` : ''}
         </tr>
       `;
     });
@@ -251,6 +302,34 @@ async function muatDataKartuStok(container) {
     `;
 
     area.innerHTML = html;
+
+    // Pasang handler tombol hapus per baris (khusus Owner)
+    if (isOwner) {
+      area.querySelectorAll('.btn-del-ks').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const nama = btn.getAttribute('data-nama');
+          const ref = btn.getAttribute('data-ref');
+
+          const setuju = await showConfirm({
+            title: 'Hapus Catatan Mutasi Stok?',
+            message: `Apakah Anda yakin ingin menghapus catatan mutasi "${nama}" (No. Ref: ${ref})? Tindakan ini khusus Owner untuk membersihkan data sampah/uji coba.`,
+            confirmText: 'Ya, Hapus Mutasi',
+            danger: true
+          });
+
+          if (!setuju) return;
+
+          try {
+            await apiCall('kartuStok.delete', { id });
+            showToast('Catatan mutasi berhasil dihapus.', 'success');
+            await muatDataKartuStok(container);
+          } catch (err) {
+            showToast(err.message || 'Gagal menghapus catatan mutasi.', 'error');
+          }
+        });
+      });
+    }
   } catch (err) {
     area.innerHTML = `
       <div class="alert alert-danger">

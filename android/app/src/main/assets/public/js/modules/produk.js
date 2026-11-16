@@ -451,14 +451,14 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             <table class="table table-produk">
               <thead>
                 <tr>
-                  <th style="min-width: 220px;">Nama Produk</th>
-                  <th style="min-width: 140px; white-space: nowrap;">SKU / Barcode</th>
-                  <th style="min-width: 80px;">Satuan</th>
-                  ${!isKasir ? '<th style="text-align: right; min-width: 110px; white-space: nowrap;">HPP</th>' : ''}
-                  <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Ritel</th>
-                  <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Grosir</th>
-                  <th style="text-align: center; min-width: 80px; white-space: nowrap;">Stok</th>
-                  ${canEdit ? '<th style="min-width: 260px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
+                  <th style="min-width: 150px;">Nama Produk</th>
+                  <th style="width: 120px; min-width: 110px; white-space: nowrap;">SKU / Barcode</th>
+                  <th style="width: 65px; min-width: 60px; text-align: center;">Satuan</th>
+                  ${!isKasir ? '<th style="text-align: right; width: 95px; min-width: 85px; white-space: nowrap;">HPP</th>' : ''}
+                  <th style="text-align: right; width: 100px; min-width: 90px; white-space: nowrap;">Harga Ritel</th>
+                  <th style="text-align: right; width: 100px; min-width: 90px; white-space: nowrap;">Harga Grosir</th>
+                  <th style="text-align: center; width: 65px; min-width: 60px; white-space: nowrap;">Stok</th>
+                  ${canEdit ? '<th style="width: 175px; min-width: 170px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
                 </tr>
               </thead>
               <tbody>
@@ -501,23 +501,23 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
             </td>
             ${canEdit ? `
-              <td style="text-align: right; min-width: 260px; white-space: nowrap;" data-label="Aksi">
-                <div class="table-actions" style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                  <button type="button" class="btn btn-outline-primary btn-sm btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <td style="text-align: right; width: 175px; min-width: 170px; white-space: nowrap;" data-label="Aksi">
+                <div class="table-actions" style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px;">
+                  <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     <span>Cepat</span>
                   </button>
-                  <button type="button" class="btn btn-secondary btn-sm btn-edit-prd" data-id="${p.id}" title="Edit Lengkap">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     <span>Ubah</span>
                   </button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                     <span>Salin</span>
                   </button>
-                  <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk">
+                  <button type="button" class="btn btn-ghost btn-xs text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="padding: 0 5px; height: 26px; min-height: 26px;">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    <span>Hapus</span>
+                    <span class="d-none-desktop">Hapus</span>
                   </button>
                 </div>
               </td>
