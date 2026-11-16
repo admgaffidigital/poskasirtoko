@@ -16,6 +16,32 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.58] - 2026-11-16
+
+### Changed
+- [UI] [BIAYA] **Restrukturisasi Total Antarmuka Mobile Modul Biaya Operasional Toko Ala Native App**:
+  - **Header Ramping 1 Baris**: Mengubah header 2 baris yang memakan ruang vertikal di mobile menjadi 1 baris ramping berdampingan dengan tombol utama `+ Catat Biaya`.
+  - **Filter Periode & Dropdown Simetris**:
+    - Baris 1: Label `PERIODE:` berdampingan dengan badge tanggal aktif berformat pill rounded (`30 Hari Terakhir`).
+    - Baris 2: Segmented preset rentang tanggal diatur dalam **Grid 3×2 simetris** di mobile (*Hari Ini | 7 Hari | 30 Hari* & *Bulan Ini | Tahun Ini | Kustom*) sehingga tidak ada lagi teks tombol yang terpotong di tepi kanan layar (`Tahu...`).
+    - Baris 3: Dropdown Kategori Biaya dan Sumber Dana ditata sejajar **50% : 50%** berdampingan.
+    - Baris 4: Kotak pencarian didampingi tombol segarkan berupa square icon button `${ICONS.refresh}` yang proporsional di sisi kanan.
+  - **Kartu Metrik Finansial (Stat Grid 2×2 di Mobile)**:
+    - Mengganti layout kartu vertikal yang menumpuk panjang menjadi **Grid 2×2 di mobile dan 4 kolom di desktop** menggunakan komponen baku `.stat-grid` dan `.stat-card-pro` di [components.css](file:///c:/POS%20KASIR%20TOKO/frontend/css/components.css).
+    - Menghadirkan icon SVG berlatar warna tema (*Rose* untuk Total Pengeluaran, *Amber* untuk Petty Cash, *Blue* untuk Kas Besar Toko, dan *Purple* untuk Transfer Bank).
+  - **Transformasi Kartu Riwayat Pengeluaran Mobile**:
+    - Mengganti wrapper tabel ke `.table-wrap` dan melengkapi atribut `data-label` pada setiap sel di [biaya.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/biaya.js).
+    - Di layar ponsel, transaksi otomatis bertransformasi menjadi **Kartu Native App** (nomor transaksi sebagai header kartu, nominal pengeluaran merah tebal, badge kategori/sumber dana, dan tombol aksi pembatalan di footer kartu).
+    - Menata *empty state* agar tampil terpusat dan rapi tanpa kepala tabel yang meluap horizontal.
+- [UI] **Eliminasi Total Icon Emoji di Seluruh Frontend**:
+  - Menghapus seluruh emoji (seperti `💸`, `💵`, `💡`) dari modal shift kasir [pos.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/pos.js), modal panduan [produk.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/produk.js), dan form biaya [biaya.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/modules/biaya.js).
+  - Seluruh indikator visual kini 100% menggunakan SVG Icons native (`ICONS`) yang tajam, elegan, dan seragam.
+- [UTILS] **Peningkatan Fleksibilitas Helper DOM (`renderEmpty`)**:
+  - Memperbarui fungsi `renderEmpty` di [frontend/js/utils/dom.js](file:///c:/POS%20KASIR%20TOKO/frontend/js/utils/dom.js) agar bersifat *polymorphic* (mendukung pemanggilan via options object `{ title, text, icon, actionButton }` maupun parameter posisional langsung).
+- [BACKEND] **Penyempurnaan Engine Pemercantik Spreadsheet**:
+  - Mengoreksi penonaktifan gridlines di [backend/kode.gs](file:///c:/POS%20KASIR%20TOKO/backend/kode.gs) menggunakan `sh.setHiddenGridlines(false)` (mengatasi error `TypeError: sh.setHideGridlines is not a function`).
+  - Menjamin sheet `Biaya` yang baru dibuat langsung memiliki format font Roboto, header biru navy, zebra striping, dan format mata uang Rupiah tebal merah pada 50 baris pertama.
+
 ## [1.0.57] - 2026-11-16
 
 ### Added
