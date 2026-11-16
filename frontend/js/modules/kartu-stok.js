@@ -10,7 +10,7 @@ import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, formatTanggal } from '../utils/format.js';
 
 export async function renderKartuStokModule(container) {
-  const user = store.getState().user;
+  const user = store.get('user');
   const isOwner = user && user.role === 'owner';
 
   container.innerHTML = `
@@ -156,7 +156,7 @@ async function muatDataKartuStok(container) {
   const area = $('#area-tabel-kartu-stok', container);
   if (!area) return;
 
-  const isOwner = store.getState().user?.role === 'owner';
+  const isOwner = store.get('user')?.role === 'owner';
   const produkId = $('#filter-ks-produk', container)?.value || '';
   const tipe = $('#filter-ks-tipe', container)?.value || '';
   const dari = $('#filter-ks-dari', container)?.value || '';

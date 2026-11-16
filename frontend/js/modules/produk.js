@@ -1317,8 +1317,8 @@ function bukaModalEditCepat(container, p) {
       });
       showToast('Harga & data produk berhasil diperbarui.', 'success');
       modal.close();
-      const canEdit = store.getState().user?.role !== 'kasir';
-      const isKasir = store.getState().user?.role === 'kasir';
+      const canEdit = store.get('user')?.role !== 'kasir';
+      const isKasir = store.get('user')?.role === 'kasir';
       await muatProduk(container, canEdit, isKasir);
     } catch (err) {
       showToast(err.message || 'Gagal menyimpan perubahan produk.', 'error');

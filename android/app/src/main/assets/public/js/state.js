@@ -65,6 +65,10 @@ class Store {
     }
   }
 
+  getState() {
+    return this.state;
+  }
+
   get(key) {
     return this.state[key];
   }
