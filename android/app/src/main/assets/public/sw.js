@@ -35,6 +35,7 @@ const ASSETS = [
   './js/modules/pengaturan.js',
   './js/modules/users.js',
   './js/modules/pos.js',
+  './js/modules/biaya.js',
   './js/utils/format.js',
   './js/utils/ui.js',
   './js/utils/dom.js',

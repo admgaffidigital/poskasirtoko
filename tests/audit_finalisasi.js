@@ -151,8 +151,8 @@ console.log('  ✔ LULUS: Seluruh tabel di 16 modul siap transformasi Kartu Nati
 console.log('  ✔ LULUS: Label SKU bersih, floating cart fixed di viewport, dan fitur sinkronisasi global aktif.');
 console.log('  ✔ LULUS: Fitur koneksi & uji printer Bluetooth RawBT terintegrasi lengkap di seluruh modul.');
 
-// 7. Audit Sinkronisasi Versi & Build APK
-console.log('\n[7/7] Memeriksa konsistensi versi dan kesiapan file APK Android...');
+// 7. Audit Sinkronisasi Versi, Service Worker, Ketiadaan Emoji, & Build APK
+console.log('\n[7/7] Memeriksa konsistensi versi, Service Worker, eliminasi emoji, dan kesiapan file APK Android...');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const cfg = fs.readFileSync('frontend/js/config.js', 'utf8');
 const idx = fs.readFileSync('frontend/index.html', 'utf8');
@@ -163,6 +163,26 @@ assert.ok(idx.includes('v' + pkg.version), 'index.html harus sinkron versi');
 assert.ok(sw.includes(pkg.version), 'sw.js harus sinkron versi');
 assert.ok(sw.includes('bersihkanRedirect'), 'sw.js wajib memiliki proteksi bersihkanRedirect untuk mencegah error redirect FetchEvent');
 assert.strictEqual(vercelCfg.cleanUrls, false, 'vercel.json wajib menetapkan cleanUrls: false agar index.html tidak di-redirect 308');
+
+// Audit Service Worker Assets mencakup seluruh modul
+for (const mf of modFiles) {
+  assert.ok(sw.includes(`./js/modules/${mf}`), `sw.js wajib meng-cache modul ./js/modules/${mf}`);
+}
+console.log('  ✔ LULUS: Service Worker meng-cache seluruh 17 modul aplikasi termasuk biaya.js.');
+
+// Audit Eliminasi Total Emoji di Seluruh Frontend
+const emojiRe = /[\uD83C-\uDBFF\uDC00-\uDFFF]/;
+let emojiCount = 0;
+for (const file of jsFiles) {
+  const content = fs.readFileSync(file, 'utf8');
+  if (emojiRe.test(content)) {
+    console.error(`  ✖ Ditemukan icon emoji di ${file}`);
+    emojiCount++;
+  }
+}
+assert.strictEqual(emojiCount, 0, 'Seluruh UI frontend wajib 100% bebas dari emoji, gunakan SVG ICONS!');
+console.log('  ✔ LULUS: 0 emoji di seluruh kode antarmuka. 100% konsisten menggunakan SVG icon native.');
+
 assert.ok(fs.existsSync('frontend/download/poskasirtoko.apk'), 'File APK harus ada');
 const apkStat = fs.statSync('frontend/download/poskasirtoko.apk');
 assert.ok(apkStat.size > 1000000 && apkStat.size < 100000000, 'Ukuran APK harus valid (antara 1MB dan 100MB)');
