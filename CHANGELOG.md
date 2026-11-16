@@ -17,6 +17,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Unreleased]
 
 ### Added
+- [PRODUK] [UI] **Fitur Duplikat / Salin Produk (Product Cloning)**:
+  - Tombol aksi `Salin` (`btn-duplikat-prd`) dengan ikon SVG murni (`ICONS.copy`) pada setiap baris tabel dan kartu produk.
+  - Membuka formulir produk lengkap dengan seluruh atribut telah terisi otomatis (HPP, margin, harga ritel, harga grosir, min grosir qty, kategori, satuan konversi, serta daftar varian).
+  - Nama produk otomatis ditambahkan akhiran `(Salinan)` dan teks otomatis terseleksi (*auto-select*) saat form terbuka agar pengguna dapat langsung mengetik spesifikasi variasi baru dengan sangat cepat.
+  - SKU dan Barcode otomatis dikosongkan untuk di-generate baru saat disimpan (mencegah konflik keunikan barcode/SKU).
+  - Stok awal di-reset ke `0` untuk menjaga integritas fisik gudang.
+
+- [PRODUK] [UI] **Fitur Edit Cepat Harga & Stok (Quick Edit Modal)**:
+  - Tombol aksi `Cepat` (`btn-quick-edit-prd`) dengan ikon SVG petir (`ICONS.zap`) pada setiap baris tabel dan kartu produk.
+  - Membuka modal ringkas 1 layar instan (tanpa tab) untuk mengubah data esensial yang sering diperbarui: HPP modal, Harga Ritel (dengan perhitungan live margin laba otomatis), Harga Grosir & Min Qty Grosir, Batas Stok Minimum, dan Sakelar Status Aktif Produk.
+  - Dilengkapi tombol navigasi cepat `Form Lengkap ↗` apabila kasir/owner ingin mengedit foto, varian spesifik, atau satuan konversi.
+
 - [PRODUK] [UI] **Searchable Category Combobox (Dropdown Kategori dengan Pencarian Cepat)**:
   - Mengganti elemen dropdown klasik `<select>` kategori pada modal Tambah/Ubah Produk (`bukaModalFormProduk`) dengan komponen interaktif berarsitektur searchable combobox.
   - Mendukung penataan hirarkis `Induk > Sub` dengan penanda visual status badge `Utama` dan indentasi `↳` untuk sub-kategori.

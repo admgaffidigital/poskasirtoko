@@ -458,7 +458,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                   <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Ritel</th>
                   <th style="text-align: right; min-width: 115px; white-space: nowrap;">Harga Grosir</th>
                   <th style="text-align: center; min-width: 80px; white-space: nowrap;">Stok</th>
-                  ${canEdit ? '<th style="width: 170px; min-width: 170px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
+                  ${canEdit ? '<th style="min-width: 260px; text-align: right; white-space: nowrap;">Aksi</th>' : ''}
                 </tr>
               </thead>
               <tbody>
@@ -501,13 +501,21 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
             </td>
             ${canEdit ? `
-              <td style="text-align: right; min-width: 170px; width: 170px; white-space: nowrap;" data-label="Aksi">
-                <div class="table-actions">
-                  <button type="button" class="btn btn-secondary btn-sm btn-edit-prd" data-id="${p.id}" title="Edit Produk">
+              <td style="text-align: right; min-width: 260px; white-space: nowrap;" data-label="Aksi">
+                <div class="table-actions" style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                  <button type="button" class="btn btn-outline-primary btn-sm btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>Cepat</span>
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm btn-edit-prd" data-id="${p.id}" title="Edit Lengkap">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     <span>Ubah</span>
                   </button>
-                  <button type="button" class="btn btn-outline-danger btn-sm btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk">
+                  <button type="button" class="btn btn-outline-secondary btn-sm btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    <span>Salin</span>
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span>Hapus</span>
                   </button>
@@ -560,9 +568,22 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             </div>
 
             ${canEdit ? `
-              <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-2);">
-                <button type="button" class="btn btn-secondary btn-sm grow btn-edit-prd" data-id="${p.id}">Ubah</button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}">Hapus</button>
+              <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-1); flex-wrap: wrap;">
+                <button type="button" class="btn btn-outline-primary btn-sm grow btn-quick-edit-prd" data-id="${p.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span>Edit Cepat</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm grow btn-edit-prd" data-id="${p.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  <span>Ubah</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <span>Salin</span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="display: inline-flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
               </div>
             ` : ''}
           </div>
@@ -572,13 +593,29 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       area.innerHTML = html;
     }
 
-    // Pasang tombol aksi Ubah & Hapus
+    // Pasang tombol aksi Ubah, Duplikat, Edit Cepat & Hapus
     if (canEdit) {
+      area.querySelectorAll('.btn-quick-edit-prd').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const p = items.find((x) => x.id === id);
+          if (p) bukaModalEditCepat(container, p);
+        });
+      });
+
+      area.querySelectorAll('.btn-duplikat-prd').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const p = items.find((x) => x.id === id);
+          if (p) bukaModalFormProduk(container, p, true);
+        });
+      });
+
       area.querySelectorAll('.btn-edit-prd').forEach((btn) => {
         btn.addEventListener('click', () => {
           const id = btn.getAttribute('data-id');
           const p = items.find((x) => x.id === id);
-          if (p) bukaModalFormProduk(container, p);
+          if (p) bukaModalFormProduk(container, p, false);
         });
       });
 
@@ -1110,16 +1147,222 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
 }
 
 /**
- * Modal Form Tambah / Edit Produk Lengkap
+ * Modal Edit Cepat Produk (Quick Edit Modal)
+ * Fokus pada HPP, Harga Jual Ritel, Grosir, Batas Stok Minimum & Status
  */
-async function bukaModalFormProduk(container, produk) {
-  const isEdit = !!produk;
+function bukaModalEditCepat(container, p) {
+  if (!p) return;
+
+  const bodyHtml = `
+    <form id="form-quick-edit" class="stack" novalidate style="gap: var(--sp-3);">
+      <div class="alert alert-subtle" style="padding: var(--sp-2) var(--sp-3); display: flex; align-items: center; justify-content: space-between; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border);">
+        <div style="min-width: 0; flex: 1; padding-right: 8px;">
+          <div class="fw-bold text-sm" style="word-break: break-word;">${escapeHtml(p.nama)}</div>
+          <div class="text-2xs text-muted mono" style="margin-top: 2px;">
+            ${escapeHtml(p.sku || '-')} &bull; Satuan: <span class="fw-bold text-primary">${escapeHtml(p.satuan_dasar)}</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-xs text-primary btn-ke-form-lengkap" style="flex-shrink: 0; font-size: 11px;">
+          Form Lengkap &nearr;
+        </button>
+      </div>
+
+      <!-- HPP (Harga Modal Acuan) -->
+      <div class="field">
+        <label class="field-label" for="qe-hpp">HPP (Harga Modal Pokok)</label>
+        <div class="input-prefix">
+          <span>Rp</span>
+          <input type="text" class="input input-num fw-bold" id="qe-hpp" value="${formatRupiah(p.hpp, false)}" placeholder="0">
+        </div>
+        <span class="field-hint">Harga modal acuan untuk menghitung margin keuntungan.</span>
+      </div>
+
+      <!-- Harga Jual Ritel & Live Margin -->
+      <div class="field">
+        <div class="row-between items-center" style="margin-bottom: 2px;">
+          <label class="field-label" for="qe-ritel" style="margin-bottom: 0;">Harga Jual Ritel (Rp) <span class="wajib">*</span></label>
+          <span id="qe-badge-margin" class="badge badge-success text-2xs font-mono">Margin: 0%</span>
+        </div>
+        <div class="input-prefix">
+          <span>Rp</span>
+          <input type="text" class="input input-num fw-bold text-primary" id="qe-ritel" value="${formatRupiah(p.harga_ritel, false)}" placeholder="0" data-autofocus>
+        </div>
+      </div>
+
+      <!-- Harga Jual Grosir & Minimal Qty -->
+      <div class="form-grid cols-2" style="gap: var(--sp-2);">
+        <div class="field">
+          <label class="field-label" for="qe-grosir">Harga Jual Grosir (Rp)</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="text" class="input input-num" id="qe-grosir" value="${formatRupiah(p.harga_grosir || p.harga_ritel, false)}" placeholder="0">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="qe-min-grosir">Min Pembelian Grosir</label>
+          <div class="input-suffix">
+            <input type="number" class="input input-num" id="qe-min-grosir" value="${p.min_grosir_qty || 1}" min="1">
+            <span class="text-xs uppercase" style="font-weight: 600;">${escapeHtml(p.satuan_dasar)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batas Stok Minimum & Status Aktif -->
+      <div class="form-grid cols-2" style="gap: var(--sp-2); align-items: flex-end;">
+        <div class="field">
+          <label class="field-label" for="qe-stok-min">Batas Stok Minimum</label>
+          <input type="number" class="input input-num" id="qe-stok-min" value="${p.stok_min !== undefined ? p.stok_min : 0}">
+          <span class="field-hint">Peringatan stok menipis jika stok di bawah batas ini.</span>
+        </div>
+        <div class="field" style="padding-bottom: 8px;">
+          <label class="switch">
+            <input type="checkbox" id="qe-aktif" ${p.aktif !== false ? 'checked' : ''}>
+            <span class="switch-track"></span>
+            <span class="text-sm fw-medium">Status Produk Aktif</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Footer Tombol -->
+      <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-2);">
+        <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-qe">Batal</button>
+        <button type="submit" class="btn btn-primary" id="btn-simpan-qe">Simpan Perubahan</button>
+      </div>
+    </form>
+  `;
+
+  const modal = showModal({
+    title: 'Edit Cepat Produk',
+    body: bodyHtml,
+    size: 'md'
+  });
+
+  const form = $('#form-quick-edit', modal.el);
+  const inputHpp = $('#qe-hpp', form);
+  const inputRitel = $('#qe-ritel', form);
+  const inputGrosir = $('#qe-grosir', form);
+  const marginBadge = $('#qe-badge-margin', form);
+
+  const formatInputRp = (el) => {
+    el.addEventListener('input', () => {
+      const val = parseRupiah(el.value);
+      el.value = formatRupiah(val, false);
+      updateMarginBadge();
+    });
+  };
+  formatInputRp(inputHpp);
+  formatInputRp(inputRitel);
+  formatInputRp(inputGrosir);
+
+  function updateMarginBadge() {
+    const hpp = parseRupiah(inputHpp.value) || 0;
+    const ritel = parseRupiah(inputRitel.value) || 0;
+    if (hpp > 0 && ritel > 0) {
+      const laba = ritel - hpp;
+      const margin = ((laba / ritel) * 100).toFixed(1);
+      marginBadge.textContent = `Margin: ${margin}% | Laba: ${formatRupiah(laba)}`;
+      marginBadge.className = laba < 0 ? 'badge badge-danger text-2xs font-mono' : 'badge badge-success text-2xs font-mono';
+    } else {
+      marginBadge.textContent = 'Margin: -';
+      marginBadge.className = 'badge badge-subtle text-2xs font-mono';
+    }
+  }
+  updateMarginBadge();
+
+  $('.btn-ke-form-lengkap', form)?.addEventListener('click', () => {
+    modal.close();
+    bukaModalFormProduk(container, p);
+  });
+
+  $('#btn-batal-qe', form)?.addEventListener('click', () => modal.close());
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const hpp = parseRupiah(inputHpp.value);
+    const harga_ritel = parseRupiah(inputRitel.value);
+    const harga_grosir = parseRupiah(inputGrosir.value) || harga_ritel;
+    const min_grosir_qty = parseFloat($('#qe-min-grosir', form).value) || 1;
+    const stok_min = parseFloat($('#qe-stok-min', form).value) || 0;
+    const aktif = $('#qe-aktif', form).checked;
+
+    if (harga_ritel <= 0) {
+      inputRitel.focus();
+      showToast('Harga jual ritel wajib diisi dan harus lebih dari 0!', 'error');
+      return;
+    }
+
+    if (hpp > 0 && harga_ritel < hpp) {
+      const setujuRugi = await showConfirm({
+        title: 'Peringatan Harga di Bawah HPP',
+        message: `Harga jual ritel (${formatRupiah(harga_ritel)}) lebih rendah dari HPP modal (${formatRupiah(hpp)}). Apakah Anda yakin ingin melanjutkan?`,
+        confirmText: 'Ya, Lanjutkan',
+        danger: true
+      });
+      if (!setujuRugi) return;
+    }
+
+    const btnSimpan = $('#btn-simpan-qe', form);
+    btnSimpan.disabled = true;
+    btnSimpan.textContent = 'Menyimpan...';
+
+    try {
+      await apiCall('produk.update', {
+        ...p,
+        hpp,
+        harga_ritel,
+        harga_grosir,
+        min_grosir_qty,
+        stok_min,
+        aktif
+      });
+      showToast('Harga & data produk berhasil diperbarui.', 'success');
+      modal.close();
+      const canEdit = store.getState().user?.role !== 'kasir';
+      const isKasir = store.getState().user?.role === 'kasir';
+      await muatProduk(container, canEdit, isKasir);
+    } catch (err) {
+      showToast(err.message || 'Gagal menyimpan perubahan produk.', 'error');
+      btnSimpan.disabled = false;
+      btnSimpan.textContent = 'Simpan Perubahan';
+    }
+  });
+}
+
+/**
+ * Modal Form Tambah / Edit Produk Lengkap (Mendukung Fitur Duplikat Produk)
+ */
+async function bukaModalFormProduk(container, produk, isDuplikat = false) {
+  const isEdit = !isDuplikat && !!produk;
   let isSubmitting = false;
   let daftarKategori = [];
   try {
     const kRes = await apiCall('kategori.list', {});
     daftarKategori = kRes.items || [];
   } catch (e) { }
+
+  const pData = isDuplikat && produk ? {
+    ...produk,
+    id: undefined,
+    nama: `${produk.nama || ''} (Salinan)`.trim(),
+    sku: '',
+    barcode: '',
+    stok: 0,
+    foto_url: produk.foto_url || '',
+    varian: Array.isArray(produk.varian) ? produk.varian.map((v) => ({
+      ...v,
+      id: undefined,
+      sku: '',
+      barcode: '',
+      stok: 0
+    })) : [],
+    satuan_konversi: Array.isArray(produk.satuan_konversi) ? produk.satuan_konversi.map((s) => ({
+      ...s,
+      id: undefined,
+      barcode: ''
+    })) : []
+  } : (produk || null);
+
+  const hasData = isEdit || isDuplikat;
 
   const bodyHtml = `
     <form id="form-produk" class="stack" novalidate>
@@ -1138,8 +1381,8 @@ async function bukaModalFormProduk(container, produk) {
           <div class="row items-center" style="gap: var(--sp-3); flex-wrap: wrap;">
             <!-- Box Preview Foto (1:1 Square) -->
             <div id="prd-foto-preview-box" style="width: 90px; height: 90px; border-radius: var(--radius-lg); border: 2px dashed var(--border); display: grid; place-items: center; overflow: hidden; background: var(--surface-2); position: relative; flex-shrink: 0;">
-              <img src="${isEdit && produk.foto_url ? escapeHtml(produk.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${isEdit && produk.foto_url ? '' : 'display: none;'}">
-              <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${isEdit && produk.foto_url ? 'display: none;' : ''}">
+              <img src="${hasData && pData.foto_url ? escapeHtml(pData.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${hasData && pData.foto_url ? '' : 'display: none;'}">
+              <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${hasData && pData.foto_url ? 'display: none;' : ''}">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                 <div style="font-size: 9px; margin-top: 2px;">Belum Ada</div>
               </div>
@@ -1159,14 +1402,14 @@ async function bukaModalFormProduk(container, produk) {
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                   <span>Kamera</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-hapus-foto" style="${isEdit && produk.foto_url ? '' : 'display: none;'} display: inline-flex; align-items: center; gap: 4px;">
+                <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-hapus-foto" style="${hasData && pData.foto_url ? '' : 'display: none;'} display: inline-flex; align-items: center; gap: 4px;">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   <span>Hapus</span>
                 </button>
               </div>
               <input type="file" id="input-file-foto" accept="image/*" style="display: none;">
               <input type="file" id="input-kamera-foto" accept="image/*" capture="environment" style="display: none;">
-              <input type="hidden" id="prd-foto-url" value="${isEdit && produk.foto_url ? escapeHtml(produk.foto_url) : ''}">
+              <input type="hidden" id="prd-foto-url" value="${hasData && pData.foto_url ? escapeHtml(pData.foto_url) : ''}">
               <span class="field-hint" id="prd-foto-hint">Tersimpan di Google Drive Toko Anda (otomatis dikompres &lt; 150 KB).</span>
             </div>
           </div>
@@ -1174,7 +1417,7 @@ async function bukaModalFormProduk(container, produk) {
 
         <div class="field">
           <label class="field-label" for="prd-nama">Nama Produk <span class="wajib">*</span></label>
-          <input type="text" class="input" id="prd-nama" value="${isEdit ? escapeHtml(produk.nama) : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" data-autofocus>
+          <input type="text" class="input" id="prd-nama" value="${hasData ? escapeHtml(pData.nama || '') : ''}" placeholder="Cth: Semen Padang 50kg, Cat Dulux Pentalite 2.5L" data-autofocus>
         </div>
 
         <div class="form-grid cols-2">
@@ -1183,7 +1426,7 @@ async function bukaModalFormProduk(container, produk) {
               <label class="field-label" for="prd-sku" style="margin-bottom: 0;">Kode SKU</label>
               <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>
             </div>
-            <input type="text" class="input mono uppercase" id="prd-sku" value="${isEdit ? escapeHtml(produk.sku || '') : ''}" placeholder="Auto (cth: SKU-20261113-0001)">
+            <input type="text" class="input mono uppercase" id="prd-sku" value="${isEdit ? escapeHtml(pData.sku || '') : ''}" placeholder="Auto (cth: SKU-20261113-0001)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
           </div>
           <div class="field">
@@ -1191,7 +1434,7 @@ async function bukaModalFormProduk(container, produk) {
               <label class="field-label" for="prd-barcode" style="margin-bottom: 0;">Barcode</label>
               <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>
             </div>
-            <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(produk.barcode || '') : ''}" placeholder="Auto (13 digit EAN-13)">
+            <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(pData.barcode || '') : ''}" placeholder="Auto (13 digit EAN-13)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
           </div>
         </div>
@@ -1200,7 +1443,7 @@ async function bukaModalFormProduk(container, produk) {
           <div class="field">
             <label class="field-label" for="cat-picker-btn">Kategori</label>
             <div class="cat-picker-container" id="cat-picker-wrap">
-              <input type="hidden" id="prd-kategori" name="kategori_id" value="${isEdit ? escapeHtml(produk.kategori_id || '') : ''}">
+              <input type="hidden" id="prd-kategori" name="kategori_id" value="${hasData ? escapeHtml(pData.kategori_id || '') : ''}">
               <div class="cat-picker-trigger" id="cat-picker-btn" tabindex="0" role="combobox" aria-haspopup="listbox" aria-expanded="false" title="Pilih Kategori Produk">
                 <span class="cat-picker-icon">${ICONS.tag}</span>
                 <span class="cat-picker-label grow" id="cat-picker-label">-- Tanpa Kategori --</span>
@@ -1222,13 +1465,13 @@ async function bukaModalFormProduk(container, produk) {
           </div>
           <div class="field">
             <label class="field-label" for="prd-satuan">Satuan Dasar <span class="wajib">*</span></label>
-            <input type="text" class="input uppercase" id="prd-satuan" value="${isEdit ? escapeHtml((produk.satuan_dasar || 'PCS').toUpperCase()) : 'PCS'}" placeholder="Cth: SAK, KG, DUS, BATANG, METER, PCS">
+            <input type="text" class="input uppercase" id="prd-satuan" value="${hasData ? escapeHtml((pData.satuan_dasar || 'PCS').toUpperCase()) : 'PCS'}" placeholder="Cth: SAK, KG, DUS, BATANG, METER, PCS">
           </div>
         </div>
 
         <div class="field">
           <label class="switch">
-            <input type="checkbox" id="prd-aktif" ${!isEdit || produk.aktif ? 'checked' : ''}>
+            <input type="checkbox" id="prd-aktif" ${!hasData || pData.aktif ? 'checked' : ''}>
             <span class="switch-track"></span>
             <span class="text-sm fw-medium">Status Produk Aktif (dapat dijual di kasir)</span>
           </label>
@@ -1244,7 +1487,7 @@ async function bukaModalFormProduk(container, produk) {
           </label>
           <div class="input-prefix" style="max-width: 320px;">
             <span>Rp</span>
-            <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${isEdit ? formatRupiah(produk.hpp, false) : '0'}" placeholder="0">
+            <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${hasData ? formatRupiah(pData.hpp, false) : '0'}" placeholder="0">
           </div>
           <span class="field-hint">Dasar acuan perhitungan persentase margin keuntungan ritel dan grosir.</span>
         </div>
@@ -1289,7 +1532,7 @@ async function bukaModalFormProduk(container, produk) {
               </label>
               <div class="input-prefix">
                 <span>Rp</span>
-                <input type="text" class="input input-num fw-bold text-md" id="prd-ritel" value="${isEdit ? formatRupiah(produk.harga_ritel, false) : '0'}">
+                <input type="text" class="input input-num fw-bold text-md" id="prd-ritel" value="${hasData ? formatRupiah(pData.harga_ritel, false) : '0'}">
               </div>
               <span class="field-hint">Ketik harga langsung atau tentukan persen di sebelah kiri.</span>
             </div>
@@ -1334,7 +1577,7 @@ async function bukaModalFormProduk(container, produk) {
                 </label>
                 <div class="input-prefix">
                   <span>Rp</span>
-                  <input type="text" class="input input-num fw-semibold" id="prd-grosir" value="${isEdit && produk.harga_grosir ? formatRupiah(produk.harga_grosir, false) : ''}" placeholder="Sama dg ritel">
+                  <input type="text" class="input input-num fw-semibold" id="prd-grosir" value="${hasData && pData.harga_grosir ? formatRupiah(pData.harga_grosir, false) : ''}" placeholder="Sama dg ritel">
                 </div>
               </div>
 
@@ -1342,7 +1585,7 @@ async function bukaModalFormProduk(container, produk) {
                 <label class="field-label" for="prd-min-grosir">
                   <span>Min. Qty Grosir</span>
                 </label>
-                <input type="number" class="input input-num" id="prd-min-grosir" value="${isEdit ? produk.min_grosir_qty || 1 : 1}" min="1">
+                <input type="number" class="input input-num" id="prd-min-grosir" value="${hasData ? pData.min_grosir_qty || 1 : 1}" min="1">
               </div>
             </div>
           </div>
@@ -1353,13 +1596,13 @@ async function bukaModalFormProduk(container, produk) {
         <div class="form-grid cols-2">
           <div class="field">
             <label class="field-label" for="prd-stok">${isEdit ? 'Stok Sistem Saat Ini' : 'Stok Awal Fisik'}</label>
-            <input type="number" step="0.001" class="input input-num" id="prd-stok" value="${isEdit ? produk.stok || 0 : 0}" ${isEdit ? 'disabled' : ''}>
+            <input type="number" step="0.001" class="input input-num" id="prd-stok" value="${isEdit ? pData.stok || 0 : 0}" ${isEdit ? 'disabled' : ''}>
             ${isEdit ? '<span class="field-hint">Gunakan modul Stok Opname / Pembelian untuk mengubah stok produk yang sudah ada.</span>' : ''}
           </div>
 
           <div class="field">
             <label class="field-label" for="prd-stok-min">Batas Stok Minimum</label>
-            <input type="number" class="input input-num" id="prd-stok-min" value="${isEdit ? (produk.stok_min !== undefined && produk.stok_min !== null ? produk.stok_min : 0) : 0}">
+            <input type="number" class="input input-num" id="prd-stok-min" value="${hasData ? (pData.stok_min !== undefined && pData.stok_min !== null ? pData.stok_min : 0) : 0}">
             <span class="field-hint">Peringatan stok menipis muncul jika saldo di bawah batas ini.</span>
           </div>
         </div>
@@ -1390,13 +1633,13 @@ async function bukaModalFormProduk(container, produk) {
 
         <div class="field">
           <label class="switch">
-            <input type="checkbox" id="prd-punya-varian" ${isEdit && produk.punya_varian ? 'checked' : ''}>
+            <input type="checkbox" id="prd-punya-varian" ${hasData && pData.punya_varian ? 'checked' : ''}>
             <span class="switch-track"></span>
             <span class="text-sm fw-medium">Produk memiliki beberapa varian (Warna, Ukuran, Tebal)</span>
           </label>
         </div>
 
-        <div id="area-input-varian" class="stack ${isEdit && produk.punya_varian ? '' : 'hidden'}">
+        <div id="area-input-varian" class="stack ${hasData && pData.punya_varian ? '' : 'hidden'}">
           <div class="row-between">
             <span class="section-title">Daftar Varian Produk</span>
             <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-varian">+ Varian</button>
@@ -1421,14 +1664,21 @@ async function bukaModalFormProduk(container, produk) {
       <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-3);">
         <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-produk">Batal</button>
         <button type="submit" class="btn btn-primary" id="btn-simpan-produk">
-          ${isEdit ? 'Simpan Perubahan' : 'Tambah Produk'}
+          ${isDuplikat ? 'Simpan Produk Salinan' : (isEdit ? 'Simpan Perubahan' : 'Tambah Produk')}
         </button>
       </div>
     </form>
   `;
 
+  let modalTitle = 'Tambah Produk Baru';
+  if (isDuplikat) {
+    modalTitle = `Duplikat Produk: ${escapeHtml(produk?.nama || '')}`;
+  } else if (isEdit) {
+    modalTitle = 'Ubah Data Produk';
+  }
+
   const modal = showModal({
-    title: isEdit ? 'Ubah Data Produk' : 'Tambah Produk Baru',
+    title: modalTitle,
     body: bodyHtml,
     size: 'lg'
   });
@@ -1436,7 +1686,7 @@ async function bukaModalFormProduk(container, produk) {
   const form = $('#form-produk', modal.el);
 
   // Inisialisasi Searchable Category Combobox (Dropdown dengan Pencarian Cepat)
-  initSearchableCategoryPicker(modal.el, daftarKategori, isEdit ? (produk.kategori_id || '') : '');
+  initSearchableCategoryPicker(modal.el, daftarKategori, hasData ? (pData.kategori_id || '') : '');
 
   // Tombol Batal Form Produk
   $('#btn-batal-produk', modal.el)?.addEventListener('click', () => {
@@ -1711,8 +1961,8 @@ async function bukaModalFormProduk(container, produk) {
     wadahVarian.appendChild(row);
   };
 
-  if (isEdit && produk.varian) {
-    produk.varian.forEach((v) => renderBarisVarian(v));
+  if (hasData && pData.varian) {
+    pData.varian.forEach((v) => renderBarisVarian(v));
   }
   $('#btn-tambah-baris-varian', form)?.addEventListener('click', () => renderBarisVarian());
 
@@ -1760,8 +2010,8 @@ async function bukaModalFormProduk(container, produk) {
     wadahSatuan.appendChild(row);
   };
 
-  if (isEdit && produk.satuan_konversi) {
-    produk.satuan_konversi.forEach((s) => renderBarisSatuan(s));
+  if (hasData && pData.satuan_konversi) {
+    pData.satuan_konversi.forEach((s) => renderBarisSatuan(s));
   }
   $('#btn-tambah-baris-satuan', form)?.addEventListener('click', () => renderBarisSatuan());
 
@@ -1778,6 +2028,17 @@ async function bukaModalFormProduk(container, produk) {
       el.textContent = val;
     });
   });
+
+  // Jika membuka mode Duplikat Produk, auto-focus dan blok nama agar langsung siap diedit
+  if (isDuplikat) {
+    const inputNama = $('#prd-nama', modal.el);
+    if (inputNama) {
+      setTimeout(() => {
+        inputNama.focus();
+        inputNama.select();
+      }, 80);
+    }
+  }
 
   // Submit Handler Form Produk
   form.addEventListener('submit', async (e) => {
@@ -1930,7 +2191,7 @@ async function bukaModalFormProduk(container, produk) {
     const foto_url = ($('#prd-foto-url', form)?.value || '').trim();
 
     const payload = {
-      id: isEdit ? produk.id : undefined,
+      id: isEdit ? pData.id : undefined,
       nama, sku, barcode, kategori_id, satuan_dasar,
       hpp, harga_ritel, harga_grosir, min_grosir_qty,
       stok, stok_min, aktif, punya_varian,
@@ -1949,7 +2210,7 @@ async function bukaModalFormProduk(container, produk) {
         showToast('Data produk berhasil diperbarui.', 'success');
       } else {
         await apiCall('produk.create', payload);
-        showToast('Produk baru berhasil ditambahkan.', 'success');
+        showToast(isDuplikat ? 'Produk salinan berhasil dibuat!' : 'Produk baru berhasil ditambahkan.', 'success');
         // Reset filter ke halaman 1 dan urutan terbaru agar produk baru langsung tampil paling atas
         filterState.page = 1;
         filterState.sort = 'terbaru';
