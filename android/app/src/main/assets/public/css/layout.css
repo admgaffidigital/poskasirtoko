@@ -345,7 +345,7 @@
   }
 }
 
-/* ---------- Top bar ---------- */
+/* ---------- Top bar (Frosted Glass Native Feel + Scroll Elevation) ---------- */
 .topbar {
   position: sticky;
   top: 0;
@@ -358,15 +358,88 @@
   box-sizing: border-box;
   height: calc(var(--topbar-h) + var(--safe-top));
   padding: var(--safe-top) calc(var(--sp-2) + var(--safe-right)) 0 calc(var(--sp-3) + var(--safe-left));
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.86);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
+  transition: box-shadow var(--dur-normal) var(--ease), border-color var(--dur-normal) var(--ease), background var(--dur-normal) var(--ease);
+}
+
+.topbar.is-scrolled {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 [data-theme="dark"] .topbar {
-  background: var(--surface);
+  background: rgba(17, 26, 46, 0.84);
   border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .topbar.is-scrolled {
+  background: rgba(17, 26, 46, 0.94);
+  border-bottom-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+/* Tombol Quick Command Palette di Topbar */
+.btn-cmd-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast);
+}
+
+.btn-cmd-trigger:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.btn-cmd-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-cmd-kbd {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+@media (min-width: 768px) {
+  .btn-cmd-kbd {
+    display: inline-block;
+  }
+}
+
+@media (max-width: 767px) {
+  .btn-cmd-trigger {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .btn-cmd-label {
+    display: none;
+  }
 }
 
 .btn-sidebar-toggle-top {
@@ -764,7 +837,7 @@
   }
 }
 
-/* ---------- Bottom navigation (mobile) ---------- */
+/* ---------- Bottom navigation (mobile — Frosted Glass Native) ---------- */
 .bottomnav {
   position: fixed;
   bottom: 0;
@@ -780,18 +853,20 @@
   box-sizing: border-box;
   height: calc(var(--bottomnav-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.88);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  backdrop-filter: saturate(180%) blur(14px);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 -2px 8px rgba(15, 23, 42, 0.05);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
 }
 
 [data-theme="dark"] .bottomnav {
-  background: var(--surface);
+  background: rgba(17, 26, 46, 0.88);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
 }
 
 @media (min-width: 768px) {
@@ -833,10 +908,14 @@
 .bottomnav-link .ikon-wrap {
   display: grid;
   place-items: center;
-  width: 44px;
+  width: 48px;
   height: 28px;
-  border-radius: var(--radius-sm);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  border-radius: var(--radius-full);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.bottomnav-link:active .ikon-wrap {
+  transform: scale(0.9);
 }
 
 .bottomnav-link[aria-current="page"] {

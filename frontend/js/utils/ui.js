@@ -62,7 +62,9 @@ export const ICONS = {
   helpCircle: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`,
   edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`,
   copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
-  calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>`
+  calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>`,
+  arrowUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
+  wifiOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`
 };
 
 /* ---------- Toast System ---------- */
@@ -198,6 +200,76 @@ export function showModal({
       if (e.target === overlay) close();
     });
   }
+
+  // Native Swipe-Down Gesture pada handle & header bottom sheet (mobile / sheet)
+  const dragTargets = [dialog.querySelector('.dialog-handle'), dialog.querySelector('.dialog-header')].filter(Boolean);
+  let startY = 0;
+  let startTime = 0;
+  let currentDy = 0;
+  let isDraggingSheet = false;
+
+  const onTouchStart = (e) => {
+    if (isClosing) return;
+    if (!isSheet && window.innerWidth >= 768) return;
+    if (e.target.closest('button, a, input, select, textarea')) return;
+    if (!e.touches || e.touches.length !== 1) return;
+
+    startY = e.touches[0].clientY;
+    startTime = Date.now();
+    currentDy = 0;
+    isDraggingSheet = true;
+    dialog.classList.add('is-dragging');
+  };
+
+  const onTouchMove = (e) => {
+    if (!isDraggingSheet || !e.touches || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) {
+      currentDy = dy;
+      dialog.style.transform = `translate3d(0, ${dy}px, 0)`;
+      const ratio = Math.max(0.25, 1 - dy / 420);
+      overlay.style.backgroundColor = `rgba(15, 23, 42, ${(0.55 * ratio).toFixed(3)})`;
+      if (e.cancelable) e.preventDefault();
+    } else {
+      currentDy = 0;
+      dialog.style.transform = 'translate3d(0, 0, 0)';
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (!isDraggingSheet) return;
+    isDraggingSheet = false;
+    dialog.classList.remove('is-dragging');
+
+    const dt = Math.max(1, Date.now() - startTime);
+    const velocity = currentDy / dt;
+
+    if (currentDy > 88 || (currentDy > 32 && velocity > 0.45)) {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
+      } catch (_) {}
+      overlay.style.backgroundColor = '';
+      dialog.style.transition = 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)';
+      dialog.style.transform = 'translate3d(0, 100%, 0)';
+      close();
+    } else {
+      overlay.style.backgroundColor = '';
+      dialog.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.9, 0.2, 1)';
+      dialog.style.transform = 'translate3d(0, 0, 0)';
+      setTimeout(() => {
+        dialog.style.transition = '';
+        dialog.style.transform = '';
+      }, 230);
+    }
+    currentDy = 0;
+  };
+
+  dragTargets.forEach((target) => {
+    target.addEventListener('touchstart', onTouchStart, { passive: true });
+    target.addEventListener('touchmove', onTouchMove, { passive: false });
+    target.addEventListener('touchend', onTouchEnd, { passive: true });
+    target.addEventListener('touchcancel', onTouchEnd, { passive: true });
+  });
 
   // Escape key support
   const handleKey = (e) => {

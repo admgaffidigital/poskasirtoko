@@ -572,6 +572,13 @@ class App {
             <div class="topbar-actions">
               <span class="badge badge-warning net-pill ${typeof navigator !== 'undefined' && navigator.onLine ? '' : 'is-offline'}" id="net-pill">Offline</span>
 
+              <!-- Quick Command Palette (Ctrl+K) -->
+              <button type="button" class="btn-cmd-trigger" id="btn-cmd-palette" title="Lompat Cepat Menu & Aksi (Ctrl+K)" aria-label="Cari Cepat Menu">
+                ${ICONS.search}
+                <span class="btn-cmd-label">Menu</span>
+                <kbd class="btn-cmd-kbd">Ctrl+K</kbd>
+              </button>
+
               <!-- Tombol Sinkronisasi Data Cepat di Topbar -->
               <button type="button" class="btn btn-ghost btn-icon btn-sm btn-sync" id="btn-sync-top" title="Sinkronisasi Data Global (F5)" aria-label="Sinkronisasi Data">
                 ${ICONS.refresh}
@@ -585,11 +592,25 @@ class App {
             </div>
           </header>
 
+          <!-- Banner Status Koneksi Realtime (Online/Offline Native Strip) -->
+          <div class="net-status-bar" id="net-status-bar" role="status" aria-live="polite"></div>
+
+          <!-- Indikator Pull-to-Refresh Mobile -->
+          <div class="ptr-indicator" id="ptr-indicator" aria-hidden="true">
+            ${ICONS.refresh}
+            <span id="ptr-label">Tarik untuk segarkan</span>
+          </div>
+
           <!-- Konten Halaman -->
           <main class="content masuk" id="page-content" role="main">
             ${renderSkeleton(3)}
           </main>
         </div>
+
+        <!-- Smart Scroll-to-Top FAB -->
+        <button type="button" class="scroll-top-fab" id="btn-scroll-top" title="Kembali ke Atas" aria-label="Kembali ke Atas">
+          ${ICONS.arrowUp}
+        </button>
 
         <!-- Bottom Navigation Mobile -->
         <nav class="bottomnav" id="bottomnav" aria-label="Navigasi Bawah">
@@ -749,7 +770,12 @@ class App {
       }
     });
 
-    // Keyboard shortcut global: F5 atau Ctrl+R untuk reload / sinkronisasi data in-app; Ctrl+B untuk sidebar
+    $('#btn-cmd-palette')?.addEventListener('click', () => {
+      haptic.light();
+      this.bukaCommandPalette();
+    });
+
+    // Keyboard shortcut global: F5/Ctrl+R sinkronisasi; Ctrl+B sidebar; Ctrl+K Quick Command Palette
     window.addEventListener('keydown', (e) => {
       if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
         e.preventDefault();
@@ -757,6 +783,9 @@ class App {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         toggleSidebarHandler();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        this.bukaCommandPalette();
       }
     });
 
@@ -894,15 +923,348 @@ class App {
     store.subscribe('isOnline', (online) => {
       const pill = $('#net-pill');
       if (pill) {
-        if (online) {
-          pill.classList.remove('is-offline');
-          showToast('Koneksi internet terhubung kembali.', 'success', 2500);
-        } else {
-          pill.classList.add('is-offline');
-          showToast('Koneksi terputus. Anda sedang offline.', 'warning', 4000);
+        pill.classList.toggle('is-offline', !online);
+      }
+      this.updateNetStatusBar(online, false);
+    });
+
+    // Inisialisasi 6 Paket Native App (Scroll Elevation, Scroll-to-Top, Net Bar, Pull-to-Refresh)
+    this.updateNetStatusBar(typeof navigator === 'undefined' ? true : navigator.onLine, true);
+    this.setupScrollEnhancements();
+    this.setupPullToRefresh();
+  }
+
+  /**
+   * Paket 4: Banner status koneksi tipis & non-intrusif di bawah Topbar
+   */
+  updateNetStatusBar(online, isInitial = false) {
+    const bar = $('#net-status-bar');
+    if (!bar) return;
+    if (this._netBarTimer) {
+      clearTimeout(this._netBarTimer);
+      this._netBarTimer = null;
+    }
+
+    if (!online) {
+      bar.className = 'net-status-bar is-offline';
+      bar.innerHTML = `${ICONS.wifiOff}<span>Koneksi internet terputus — Mode Offline (data lokal aktif)</span>`;
+    } else if (!isInitial) {
+      bar.className = 'net-status-bar is-reconnected';
+      bar.innerHTML = `${ICONS.wifi}<span>Kembali Online — Menyinkronkan data terbaru...</span>`;
+      this._netBarTimer = setTimeout(() => {
+        bar.className = 'net-status-bar';
+        bar.innerHTML = '';
+      }, 2600);
+    } else {
+      bar.className = 'net-status-bar';
+      bar.innerHTML = '';
+    }
+  }
+
+  /**
+   * Paket 3 & 5: Topbar Scroll Elevation + Smart Scroll-to-Top FAB
+   */
+  setupScrollEnhancements() {
+    const topbar = $('.topbar');
+    const btnTop = $('#btn-scroll-top');
+    let ticking = false;
+
+    const updateOnScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      topbar?.classList.toggle('is-scrolled', y > 8);
+      if (btnTop) {
+        const bolehTampil = y > 360 && this.currentRoute?.id !== 'pos';
+        btnTop.classList.toggle('is-visible', bolehTampil);
+      }
+      ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(updateOnScroll);
+      }
+    }, { passive: true });
+
+    btnTop?.addEventListener('click', () => {
+      haptic.light();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  /**
+   * Paket 5: Mobile Pull-to-Refresh Native Gesture (Tarik dari puncak halaman)
+   */
+  setupPullToRefresh() {
+    const pageContent = $('#page-content');
+    const ptrEl = $('#ptr-indicator');
+    const ptrLabel = $('#ptr-label');
+    if (!pageContent || !ptrEl) return;
+
+    const svgIcon = ptrEl.querySelector('svg');
+    const THRESHOLD = 68;
+    let startY = 0;
+    let startX = 0;
+    let pullDist = 0;
+    let tracking = false;
+    let crossedThreshold = false;
+
+    pageContent.addEventListener('touchstart', (e) => {
+      if (window.innerWidth >= 1024) return;
+      if (this._isSyncing) return;
+      if ((window.scrollY || 0) > 0) return;
+      if (document.querySelector('.overlay') || $('#sidebar')?.classList.contains('is-mobile-open')) return;
+      if (!e.touches || e.touches.length !== 1) return;
+      if (e.target.closest('input, textarea, select, .table-native-scroll, .segmented')) return;
+
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      pullDist = 0;
+      tracking = true;
+      crossedThreshold = false;
+    }, { passive: true });
+
+    pageContent.addEventListener('touchmove', (e) => {
+      if (!tracking || !e.touches || e.touches.length !== 1) return;
+      const dy = e.touches[0].clientY - startY;
+      const dx = Math.abs(e.touches[0].clientX - startX);
+
+      // Batalkan jika pengguna menggeser horizontal atau ke atas
+      if (dy <= 0 || dx > dy) {
+        if (pullDist > 0) {
+          pullDist = 0;
+          ptrEl.classList.remove('is-visible', 'is-ready');
+          ptrEl.style.transform = 'translate3d(-50%, -64px, 0)';
+        }
+        if (dy < -8) tracking = false;
+        return;
+      }
+
+      if ((window.scrollY || 0) > 0) {
+        tracking = false;
+        return;
+      }
+
+      pullDist = Math.min(dy * 0.5, 86);
+      if (pullDist > 12) {
+        ptrEl.classList.add('is-visible');
+        const offsetY = Math.min(pullDist - 54, 18);
+        ptrEl.style.transform = `translate3d(-50%, ${offsetY}px, 0)`;
+        if (svgIcon) {
+          svgIcon.style.transform = `rotate(${Math.round(pullDist * 3.2)}deg)`;
+        }
+
+        const siap = pullDist >= THRESHOLD;
+        ptrEl.classList.toggle('is-ready', siap);
+        if (ptrLabel) {
+          ptrLabel.textContent = siap ? 'Lepas untuk menyinkronkan' : 'Tarik untuk segarkan';
+        }
+        if (siap && !crossedThreshold) {
+          crossedThreshold = true;
+          haptic.light();
         }
       }
+    }, { passive: true });
+
+    const resetPtr = () => {
+      if (!tracking) return;
+      tracking = false;
+      const jalankan = pullDist >= THRESHOLD;
+      pullDist = 0;
+
+      if (jalankan) {
+        ptrEl.classList.add('is-refreshing');
+        if (ptrLabel) ptrLabel.textContent = 'Menyinkronkan...';
+        this.sinkronkanDataGlobal().finally(() => {
+          ptrEl.classList.remove('is-visible', 'is-ready', 'is-refreshing');
+          ptrEl.style.transform = 'translate3d(-50%, -64px, 0)';
+          if (svgIcon) svgIcon.style.transform = '';
+        });
+      } else {
+        ptrEl.classList.remove('is-visible', 'is-ready');
+        ptrEl.style.transform = 'translate3d(-50%, -64px, 0)';
+        if (svgIcon) svgIcon.style.transform = '';
+      }
+    };
+
+    pageContent.addEventListener('touchend', resetPtr, { passive: true });
+    pageContent.addEventListener('touchcancel', resetPtr, { passive: true });
+  }
+
+  /**
+   * Paket 6: Quick Command Palette (Ctrl+K) — Lompat cepat modul & aksi sistem
+   */
+  bukaCommandPalette() {
+    // Hindari membuka dua palette bertumpuk
+    if (document.getElementById('cmd-palette-input')) return;
+
+    const user = store.get('user');
+    const userRole = user ? user.role : 'kasir';
+
+    const daftarRute = ROUTES.filter((r) => {
+      if (r.id === 'lainnya') return false;
+      if (r.roles && !r.roles.includes(userRole)) return false;
+      return true;
+    }).map((r) => ({
+      grup: 'Navigasi Modul',
+      id: `route-${r.id}`,
+      judul: r.title,
+      sub: `${r.group} — ${r.shortTitle || r.title}`,
+      kataKunci: `${r.title} ${r.shortTitle || ''} ${r.group} ${r.id}`.toLowerCase(),
+      ikon: r.icon,
+      hint: r.path.replace('#/', '/'),
+      aksi: () => {
+        window.location.hash = r.path;
+      }
+    }));
+
+    const aksiCepat = [
+      {
+        grup: 'Aksi Cepat',
+        id: 'act-sync',
+        judul: 'Sinkronisasi Data Global',
+        sub: 'Segarkan katalog, stok, & sesi dari server cloud',
+        kataKunci: 'sinkron sync refresh reload muat ulang data server',
+        ikon: ICONS.refresh,
+        hint: 'F5',
+        aksi: () => this.sinkronkanDataGlobal()
+      },
+      {
+        grup: 'Aksi Cepat',
+        id: 'act-printer',
+        judul: 'Koneksi & Uji Printer Bluetooth',
+        sub: 'Atur printer thermal 58mm/80mm & RawBT',
+        kataKunci: 'printer bluetooth rawbt thermal cetak struk tes',
+        ikon: ICONS.printer,
+        hint: 'Print',
+        aksi: () => tampilkanModalKoneksiPrinter()
+      },
+      {
+        grup: 'Aksi Cepat',
+        id: 'act-theme',
+        judul: 'Ganti Tema Gelap / Terang',
+        sub: 'Beralih antara Light Mode dan Dark Mode',
+        kataKunci: 'tema theme gelap terang dark light mode malam',
+        ikon: ICONS.moon,
+        hint: 'Tema',
+        aksi: () => {
+          const mode = toggleTheme();
+          syncStatusBarWithTheme(mode);
+          showToast(`Tema beralih ke mode ${mode === 'dark' ? 'Gelap' : 'Terang'}`, 'info', 1800);
+        }
+      },
+      {
+        grup: 'Aksi Cepat',
+        id: 'act-font',
+        judul: 'Ubah Ukuran Teks (Normal / Besar)',
+        sub: 'Aksesibilitas skala huruf antarmuka',
+        kataKunci: 'font huruf ukuran teks aksesibilitas besar normal aa',
+        ikon: ICONS.sparkles,
+        hint: 'Aa',
+        aksi: () => {
+          const mode = toggleFontSize();
+          showToast(`Ukuran teks: ${mode === 'besar' ? 'Besar' : 'Normal'}`, 'info', 1800);
+        }
+      }
+    ];
+
+    const semuaItem = [...daftarRute, ...aksiCepat];
+
+    const modal = showModal({
+      title: 'Lompat Cepat Menu & Aksi',
+      size: 'sm',
+      body: `
+        <div class="cmd-palette-wrap">
+          <div class="input-group">
+            <span class="input-icon">${ICONS.search}</span>
+            <input type="search" id="cmd-palette-input" class="input" placeholder="Ketik nama menu atau aksi (cth: stok, biaya, printer)..." autocomplete="off" data-autofocus>
+          </div>
+          <div class="cmd-palette-list" id="cmd-palette-list" role="listbox"></div>
+          <div class="cmd-palette-foot">
+            <span>Gunakan panah atas/bawah & Enter untuk memilih</span>
+            <span class="mono">Esc tutup</span>
+          </div>
+        </div>
+      `
     });
+
+    const inputEl = modal.el.querySelector('#cmd-palette-input');
+    const listEl = modal.el.querySelector('#cmd-palette-list');
+    let hasilFilter = semuaItem;
+    let indeksAktif = 0;
+
+    const jalankanItem = (item) => {
+      if (!item) return;
+      haptic.light();
+      modal.close();
+      setTimeout(() => item.aksi(), 40);
+    };
+
+    const renderDaftar = () => {
+      const q = (inputEl.value || '').trim().toLowerCase();
+      hasilFilter = q
+        ? semuaItem.filter((it) => it.kataKunci.includes(q) || it.judul.toLowerCase().includes(q) || it.sub.toLowerCase().includes(q))
+        : semuaItem;
+
+      if (indeksAktif >= hasilFilter.length) indeksAktif = 0;
+
+      if (!hasilFilter.length) {
+        listEl.innerHTML = `<div class="cat-picker-empty">Menu atau aksi "${escapeHtml(inputEl.value)}" tidak ditemukan.</div>`;
+        return;
+      }
+
+      let html = '';
+      let grupTerakhir = '';
+      hasilFilter.forEach((it, idx) => {
+        if (it.grup !== grupTerakhir) {
+          grupTerakhir = it.grup;
+          html += `<div class="cmd-palette-group">${escapeHtml(grupTerakhir)}</div>`;
+        }
+        html += `
+          <button type="button" class="cmd-palette-item ${idx === indeksAktif ? 'is-selected' : ''}" data-idx="${idx}" role="option" aria-selected="${idx === indeksAktif}">
+            <span class="cmd-palette-icon">${it.ikon}</span>
+            <span class="cmd-palette-meta">
+              <span class="cmd-palette-title">${escapeHtml(it.judul)}</span>
+              <span class="cmd-palette-sub">${escapeHtml(it.sub)}</span>
+            </span>
+            <span class="cmd-palette-hint">${escapeHtml(it.hint)}</span>
+          </button>
+        `;
+      });
+
+      listEl.innerHTML = html;
+      listEl.querySelectorAll('.cmd-palette-item').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-idx'));
+          jalankanItem(hasilFilter[idx]);
+        });
+      });
+    };
+
+    inputEl.addEventListener('input', () => {
+      indeksAktif = 0;
+      renderDaftar();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (!hasilFilter.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        indeksAktif = (indeksAktif + 1) % hasilFilter.length;
+        renderDaftar();
+        listEl.querySelector('.cmd-palette-item.is-selected')?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        indeksAktif = (indeksAktif - 1 + hasilFilter.length) % hasilFilter.length;
+        renderDaftar();
+        listEl.querySelector('.cmd-palette-item.is-selected')?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        jalankanItem(hasilFilter[indeksAktif]);
+      }
+    });
+
+    renderDaftar();
   }
 
   initRouter() {
@@ -918,6 +1280,8 @@ class App {
   navigate(hash) {
     const rute = cariRute(hash);
     this.currentRoute = rute;
+    $('#btn-scroll-top')?.classList.remove('is-visible');
+    $('.topbar')?.classList.remove('is-scrolled');
 
     const titleEl = $('#topbar-title');
     if (titleEl) titleEl.textContent = rute.title;

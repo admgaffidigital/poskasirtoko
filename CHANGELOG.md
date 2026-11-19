@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Added
+- [UI] [PWA] **6 Paket Peningkatan Native App (Web & Mobile)**:
+  - **Swipe-Down Gesture Bottom Sheet**: Handle & header bottom sheet dapat digeser turun 60fps (`translate3d`) untuk menutup dengan spring snap-back & haptic feedback (`frontend/js/utils/ui.js`).
+  - **Sticky Action Footer Modal/Sheet**: Footer tombol Simpan/Batal pada form panjang menempel otomatis di bawah viewport modal (`frontend/css/components.css`).
+  - **Frosted-Glass Topbar & Bottom Nav + Scroll Elevation**: Efek translucent `backdrop-filter: blur(14px)` adaptif Light/Dark mode dengan elevasi dinamis `.topbar.is-scrolled` dan pill aktif halus (`frontend/css/layout.css`).
+  - **Banner Status Koneksi Realtime**: Strip status tipis non-intrusif di bawah Topbar saat offline / kembali online (`frontend/js/app.js`).
+  - **Smart Scroll-to-Top FAB & Mobile Pull-to-Refresh**: Tombol kembali ke atas otomatis di daftar panjang (tersembunyi di POS) + gestur tarik-ke-bawah untuk `sinkronkanDataGlobal()`.
+  - **Quick Command Palette (`Ctrl+K`)**: Pencarian cepat lintas modul (sesuai peran pengguna) & aksi cepat sistem dengan navigasi keyboard lengkap (`frontend/js/app.js`).
+  - File terdampak: `frontend/js/app.js`, `frontend/js/utils/ui.js`, `frontend/css/components.css`, `frontend/css/layout.css`, `frontend/sw.js`.
+
 ## [1.0.61] - 2026-11-19
 
 ### Added
