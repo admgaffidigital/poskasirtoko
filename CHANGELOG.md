@@ -16,6 +16,32 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.60] - 2026-11-19
+
+### Added
+- [PWA] [DEPLOY] **Mekanisme Realtime Auto-Update Service Worker Multi-Browser**:
+  - Menambahkan header `Cache-Control: public, max-age=0, must-revalidate` untuk `/(index.html)?` di `vercel.json` dan meta tag anti-cache di `frontend/index.html`.
+  - Menambahkan pendeteksian pembaruan otomatis pada `visibilitychange`, `window.focus`, dan interval 5 menit di `frontend/js/app.js` agar seluruh browser langsung menerapkan versi terbaru tanpa tertahan cache lama.
+  - File terdampak: `vercel.json`, `frontend/index.html`, `frontend/js/app.js`, `frontend/sw.js`.
+- [UI] **Sistem Kelas Filter Bar & Rentang Tanggal Responsif Terpadu**:
+  - Menambahkan `.date-range-bar`, `.simple-filter-bar`, `.lap-subfilter-bar`, dan `.page-header-inline` di `frontend/css/layout.css` untuk keseragaman filter mobile & desktop.
+
+### Changed
+- [UI] **Standarisasi Kartu Native App 2-Kolom di Seluruh Modul Mobile**:
+  - Memperluas tata letak kartu 2-kolom (`minmax(0, 1fr) minmax(0, 1fr)`) dengan struktur label mikro di atas nilai (*stacked metric cells*) ke seluruh tabel data multi-kolom (`produk`, `kartu-stok`, `pelanggan`, `supplier`, `users`, `pembelian`, `biaya`, `hutang-piutang`, `opname`, `retur`, dan `laporan`).
+  - Menyeragamkan header modul `laporan.js` menggunakan `.page-header.page-header-inline` dan `${ICONS.calendar}`.
+  - Mengganti seluruh tombol berawalan `+` polos menjadi ikon SVG `${ICONS.plus}` di 10 modul (`produk`, `opname`, `pelanggan`, `supplier`, `users`, `loyalti`, `retur`, `pembelian`, `pos`, `laporan`) — 0 emoji, 100% ikon SVG murni.
+  - File terdampak: `frontend/css/components.css`, `frontend/css/layout.css`, `frontend/css/tokens.css`, dan modul-modul di `frontend/js/modules/`.
+- [APK] **Build Rilis Android Native v1.0.60 (`versionCode 47`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` (4.07 MB) dengan seluruh pembaruan UI/UX & PWA realtime.
+
+### Fixed
+- [UI] [POS-JUAL] [DASHBOARD] **Perbaikan Kontras Mode Gelap (Dark Mode) & Token Warna**:
+  - Memperbaiki badge opsi `Varian`/`Satuan` pada kartu POS Kasir (`pos.js`) yang sebelumnya tidak terbaca di Mode Gelap dengan kelas adaptif `.pos-card-opt-badge`.
+  - Menambahkan token semantik `--purple`, `--purple-soft`, dan `--purple-text` di `tokens.css` (Light & Dark) menggantikan hex mentah `#a855f7` di `biaya.js` & `.icon-purple`.
+  - Memperbaiki kotak catatan admin di `laporan.js`, warna heading grosir di `produk.js`, sel `td[colspan]` pada kartu grid mobile, dan penghapusan `min-width` kaku pada kotak cari `kartu-stok.js` & `kategori.js`.
+- [KARTU-STOK] Memperbaiki `TypeError: store.getState is not a function` dengan menyediakan helper `getState()` di `frontend/js/state.js` dan standarisasi `store.get('user')`.
+
 ## [1.0.59] - 2026-11-17
 
 ### Added
