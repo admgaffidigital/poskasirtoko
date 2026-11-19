@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+### Added
+- [PRODUK] [UI] **Kalkulator HPP Presisi & Pembulatan Bebas Pecahan**:
+  - Menambahkan modul reusable `frontend/js/utils/hpp-calculator.js` + tombol/panel inline **Kalkulator HPP** di Modal Tambah/Edit Produk (Tab Harga & Stok) dan Modal Edit Cepat (Quick Edit).
+  - Mendukung input Total Harga Beli ÷ Qty/Isi (plus chip preset `10`, `12 (Lsn)`, `20`, `24`, `25`, `50`, `100`), opsi nota distributor (diskon bertingkat `10+5`, PPN `0%`/`11%`/custom, ongkir/biaya bongkar, bonus gratis), dan pembulatan bebas pecahan (`Rp 1`, `Rp 50`, `Rp 100`, `Rp 500`, `Rp 1.000`) arah `Ke Atas` atau `Terdekat` yang tersimpan otomatis di `localStorage`.
+  - Dilengkapi 6 unit test otomatis di `tests/test_kalkulator_hpp.js` dan terdaftar di cache offline `frontend/sw.js`.
+  - File terdampak: `frontend/js/utils/hpp-calculator.js`, `frontend/js/modules/produk.js`, `frontend/js/utils/ui.js`, `frontend/css/components.css`, `frontend/sw.js`, `tests/test_kalkulator_hpp.js`, `package.json`.
+
 ## [1.0.60] - 2026-11-19
 
 ### Added

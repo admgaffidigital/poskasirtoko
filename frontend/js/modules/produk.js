@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { formatRupiah, formatQty, parseRupiah, escapeHtml } from '../utils/format.js';
+import { renderKalkulatorHppToggle, renderKalkulatorHppPanel, ikatKalkulatorHpp } from '../utils/hpp-calculator.js';
 
 /**
  * Kompres file gambar ke format JPEG Base64 (maks 800px, kualitas 0.8)
@@ -1170,12 +1171,16 @@ function bukaModalEditCepat(container, p) {
 
       <!-- HPP (Harga Modal Acuan) -->
       <div class="field">
-        <label class="field-label" for="qe-hpp">HPP (Harga Modal Pokok)</label>
+        <div class="hpp-field-head">
+          <label class="field-label" for="qe-hpp" style="margin-bottom: 0;">HPP (Harga Modal Pokok)</label>
+          ${renderKalkulatorHppToggle('qe')}
+        </div>
         <div class="input-prefix">
           <span>Rp</span>
           <input type="text" class="input input-num fw-bold" id="qe-hpp" value="${formatRupiah(p.hpp, false)}" placeholder="0">
         </div>
         <span class="field-hint">Harga modal acuan untuk menghitung margin keuntungan.</span>
+        ${renderKalkulatorHppPanel('qe', p.satuan_dasar || 'PCS')}
       </div>
 
       <!-- Harga Jual Ritel & Live Margin -->
@@ -1254,6 +1259,13 @@ function bukaModalEditCepat(container, p) {
   formatInputRp(inputHpp);
   formatInputRp(inputRitel);
   formatInputRp(inputGrosir);
+
+  ikatKalkulatorHpp({
+    root: form,
+    prefix: 'qe',
+    inputHppEl: inputHpp,
+    getSatuan: () => p.satuan_dasar || 'PCS'
+  });
 
   function updateMarginBadge() {
     const hpp = parseRupiah(inputHpp.value) || 0;
@@ -1483,14 +1495,18 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
       <div class="tab-pane stack hidden" id="pane-harga">
         <!-- Input HPP (Harga Modal Acuan) -->
         <div class="field">
-          <label class="field-label" for="prd-hpp">
-            <span>HPP (Harga Beli Pokok / Modal) <span class="wajib">*</span></span>
-          </label>
+          <div class="hpp-field-head">
+            <label class="field-label" for="prd-hpp" style="margin-bottom: 0;">
+              <span>HPP (Harga Beli Pokok / Modal) <span class="wajib">*</span></span>
+            </label>
+            ${renderKalkulatorHppToggle('prd')}
+          </div>
           <div class="input-prefix" style="max-width: 320px;">
             <span>Rp</span>
             <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${hasData ? formatRupiah(pData.hpp, false) : '0'}" placeholder="0">
           </div>
           <span class="field-hint">Dasar acuan perhitungan persentase margin keuntungan ritel dan grosir.</span>
+          ${renderKalkulatorHppPanel('prd', hasData ? (pData.satuan_dasar || 'PCS') : 'PCS')}
         </div>
 
         <div class="divider"></div>
@@ -1733,6 +1749,14 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
   // Kalkulator Otomatis Persentase Margin & Laba (2-Arah)
   // -------------------------------------------------------------
   const inpHpp = $('#prd-hpp', form);
+  const inpSatuanForm = $('#prd-satuan', form);
+  const hppCalcPrd = ikatKalkulatorHpp({
+    root: form,
+    prefix: 'prd',
+    inputHppEl: inpHpp,
+    getSatuan: () => (inpSatuanForm?.value || 'PCS').trim() || 'PCS'
+  });
+  inpSatuanForm?.addEventListener('input', () => hppCalcPrd?.syncLabelSatuan());
   const inpRitel = $('#prd-ritel', form);
   const inpMarginRitel = $('#prd-margin-ritel', form);
   const badgeMarginRitel = $('#badge-margin-ritel', form);
