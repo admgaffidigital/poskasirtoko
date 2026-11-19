@@ -35,7 +35,8 @@ export async function renderUsersModule(container) {
             ${ICONS.refresh}
           </button>
           <button type="button" class="btn btn-primary grow" id="btn-tambah-user">
-            <span>+ Tambah Pengguna</span>
+            ${ICONS.plus}
+            <span>Tambah Pengguna</span>
           </button>
         </div>
       </div>

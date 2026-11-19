@@ -102,7 +102,7 @@ export async function renderKategoriModule(container) {
 
         <!-- Baris 2: Input Pencarian Instan & Counter Hasil -->
         <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
-          <div class="input-group grow" style="min-width: 240px; position: relative;">
+          <div class="input-group grow" style="min-width: 0; position: relative;">
             <span class="input-icon">${ICONS.search}</span>
             <input type="search" id="search-kategori" class="input input-sm w-full" placeholder="Cari nama kategori atau sub-kategori..." value="${escapeHtml(stateKategori.cari)}" autocomplete="off" />
             <button type="button" class="btn btn-ghost btn-xs text-muted" id="btn-clear-search" title="Hapus Pencarian" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 24px; width: 24px; padding: 0; display: ${stateKategori.cari ? 'inline-flex' : 'none'}; justify-content: center; align-items: center;">

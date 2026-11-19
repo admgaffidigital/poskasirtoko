@@ -70,7 +70,7 @@ export async function renderKartuStokModule(container) {
         </div>
 
         <div class="row-between items-center" style="margin-top: var(--sp-1); gap: var(--sp-2); flex-wrap: wrap;">
-          <div class="input-group" style="flex: 1; min-width: 260px;">
+          <div class="input-group" style="flex: 1 1 200px; min-width: 0; width: 100%;">
             <span class="input-icon">${ICONS.search}</span>
             <input type="search" class="input" id="search-ks" placeholder="Cari nomor dokumen referensi, nama barang, SKU, atau keterangan mutasi...">
           </div>

@@ -25,7 +25,8 @@ export async function renderPelangganModule(container) {
         ${canEdit ? `
           <div>
             <button type="button" class="btn btn-primary" id="btn-tambah-pelanggan">
-              <span>+ Tambah Pelanggan / Member</span>
+              ${ICONS.plus}
+              <span>Tambah Pelanggan / Member</span>
             </button>
           </div>
         ` : ''}

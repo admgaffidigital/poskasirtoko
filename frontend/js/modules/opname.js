@@ -24,7 +24,8 @@ export async function renderOpnameModule(container) {
         ${canEdit ? `
           <div>
             <button type="button" class="btn btn-primary" id="btn-tambah-opname">
-              <span>+ Input Opname Baru</span>
+              ${ICONS.plus}
+              <span>Input Opname Baru</span>
             </button>
           </div>
         ` : ''}
@@ -32,8 +33,8 @@ export async function renderOpnameModule(container) {
 
       <div class="card card-body stack">
         <!-- Filter Bar -->
-        <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
-          <div class="field" style="width: 160px;">
+        <div class="simple-filter-bar">
+          <div class="field filter-select-field">
             <label class="field-label" for="filter-opname-status">Status</label>
             <select class="input" id="filter-opname-status">
               <option value="">Semua Status</option>
@@ -42,7 +43,7 @@ export async function renderOpnameModule(container) {
             </select>
           </div>
 
-          <div class="field grow">
+          <div class="field filter-search-field">
             <label class="field-label" for="search-opname">Cari Dokumen</label>
             <div class="input-group">
               <span class="input-icon">${ICONS.search}</span>
@@ -50,7 +51,7 @@ export async function renderOpnameModule(container) {
             </div>
           </div>
 
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-opname" title="Muat Ulang" style="margin-bottom: 2px;">
+          <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-opname" title="Muat Ulang" aria-label="Muat Ulang Opname">
             ${ICONS.refresh}
           </button>
         </div>
@@ -101,7 +102,7 @@ async function muatDataOpname(container, canEdit) {
         title: 'Belum Ada Catatan Opname',
         text: 'Lakukan pemeriksaan fisik berkala untuk memastikan kecocokan stok fisik dan sistem.',
         icon: ICONS.clipboard,
-        actionButton: canEdit ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Input Opname Baru</button>` : ''
+        actionButton: canEdit ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">${ICONS.plus}<span>Input Opname Baru</span></button>` : ''
       });
       area.querySelector('.btn-tambah-pertama')?.addEventListener('click', () => {
         bukaModalInputOpname(container);
@@ -111,7 +112,7 @@ async function muatDataOpname(container, canEdit) {
 
     let html = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-card-2col">
           <thead>
             <tr>
               <th>No. Opname</th>

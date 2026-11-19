@@ -585,6 +585,18 @@
     gap: var(--sp-2);
   }
 
+  .page-header.page-header-inline {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .page-header.page-header-inline > div:first-child {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .page-header>div:first-child {
     width: 100%;
   }
@@ -1380,5 +1392,162 @@
   .filter-bar-responsive .filter-search-wrap {
     flex: 1;
     grid-column: auto;
+  }
+}
+
+/* ---------- Reusable Responsive Filter & Date Range Bars ---------- */
+.date-range-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--border);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.date-range-bar .date-range-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-range-bar .date-range-field label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+.date-range-bar .date-range-field .input {
+  width: 100%;
+  min-width: 0;
+}
+
+.date-range-bar .date-range-apply {
+  grid-column: 1 / -1;
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .date-range-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-3);
+  }
+
+  .date-range-bar .date-range-field {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+
+  .date-range-bar .date-range-field .input {
+    width: 152px;
+  }
+
+  .date-range-bar .date-range-apply {
+    width: auto;
+    grid-column: auto;
+  }
+}
+
+/* Filter Bar: Select Status + Search + Refresh Icon Button */
+.simple-filter-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.simple-filter-bar > .filter-select-field {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.simple-filter-bar > .filter-search-field {
+  grid-column: 1 / 2;
+  min-width: 0;
+}
+
+.simple-filter-bar > .filter-refresh-btn {
+  grid-column: 2 / 3;
+  margin-bottom: 1px;
+}
+
+.simple-filter-bar > .filter-extra-field {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+@media (min-width: 768px) {
+  .simple-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--sp-2);
+  }
+
+  .simple-filter-bar > .filter-select-field {
+    flex: 0 0 180px;
+    width: 180px;
+  }
+
+  .simple-filter-bar > .filter-search-field {
+    flex: 1 1 220px;
+  }
+
+  .simple-filter-bar > .filter-extra-field {
+    flex: 0 0 auto;
+    padding-bottom: 10px;
+    padding-top: 0;
+  }
+}
+
+/* Sub-filter Bar pada Tab Laporan (Select + Search simetris mobile/desktop) */
+.lap-subfilter-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lap-subfilter-bar > .lap-subfilter-full,
+.lap-subfilter-bar > input[type="text"],
+.lap-subfilter-bar > input[type="search"],
+.lap-subfilter-bar > .input-group {
+  grid-column: 1 / -1;
+}
+
+.lap-subfilter-bar > select,
+.lap-subfilter-bar > input {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .lap-subfilter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: auto;
+    gap: var(--sp-2);
+  }
+
+  .lap-subfilter-bar > select {
+    width: 165px !important;
+  }
+
+  .lap-subfilter-bar > input[type="text"],
+  .lap-subfilter-bar > input[type="search"] {
+    width: 220px !important;
   }
 }

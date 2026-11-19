@@ -39,7 +39,8 @@ export async function renderLoyaltiModule(container) {
           </div>
           ${isOwnerOrAdmin ? `
             <button type="button" class="btn btn-primary" id="btn-tambah-hadiah">
-              <span>+ Tambah Hadiah Baru</span>
+              ${ICONS.plus}
+              <span>Tambah Hadiah Baru</span>
             </button>
           ` : ''}
         </div>
@@ -237,13 +238,13 @@ async function muatDataHadiah(container) {
     area.innerHTML = `
       <div class="grid grid-3" style="gap: var(--sp-3);">
         ${items.map((h) => {
-          const stok = Number(h.stok || 0);
-          const habis = stok <= 0;
-          const statusBadge = h.aktif
-            ? (habis ? '<span class="badge badge-danger">Stok Habis</span>' : '<span class="badge badge-success">Tersedia</span>')
-            : '<span class="badge badge-warning">Nonaktif</span>';
+      const stok = Number(h.stok || 0);
+      const habis = stok <= 0;
+      const statusBadge = h.aktif
+        ? (habis ? '<span class="badge badge-danger">Stok Habis</span>' : '<span class="badge badge-success">Tersedia</span>')
+        : '<span class="badge badge-warning">Nonaktif</span>';
 
-          return `
+      return `
             <div class="card card-body stack" style="justify-content: space-between; border-top: 4px solid var(--primary);">
               <div class="stack" style="gap: var(--sp-1);">
                 <div class="row" style="justify-content: space-between; align-items: flex-start;">
@@ -289,7 +290,7 @@ async function muatDataHadiah(container) {
               </div>
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </div>
     `;
 

@@ -84,11 +84,12 @@ export async function renderProdukModule(container) {
         ${canEdit ? `
           <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
             <button type="button" class="btn btn-secondary" id="btn-panduan-varian-header" title="Tata Cara & Panduan Penggunaan Varian dan Satuan">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+              ${ICONS.helpCircle}
               <span>Panduan Varian &amp; Satuan</span>
             </button>
             <button type="button" class="btn btn-primary" id="btn-tambah-produk">
-              <span>+ Tambah Produk</span>
+              ${ICONS.plus}
+              <span>Tambah Produk</span>
             </button>
           </div>
         ` : ''}
@@ -430,7 +431,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
         icon: ICONS.box,
         actionButton: adaFilter
           ? `<button type="button" class="btn btn-secondary btn-reset-dari-empty">${ICONS.refresh} Reset Filter</button>`
-          : (canEdit && !filterState.q ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Produk Pertama</button>` : '')
+          : (canEdit && !filterState.q ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">${ICONS.plus}<span>Tambah Produk Pertama</span></button>` : '')
       })}
         </div>
       `;
@@ -1543,7 +1544,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
         <div class="card card-body stack" style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); gap: var(--sp-2); margin-top: var(--sp-1);">
           <div class="row-between items-center" style="flex-wrap: wrap; gap: var(--sp-1);">
             <div>
-              <span class="fw-bold text-sm" style="color: var(--amber-600, #d97706);">2. Harga Jual Grosir (Partai / Tukang)</span>
+              <span class="fw-bold text-sm" style="color: var(--warning-text);">2. Harga Jual Grosir (Partai / Tukang)</span>
               <div class="text-xs text-muted">Harga khusus belanja borongan proyek atau mitra rekanan</div>
             </div>
             <div id="badge-margin-grosir" class="badge badge-warning text-xs font-mono">
@@ -1642,7 +1643,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
         <div id="area-input-varian" class="stack ${hasData && pData.punya_varian ? '' : 'hidden'}">
           <div class="row-between">
             <span class="section-title">Daftar Varian Produk</span>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-varian">+ Varian</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-varian">${ICONS.plus}<span>Varian</span></button>
           </div>
           <span class="field-hint">Tiap varian memiliki nama spesifikasi, barcode, harga ritel, dan stok fisik tersendiri.</span>
           <div id="wadah-varian" class="stack-sm"></div>
@@ -1653,7 +1654,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
         <div class="stack">
           <div class="row-between">
             <span class="section-title">Konversi Satuan Kemasan (Multi Satuan)</span>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-satuan">+ Satuan Kemasan</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-satuan">${ICONS.plus}<span>Satuan Kemasan</span></button>
           </div>
           <span class="field-hint">Tentukan kemasan grosir/dus/ikat/rol untuk memudahkan kasir menjual dalam jumlah besar. Contoh: 1 Dus = 24 pcs, 1 Truk = 100 sak, 1 Ikat = 25 btg.</span>
           <div id="wadah-satuan" class="stack-sm"></div>

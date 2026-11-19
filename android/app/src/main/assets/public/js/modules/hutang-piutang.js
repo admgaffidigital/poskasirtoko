@@ -68,8 +68,8 @@ export async function renderHutangPiutangModule(container) {
 
         <div class="card card-body stack">
           <!-- Filter Bar Piutang -->
-          <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
-            <div class="field" style="width: 170px;">
+          <div class="simple-filter-bar">
+            <div class="field filter-select-field">
               <label class="field-label" for="filter-pt-status">Status Piutang</label>
               <select class="input" id="filter-pt-status">
                 <option value="">Semua Status</option>
@@ -79,7 +79,7 @@ export async function renderHutangPiutangModule(container) {
               </select>
             </div>
 
-            <div class="field grow">
+            <div class="field filter-search-field">
               <label class="field-label" for="search-pt">Cari Piutang</label>
               <div class="input-group">
                 <span class="input-icon">${ICONS.search}</span>
@@ -87,16 +87,16 @@ export async function renderHutangPiutangModule(container) {
               </div>
             </div>
 
-            <div class="field" style="display: flex; align-items: center; padding-bottom: 8px;">
-              <label style="display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
-                <input type="checkbox" id="check-pt-overdue">
+            <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-pt" title="Muat Ulang" aria-label="Muat Ulang Piutang">
+              ${ICONS.refresh}
+            </button>
+
+            <div class="field filter-extra-field">
+              <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
+                <input type="checkbox" id="check-pt-overdue" style="width: 16px; height: 16px; accent-color: var(--danger);">
                 <span class="fw-semibold text-danger">Hanya Jatuh Tempo Lewat</span>
               </label>
             </div>
-
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-pt" title="Muat Ulang" style="margin-bottom: 2px;">
-              ${ICONS.refresh}
-            </button>
           </div>
 
           <div id="area-tabel-piutang" style="margin-top: var(--sp-2);">
@@ -147,8 +147,8 @@ export async function renderHutangPiutangModule(container) {
 
           <div class="card card-body stack">
             <!-- Filter Bar Hutang -->
-            <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
-              <div class="field" style="width: 170px;">
+            <div class="simple-filter-bar">
+              <div class="field filter-select-field">
                 <label class="field-label" for="filter-ht-status">Status Hutang</label>
                 <select class="input" id="filter-ht-status">
                   <option value="">Semua Status</option>
@@ -158,7 +158,7 @@ export async function renderHutangPiutangModule(container) {
                 </select>
               </div>
 
-              <div class="field grow">
+              <div class="field filter-search-field">
                 <label class="field-label" for="search-ht">Cari Hutang</label>
                 <div class="input-group">
                   <span class="input-icon">${ICONS.search}</span>
@@ -166,16 +166,16 @@ export async function renderHutangPiutangModule(container) {
                 </div>
               </div>
 
-              <div class="field" style="display: flex; align-items: center; padding-bottom: 8px;">
-                <label style="display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
-                  <input type="checkbox" id="check-ht-overdue">
+              <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-ht" title="Muat Ulang" aria-label="Muat Ulang Hutang">
+                ${ICONS.refresh}
+              </button>
+
+              <div class="field filter-extra-field">
+                <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
+                  <input type="checkbox" id="check-ht-overdue" style="width: 16px; height: 16px; accent-color: var(--danger);">
                   <span class="fw-semibold text-danger">Hanya Jatuh Tempo Lewat</span>
                 </label>
               </div>
-
-              <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-ht" title="Muat Ulang" style="margin-bottom: 2px;">
-                ${ICONS.refresh}
-              </button>
             </div>
 
             <div id="area-tabel-hutang" style="margin-top: var(--sp-2);">
@@ -318,7 +318,7 @@ async function muatDataPiutang(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-card-2col">
           <thead>
             <tr>
               <th>No Nota & Tgl</th>
@@ -485,7 +485,7 @@ async function muatDataHutang(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-card-2col">
           <thead>
             <tr>
               <th>No Faktur & Tgl</th>

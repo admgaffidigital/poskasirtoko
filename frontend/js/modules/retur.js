@@ -35,7 +35,8 @@ export async function renderReturModule(container) {
             </button>
           </div>
           <button type="button" class="btn btn-primary" id="btn-tambah-retur" style="${isBeli && !isOwnerOrAdmin ? 'display: none;' : ''}">
-            <span>${isBeli ? '+ Buat Retur Pembelian' : '+ Buat Retur Baru'}</span>
+            ${ICONS.plus}
+            <span>${isBeli ? 'Buat Retur Pembelian' : 'Buat Retur Penjualan'}</span>
           </button>
         </div>
       </div>
@@ -43,8 +44,8 @@ export async function renderReturModule(container) {
       <!-- Panel Retur Penjualan -->
       <div id="panel-retur-jual" class="card card-body stack" style="${isBeli ? 'display: none;' : 'display: flex;'}">
         <!-- Filter Bar Jual -->
-        <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
-          <div class="field" style="width: 170px;">
+        <div class="simple-filter-bar">
+          <div class="field filter-select-field">
             <label class="field-label" for="filter-rj-status">Status Persetujuan</label>
             <select class="input" id="filter-rj-status">
               <option value="">Semua Status</option>
@@ -54,7 +55,7 @@ export async function renderReturModule(container) {
             </select>
           </div>
 
-          <div class="field grow">
+          <div class="field filter-search-field">
             <label class="field-label" for="search-rj">Cari Dokumen Retur</label>
             <div class="input-group">
               <span class="input-icon">${ICONS.search}</span>
@@ -62,7 +63,7 @@ export async function renderReturModule(container) {
             </div>
           </div>
 
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-rj" title="Muat Ulang" style="margin-bottom: 2px;">
+          <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-rj" title="Muat Ulang" aria-label="Muat Ulang Retur Penjualan">
             ${ICONS.refresh}
           </button>
         </div>
@@ -84,8 +85,8 @@ export async function renderReturModule(container) {
           </div>
         ` : `
           <!-- Filter Bar Beli -->
-          <div class="row" style="gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap;">
-            <div class="field" style="width: 170px;">
+          <div class="simple-filter-bar">
+            <div class="field filter-select-field">
               <label class="field-label" for="filter-rb-status">Status Persetujuan</label>
               <select class="input" id="filter-rb-status">
                 <option value="">Semua Status</option>
@@ -95,7 +96,7 @@ export async function renderReturModule(container) {
               </select>
             </div>
 
-            <div class="field grow">
+            <div class="field filter-search-field">
               <label class="field-label" for="search-rb">Cari Retur Pembelian</label>
               <div class="input-group">
                 <span class="input-icon">${ICONS.search}</span>
@@ -103,7 +104,7 @@ export async function renderReturModule(container) {
               </div>
             </div>
 
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-rb" title="Muat Ulang" style="margin-bottom: 2px;">
+            <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-rb" title="Muat Ulang" aria-label="Muat Ulang Retur Pembelian">
               ${ICONS.refresh}
             </button>
           </div>
@@ -131,7 +132,7 @@ export async function renderReturModule(container) {
     panelBeli.style.display = 'none';
     if (btnTambah) {
       btnTambah.style.display = 'inline-flex';
-      btnTambah.innerHTML = '<span>+ Buat Retur Penjualan</span>';
+      btnTambah.innerHTML = `${ICONS.plus}<span>Buat Retur Penjualan</span>`;
     }
     muatDataReturJual(container);
   });
@@ -145,7 +146,7 @@ export async function renderReturModule(container) {
     if (btnTambah) {
       if (isOwnerOrAdmin) {
         btnTambah.style.display = 'inline-flex';
-        btnTambah.innerHTML = '<span>+ Buat Retur Pembelian</span>';
+        btnTambah.innerHTML = `${ICONS.plus}<span>Buat Retur Pembelian</span>`;
       } else {
         btnTambah.style.display = 'none';
       }
@@ -246,7 +247,7 @@ async function muatDataReturJual(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-card-2col">
           <thead>
             <tr>
               <th>No Retur & Tgl</th>
@@ -261,13 +262,13 @@ async function muatDataReturJual(container) {
           </thead>
           <tbody>
             ${items.map((it) => {
-              let badgeStatus = '<span class="badge badge-warning">Diajukan</span>';
-              if (it.status === 'disetujui') badgeStatus = '<span class="badge badge-success">Disetujui</span>';
-              if (it.status === 'ditolak') badgeStatus = '<span class="badge badge-danger">Ditolak</span>';
+      let badgeStatus = '<span class="badge badge-warning">Diajukan</span>';
+      if (it.status === 'disetujui') badgeStatus = '<span class="badge badge-success">Disetujui</span>';
+      if (it.status === 'ditolak') badgeStatus = '<span class="badge badge-danger">Ditolak</span>';
 
-              const metodeRefund = it.metode_refund === 'potong_piutang' ? 'Potong Piutang' : 'Kas Toko';
+      const metodeRefund = it.metode_refund === 'potong_piutang' ? 'Potong Piutang' : 'Kas Toko';
 
-              return `
+      return `
                 <tr data-id="${escapeHtml(it.id)}">
                   <td data-label="No Retur & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_retur || '-')}</div>
@@ -300,7 +301,7 @@ async function muatDataReturJual(container) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -381,7 +382,7 @@ async function muatDataReturBeli(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-card-2col">
           <thead>
             <tr>
               <th>No Retur & Tgl</th>
@@ -396,13 +397,13 @@ async function muatDataReturBeli(container) {
           </thead>
           <tbody>
             ${items.map((it) => {
-              let badgeStatus = '<span class="badge badge-warning">Diajukan</span>';
-              if (it.status === 'disetujui') badgeStatus = '<span class="badge badge-success">Disetujui</span>';
-              if (it.status === 'ditolak') badgeStatus = '<span class="badge badge-danger">Ditolak</span>';
+      let badgeStatus = '<span class="badge badge-warning">Diajukan</span>';
+      if (it.status === 'disetujui') badgeStatus = '<span class="badge badge-success">Disetujui</span>';
+      if (it.status === 'ditolak') badgeStatus = '<span class="badge badge-danger">Ditolak</span>';
 
-              const metodeRefund = it.metode_refund === 'potong_hutang' ? 'Potong Hutang' : 'Kas Masuk';
+      const metodeRefund = it.metode_refund === 'potong_hutang' ? 'Potong Hutang' : 'Kas Masuk';
 
-              return `
+      return `
                 <tr data-id="${escapeHtml(it.id)}">
                   <td data-label="No Retur & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_retur || '-')}</div>
@@ -427,7 +428,7 @@ async function muatDataReturBeli(container) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -535,7 +536,7 @@ function bukaModalFormReturJual(container) {
           adaPiutangAktif = true;
           sisaPiutang = pt.sisa;
         }
-      } catch (_) {}
+      } catch (_) { }
 
       btnCekNota.disabled = false;
       btnCekNota.innerHTML = 'Cek Nota';
@@ -847,7 +848,7 @@ function bukaModalFormReturBeli(container) {
           adaHutangAktif = true;
           sisaHutang = ht.sisa;
         }
-      } catch (_) {}
+      } catch (_) { }
 
       btnCekFaktur.disabled = false;
       btnCekFaktur.innerHTML = 'Cek Faktur';

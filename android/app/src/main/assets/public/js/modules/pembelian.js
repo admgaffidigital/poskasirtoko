@@ -178,7 +178,8 @@ function renderFormInputBeli() {
               <input type="number" class="input tabular fw-bold" id="beli-diskon-persen" min="0" max="100" step="any" placeholder="0" value="0" inputmode="decimal" disabled>
             </div>
             <button type="button" class="btn btn-primary" id="btn-tambah-item-beli" disabled style="min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <span>+ Tambah ke Faktur</span>
+              ${ICONS.plus}
+              <span>Tambah ke Faktur</span>
             </button>
           </div>
           <div id="beli-preview-konversi" class="text-xs text-muted" style="min-height: 16px;"></div>

@@ -41,13 +41,13 @@ export async function renderLaporanModule(container) {
 
   container.innerHTML = `
     <div class="stack" id="modul-laporan-root">
-      <!-- Header Modul: Judul & Tombol Segarkan Berdampingan -->
-      <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);">
-        <div style="min-width: 0;">
-          <h2 style="margin: 0; font-size: clamp(1.15rem, 1.8vw, var(--fs-xl)); font-weight: var(--fw-bold); letter-spacing: -0.02em;">Dashboard & Laporan Usaha</h2>
-          <p class="d-none-mobile" style="margin: 2px 0 0; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4;">Ringkasan performa penjualan, pembelian, arus kas, persediaan stok, dan laba toko</p>
+      <!-- Header Modul: Standar .page-header (Judul & Tombol Segarkan Berdampingan) -->
+      <div class="page-header page-header-inline no-print">
+        <div>
+          <h2>Dashboard & Laporan Usaha</h2>
+          <p>Ringkasan performa penjualan, pembelian, arus kas, persediaan stok, dan laba toko</p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-segarkan-laporan" title="Muat ulang data terkini" style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-segarkan-laporan" title="Muat ulang data terkini" style="flex-shrink: 0;">
           ${ICONS.refresh}
           <span>Segarkan</span>
         </button>
@@ -60,7 +60,7 @@ export async function renderLaporanModule(container) {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-2); gap: var(--sp-2);">
             <span style="font-weight: var(--fw-bold); font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Periode:</span>
             <div class="badge badge-secondary" id="badge-periode-aktif" style="padding: 4px 10px; font-size: var(--fs-xs); font-family: var(--font-mono); font-weight: var(--fw-semibold); border-radius: var(--radius-full); background: var(--surface-2); border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+              ${ICONS.calendar}
               <span>${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}</span>
             </div>
           </div>
@@ -76,19 +76,16 @@ export async function renderLaporanModule(container) {
           </div>
 
           <!-- Bagian Pilihan Tanggal Manual (Hanya muncul jika mode Kustom) -->
-          <div id="box-kustom-tanggal" style="${stateLaporan.periode === 'kustom' ? 'display: flex;' : 'display: none;'} align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px dashed var(--border); flex-wrap: wrap;">
-            <span style="font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-muted);">Tentukan Rentang Tanggal:</span>
-            <div class="cluster" style="align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
-              <div class="row" style="align-items: center; gap: var(--sp-2);">
-                <label for="inp-lap-dari" style="font-size: var(--fs-xs); color: var(--text-muted); flex-shrink: 0;">Dari:</label>
-                <input type="date" id="inp-lap-dari" class="input input-sm" value="${stateLaporan.dari}" style="width: 140px; max-width: 100%;">
-              </div>
-              <div class="row" style="align-items: center; gap: var(--sp-2);">
-                <label for="inp-lap-sampai" style="font-size: var(--fs-xs); color: var(--text-muted); flex-shrink: 0;">Sampai:</label>
-                <input type="date" id="inp-lap-sampai" class="input input-sm" value="${stateLaporan.sampai}" style="width: 140px; max-width: 100%;">
-              </div>
-              <button type="button" class="btn btn-sm btn-primary" id="btn-terapkan-tanggal" style="font-weight: var(--fw-bold);">Terapkan Rentang</button>
+          <div id="box-kustom-tanggal" class="date-range-bar" style="${stateLaporan.periode === 'kustom' ? '' : 'display: none;'}">
+            <div class="date-range-field">
+              <label for="inp-lap-dari">Dari</label>
+              <input type="date" id="inp-lap-dari" class="input input-sm" value="${stateLaporan.dari}">
             </div>
+            <div class="date-range-field">
+              <label for="inp-lap-sampai">Sampai</label>
+              <input type="date" id="inp-lap-sampai" class="input input-sm" value="${stateLaporan.sampai}">
+            </div>
+            <button type="button" class="btn btn-sm btn-primary date-range-apply" id="btn-terapkan-tanggal">Terapkan Rentang</button>
           </div>
         </div>
       </div>
@@ -183,7 +180,7 @@ function pasangEventHeader(container) {
 
       const boxKustom = $('#box-kustom-tanggal', container);
       if (per === 'kustom') {
-        if (boxKustom) boxKustom.style.display = 'flex';
+        if (boxKustom) boxKustom.style.display = '';
         $('#inp-lap-dari', container)?.focus();
         return;
       } else {
@@ -587,7 +584,7 @@ function renderTabDashboard(container, data) {
         <div class="card">
           <div class="card-header" style="justify-content: space-between; align-items: center;">
             <h3 class="card-title">${ICONS.alertTriangle} Peringatan Stok Menipis / Habis</h3>
-            <a href="#/pembelian" class="btn btn-sm btn-secondary no-print" style="text-decoration: none;">+ Order Supplier</a>
+            <a href="#/pembelian" class="btn btn-sm btn-secondary no-print" style="text-decoration: none;">${ICONS.plus}<span>Order Supplier</span></a>
           </div>
           <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
@@ -792,14 +789,14 @@ function renderTabPenjualan(container, data) {
       <div class="card">
         <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
           <h3 class="card-title">${ICONS.shoppingBag} Daftar Nota Penjualan (${items.length} data)</h3>
-          <div class="cluster no-print" style="gap: var(--sp-2);">
-            <select id="sel-filter-bayar-jual" class="input input-sm" style="width: 140px;">
+          <div class="lap-subfilter-bar no-print">
+            <select id="sel-filter-bayar-jual" class="input input-sm">
               <option value="">Semua Status</option>
               <option value="lunas" ${stateLaporan.filterPenjualan.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
               <option value="tempo" ${stateLaporan.filterPenjualan.status_bayar === 'tempo' ? 'selected' : ''}>Tempo</option>
               <option value="sebagian" ${stateLaporan.filterPenjualan.status_bayar === 'sebagian' ? 'selected' : ''}>Sebagian</option>
             </select>
-            <select id="sel-filter-metode-jual" class="input input-sm" style="width: 140px;">
+            <select id="sel-filter-metode-jual" class="input input-sm">
               <option value="">Semua Metode</option>
               <option value="tunai" ${stateLaporan.filterPenjualan.metode_bayar === 'tunai' ? 'selected' : ''}>Tunai</option>
               <option value="transfer" ${stateLaporan.filterPenjualan.metode_bayar === 'transfer' ? 'selected' : ''}>Transfer</option>
@@ -811,7 +808,7 @@ function renderTabPenjualan(container, data) {
 
         <div class="card-body" style="padding: 0;">
           <div class="table-wrap">
-            <table class="table">
+            <table class="table table-card-2col">
               <thead>
                 <tr>
                   <th>No Nota</th>
@@ -975,7 +972,7 @@ function konfirmasiVoidNota(penjualanId, noNota, totalFormatted, onSelesai) {
             <li>Membatalkan jurnal arus kas masuk terkait transaksi ini.</li>
           </ul>
           ${isAdmin ? `
-            <div style="margin-top: 6px; padding: 6px 10px; background: rgba(0,0,0,0.06); border-radius: 4px; font-size: var(--fs-xs); display: flex; align-items: flex-start; gap: 6px;">
+            <div style="margin-top: 6px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--fs-xs); display: flex; align-items: flex-start; gap: 6px;">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
               <span><strong>Catatan Admin:</strong> Sesuai SOP, Admin hanya dapat membatalkan transaksi hari ini. Untuk transaksi tanggal lampau silakan hubungi Pemilik Toko.</span>
             </div>
@@ -1227,10 +1224,10 @@ function renderTabPembelian(container, data) {
 
       <!-- Tabel Faktur Pembelian -->
       <div class="card">
-        <div class="card-header" style="justify-content: space-between; align-items: center;">
+        <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
           <h3 class="card-title">${ICONS.truck} Daftar Faktur Pembelian Supplier (${items.length} data)</h3>
-          <div class="cluster no-print" style="gap: var(--sp-2);">
-            <select id="sel-filter-bayar-beli" class="input input-sm" style="width: 150px;">
+          <div class="lap-subfilter-bar no-print">
+            <select id="sel-filter-bayar-beli" class="input input-sm lap-subfilter-full">
               <option value="">Semua Status</option>
               <option value="lunas" ${stateLaporan.filterPembelian.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
               <option value="sebagian" ${stateLaporan.filterPembelian.status_bayar === 'sebagian' ? 'selected' : ''}>Sebagian (Tempo)</option>
@@ -1241,7 +1238,7 @@ function renderTabPembelian(container, data) {
 
         <div class="card-body" style="padding: 0;">
           <div class="table-wrap">
-            <table class="table">
+            <table class="table table-card-2col">
               <thead>
                 <tr>
                   <th>No Faktur</th>
@@ -1660,9 +1657,9 @@ function renderTabStokValuasi(container, data) {
       <div class="card">
         <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
           <h3 class="card-title">${ICONS.box} Daftar Persediaan Barang & Nilai Aset (${items.length} item)</h3>
-          <div class="cluster no-print" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <input type="text" id="inp-cari-stok" class="input input-sm" placeholder="Cari nama / SKU..." value="${escapeHtml(stateLaporan.filterStok.q || '')}" style="width: 180px;">
-            <select id="sel-status-stok" class="input input-sm" style="width: 140px;">
+          <div class="lap-subfilter-bar no-print">
+            <input type="text" id="inp-cari-stok" class="input input-sm" placeholder="Cari nama / SKU..." value="${escapeHtml(stateLaporan.filterStok.q || '')}">
+            <select id="sel-status-stok" class="input input-sm lap-subfilter-full">
               <option value="semua" ${stateLaporan.filterStok.status_stok === 'semua' ? 'selected' : ''}>Semua Status</option>
               <option value="kritis" ${stateLaporan.filterStok.status_stok === 'kritis' ? 'selected' : ''}>Kritis (Menipis)</option>
               <option value="habis" ${stateLaporan.filterStok.status_stok === 'habis' ? 'selected' : ''}>Habis (0)</option>
@@ -1673,7 +1670,7 @@ function renderTabStokValuasi(container, data) {
 
         <div class="card-body" style="padding: 0;">
           <div class="table-wrap">
-            <table class="table">
+            <table class="table table-card-2col">
               <thead>
                 <tr>
                   <th>SKU / Barcode</th>

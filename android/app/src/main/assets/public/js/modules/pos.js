@@ -630,9 +630,9 @@ export function renderPosModule(container) {
 
       let infoOpsi = '';
       if (punyaVarian) {
-        infoOpsi = `<span class="badge badge-dot badge-sm" style="background: rgba(255,255,255,0.85); color: var(--text);">${p.varian.length} Varian</span>`;
+        infoOpsi = `<span class="badge badge-dot badge-sm pos-card-opt-badge">${p.varian.length} Varian</span>`;
       } else if (punyaSatuanKonversi) {
-        infoOpsi = `<span class="badge badge-dot badge-sm" style="background: rgba(255,255,255,0.85); color: var(--text);">${p.satuan_konversi.length + 1} Satuan</span>`;
+        infoOpsi = `<span class="badge badge-dot badge-sm pos-card-opt-badge">${p.satuan_konversi.length + 1} Satuan</span>`;
       }
 
       const rawKode = p.sku || p.barcode || '';
@@ -2305,8 +2305,8 @@ export function renderPosModule(container) {
             <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <label class="form-label fw-bold text-xs" style="margin: 0;">Modal Awal / Kas Kasir (Float Laci):</label>
               <button type="button" class="btn btn-secondary btn-xs text-danger" id="btn-tambah-kas-keluar-shift" style="display: inline-flex; align-items: center; gap: 4px;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                <span>+ Kas Keluar</span>
+                ${ICONS.plus}
+                <span>Kas Keluar</span>
               </button>
             </div>
             <div class="row" style="gap: var(--sp-2); align-items: center;">

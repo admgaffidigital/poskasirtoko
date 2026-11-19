@@ -23,7 +23,8 @@ export async function renderSupplierModule(container) {
         ${canEdit ? `
           <div>
             <button type="button" class="btn btn-primary" id="btn-tambah-supplier">
-              <span>+ Tambah Supplier</span>
+              ${ICONS.plus}
+              <span>Tambah Supplier</span>
             </button>
           </div>
         ` : ''}
@@ -85,7 +86,7 @@ async function muatSupplierList(container, canEdit, query = '') {
         title: query ? 'Supplier Tidak Ditemukan' : 'Belum Ada Supplier',
         text: query ? `Tidak ada supplier dengan kata kunci "${escapeHtml(query)}"` : 'Tambahkan supplier pertama untuk mulai mencatat pembelian dan stok masuk.',
         icon: ICONS.truck,
-        actionButton: canEdit && !query ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">+ Tambah Supplier</button>` : ''
+        actionButton: canEdit && !query ? `<button type="button" class="btn btn-secondary btn-tambah-pertama">${ICONS.plus}<span>Tambah Supplier</span></button>` : ''
       });
       area.querySelector('.btn-tambah-pertama')?.addEventListener('click', () => {
         bukaModalSupplier(container, null);

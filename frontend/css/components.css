@@ -753,7 +753,7 @@ input[type="password"] {
 
 .stat-card-icon.icon-purple {
   background: var(--surface-2);
-  color: #a855f7;
+  color: var(--purple-text);
   border: 1px solid var(--border);
 }
 
@@ -1456,6 +1456,7 @@ input[type="password"] {
   /* Baris kosong / tidak ada data */
   .table-wrap:not(.keep-table) .table tbody tr td[colspan] {
     display: block !important;
+    grid-column: 1 / -1 !important;
     text-align: center !important;
     justify-content: center !important;
     border-bottom: 0 !important;
@@ -1475,45 +1476,129 @@ input[type="password"] {
     max-width: 100% !important;
     overflow: visible !important;
     white-space: normal !important;
+    text-align: left !important;
   }
 
-  /* Layout 2 Kolom Kompak untuk Kartu Produk Mobile */
-  .table-produk tbody tr {
+  /* ========================================================================
+     UNIFIED NATIVE APP 2-KOLOM CARD GRID MOBILE (Konsisten di Semua Modul)
+     Label mikro di atas nilai -> 0 tumpang tindih, hemat ~35% ruang vertikal
+     ======================================================================== */
+  .table-produk tbody tr,
+  .table-kartu-stok tbody tr,
+  .table-pelanggan tbody tr,
+  .table-supplier tbody tr,
+  .table-users tbody tr,
+  .table-riwayat-beli tbody tr,
+  .table-card-2col tbody tr {
     display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 4px 12px !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px 12px !important;
+    padding: var(--sp-3) var(--sp-4) !important;
   }
 
-  .table-produk tbody tr td[data-label="Produk"] {
+  /* Header kartu (full-width di baris atas) */
+  .table-produk tbody tr td[data-label="Produk"],
+  .table-pelanggan tbody tr td:first-child,
+  .table-supplier tbody tr td:first-child,
+  .table-users tbody tr td:first-child,
+  .table-riwayat-beli tbody tr td:first-child,
+  .table-card-2col tbody tr td:first-child {
     grid-column: 1 / -1 !important;
+    margin-bottom: 2px !important;
   }
 
-  .table-produk tbody tr td[data-label="Satuan"],
-  .table-produk tbody tr td[data-label="HPP"],
-  .table-produk tbody tr td[data-label="Harga Ritel"],
-  .table-produk tbody tr td[data-label="Harga Grosir"] {
+  /* Sel metrik 2-kolom: label mikro di atas, nilai tegas di bawah */
+  .table-produk tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile),
+  .table-kartu-stok tbody tr td:not([data-label="Produk & Varian"]):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile),
+  .table-pelanggan tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile),
+  .table-supplier tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile),
+  .table-users tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile),
+  .table-riwayat-beli tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile),
+  .table-card-2col tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile) {
     grid-column: span 1 !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    gap: 2px !important;
     padding: 2px 0 !important;
-    min-height: 22px !important;
+    min-height: 0 !important;
   }
 
-  .table-produk tbody tr td[data-label="Aksi"] {
+  .table-produk tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
+  .table-kartu-stok tbody tr td:not([data-label="Produk & Varian"]):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
+  .table-pelanggan tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
+  .table-supplier tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
+  .table-users tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
+  .table-riwayat-beli tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
+  .table-card-2col tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Nilai teks & cell-stack di dalam sel 2-kolom rata kiri bersih */
+  .table-produk tbody tr td .cell-stack,
+  .table-kartu-stok tbody tr td .cell-stack,
+  .table-pelanggan tbody tr td .cell-stack,
+  .table-supplier tbody tr td .cell-stack,
+  .table-users tbody tr td .cell-stack,
+  .table-riwayat-beli tbody tr td .cell-stack,
+  .table-card-2col tbody tr td .cell-stack,
+  .table-produk tbody tr td .table-cell-val,
+  .table-kartu-stok tbody tr td .table-cell-val,
+  .table-pelanggan tbody tr td .table-cell-val,
+  .table-supplier tbody tr td .table-cell-val,
+  .table-users tbody tr td .table-cell-val,
+  .table-riwayat-beli tbody tr td .table-cell-val,
+  .table-card-2col tbody tr td .table-cell-val,
+  .table-produk tbody tr td > span:last-child,
+  .table-kartu-stok tbody tr td > span:last-child,
+  .table-pelanggan tbody tr td > span:last-child,
+  .table-supplier tbody tr td > span:last-child,
+  .table-users tbody tr td > span:last-child,
+  .table-riwayat-beli tbody tr td > span:last-child,
+  .table-card-2col tbody tr td > span:last-child {
+    align-items: flex-start !important;
+    text-align: left !important;
+    max-width: 100% !important;
+  }
+
+  /* Sel teks panjang (Keterangan, Alamat, Alasan, Kontak, Catatan) -> full-width dashed */
+  .table-pelanggan tbody tr td[data-label="Kontak & Alamat"],
+  .table-supplier tbody tr td[data-label="Alamat"],
+  .table-supplier tbody tr td[data-label="Kontak PIC"],
+  .table-card-2col tbody tr td[data-label="Keterangan"],
+  .table-card-2col tbody tr td[data-label="Alasan Selisih"],
+  .table-card-2col tbody tr td[data-label="Produk & Varian"],
+  .table-card-2col tbody tr td[data-label="Produk"],
+  .table-card-2col tbody tr td[data-label="Catatan"] {
     grid-column: 1 / -1 !important;
+    padding-top: 6px !important;
+    margin-top: 2px !important;
+    border-top: 1px dashed var(--border) !important;
   }
 
-  /* Layout 2 Kolom Kompak untuk Kartu Stok Mobile Ala Mutasi Bank */
-  .table-kartu-stok tbody tr {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 4px 12px !important;
+  /* Footer Aksi kartu -> selalu full-width */
+  .table-produk tbody tr td[data-label="Aksi"],
+  .table-kartu-stok tbody tr td[data-label="Aksi"],
+  .table-pelanggan tbody tr td[data-label="Aksi"],
+  .table-supplier tbody tr td[data-label="Aksi"],
+  .table-users tbody tr td[data-label="Aksi"],
+  .table-riwayat-beli tbody tr td[data-label="Aksi"],
+  .table-card-2col tbody tr td[data-label="Aksi"],
+  .table-card-2col tbody tr td:last-child:has(.btn) {
+    grid-column: 1 / -1 !important;
+    flex-direction: row !important;
   }
 
+  /* Pengurutan khusus Kartu Stok Mobile ala Mutasi Bank */
   .table-kartu-stok tbody tr td[data-label="Produk & Varian"] {
     order: 1 !important;
     grid-column: 1 / -1 !important;
     border-bottom: 1px solid var(--border) !important;
-    padding-bottom: var(--sp-2) !important;
-    margin-bottom: var(--sp-1) !important;
+    padding: 0 0 var(--sp-2) 0 !important;
+    margin-bottom: 2px !important;
     justify-content: space-between !important;
     align-items: flex-start !important;
     text-align: left !important;
@@ -1524,17 +1609,9 @@ input[type="password"] {
     display: none !important;
   }
 
-  .table-kartu-stok tbody tr td[data-label="Produk & Varian"] .cell-stack {
-    text-align: left !important;
-    align-items: flex-start !important;
-    max-width: 100% !important;
-  }
-
   .table-kartu-stok tbody tr td[data-label="Waktu"] {
     order: 2 !important;
-    grid-column: span 1 !important;
     border-bottom: 0 !important;
-    padding-bottom: 2px !important;
     margin-bottom: 0 !important;
     font-size: var(--fs-xs) !important;
   }
@@ -1546,44 +1623,32 @@ input[type="password"] {
 
   .table-kartu-stok tbody tr td[data-label="Jenis"] {
     order: 3 !important;
-    grid-column: span 1 !important;
-    padding: 2px 0 !important;
   }
 
   .table-kartu-stok tbody tr td[data-label="No. Referensi"] {
     order: 4 !important;
-    grid-column: span 1 !important;
-    padding: 2px 0 !important;
   }
 
   .table-kartu-stok tbody tr td[data-label="Mutasi"] {
     order: 5 !important;
-    grid-column: span 1 !important;
-    padding: 2px 0 !important;
   }
 
   .table-kartu-stok tbody tr td[data-label="Saldo Akhir"] {
     order: 6 !important;
-    grid-column: span 1 !important;
-    padding: 2px 0 !important;
   }
 
   .table-kartu-stok tbody tr td[data-label="HPP Mutasi"] {
     order: 7 !important;
-    grid-column: span 1 !important;
-    padding: 2px 0 !important;
   }
 
   .table-kartu-stok tbody tr td[data-label="Petugas"] {
     order: 8 !important;
-    grid-column: span 1 !important;
-    padding: 2px 0 !important;
   }
 
   .table-kartu-stok tbody tr td[data-label="Keterangan"] {
     order: 9 !important;
     grid-column: 1 / -1 !important;
-    padding: 4px 0 !important;
+    padding: 6px 0 2px !important;
     border-top: 1px dashed var(--border) !important;
   }
 
@@ -2787,6 +2852,20 @@ a.list-item:hover {
   position: absolute;
   top: 6px;
   left: 6px;
+}
+
+.pos-card-opt-badge {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+[data-theme="dark"] .pos-card-opt-badge {
+  background: rgba(17, 26, 46, 0.9);
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 /* Konten Bawah Kartu Grid */

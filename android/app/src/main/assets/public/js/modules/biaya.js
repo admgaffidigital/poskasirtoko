@@ -87,14 +87,16 @@ export async function renderBiayaModule(container) {
         </div>
 
         <!-- Baris Kustom Tanggal (Jika Mode Kustom Aktif) -->
-        <div id="biaya-custom-range" style="${filterPeriode === 'custom' ? 'display: flex;' : 'display: none;'} align-items: center; gap: var(--sp-2); padding-top: var(--sp-2); border-top: 1px dashed var(--border); flex-wrap: wrap;">
-          <span class="text-xs text-muted fw-semibold">Rentang:</span>
-          <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
-            <input type="date" id="biaya-tgl-dari" class="input input-sm" value="${customDari}" style="width: 135px;" />
-            <span class="text-xs text-muted">s/d</span>
-            <input type="date" id="biaya-tgl-sampai" class="input input-sm" value="${customSampai}" style="width: 135px;" />
-            <button type="button" class="btn btn-primary btn-sm" id="btn-terapkan-tgl">Terapkan</button>
+        <div id="biaya-custom-range" class="date-range-bar" style="${filterPeriode === 'custom' ? '' : 'display: none;'}">
+          <div class="date-range-field">
+            <label for="biaya-tgl-dari">Dari</label>
+            <input type="date" id="biaya-tgl-dari" class="input input-sm" value="${customDari}" />
           </div>
+          <div class="date-range-field">
+            <label for="biaya-tgl-sampai">Sampai</label>
+            <input type="date" id="biaya-tgl-sampai" class="input input-sm" value="${customSampai}" />
+          </div>
+          <button type="button" class="btn btn-primary btn-sm date-range-apply" id="btn-terapkan-tgl">Terapkan Rentang</button>
         </div>
 
         <!-- Baris 3: Filter Kategori, Sumber Dana, dan Pencarian -->
@@ -163,7 +165,7 @@ export async function renderBiayaModule(container) {
             <span class="stat-card-title">Transfer Bank</span>
             <div class="stat-card-icon icon-purple">${ICONS.arrowUpRight}</div>
           </div>
-          <div class="stat-card-value" style="color: #a855f7;" id="stat-bank-biaya">Rp 0</div>
+          <div class="stat-card-value" style="color: var(--purple-text);" id="stat-bank-biaya">Rp 0</div>
           <div class="stat-card-desc">Rekening bank toko</div>
         </div>
       </div>
@@ -205,7 +207,7 @@ export async function renderBiayaModule(container) {
     filterPeriode = btn.getAttribute('data-p');
 
     if (filterPeriode === 'custom') {
-      elCustomRange.style.display = 'flex';
+      elCustomRange.style.display = '';
       perbaruiLabelPeriode();
     } else {
       elCustomRange.style.display = 'none';
@@ -343,7 +345,7 @@ export async function renderBiayaModule(container) {
 
     areaTabel.innerHTML = `
       <div class="table-wrap">
-        <table class="table" id="tabel-biaya">
+        <table class="table table-card-2col" id="tabel-biaya">
           <thead>
             <tr>
               <th style="min-width: 140px;">No Transaksi</th>
