@@ -790,33 +790,30 @@ function generateSkuCode(prefix = 'SKU') {
  * Modal Panduan & Tata Cara Penggunaan Varian dan Satuan Kemasan
  */
 export function bukaModalPanduanVarianSatuan() {
+  const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir Toko';
   showModal({
     title: 'Panduan & Tata Cara: Varian dan Satuan Kemasan',
     size: 'lg',
     body: `
-      <div class="stack" style="gap: var(--sp-4); font-size: var(--fs-sm); line-height: 1.6;">
+      <div class="stack" style="gap: var(--sp-4);">
         <!-- Ringkasan Inti -->
-        <div class="alert alert-info alert-block" style="display: block !important; width: 100% !important; background: var(--surface-2); border: 1px solid rgba(232, 89, 12, 0.35); border-left: 4px solid var(--primary); border-radius: var(--radius-md); padding: var(--sp-3); box-sizing: border-box;">
-          <div class="fw-bold" style="color: var(--primary); margin-bottom: 6px; font-size: var(--fs-base);">
+        <div class="guide-callout">
+          <div class="guide-callout-title">
             Perbedaan Utama: Kapan Pakai Varian? Kapan Pakai Satuan Kemasan?
           </div>
-          <div style="line-height: 1.6;">
-            Keduanya memiliki fungsi yang sangat berbeda dalam operasional toko bangunan:
-            <ul style="margin: 6px 0 0 18px; padding: 0;">
-              <li><b>Varian Produk:</b> Digunakan jika barang memiliki <u>karakteristik fisik atau spesifikasi yang berbeda</u> sehingga stok fisiknya wajib dihitung terpisah di gudang (contoh: Pipa Tipe C vs Tipe D; Cat Putih 5kg vs Abu-abu 5kg).</li>
-              <li><b>Konversi Satuan Kemasan (Multi Satuan):</b> Digunakan jika <u>satu barang fisik yang sama persis</u> bisa dijual eceran maupun dalam kemasan grosir/dus/ikat/rol (contoh: Pipa dijual per Batang atau per Ikat; Semen per Sak atau per Truk).</li>
-            </ul>
-          </div>
+          <p class="text-sm text-muted">Keduanya memiliki fungsi yang berbeda dalam operasional toko bangunan:</p>
+          <ul class="prose-list text-sm">
+            <li><strong>Varian Produk:</strong> Digunakan jika barang memiliki <strong>karakteristik fisik atau spesifikasi berbeda</strong> sehingga stok fisiknya wajib dihitung terpisah di gudang (contoh: Pipa Tipe C vs Tipe D; Cat Putih 5kg vs Abu-abu 5kg).</li>
+            <li><strong>Konversi Satuan Kemasan (Multi Satuan):</strong> Digunakan jika <strong>satu barang fisik yang sama persis</strong> dijual eceran maupun dalam kemasan grosir/dus/ikat/rol (contoh: Pipa dijual per Batang atau per Ikat; Semen per Sak atau per Truk).</li>
+          </ul>
         </div>
 
         <!-- Tabel Perbandingan Komprehensif -->
-        <div>
-          <div class="fw-bold" style="margin-bottom: var(--sp-2); font-size: var(--fs-base);">
-            Tabel Komparasi Fitur
-          </div>
-          <div class="table-wrap" style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
-            <table class="table" style="margin: 0; font-size: var(--fs-xs); min-width: 0; width: 100%;">
-              <thead style="background: var(--surface-2);">
+        <div class="stack" style="gap: var(--sp-2);">
+          <div class="fw-semibold text-md">Tabel Komparasi Fitur</div>
+          <div class="table-wrap" style="border: 1px solid var(--border); border-radius: var(--radius-lg);">
+            <table class="table table-guide">
+              <thead>
                 <tr>
                   <th style="width: 22%;">Aspek</th>
                   <th style="width: 39%;">Varian Produk (Warna / Ukuran / Tebal)</th>
@@ -826,41 +823,41 @@ export function bukaModalPanduanVarianSatuan() {
               <tbody>
                 <tr>
                   <td data-label="Aspek" class="fw-semibold">Fungsi Utama</td>
-                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;">Membedakan jenis barang dengan spesifikasi berbeda.</span></td>
-                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;">Menjual barang yang sama dalam kemasan grosir / partai besar.</span></td>
+                  <td data-label="Varian Produk">Membedakan jenis barang dengan spesifikasi berbeda.</td>
+                  <td data-label="Multi Satuan">Menjual barang yang sama dalam kemasan grosir / partai besar.</td>
                 </tr>
                 <tr>
                   <td data-label="Aspek" class="fw-semibold">Pengelolaan Stok</td>
-                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;"><b>Terpisah per varian</b>. Jika Cat Putih laku 1 kaleng, hanya stok Cat Putih yang berkurang.</span></td>
-                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;"><b>Satu stok fisik induk</b> (satuan dasar). Jual 1 Ikat Pipa (isi 25 btg) otomatis memotong 25 btg dari stok pipa.</span></td>
+                  <td data-label="Varian Produk"><strong>Terpisah per varian.</strong> Jika Cat Putih laku 1 kaleng, hanya stok Cat Putih yang berkurang.</td>
+                  <td data-label="Multi Satuan"><strong>Satu stok fisik induk</strong> (satuan dasar). Jual 1 Ikat Pipa (isi 25 btg) otomatis memotong 25 btg dari stok pipa.</td>
                 </tr>
                 <tr>
-                  <td data-label="Aspek" class="fw-semibold">Barcode & SKU</td>
-                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;">Tiap varian memiliki barcode dan SKU mandiri.</span></td>
-                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;">Tiap kemasan bisa memiliki barcode kemasan tersendiri (misal barcode di kardus luar).</span></td>
+                  <td data-label="Aspek" class="fw-semibold">Barcode &amp; SKU</td>
+                  <td data-label="Varian Produk">Tiap varian memiliki barcode dan SKU mandiri.</td>
+                  <td data-label="Multi Satuan">Tiap kemasan bisa memiliki barcode kemasan tersendiri (misal barcode di kardus luar).</td>
                 </tr>
                 <tr>
                   <td data-label="Aspek" class="fw-semibold">Contoh Kasus Toko Bangunan</td>
                   <td data-label="Varian Produk">
-                    <div class="cell-stack">
-                      <span>• Cat: <i>Putih 5kg</i>, <i>Krem 5kg</i>, <i>Abu-abu 5kg</i></span>
-                      <span>• Besi Beton: <i>8mm</i>, <i>10mm</i>, <i>12mm</i></span>
-                      <span>• Pipa PVC: <i>Tebal C</i>, <i>Tebal D</i>, <i>Tebal AW</i></span>
-                    </div>
+                    <ul class="prose-list text-xs" style="margin-top: 0;">
+                      <li>Cat: <em>Putih 5kg</em>, <em>Krem 5kg</em>, <em>Abu-abu 5kg</em></li>
+                      <li>Besi Beton: <em>8mm</em>, <em>10mm</em>, <em>12mm</em></li>
+                      <li>Pipa PVC: <em>Tebal C</em>, <em>Tebal D</em>, <em>Tebal AW</em></li>
+                    </ul>
                   </td>
                   <td data-label="Multi Satuan">
-                    <div class="cell-stack">
-                      <span>• Pipa: 1 Ikat = 25 Batang (Faktor: 25)</span>
-                      <span>• Kabel: 1 Rol = 50 Meter (Faktor: 50)</span>
-                      <span>• Semen: 1 Truk = 100 Sak (Faktor: 100)</span>
-                      <span>• Keramik: 1 Dus = 1.44 m² (Faktor: 1.44)</span>
-                    </div>
+                    <ul class="prose-list text-xs" style="margin-top: 0;">
+                      <li>Pipa: 1 Ikat = 25 Batang (Faktor: <code>25</code>)</li>
+                      <li>Kabel: 1 Rol = 50 Meter (Faktor: <code>50</code>)</li>
+                      <li>Semen: 1 Truk = 100 Sak (Faktor: <code>100</code>)</li>
+                      <li>Keramik: 1 Dus = 1.44 m&sup2; (Faktor: <code>1.44</code>)</li>
+                    </ul>
                   </td>
                 </tr>
                 <tr>
                   <td data-label="Aspek" class="fw-semibold">Di Kasir POS</td>
-                  <td data-label="Varian Produk"><span class="table-cell-val" style="white-space: normal;">Kasir memilih varian saat item ditambahkan ke keranjang.</span></td>
-                  <td data-label="Multi Satuan"><span class="table-cell-val" style="white-space: normal;">Kasir dapat beralih satuan langsung di keranjang belanja melalui tombol badge <code>[ BTG ▾ ]</code>.</span></td>
+                  <td data-label="Varian Produk">Kasir memilih varian saat item ditambahkan ke keranjang.</td>
+                  <td data-label="Multi Satuan">Kasir dapat beralih satuan langsung di keranjang melalui badge <code>BTG</code>.</td>
                 </tr>
               </tbody>
             </table>
@@ -868,57 +865,49 @@ export function bukaModalPanduanVarianSatuan() {
         </div>
 
         <!-- Tata Cara 1: Varian Produk -->
-        <div class="card" style="padding: var(--sp-3); border: 1px solid var(--border); background: var(--surface-1);">
-          <div class="fw-bold" style="color: var(--primary); margin-bottom: 6px; font-size: var(--fs-base);">
-            1. Tata Cara Mengatur Varian Produk
-          </div>
-          <ol style="margin: 0; padding-left: 20px;" class="stack-xs text-xs">
-            <li>Buka formulir Tambah/Ubah Produk, lalu buka tab <b>Varian & Satuan</b>.</li>
-            <li>Aktifkan sakelar <b>"Produk memiliki beberapa varian (Warna, Ukuran, Tebal)"</b>.</li>
-            <li>Tekan tombol <b>"+ Varian"</b> untuk menambahkan baris varian baru.</li>
-            <li>Isi <b>Nama Varian</b> sesuai spesifikasi barang (contoh: <code>Putih 5kg</code>, <code>Tebal Tipe C</code>, atau <code>10mm</code>).</li>
-            <li>Kolom <b>SKU Varian</b> & <b>Barcode Varian</b> boleh dikosongkan jika ingin sistem membuatnya secara otomatis (kode EAN-13 standar retail).</li>
-            <li>Isi <b>Harga Jual Ritel</b> untuk varian tersebut.</li>
-            <li>Isi <b>Stok Awal</b> fisik yang ada di toko untuk varian tersebut. (Total stok produk induk akan dihitung otomatis oleh sistem sebagai akumulasi seluruh varian).</li>
+        <div class="guide-card">
+          <div class="guide-card-title">1. Tata Cara Mengatur Varian Produk</div>
+          <ol class="prose-list text-sm">
+            <li>Buka formulir Tambah/Ubah Produk, lalu pilih tab <strong>Varian &amp; Satuan</strong>.</li>
+            <li>Aktifkan sakelar <strong>"Produk memiliki beberapa varian (Warna, Ukuran, Tebal)"</strong>.</li>
+            <li>Klik tombol <strong>Varian</strong> untuk menambahkan baris varian baru.</li>
+            <li>Isi <strong>Nama Varian</strong> sesuai spesifikasi barang (contoh: <code>Putih 5kg</code>, <code>Tebal Tipe C</code>, atau <code>10mm</code>).</li>
+            <li>Kolom <strong>SKU Varian</strong> &amp; <strong>Barcode Varian</strong> boleh dikosongkan agar dibuat otomatis (EAN-13 standar retail).</li>
+            <li>Isi <strong>Harga Jual Ritel</strong> dan <strong>Stok Awal</strong> fisik untuk masing-masing varian (total stok induk otomatis dijumlahkan).</li>
           </ol>
         </div>
 
         <!-- Tata Cara 2: Satuan Kemasan -->
-        <div class="card" style="padding: var(--sp-3); border: 1px solid var(--border); background: var(--surface-1);">
-          <div class="fw-bold" style="color: var(--primary); margin-bottom: 6px; font-size: var(--fs-base);">
-            2. Tata Cara Mengatur Satuan Kemasan (Multi Satuan)
-          </div>
-          <ol style="margin: 0; padding-left: 20px;" class="stack-xs text-xs">
-            <li>Pastikan <b>Satuan Dasar</b> di Tab 1 (Informasi Dasar) sudah diisi terlebih dahulu (contoh: <code>BTG</code>, <code>MTR</code>, <code>PCS</code>, <code>SAK</code>, atau <code>KG</code>). Satuan dasar adalah unit terkecil yang biasa diecer.</li>
-            <li>Pada Tab <b>Varian & Satuan</b> bagian Konversi Satuan Kemasan, klik tombol <b>"+ Satuan Kemasan"</b>.</li>
-            <li>Isi <b>Nama Kemasan</b> (contoh: <code>IKAT</code>, <code>DUS</code>, <code>ROL</code>, <code>TRUK</code>, <code>LUSIN</code>).</li>
-            <li>Isi <b>Isi / Faktor</b> dengan jumlah satuan dasar di dalam 1 kemasan tersebut:
-              <br><span class="text-muted">• Jika 1 Ikat berisi 25 Batang pipa &rarr; Masukkan Faktor = <code>25</code>.</span>
-              <br><span class="text-muted">• Jika 1 Rol kabel berisi 50 Meter &rarr; Masukkan Faktor = <code>50</code>.</span>
-              <br><span class="text-muted">• Jika 1 Truk semen berisi 100 Sak &rarr; Masukkan Faktor = <code>100</code>.</span>
+        <div class="guide-card">
+          <div class="guide-card-title">2. Tata Cara Mengatur Satuan Kemasan (Multi Satuan)</div>
+          <ol class="prose-list text-sm">
+            <li>Pastikan <strong>Satuan Dasar</strong> di Tab 1 (Informasi Dasar) sudah diisi (contoh: <code>BTG</code>, <code>MTR</code>, <code>PCS</code>, <code>SAK</code>, <code>KG</code>).</li>
+            <li>Pada Tab <strong>Varian &amp; Satuan</strong> bagian Konversi Satuan Kemasan, klik tombol <strong>Satuan Kemasan</strong>.</li>
+            <li>Isi <strong>Nama Kemasan</strong> (contoh: <code>IKAT</code>, <code>DUS</code>, <code>ROL</code>, <code>TRUK</code>, <code>LUSIN</code>).</li>
+            <li>Isi <strong>Isi / Faktor</strong> dengan jumlah satuan dasar dalam 1 kemasan:
+              <ul class="prose-list text-xs text-muted">
+                <li>1 Ikat berisi 25 Batang pipa &rarr; Faktor = <code>25</code></li>
+                <li>1 Rol kabel berisi 50 Meter &rarr; Faktor = <code>50</code></li>
+                <li>1 Truk semen berisi 100 Sak &rarr; Faktor = <code>100</code></li>
+              </ul>
             </li>
-            <li>Isi <b>Harga per Kemasan (Rp)</b>: Masukkan harga jual untuk 1 kemasan utuh. (Disarankan memberi harga grosir lebih murah daripada membeli eceran sebagai daya tarik pelanggan borongan).</li>
+            <li>Isi <strong>Harga per Kemasan (Rp)</strong> untuk 1 kemasan utuh (disarankan lebih hemat dibanding beli eceran).</li>
           </ol>
         </div>
 
         <!-- Tips Kasir POS -->
-        <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border-left: 4px solid var(--primary);">
-          <div class="fw-bold" style="margin-bottom: 2px;">
-            Tips Penggunaan di Kasir POS:
-          </div>
-          <div class="text-xs text-muted" style="line-height: 1.5;">
-            Saat transaksi di kasir:
-            <ul style="margin: 4px 0 0 16px; padding: 0;">
-              <li>Kasir dapat menjual eceran maupun kemasan secara fleksibel.</li>
-              <li>Untuk mengubah satuan barang di keranjang belanja, kasir cukup menekan badge satuan (contoh: <code>[ BTG ▾ ]</code> lalu pilih <code>IKAT</code>). Subtotal otomatis dihitung ulang, dan stok fisik di gudang otomatis terpotong sesuai faktor konversinya (1 Ikat memotong 25 Batang stok).</li>
-            </ul>
-          </div>
+        <div class="guide-callout">
+          <div class="guide-callout-title">Tips Penggunaan di Kasir POS</div>
+          <ul class="prose-list text-sm">
+            <li>Kasir dapat menjual eceran maupun kemasan grosir secara fleksibel dalam satu transaksi.</li>
+            <li>Untuk mengubah satuan barang di keranjang, cukup tekan badge satuan (misal <code>BTG</code> lalu pilih <code>IKAT</code>). Subtotal dihitung ulang dan stok fisik gudang otomatis terpotong sesuai faktor konversinya.</li>
+          </ul>
         </div>
       </div>
     `,
     footer: `
       <div class="row-between" style="width: 100%; align-items: center;">
-        <span class="text-xs text-muted">POS Kasir Toko Bangunan</span>
+        <span class="text-xs text-muted">${escapeHtml(namaToko)}</span>
         <button type="button" class="btn btn-primary btn-sm btn-close-modal">Saya Mengerti</button>
       </div>
     `
@@ -1628,24 +1617,20 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
       <!-- Tab 3: Varian & Satuan -->
       <div class="tab-pane stack hidden" id="pane-varian">
         <!-- Kotak Ringkasan Panduan & Tata Cara -->
-        <div class="alert alert-info alert-block" style="display: block !important; width: 100% !important; border: 1px solid rgba(232, 89, 12, 0.35); border-left: 4px solid var(--primary); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); box-sizing: border-box;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed rgba(232, 89, 12, 0.25);">
+        <div class="guide-callout">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--border-strong);">
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="display: inline-flex; align-items: center; color: var(--primary);">${ICONS.info}</span>
-              <span class="fw-bold" style="color: var(--primary); font-size: var(--fs-xs);">Tata Cara Penggunaan Varian &amp; Satuan Kemasan</span>
+              <span class="fw-semibold text-xs" style="color: var(--primary);">Tata Cara Penggunaan Varian &amp; Satuan Kemasan</span>
             </div>
-            <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-buka-panduan-lengkap-varian" style="font-size: var(--fs-xs); font-weight: 600; text-decoration: underline; padding: 3px 8px; background: rgba(232, 89, 12, 0.08); border-radius: var(--radius-sm);">
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-buka-panduan-lengkap-varian">
               Buka Panduan Lengkap &raquo;
             </button>
           </div>
-          <div style="display: block; width: 100%; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6;">
-            <div style="margin-bottom: 5px;">
-              <b style="color: var(--text);">1. Varian Produk:</b> Gunakan jika barang punya <u>spesifikasi fisik berbeda</u> yang stoknya dihitung terpisah (contoh: Pipa varian <i>Tebal C</i> &amp; <i>Tebal D</i>; Cat <i>Putih 5kg</i> &amp; <i>Abu 5kg</i>; Besi <i>8mm</i> &amp; <i>10mm</i>).
-            </div>
-            <div>
-              <b style="color: var(--text);">2. Satuan Kemasan (Multi Satuan):</b> Gunakan jika 1 barang fisik bisa <u>dijual eceran maupun kemasan grosir</u> (contoh: Satuan dasar <code>BTG</code> &rarr; <code>1 IKAT = 25 BTG</code>; <code>MTR</code> &rarr; <code>1 ROL = 50 MTR</code>; <code>SAK</code> &rarr; <code>1 TRUK = 100 SAK</code>).
-            </div>
-          </div>
+          <ul class="prose-list text-xs" style="margin-top: 0;">
+            <li><strong>1. Varian Produk:</strong> Gunakan jika barang punya spesifikasi fisik berbeda yang stoknya dihitung terpisah (contoh: Pipa <em>Tebal C</em> &amp; <em>Tebal D</em>; Cat <em>Putih 5kg</em> &amp; <em>Abu 5kg</em>; Besi <em>8mm</em> &amp; <em>10mm</em>).</li>
+            <li><strong>2. Satuan Kemasan (Multi Satuan):</strong> Gunakan jika 1 barang fisik dijual eceran maupun kemasan grosir (contoh: <code>BTG</code> &rarr; <code>1 IKAT = 25 BTG</code>; <code>MTR</code> &rarr; <code>1 ROL = 50 MTR</code>; <code>SAK</code> &rarr; <code>1 TRUK = 100 SAK</code>).</li>
+          </ul>
         </div>
 
         <div class="field">

@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.64] - 2026-11-19
+
+### Fixed
+- [UI] [PRODUK] [KATEGORI] **Sinkronisasi Global Tipografi, Paragraf, Perataan Tabel, & Kotak Panduan**:
+  - **Perbaikan `.table-cell-val` (`frontend/css/components.css`)**: Menghapus `display: inline-flex; justify-content: flex-end; text-align: right; white-space: nowrap;` yang sebelumnya mematahkan teks tebal (`<b>`/`<strong>`) menjadi 2 kolom dan memaksa teks kalimat rata kanan di tabel desktop (`produk.js`, `users.js`, `supplier.js`). Kini mewarisi perataan kolom induk & `display` asli elemen.
+  - **Perbaikan `.pel-cell-val` (`frontend/css/components.css`)**: Mengubah perataan default menjadi rata kiri agar kolom kontak/alamat pelanggan & supplier sejajar lurus di bawah header `<th>`, sementara kolom angka `.num`/`.tabular` tetap rata kanan di desktop.
+  - **Perbaikan `.alert strong` (`frontend/css/components.css`)**: Menghapus `display: block;` agar teks tebal `<strong>` di dalam kalimat alert tidak lagi mematahkan paragraf ke baris baru di seluruh modul.
+  - **Tipografi Global `code`, `ul`/`ol`, `.prose-list`, `.guide-callout`, `.guide-card`, & `.table-guide` (`base.css`, `components.css`)**: Menyeragamkan gaya kode inline, jarak poin daftar, kotak panduan berteks netral adaptif Light/Dark Mode, serta tabel komparasi rata kiri/atas di modal **Panduan Varian & Satuan** (`produk.js`) dan panduan **Kategori** (`kategori.js`), lengkap dengan nama toko dinamis di footer modal.
+  - File terdampak: `frontend/css/base.css`, `frontend/css/components.css`, `frontend/js/modules/produk.js`, `frontend/js/modules/kategori.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.64 (`versionCode 51`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.64`.
+
 ## [1.0.63] - 2026-11-19
 
 ### Fixed

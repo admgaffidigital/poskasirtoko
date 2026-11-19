@@ -56,18 +56,18 @@ export async function renderKategoriModule(container) {
       </div>
 
       <!-- Info Panduan Sub Kategori -->
-      <div class="card card-body" style="background: linear-gradient(135deg, rgba(234, 88, 12, 0.06) 0%, rgba(249, 115, 22, 0.02) 100%); border-left: 4px solid var(--primary); padding: var(--sp-3) var(--sp-4);">
+      <div class="guide-callout">
         <div class="row" style="align-items: flex-start; gap: var(--sp-3);">
-          <div style="color: var(--primary); font-size: 1.25rem; line-height: 1; margin-top: 2px;">
+          <div style="color: var(--primary); margin-top: 2px; flex-shrink: 0;">
             ${ICONS.info}
           </div>
-          <div class="grow" style="font-size: var(--fs-sm);">
-            <strong style="color: var(--text-heading); display: block; margin-bottom: 3px;">Panduan Struktur Kategori & Sub Kategori:</strong>
-            <div style="color: var(--text-muted); line-height: 1.6;">
-              • <strong>Kategori Utama</strong> (Cth: <em>PIPA PVC</em>, <em>CAT & PELAPIS</em>, <em>SEMEN</em>) berfungsi sebagai kelompok induk.<br>
-              • <strong>Sub Kategori</strong> (Cth: <em>Pipa AW</em>, <em>Pipa D</em>, <em>Fitting</em> di bawah <em>PIPA PVC</em>) dibuat dengan klik tombol <strong>+ Sub</strong> pada baris kategori induknya.<br>
-              • Di kasir dan katalog, saat kasir memilih kategori utama, seluruh barang di dalam sub-kategori juga otomatis ditampilkan.
-            </div>
+          <div class="grow">
+            <div class="guide-callout-title" style="margin-bottom: 4px;">Panduan Struktur Kategori &amp; Sub Kategori</div>
+            <ul class="prose-list text-xs text-muted" style="margin-top: 0;">
+              <li><strong>Kategori Utama</strong> (cth: <em>PIPA PVC</em>, <em>CAT &amp; PELAPIS</em>, <em>SEMEN</em>) berfungsi sebagai kelompok induk.</li>
+              <li><strong>Sub Kategori</strong> (cth: <em>Pipa AW</em>, <em>Pipa D</em>, <em>Fitting</em> di bawah <em>PIPA PVC</em>) dibuat dengan klik tombol <strong>+ Sub</strong> pada baris kategori induknya.</li>
+              <li>Di kasir dan katalog, saat memilih kategori utama, seluruh barang di dalam sub-kategori juga otomatis ditampilkan.</li>
+            </ul>
           </div>
         </div>
       </div>

@@ -129,12 +129,53 @@ h6 {
 
 p {
   margin: 0;
+  line-height: var(--lh-normal);
+}
+
+b,
+strong {
+  font-weight: var(--fw-semibold);
 }
 
 ul,
 ol {
   margin: 0;
   padding: 0;
+}
+
+/* Tipografi rapi untuk paragraf, daftar poin, & kode inline di seluruh modal, kartu, dan alert */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  font-weight: var(--fw-medium);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.dialog-body ul,
+.dialog-body ol,
+.alert ul,
+.alert ol,
+.prose-list {
+  margin: 6px 0 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dialog-body ul li,
+.dialog-body ol li,
+.alert ul li,
+.alert ol li,
+.prose-list li {
+  line-height: 1.55;
+  text-align: left;
+  word-break: break-word;
 }
 
 a {
