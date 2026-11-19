@@ -389,8 +389,36 @@
   --focus-ring: 0 0 0 2px rgba(244, 63, 94, 0.38);
 }
 
-/* ---- Ukuran font besar (aksesibilitas) ---- */
+/* ---- Varian Ukuran Font (5 Preset + Skala Kustom via --font-scale) ---- */
+[data-font="ringkas"] {
+  --font-scale: 0.875; /* 88% (14px base) */
+}
+
+[data-font="kecil"] {
+  --font-scale: 0.9375; /* 94% (15px base) */
+}
+
+[data-font="normal"] {
+  --font-scale: 1; /* 100% (16px base) */
+}
+
 [data-font="besar"] {
-  --font-scale: 1.125;
+  --font-scale: 1.08; /* 108% (17.3px base) */
+}
+
+[data-font="ekstra"] {
+  --font-scale: 1.16; /* 116% (18.5px base) */
+}
+
+/* ---- Varian Gaya & Ketebalan Huruf (Font Style / Contrast) ---- */
+[data-font-style="tegas"] {
+  --fw-normal: 500;
+  --fw-medium: 600;
+  --fw-semibold: 700;
+  --fw-bold: 700;
+}
+
+[data-font-style="ramping"] body {
+  letter-spacing: -0.015em;
 }
 

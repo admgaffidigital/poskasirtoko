@@ -18,9 +18,11 @@ import {
   bukaModalTemaWarna,
   ACCENT_PALETTES,
   THEME_MODES,
+  FONT_SIZE_PRESETS,
   getThemeConfig,
   setThemeMode,
-  setAccentColor
+  setAccentColor,
+  setFontSizePreset
 } from './utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
@@ -437,7 +439,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.70'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.71'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -490,7 +492,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.70'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.71'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -720,9 +722,10 @@ class App {
     };
 
     const toggleFontHandler = () => {
-      const mode = toggleFontSize();
+      const id = toggleFontSize();
+      const preset = FONT_SIZE_PRESETS.find((f) => f.id === id);
       haptic.light();
-      showToast(`Ukuran teks: ${mode === 'besar' ? 'Besar' : 'Normal'}`, 'info', 1800);
+      showToast(`Ukuran huruf: ${preset ? `${preset.nama} (${preset.pct}%)` : id}`, 'info', 1800);
     };
 
     $('#btn-theme-top')?.addEventListener('click', bukaDialogTemaHandler);
@@ -855,14 +858,21 @@ class App {
                   </button>
                 `).join('')}
               </div>
+              <div class="row" style="gap: 4px; margin-top: 4px;" id="quick-user-fonts">
+                ${FONT_SIZE_PRESETS.map((f) => `
+                  <button type="button" class="btn btn-xs grow ${curCfg.font === f.id ? 'btn-primary' : 'btn-secondary'}" data-quick-font="${f.id}" title="Ukuran Huruf ${escapeHtml(f.nama)} (${f.pct}%)">
+                    <span>${escapeHtml(f.nama)} (${f.pct}%)</span>
+                  </button>
+                `).join('')}
+              </div>
             </div>
 
             <div class="list">
               <button type="button" class="list-item" id="btn-menu-font">
                 <div class="list-item-icon"><span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span></div>
                 <div class="grow">
-                  <div class="list-item-title">Ukuran Teks Tampilan</div>
-                  <div class="list-item-sub">Beralih ukuran Normal / Besar</div>
+                  <div class="list-item-title">Atur Ukuran &amp; Gaya Huruf (85% – 125%)</div>
+                  <div class="list-item-sub">5 preset ukuran, slider kustom &amp; ketebalan huruf</div>
                 </div>
               </button>
               <button type="button" class="list-item" id="btn-menu-sync">
@@ -923,14 +933,25 @@ class App {
         });
       });
 
+      modalUser.el.querySelectorAll('[data-quick-font]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const fontId = btn.getAttribute('data-quick-font');
+          setFontSizePreset(fontId);
+          haptic.light();
+          modalUser.el.querySelectorAll('[data-quick-font]').forEach((b) => {
+            b.className = `btn btn-xs grow ${b === btn ? 'btn-primary' : 'btn-secondary'}`;
+          });
+        });
+      });
+
       document.getElementById('btn-menu-tema')?.addEventListener('click', () => {
         modalUser.close();
         setTimeout(() => bukaDialogTemaHandler(), 80);
       });
 
       document.getElementById('btn-menu-font')?.addEventListener('click', () => {
-        toggleFontHandler();
         modalUser.close();
+        setTimeout(() => bukaDialogTemaHandler(), 80);
       });
 
       document.getElementById('btn-menu-sync')?.addEventListener('click', () => {

@@ -3012,6 +3012,110 @@ a.list-item:hover {
   height: 13px;
 }
 
+/* Kontrol Ukuran & Gaya Font Multi-Varian */
+.font-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 520px) {
+  .font-preset-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.font-preset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 6px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.font-preset-card:hover {
+  border-color: var(--primary);
+  background: var(--surface-2);
+}
+
+.font-preset-card.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-soft-text);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.font-preset-aa {
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.font-preset-card.is-active .font-preset-aa {
+  color: var(--primary);
+}
+
+.font-preset-name {
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+}
+
+.font-preset-pct {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.font-slider-box {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.font-slider-input {
+  flex: 1;
+  accent-color: var(--primary);
+  height: 6px;
+  cursor: pointer;
+}
+
+.font-slider-badge {
+  min-width: 52px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.font-style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+@media (max-width: 480px) {
+  .font-style-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .product-selected-card {
   display: flex;
   align-items: center;

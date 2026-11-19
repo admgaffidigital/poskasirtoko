@@ -463,6 +463,20 @@ export const ACCENT_PALETTES = [
   { id: 'rose', nama: 'Merah Ruby', sub: 'Ritel Minimarket', hex: '#e11d48' }
 ];
 
+export const FONT_SIZE_PRESETS = [
+  { id: 'ringkas', nama: 'Ringkas', pct: 88, scale: 0.875, samplePx: '12px' },
+  { id: 'kecil', nama: 'Kecil', pct: 94, scale: 0.9375, samplePx: '13.5px' },
+  { id: 'normal', nama: 'Standar', pct: 100, scale: 1, samplePx: '15px' },
+  { id: 'besar', nama: 'Besar', pct: 108, scale: 1.08, samplePx: '16.5px' },
+  { id: 'ekstra', nama: 'Ekstra', pct: 116, scale: 1.16, samplePx: '18px' }
+];
+
+export const FONT_STYLE_MODES = [
+  { id: 'standar', nama: 'Standar Seimbang', sub: 'Proporsional & bersih' },
+  { id: 'tegas', nama: 'Tegas & Tebal', sub: 'Huruf lebih jelas & kontras' },
+  { id: 'ramping', nama: 'Ramping & Padat', sub: 'Spasi rapat muat banyak' }
+];
+
 export function initTheme() {
   const savedTheme = localStorage.getItem('pos_theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
@@ -472,13 +486,32 @@ export function initTheme() {
 
   const savedFont = localStorage.getItem('pos_font') || 'normal';
   document.documentElement.setAttribute('data-font', savedFont);
+
+  const savedScale = parseFloat(localStorage.getItem('pos_font_scale') || '');
+  if (Number.isFinite(savedScale) && savedScale >= 0.8 && savedScale <= 1.35) {
+    document.documentElement.style.setProperty('--font-scale', String(savedScale));
+  } else {
+    document.documentElement.style.removeProperty('--font-scale');
+  }
+
+  const savedFontStyle = localStorage.getItem('pos_font_style') || 'standar';
+  document.documentElement.setAttribute('data-font-style', savedFontStyle);
 }
 
 export function getThemeConfig() {
+  const fontId = document.documentElement.getAttribute('data-font') || localStorage.getItem('pos_font') || 'normal';
+  const preset = FONT_SIZE_PRESETS.find((f) => f.id === fontId) || FONT_SIZE_PRESETS[2];
+  const savedScale = parseFloat(localStorage.getItem('pos_font_scale') || '');
+  const activeScale = (Number.isFinite(savedScale) && savedScale >= 0.8 && savedScale <= 1.35) ? savedScale : preset.scale;
+  const activePct = Math.round(activeScale * 100);
+
   return {
     theme: document.documentElement.getAttribute('data-theme') || localStorage.getItem('pos_theme') || 'light',
     accent: document.documentElement.getAttribute('data-accent') || localStorage.getItem('pos_accent') || 'orange',
-    font: document.documentElement.getAttribute('data-font') || localStorage.getItem('pos_font') || 'normal'
+    font: fontId,
+    fontScale: activeScale,
+    fontPct: activePct,
+    fontStyle: document.documentElement.getAttribute('data-font-style') || localStorage.getItem('pos_font_style') || 'standar'
   };
 }
 
@@ -496,6 +529,39 @@ export function setAccentColor(accent) {
   return valid;
 }
 
+export function setFontSizePreset(presetId) {
+  const found = FONT_SIZE_PRESETS.find((f) => f.id === presetId) || FONT_SIZE_PRESETS[2];
+  document.documentElement.setAttribute('data-font', found.id);
+  document.documentElement.style.setProperty('--font-scale', String(found.scale));
+  localStorage.setItem('pos_font', found.id);
+  localStorage.setItem('pos_font_scale', String(found.scale));
+  return found;
+}
+
+export function setCustomFontScale(pctOrScale) {
+  let pct = Number(pctOrScale);
+  if (pct <= 2) pct = Math.round(pct * 100);
+  pct = Math.max(85, Math.min(125, Math.round(pct || 100)));
+  const scale = Math.round((pct / 100) * 10000) / 10000;
+
+  // Cocokkan dengan preset terdekat jika selisih <= 1%
+  const matchedPreset = FONT_SIZE_PRESETS.find((f) => Math.abs(f.pct - pct) <= 1);
+  const fontAttr = matchedPreset ? matchedPreset.id : 'custom';
+
+  document.documentElement.setAttribute('data-font', fontAttr);
+  document.documentElement.style.setProperty('--font-scale', String(scale));
+  localStorage.setItem('pos_font', fontAttr);
+  localStorage.setItem('pos_font_scale', String(scale));
+  return { id: fontAttr, pct, scale, nama: matchedPreset ? matchedPreset.nama : `Kustom ${pct}%` };
+}
+
+export function setFontStyleMode(styleId) {
+  const valid = FONT_STYLE_MODES.some((s) => s.id === styleId) ? styleId : 'standar';
+  document.documentElement.setAttribute('data-font-style', valid);
+  localStorage.setItem('pos_font_style', valid);
+  return valid;
+}
+
 export function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'dark' ? 'light' : 'dark';
@@ -504,21 +570,21 @@ export function toggleTheme() {
 
 export function toggleFontSize() {
   const current = document.documentElement.getAttribute('data-font') || 'normal';
-  const next = current === 'besar' ? 'normal' : 'besar';
-  document.documentElement.setAttribute('data-font', next);
-  localStorage.setItem('pos_font', next);
-  return next;
+  const idx = FONT_SIZE_PRESETS.findIndex((f) => f.id === current);
+  const nextPreset = FONT_SIZE_PRESETS[(idx + 1) % FONT_SIZE_PRESETS.length] || FONT_SIZE_PRESETS[2];
+  setFontSizePreset(nextPreset.id);
+  return nextPreset.id;
 }
 
 /**
- * Buka Modal / Bottom Sheet Personalisasi Tema, Suasana Latar, & Warna Aksen
- * @param {Function} [onChanged] Callback saat tema/warna berubah ({ theme, accent, font })
+ * Buka Modal / Bottom Sheet Personalisasi Tema, Suasana Latar, Warna Aksen, & Ukuran Huruf
+ * @param {Function} [onChanged] Callback saat tema/warna/font berubah ({ theme, accent, font, fontPct, fontStyle })
  */
 export function bukaModalTemaWarna(onChanged = null) {
   const cfg = getThemeConfig();
 
   const modal = showModal({
-    title: 'Tema, Warna & Suasana Aplikasi',
+    title: 'Tema, Warna & Ukuran Huruf',
     size: 'md',
     body: `
       <div class="theme-picker-wrap">
@@ -558,16 +624,41 @@ export function bukaModalTemaWarna(onChanged = null) {
           </div>
         </div>
 
-        <!-- 3. Ukuran Teks -->
+        <!-- 3. Ukuran Huruf (5 Preset + Slider Kustom Presisi 85% - 125%) -->
         <div class="theme-picker-section">
-          <div class="theme-picker-label">3. Ukuran Huruf Antarmuka</div>
-          <div class="row" style="gap: var(--sp-2);" id="picker-font-sizes">
-            <button type="button" class="btn btn-sm grow ${cfg.font !== 'besar' ? 'btn-primary' : 'btn-secondary'}" data-font-size="normal">
-              <span>Aa — Ukuran Normal (Standar)</span>
-            </button>
-            <button type="button" class="btn btn-sm grow ${cfg.font === 'besar' ? 'btn-primary' : 'btn-secondary'}" data-font-size="besar">
-              <span>Aa+ — Ukuran Besar (Jelas)</span>
-            </button>
+          <div class="row-between items-center">
+            <div class="theme-picker-label">3. Ukuran Huruf (5 Varian + Skala Kustom)</div>
+            <span class="font-slider-badge" id="picker-font-pct-badge">${cfg.fontPct}%</span>
+          </div>
+          <div class="font-preset-grid" id="picker-font-presets">
+            ${FONT_SIZE_PRESETS.map((f) => `
+              <button type="button" class="font-preset-card ${cfg.font === f.id ? 'is-active' : ''}" data-font-preset="${f.id}">
+                <span class="font-preset-aa" style="font-size: ${f.samplePx};">Aa</span>
+                <span class="font-preset-name">${escapeHtml(f.nama)}</span>
+                <span class="font-preset-pct">${f.pct}%</span>
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="font-slider-box">
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-font-step-down" title="Perkecil Huruf (-2%)">A-</button>
+            <input type="range" class="font-slider-input" id="input-font-scale-slider" min="85" max="125" step="1" value="${cfg.fontPct}" aria-label="Slider Skala Ukuran Huruf">
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-font-step-up" title="Perbesar Huruf (+2%)">A+</button>
+          </div>
+        </div>
+
+        <!-- 4. Gaya & Ketebalan Huruf (3 Varian) -->
+        <div class="theme-picker-section">
+          <div class="theme-picker-label">4. Gaya & Ketebalan Huruf</div>
+          <div class="font-style-grid" id="picker-font-styles">
+            ${FONT_STYLE_MODES.map((s) => `
+              <button type="button" class="theme-mode-card ${cfg.fontStyle === s.id ? 'is-active' : ''}" data-font-style-id="${s.id}">
+                <div class="theme-mode-info">
+                  <div class="theme-mode-title">${escapeHtml(s.nama)}</div>
+                  <div class="theme-mode-desc">${escapeHtml(s.sub)}</div>
+                </div>
+              </button>
+            `).join('')}
           </div>
         </div>
 
@@ -575,8 +666,8 @@ export function bukaModalTemaWarna(onChanged = null) {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="row-between items-center" style="gap: var(--sp-2); flex-wrap: wrap;">
             <div>
-              <div class="fw-bold text-sm">Pratinjau Warna & Suasana</div>
-              <div class="text-xs text-muted">Perubahan langsung diterapkan ke seluruh layar aplikasi</div>
+              <div class="fw-bold text-sm">Pratinjau Teks, Warna & Suasana</div>
+              <div class="text-xs text-muted">Contoh angka: <span class="mono fw-bold text-primary">Rp 1.250.000</span> • Stok: 25 Pcs</div>
             </div>
             <div class="row" style="gap: 6px; align-items: center;">
               <span class="badge badge-primary">Aksen Aktif</span>
@@ -594,10 +685,21 @@ export function bukaModalTemaWarna(onChanged = null) {
     `
   });
 
+  const sliderEl = modal.el.querySelector('#input-font-scale-slider');
+  const badgePctEl = modal.el.querySelector('#picker-font-pct-badge');
+
   const emitChange = () => {
     if (typeof onChanged === 'function') {
       onChanged(getThemeConfig());
     }
+  };
+
+  const syncFontUi = (pct, activeId) => {
+    if (sliderEl) sliderEl.value = String(pct);
+    if (badgePctEl) badgePctEl.textContent = `${pct}%`;
+    modal.el.querySelectorAll('[data-font-preset]').forEach((b) => {
+      b.classList.toggle('is-active', b.getAttribute('data-font-preset') === activeId);
+    });
   };
 
   modal.el.querySelectorAll('[data-theme-mode]').forEach((btn) => {
@@ -618,15 +720,40 @@ export function bukaModalTemaWarna(onChanged = null) {
     });
   });
 
-  modal.el.querySelectorAll('[data-font-size]').forEach((btn) => {
+  modal.el.querySelectorAll('[data-font-preset]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const sz = btn.getAttribute('data-font-size') || 'normal';
-      document.documentElement.setAttribute('data-font', sz);
-      localStorage.setItem('pos_font', sz);
-      modal.el.querySelectorAll('[data-font-size]').forEach((b) => {
-        const active = b.getAttribute('data-font-size') === sz;
-        b.className = `btn btn-sm grow ${active ? 'btn-primary' : 'btn-secondary'}`;
-      });
+      const presetId = btn.getAttribute('data-font-preset') || 'normal';
+      const applied = setFontSizePreset(presetId);
+      syncFontUi(applied.pct, applied.id);
+      emitChange();
+    });
+  });
+
+  sliderEl?.addEventListener('input', () => {
+    const res = setCustomFontScale(sliderEl.value);
+    syncFontUi(res.pct, res.id);
+    emitChange();
+  });
+
+  modal.el.querySelector('#btn-font-step-down')?.addEventListener('click', () => {
+    const cur = Number(sliderEl?.value || 100);
+    const res = setCustomFontScale(cur - 2);
+    syncFontUi(res.pct, res.id);
+    emitChange();
+  });
+
+  modal.el.querySelector('#btn-font-step-up')?.addEventListener('click', () => {
+    const cur = Number(sliderEl?.value || 100);
+    const res = setCustomFontScale(cur + 2);
+    syncFontUi(res.pct, res.id);
+    emitChange();
+  });
+
+  modal.el.querySelectorAll('[data-font-style-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const st = btn.getAttribute('data-font-style-id') || 'standar';
+      setFontStyleMode(st);
+      modal.el.querySelectorAll('[data-font-style-id]').forEach((b) => b.classList.toggle('is-active', b === btn));
       emitChange();
     });
   });
@@ -634,17 +761,15 @@ export function bukaModalTemaWarna(onChanged = null) {
   modal.el.querySelector('#btn-reset-tema-default')?.addEventListener('click', () => {
     setThemeMode('light');
     setAccentColor('orange');
-    document.documentElement.setAttribute('data-font', 'normal');
-    localStorage.setItem('pos_font', 'normal');
+    setFontSizePreset('normal');
+    setFontStyleMode('standar');
 
     modal.el.querySelectorAll('[data-theme-mode]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-theme-mode') === 'light'));
     modal.el.querySelectorAll('[data-accent-id]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-accent-id') === 'orange'));
-    modal.el.querySelectorAll('[data-font-size]').forEach((b) => {
-      const active = b.getAttribute('data-font-size') === 'normal';
-      b.className = `btn btn-sm grow ${active ? 'btn-primary' : 'btn-secondary'}`;
-    });
+    modal.el.querySelectorAll('[data-font-style-id]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-font-style-id') === 'standar'));
+    syncFontUi(100, 'normal');
     emitChange();
-    showToast('Tema & warna dikembalikan ke setelan standar (Oranye Bata • Terang).', 'info', 2200);
+    showToast('Tema, warna, & ukuran huruf dikembalikan ke standar (100% • Oranye Bata).', 'info', 2200);
   });
 
   modal.el.querySelector('#btn-selesai-tema')?.addEventListener('click', () => modal.close());

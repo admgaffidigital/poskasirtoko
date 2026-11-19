@@ -16,6 +16,28 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.71] - 2026-11-19
+
+### Added
+- [UI] [SETTING] **Sistem Ukuran Huruf Multi-Varian (5 Preset + Slider Kustom `85%–125%` + 3 Gaya Ketebalan Huruf) (`frontend/css/tokens.css`, `frontend/css/components.css`, `frontend/js/utils/ui.js`, `frontend/js/app.js`)**:
+  - **5 Preset Ukuran Huruf Cepat (`[data-font]`)**:
+    1. **Ringkas (`88%`)** — `--font-scale: 0.875` (`14px`, muat banyak kolom & baris)
+    2. **Kecil (`94%`)** — `--font-scale: 0.9375` (`15px`, rapi & padat)
+    3. **Standar (`100%`)** — `--font-scale: 1` (`16px`, seimbang)
+    4. **Besar (`108%`)** — `--font-scale: 1.08` (`17.3px`, jelas & nyaman)
+    5. **Ekstra (`116%`)** — `--font-scale: 1.16` (`18.5px`, sangat jelas untuk jarak pandang jauh)
+  - **Slider Skala Kustom Presisi (`85%` s/d `125%`) & Stepper `A-` / `A+`**: Memungkinkan penyesuaian ukuran huruf secara halus per `1%` sesuai selera layar pengguna.
+  - **3 Pilihan Gaya & Ketebalan Huruf (`[data-font-style]`)**:
+    1. **Standar Seimbang** — Ketebalan proporsional
+    2. **Tegas & Tebal (*Bold Contrast*)** — Bobot huruf lebih tebal (`500`–`700`) agar makin jelas di layar terang
+    3. **Ramping & Padat (*Compact Clean*)** — Spasi karakter ringkas agar nama barang panjang muat lebih banyak
+  - **Akses Cepat 1-Klik**: Tersedia langsung di **Menu Akun Pengguna** (5 tombol cepat `88%`..`116%`), tombol **`Aa`** di bawah Sidebar (siklus 5 ukuran), serta di dalam dialog **Tema, Warna & Ukuran Huruf**.
+  - File terdampak: `frontend/css/tokens.css`, `frontend/css/components.css`, `frontend/js/utils/ui.js`, `frontend/js/app.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.71 (`versionCode 58`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.71`.
+
 ## [1.0.70] - 2026-11-19
 
 ### Added
