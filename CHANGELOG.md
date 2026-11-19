@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.63] - 2026-11-19
+
+### Fixed
+- [UI] [POS-JUAL] [POS-BELI] **Debugging Total & Eliminasi Kebocoran Event Listener SPA**:
+  - **Lifecycle Cleanup Router (`frontend/js/app.js`)**: Menangkap dan mengeksekusi fungsi *cleanup* modul aktif (`this._activeCleanup`) setiap kali berpindah rute atau menyegarkan halaman (`F5` / sinkronisasi global) dengan pelindung race-condition `_renderSeq`, sehingga shortcut keyboard POS dan listener scanner USB fisik tidak pernah menumpuk atau aktif di halaman lain.
+  - **Guard Shortcut POS & Cleanup Resize (`frontend/js/modules/pos.js`)**: Mendaftarkan `handleResize` ke fungsi *cleanup* modul POS dan memblokir shortcut `F2`–`F9` saat modal `.overlay` sedang terbuka agar tidak memicu modal ganda.
+  - **Cleanup Listener Pembelian (`frontend/js/modules/pembelian.js`)**: Membersihkan `document.click` dropdown pencarian secara otomatis saat berganti rute/render ulang dan mengganti akumulasi listener `selectSatuan`/`inputQty` dengan assignment `.onchange`/`.oninput` yang bersih.
+  - **Guard Autentikasi Command Palette (`frontend/js/app.js`)**: Mencegah `Ctrl+K` terbuka sebelum pengguna masuk (`!store.get('token')`).
+  - File terdampak: `frontend/js/app.js`, `frontend/js/modules/pos.js`, `frontend/js/modules/pembelian.js`.
+
+### Changed
+- [APK] **Build Rilis Finalisasi Android Native v1.0.63 (`versionCode 50`)**:
+  - Kompilasi ulang APK final `frontend/download/poskasirtoko.apk` (bebas rekursi download, lulus seluruh 16 suite pengujian & audit penuh).
+
 ## [1.0.62] - 2026-11-19
 
 ### Added

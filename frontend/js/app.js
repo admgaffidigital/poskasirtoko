@@ -43,6 +43,8 @@ import { tampilkanModalKoneksiPrinter } from './utils/printer.js';
 class App {
   constructor() {
     this.currentRoute = null;
+    this._activeCleanup = null;
+    this._renderSeq = 0;
   }
 
   init() {
@@ -428,7 +430,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.62'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.63'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -481,7 +483,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.62'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.63'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1095,8 +1097,8 @@ class App {
    * Paket 6: Quick Command Palette (Ctrl+K) — Lompat cepat modul & aksi sistem
    */
   bukaCommandPalette() {
-    // Hindari membuka dua palette bertumpuk
-    if (document.getElementById('cmd-palette-input')) return;
+    // Abaikan jika belum login atau palette sudah terbuka
+    if (!store.get('token') || document.getElementById('cmd-palette-input')) return;
 
     const user = store.get('user');
     const userRole = user ? user.role : 'kasir';
@@ -1329,6 +1331,18 @@ class App {
     const content = $('#page-content');
     if (!content) return;
 
+    // Bersihkan listener & resource modul sebelumnya agar bebas memory/event leak
+    if (typeof this._activeCleanup === 'function') {
+      try {
+        this._activeCleanup();
+      } catch (err) {
+        console.warn('Cleanup modul sebelumnya gagal:', err);
+      }
+      this._activeCleanup = null;
+    }
+
+    const renderToken = ++this._renderSeq;
+
     window.scrollTo(0, 0);
     if (document.documentElement) document.documentElement.scrollTop = 0;
     if (document.body) document.body.scrollTop = 0;
@@ -1346,46 +1360,60 @@ class App {
     }
     content.classList.toggle('pos-content-locked', isPos);
 
+    let maybeCleanup = null;
     if (rute.id === 'pos') {
-      renderPosModule(content);
+      maybeCleanup = renderPosModule(content);
     } else if (rute.id === 'dashboard') {
-      renderLaporanModule(content);
+      maybeCleanup = renderLaporanModule(content);
     } else if (rute.id === 'sistem') {
       this.renderHalamanSistem(content);
     } else if (rute.id === 'desainsistem') {
       this.renderHalamanDesainSistem(content);
     } else if (rute.id === 'kategori') {
-      renderKategoriModule(content);
+      maybeCleanup = renderKategoriModule(content);
     } else if (rute.id === 'produk') {
-      renderProdukModule(content);
+      maybeCleanup = renderProdukModule(content);
     } else if (rute.id === 'supplier') {
-      renderSupplierModule(content);
+      maybeCleanup = renderSupplierModule(content);
     } else if (rute.id === 'pembelian') {
-      renderPembelianModule(content);
+      maybeCleanup = renderPembelianModule(content);
     } else if (rute.id === 'kartu-stok') {
-      renderKartuStokModule(content);
+      maybeCleanup = renderKartuStokModule(content);
     } else if (rute.id === 'opname') {
-      renderOpnameModule(content);
+      maybeCleanup = renderOpnameModule(content);
     } else if (rute.id === 'hutang-piutang') {
-      renderHutangPiutangModule(content);
+      maybeCleanup = renderHutangPiutangModule(content);
     } else if (rute.id === 'retur') {
-      renderReturModule(content);
+      maybeCleanup = renderReturModule(content);
     } else if (rute.id === 'biaya') {
-      renderBiayaModule(content);
+      maybeCleanup = renderBiayaModule(content);
     } else if (rute.id === 'pelanggan') {
-      renderPelangganModule(content);
+      maybeCleanup = renderPelangganModule(content);
     } else if (rute.id === 'loyalti') {
-      renderLoyaltiModule(content);
+      maybeCleanup = renderLoyaltiModule(content);
     } else if (rute.id === 'pricetag') {
-      renderPriceTagModule(content);
+      maybeCleanup = renderPriceTagModule(content);
     } else if (rute.id === 'pengaturan') {
-      renderPengaturanModule(content);
+      maybeCleanup = renderPengaturanModule(content);
     } else if (rute.id === 'users') {
-      renderUsersModule(content);
+      maybeCleanup = renderUsersModule(content);
     } else if (rute.id === 'lainnya') {
       this.renderHalamanLainnya(content);
     } else {
       this.renderPlaceholder(content, rute);
+    }
+
+    if (typeof maybeCleanup === 'function') {
+      this._activeCleanup = maybeCleanup;
+    } else if (maybeCleanup && typeof maybeCleanup.then === 'function') {
+      maybeCleanup.then((fn) => {
+        if (typeof fn !== 'function') return;
+        if (renderToken === this._renderSeq) {
+          this._activeCleanup = fn;
+        } else {
+          try { fn(); } catch (_) {}
+        }
+      }).catch(() => {});
     }
   }
 

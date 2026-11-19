@@ -345,14 +345,15 @@ export function renderPosModule(container) {
   }
 
   // Sembunyikan floating bar otomatis jika layar di-resize ke desktop/tablet
-  window.addEventListener('resize', () => {
+  const handleResize = () => {
     perbaruiFloatingCart();
     if (typeof window !== 'undefined' && window.innerWidth >= 768) {
       if (elPosWrapper && state.mobileView === 'cart') {
         setMobileView('catalog');
       }
     }
-  });
+  };
+  window.addEventListener('resize', handleResize);
 
   elTabCatalog?.addEventListener('click', () => {
     haptic.light();
@@ -2814,6 +2815,8 @@ export function renderPosModule(container) {
 
   // ---------- Keyboard Shortcuts Global ----------
   const handleKeyShortcuts = (e) => {
+    // Abaikan shortcut POS jika modal/dialog sedang terbuka agar tidak bertumpuk
+    if (document.querySelector('.overlay')) return;
     if (e.key === 'F2') {
       e.preventDefault();
       elSearch?.focus();
@@ -2844,6 +2847,7 @@ export function renderPosModule(container) {
   // Return cleanup bila berganti rute
   return () => {
     window.removeEventListener('keydown', handleKeyShortcuts);
+    window.removeEventListener('resize', handleResize);
     lepasScannerFisik();
   };
 }

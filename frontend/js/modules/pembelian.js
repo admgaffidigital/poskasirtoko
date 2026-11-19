@@ -16,6 +16,7 @@ import { bukaKameraScanner } from '../utils/barcode.js';
 import { bukaModalPilihanCetakPembelian } from '../utils/printer.js';
 
 let tabAktifBeli = 'input';
+let activeDocClickBeli = null;
 
 export async function renderPembelianModule(container) {
   const user = store.get('user');
@@ -443,12 +444,16 @@ async function initFormInputBeli(container) {
     }, 250);
   });
 
-  // Sembunyikan dropdown bila klik di luar
-  document.addEventListener('click', (e) => {
+  // Sembunyikan dropdown bila klik di luar (bersihkan listener lama agar bebas memory leak)
+  if (activeDocClickBeli) {
+    document.removeEventListener('click', activeDocClickBeli);
+  }
+  activeDocClickBeli = (e) => {
     if (dropdown && !dropdown.contains(e.target) && e.target !== inputCari) {
       dropdown.style.display = 'none';
     }
-  });
+  };
+  document.addEventListener('click', activeDocClickBeli);
 
   // Tombol Tambah Item
   $('#btn-tambah-item-beli', container)?.addEventListener('click', () => {
@@ -518,6 +523,13 @@ async function initFormInputBeli(container) {
   $('#btn-simpan-pembelian', container)?.addEventListener('click', () => {
     simpanPembelian(container);
   });
+
+  return () => {
+    if (activeDocClickBeli) {
+      document.removeEventListener('click', activeDocClickBeli);
+      activeDocClickBeli = null;
+    }
+  };
 }
 
 async function pilihProdukUntukBeli(container, item) {
@@ -570,8 +582,8 @@ async function pilihProdukUntukBeli(container, item) {
     }
   };
 
-  selectSatuan.addEventListener('change', updatePreview);
-  inputQty.addEventListener('input', updatePreview);
+  selectSatuan.onchange = updatePreview;
+  inputQty.oninput = updatePreview;
   updatePreview();
 
   inputQty.focus();
