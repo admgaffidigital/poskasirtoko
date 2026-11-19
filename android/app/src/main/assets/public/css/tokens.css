@@ -141,6 +141,7 @@
   --primary-active: var(--orange-800);
   --primary-soft: var(--orange-50);
   --primary-soft-text: var(--orange-800);
+  --primary-rgb: 232, 89, 12;
   --brand-primary: var(--primary);
   --brand-primary-soft: var(--primary-soft);
 
@@ -178,6 +179,33 @@
   --skeleton-b: var(--slate-100);
 }
 
+/* ---- Tema TERANG HANGAT (Warm Cream / Eye-Care Anti-Lelah Mata) ---- */
+[data-theme="warm"] {
+  color-scheme: light;
+  --bg: #f4f0e6;
+  --surface: #fffdf8;
+  --surface-2: #faf6ec;
+  --surface-3: #eae3d2;
+  --border: #e2dac7;
+  --border-strong: #cfc4ac;
+  --text: #1c1917;
+  --text-heading: var(--text);
+  --text-body: var(--text);
+  --text-main: var(--text);
+  --text-muted: #57534e;
+  --text-subtle: #78716c;
+  --text-on-primary: #ffffff;
+  --surface-1: var(--surface);
+  --bg-surface-variant: var(--surface-2);
+  --clr-border: var(--border);
+  --clr-surface-muted: var(--surface-2);
+  --nav-bg: #1c1917;
+  --nav-text: #d6d3d1;
+  --nav-text-active: #ffffff;
+  --skeleton-a: #e5dec9;
+  --skeleton-b: #f2ece0;
+}
+
 /* ---- Tema GELAP ---- */
 [data-theme="dark"] {
   color-scheme: dark;
@@ -204,6 +232,7 @@
   --primary-active: var(--orange-600);
   --primary-soft: rgba(247, 107, 28, 0.14);
   --primary-soft-text: var(--orange-300);
+  --primary-rgb: 247, 107, 28;
   --brand-primary: var(--primary);
   --brand-primary-soft: var(--primary-soft);
 
@@ -239,6 +268,125 @@
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
   --skeleton-a: #1c2842;
   --skeleton-b: #24324f;
+}
+
+/* ==========================================================================
+   6 PALET WARNA AKSEN (BRAND ACCENT PALETTES) — Mendukung Light, Warm, & Dark
+   ========================================================================== */
+
+/* 1. Biru Samudra (Ocean Blue) */
+[data-accent="blue"] {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1e40af;
+  --primary-soft: #eff6ff;
+  --primary-soft-text: #1e40af;
+  --primary-rgb: 37, 99, 235;
+  --nav-item-active: rgba(37, 99, 235, 0.2);
+  --focus-ring: 0 0 0 2px rgba(37, 99, 235, 0.28);
+}
+
+[data-theme="dark"][data-accent="blue"] {
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-active: #2563eb;
+  --primary-soft: rgba(59, 130, 246, 0.16);
+  --primary-soft-text: #93c5fd;
+  --primary-rgb: 59, 130, 246;
+  --nav-item-active: rgba(59, 130, 246, 0.22);
+  --focus-ring: 0 0 0 2px rgba(59, 130, 246, 0.38);
+}
+
+/* 2. Hijau Zamrud (Emerald Fresh) */
+[data-accent="emerald"] {
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-active: #065f46;
+  --primary-soft: #ecfdf5;
+  --primary-soft-text: #065f46;
+  --primary-rgb: 5, 150, 105;
+  --nav-item-active: rgba(5, 150, 105, 0.2);
+  --focus-ring: 0 0 0 2px rgba(5, 150, 105, 0.28);
+}
+
+[data-theme="dark"][data-accent="emerald"] {
+  --primary: #10b981;
+  --primary-hover: #34d399;
+  --primary-active: #059669;
+  --primary-soft: rgba(16, 185, 129, 0.16);
+  --primary-soft-text: #6ee7b7;
+  --primary-rgb: 16, 185, 129;
+  --nav-item-active: rgba(16, 185, 129, 0.22);
+  --focus-ring: 0 0 0 2px rgba(16, 185, 129, 0.38);
+}
+
+/* 3. Toska Sejuk (Industrial Teal) */
+[data-accent="teal"] {
+  --primary: #0d9488;
+  --primary-hover: #0f766e;
+  --primary-active: #115e59;
+  --primary-soft: #f0fdfa;
+  --primary-soft-text: #115e59;
+  --primary-rgb: 13, 148, 136;
+  --nav-item-active: rgba(13, 148, 136, 0.2);
+  --focus-ring: 0 0 0 2px rgba(13, 148, 136, 0.28);
+}
+
+[data-theme="dark"][data-accent="teal"] {
+  --primary: #14b8a6;
+  --primary-hover: #2dd4bf;
+  --primary-active: #0d9488;
+  --primary-soft: rgba(20, 184, 166, 0.16);
+  --primary-soft-text: #5eead4;
+  --primary-rgb: 20, 184, 166;
+  --nav-item-active: rgba(20, 184, 166, 0.22);
+  --focus-ring: 0 0 0 2px rgba(20, 184, 166, 0.38);
+}
+
+/* 4. Ungu Royal (Indigo Pro) */
+[data-accent="indigo"] {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-active: #3730a3;
+  --primary-soft: #eef2ff;
+  --primary-soft-text: #3730a3;
+  --primary-rgb: 79, 70, 229;
+  --nav-item-active: rgba(79, 70, 229, 0.2);
+  --focus-ring: 0 0 0 2px rgba(79, 70, 229, 0.28);
+}
+
+[data-theme="dark"][data-accent="indigo"] {
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --primary-active: #4f46e5;
+  --primary-soft: rgba(99, 102, 241, 0.16);
+  --primary-soft-text: #a5b4fc;
+  --primary-rgb: 99, 102, 241;
+  --nav-item-active: rgba(99, 102, 241, 0.22);
+  --focus-ring: 0 0 0 2px rgba(99, 102, 241, 0.38);
+}
+
+/* 5. Merah Ruby (Retail Crimson) */
+[data-accent="rose"] {
+  --primary: #e11d48;
+  --primary-hover: #be123c;
+  --primary-active: #9f1239;
+  --primary-soft: #fff1f2;
+  --primary-soft-text: #9f1239;
+  --primary-rgb: 225, 29, 72;
+  --nav-item-active: rgba(225, 29, 72, 0.2);
+  --focus-ring: 0 0 0 2px rgba(225, 29, 72, 0.28);
+}
+
+[data-theme="dark"][data-accent="rose"] {
+  --primary: #f43f5e;
+  --primary-hover: #fb7185;
+  --primary-active: #e11d48;
+  --primary-soft: rgba(244, 63, 94, 0.16);
+  --primary-soft-text: #fda4af;
+  --primary-rgb: 244, 63, 94;
+  --nav-item-active: rgba(244, 63, 94, 0.22);
+  --focus-ring: 0 0 0 2px rgba(244, 63, 94, 0.38);
 }
 
 /* ---- Ukuran font besar (aksesibilitas) ---- */

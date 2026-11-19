@@ -16,6 +16,28 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.70] - 2026-11-19
+
+### Added
+- [UI] [SETTING] **Sistem Kustomisasi Multi-Tema, 6 Warna Aksen, & 3 Suasana Latar (`frontend/css/tokens.css`, `frontend/css/components.css`, `frontend/css/layout.css`, `frontend/js/utils/ui.js`, `frontend/js/utils/native.js`, `frontend/js/app.js`, `frontend/js/modules/pengaturan.js`)**:
+  - **6 Pilihan Warna Aksen Utama (`[data-accent]`)**: Menyediakan 6 palet warna brand yang otomatis menyesuaikan kontras di Mode Terang, Hangat, maupun Gelap:
+    1. **Oranye Bata** (`#e8590c` — Default khas toko bangunan)
+    2. **Biru Samudra** (`#2563eb` — Korporat & tenang)
+    3. **Hijau Zamrud** (`#059669` — Segar & finansial)
+    4. **Toska Sejuk** (`#0d9488` — Nyaman seharian)
+    5. **Ungu Royal** (`#4f46e5` — Modern & elegan)
+    6. **Merah Ruby** (`#e11d48` — Ritel minimarket)
+  - **3 Pilihan Suasana Latar (`[data-theme]`)**:
+    1. **Terang Sejuk (*Cool Slate*)** — Putih bersih & tajam
+    2. **Terang Hangat (*Warm Cream / Eye-Care*)** — Latar krem lembut (`#f4f0e6` / `#fffdf8`) anti-silau untuk pemakaian kasir seharian
+    3. **Gelap Malam (*Deep Navy Dark*)** — Mode gelap elegan hemat baterai
+  - **Modal & Panel Pemilih Warna Instan (`bukaModalTemaWarna`)**: Dapat diakses 1-klik dari **Menu Akun Pengguna** (dilengkapi deretan bulatan warna instan & tombol suasana latar), **Footer Sidebar** (`ICONS.palette`), **Quick Command Palette (`Ctrl+K`)**, **Menu Lainnya**, serta **Pengaturan Umum**, lengkap dengan sinkronisasi otomatis ke Status Bar Android & `meta theme-color` PWA.
+  - File terdampak: `frontend/css/tokens.css`, `frontend/css/components.css`, `frontend/css/layout.css`, `frontend/js/utils/ui.js`, `frontend/js/utils/native.js`, `frontend/js/app.js`, `frontend/js/modules/pengaturan.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.70 (`versionCode 57`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.70`.
+
 ## [1.0.69] - 2026-11-19
 
 ### Fixed

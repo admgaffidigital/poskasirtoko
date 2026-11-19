@@ -5,7 +5,8 @@
 
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
-import { ICONS, showToast } from '../utils/ui.js';
+import { ICONS, showToast, bukaModalTemaWarna } from '../utils/ui.js';
+import { syncStatusBarWithTheme } from '../utils/native.js';
 import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
 import { tampilkanModalKoneksiPrinter, bukaAplikasiRawBT, cetakUjiStruk } from '../utils/printer.js';
@@ -208,6 +209,30 @@ async function muatPengaturan(container) {
             <span class="field-hint">Standar: 1 poin tiap kelipatan Rp 10.000 belanja lunas.</span>
           </div>
         </div>
+
+        <div class="divider"></div>
+
+        <!-- 5. Personalisasi Warna Tema & Suasana Aplikasi -->
+        <div>
+          <div class="section-title">Personalisasi Tema, Warna & Suasana Aplikasi</div>
+          <div class="card card-body stack-sm" style="margin-top: var(--sp-2); background: var(--surface-2); border: 1.5px solid var(--border);">
+            <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-2); align-items: center;">
+              <div>
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--primary);">${ICONS.palette}</span>
+                  <span>Kustomisasi Warna Aksen & Suasana Latar</span>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 2px;">
+                  Sesuaikan 6 warna aksen (Oranye Bata, Biru Samudra, Hijau Zamrud, Toska, Ungu Royal, Merah Ruby) dan suasana latar (Terang Sejuk, Terang Hangat Eye-Care, atau Gelap Malam).
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="btn-cfg-buka-tema" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${ICONS.palette}
+                <span>Pilih Warna & Suasana Tema</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
     `;
 
@@ -270,6 +295,10 @@ async function muatPengaturan(container) {
 
     $('#btn-cfg-panduan-printer', container)?.addEventListener('click', () => {
       tampilkanModalKoneksiPrinter();
+    });
+
+    $('#btn-cfg-buka-tema', container)?.addEventListener('click', () => {
+      bukaModalTemaWarna((c) => syncStatusBarWithTheme(c.theme));
     });
   } catch (err) {
     area.innerHTML = `

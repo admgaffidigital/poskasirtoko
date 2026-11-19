@@ -14,7 +14,13 @@ import {
   showConfirm,
   initTheme,
   toggleTheme,
-  toggleFontSize
+  toggleFontSize,
+  bukaModalTemaWarna,
+  ACCENT_PALETTES,
+  THEME_MODES,
+  getThemeConfig,
+  setThemeMode,
+  setAccentColor
 } from './utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
@@ -431,7 +437,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.69'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.70'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -484,7 +490,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.69'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.70'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -548,8 +554,8 @@ class App {
             <button type="button" class="btn btn-sm btn-icon btn-sync" id="btn-sync-sidebar" title="Sinkronisasi Data Global (F5)" aria-label="Sinkronisasi Data">
               ${ICONS.refresh}
             </button>
-            <button type="button" class="btn btn-sm btn-icon" id="btn-theme-sidebar" title="Ubah Tema" aria-label="Ubah Tema">
-              ${ICONS.moon}
+            <button type="button" class="btn btn-sm btn-icon" id="btn-theme-sidebar" title="Tema, Warna & Suasana Aplikasi" aria-label="Tema & Warna">
+              ${ICONS.palette}
             </button>
             <button type="button" class="btn btn-sm btn-icon" id="btn-font-sidebar" title="Ukuran Font" aria-label="Ukuran Font">
               <span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span>
@@ -705,11 +711,12 @@ class App {
   }
 
   bindGlobalEvents() {
-    const toggleTemaHandler = () => {
-      const mode = toggleTheme();
-      syncStatusBarWithTheme(mode);
+    const bukaDialogTemaHandler = () => {
       haptic.light();
-      showToast(`Tema beralih ke mode ${mode === 'dark' ? 'Gelap' : 'Terang'}`, 'info', 1800);
+      bukaModalTemaWarna((cfg) => {
+        syncStatusBarWithTheme(cfg.theme);
+        haptic.light();
+      });
     };
 
     const toggleFontHandler = () => {
@@ -718,8 +725,8 @@ class App {
       showToast(`Ukuran teks: ${mode === 'besar' ? 'Besar' : 'Normal'}`, 'info', 1800);
     };
 
-    $('#btn-theme-top')?.addEventListener('click', toggleTemaHandler);
-    $('#btn-theme-sidebar')?.addEventListener('click', toggleTemaHandler);
+    $('#btn-theme-top')?.addEventListener('click', bukaDialogTemaHandler);
+    $('#btn-theme-sidebar')?.addEventListener('click', bukaDialogTemaHandler);
     $('#btn-font-top')?.addEventListener('click', toggleFontHandler);
     $('#btn-font-sidebar')?.addEventListener('click', toggleFontHandler);
 
@@ -809,6 +816,7 @@ class App {
         return;
       }
 
+      const curCfg = getThemeConfig();
       const modalUser = showModal({
         title: 'Akun Pengguna & Preferensi',
         isSheet: true,
@@ -827,14 +835,29 @@ class App {
 
             <div class="divider"></div>
 
+            <!-- Panel Cepat Pilihan Warna & Suasana -->
+            <div class="card card-body stack-sm" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
+              <div class="row-between items-center">
+                <span class="text-xs fw-bold uppercase text-muted" style="letter-spacing: 0.04em;">Warna & Suasana Tema</span>
+                <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-menu-tema">Kustomisasi Lengkap &rarr;</button>
+              </div>
+              <div class="quick-swatch-row" id="quick-user-swatches" style="margin-top: 2px;">
+                ${ACCENT_PALETTES.map((a) => `
+                  <button type="button" class="quick-swatch-dot ${curCfg.accent === a.id ? 'is-active' : ''}" data-quick-accent="${a.id}" style="background: ${a.hex};" title="${escapeHtml(a.nama)}">
+                    ${curCfg.accent === a.id ? ICONS.check : ''}
+                  </button>
+                `).join('')}
+              </div>
+              <div class="row" style="gap: 6px; margin-top: 4px;" id="quick-user-modes">
+                ${THEME_MODES.map((m) => `
+                  <button type="button" class="btn btn-xs grow ${curCfg.theme === m.id ? 'btn-primary' : 'btn-secondary'}" data-quick-mode="${m.id}">
+                    <span>${escapeHtml(m.nama)}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
             <div class="list">
-              <button type="button" class="list-item" id="btn-menu-tema">
-                <div class="list-item-icon">${ICONS.moon}</div>
-                <div class="grow">
-                  <div class="list-item-title">Ubah Tema Tampilan</div>
-                  <div class="list-item-sub">Beralih mode Terang / Gelap</div>
-                </div>
-              </button>
               <button type="button" class="list-item" id="btn-menu-font">
                 <div class="list-item-icon"><span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span></div>
                 <div class="grow">
@@ -875,9 +898,34 @@ class App {
         `
       });
 
+      modalUser.el.querySelectorAll('[data-quick-accent]').forEach((dot) => {
+        dot.addEventListener('click', () => {
+          const acc = dot.getAttribute('data-quick-accent');
+          setAccentColor(acc);
+          haptic.light();
+          modalUser.el.querySelectorAll('[data-quick-accent]').forEach((d) => {
+            const active = d === dot;
+            d.classList.toggle('is-active', active);
+            d.innerHTML = active ? ICONS.check : '';
+          });
+        });
+      });
+
+      modalUser.el.querySelectorAll('[data-quick-mode]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const mode = btn.getAttribute('data-quick-mode');
+          setThemeMode(mode);
+          syncStatusBarWithTheme(mode);
+          haptic.light();
+          modalUser.el.querySelectorAll('[data-quick-mode]').forEach((b) => {
+            b.className = `btn btn-xs grow ${b === btn ? 'btn-primary' : 'btn-secondary'}`;
+          });
+        });
+      });
+
       document.getElementById('btn-menu-tema')?.addEventListener('click', () => {
-        toggleTemaHandler();
         modalUser.close();
+        setTimeout(() => bukaDialogTemaHandler(), 80);
       });
 
       document.getElementById('btn-menu-font')?.addEventListener('click', () => {
@@ -1145,15 +1193,13 @@ class App {
       {
         grup: 'Aksi Cepat',
         id: 'act-theme',
-        judul: 'Ganti Tema Gelap / Terang',
-        sub: 'Beralih antara Light Mode dan Dark Mode',
-        kataKunci: 'tema theme gelap terang dark light mode malam',
-        ikon: ICONS.moon,
-        hint: 'Tema',
+        judul: 'Tema, Warna & Suasana Aplikasi',
+        sub: 'Pilih 6 warna aksen (Oranye, Biru, Hijau, Toska, Ungu, Merah) & latar Terang/Hangat/Gelap',
+        kataKunci: 'tema theme warna color aksen gelap terang hangat dark light warm mode malam suasana',
+        ikon: ICONS.palette,
+        hint: 'Warna',
         aksi: () => {
-          const mode = toggleTheme();
-          syncStatusBarWithTheme(mode);
-          showToast(`Tema beralih ke mode ${mode === 'dark' ? 'Gelap' : 'Terang'}`, 'info', 1800);
+          bukaModalTemaWarna((cfg) => syncStatusBarWithTheme(cfg.theme));
         }
       },
       {
@@ -1723,6 +1769,17 @@ class App {
               </div>
               <div class="menu-list-chevron">${ICONS.chevronRight}</div>
             </button>
+
+            <button type="button" class="menu-list-item" id="btn-theme-tile" data-search="tema warna suasana tampilan gelap terang hangat biru hijau oranye ungu merah">
+              <div class="menu-list-icon" style="background: var(--primary-soft); color: var(--primary); border-color: rgba(var(--primary-rgb, 232, 89, 12), 0.25);">
+                ${ICONS.palette}
+              </div>
+              <div class="menu-list-body">
+                <div class="menu-list-title">Tema, Warna & Suasana Aplikasi</div>
+                <div class="menu-list-desc">Sesuaikan warna aksen favorit, mode terang/hangat/gelap & ukuran huruf</div>
+              </div>
+              <div class="menu-list-chevron">${ICONS.chevronRight}</div>
+            </button>
           </div>
         </div>
     `;
@@ -1777,6 +1834,11 @@ class App {
     // Event handler: Printer Bluetooth
     container.querySelector('#btn-printer-tile')?.addEventListener('click', () => {
       tampilkanModalKoneksiPrinter();
+    });
+
+    // Event handler: Tema & Warna Suasana
+    container.querySelector('#btn-theme-tile')?.addEventListener('click', () => {
+      bukaModalTemaWarna((cfg) => syncStatusBarWithTheme(cfg.theme));
     });
 
     // Event handler: Logout

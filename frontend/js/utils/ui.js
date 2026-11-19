@@ -64,7 +64,8 @@ export const ICONS = {
   copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
   calculator: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>`,
   arrowUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
-  wifiOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`
+  wifiOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.65"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"/><path d="M5 13a10 10 0 0 1 5.24-2.76"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`,
+  palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>`
 };
 
 /* ---------- Toast System ---------- */
@@ -445,22 +446,60 @@ export function showConfirm(titleOrOptions, messageOrOptions, extraOptions = {})
   });
 }
 
-/* ---------- Manajemen Tema & Font ---------- */
+/* ---------- Manajemen Tema, Suasana Latar, Warna Aksen, & Font ---------- */
+
+export const THEME_MODES = [
+  { id: 'light', nama: 'Terang Sejuk', sub: 'Putih bersih & tajam', bgPreview: '#f1f5f9', cardPreview: '#ffffff', textPreview: '#0f172a' },
+  { id: 'warm', nama: 'Terang Hangat', sub: 'Krem lembut anti-silau', bgPreview: '#f4f0e6', cardPreview: '#fffdf8', textPreview: '#1c1917' },
+  { id: 'dark', nama: 'Gelap Malam', sub: 'Navy elegan hemat daya', bgPreview: '#0a101e', cardPreview: '#111a2e', textPreview: '#f1f5f9' }
+];
+
+export const ACCENT_PALETTES = [
+  { id: 'orange', nama: 'Oranye Bata', sub: 'Khas Toko Bangunan', hex: '#e8590c' },
+  { id: 'blue', nama: 'Biru Samudra', sub: 'Korporat & Tenang', hex: '#2563eb' },
+  { id: 'emerald', nama: 'Hijau Zamrud', sub: 'Segar & Finansial', hex: '#059669' },
+  { id: 'teal', nama: 'Toska Sejuk', sub: 'Nyaman Seharian', hex: '#0d9488' },
+  { id: 'indigo', nama: 'Ungu Royal', sub: 'Modern & Elegan', hex: '#4f46e5' },
+  { id: 'rose', nama: 'Merah Ruby', sub: 'Ritel Minimarket', hex: '#e11d48' }
+];
 
 export function initTheme() {
   const savedTheme = localStorage.getItem('pos_theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
 
+  const savedAccent = localStorage.getItem('pos_accent') || 'orange';
+  document.documentElement.setAttribute('data-accent', savedAccent);
+
   const savedFont = localStorage.getItem('pos_font') || 'normal';
   document.documentElement.setAttribute('data-font', savedFont);
+}
+
+export function getThemeConfig() {
+  return {
+    theme: document.documentElement.getAttribute('data-theme') || localStorage.getItem('pos_theme') || 'light',
+    accent: document.documentElement.getAttribute('data-accent') || localStorage.getItem('pos_accent') || 'orange',
+    font: document.documentElement.getAttribute('data-font') || localStorage.getItem('pos_font') || 'normal'
+  };
+}
+
+export function setThemeMode(mode) {
+  const valid = THEME_MODES.some((m) => m.id === mode) ? mode : 'light';
+  document.documentElement.setAttribute('data-theme', valid);
+  localStorage.setItem('pos_theme', valid);
+  return valid;
+}
+
+export function setAccentColor(accent) {
+  const valid = ACCENT_PALETTES.some((a) => a.id === accent) ? accent : 'orange';
+  document.documentElement.setAttribute('data-accent', valid);
+  localStorage.setItem('pos_accent', valid);
+  return valid;
 }
 
 export function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('pos_theme', next);
-  return next;
+  return setThemeMode(next);
 }
 
 export function toggleFontSize() {
@@ -469,5 +508,147 @@ export function toggleFontSize() {
   document.documentElement.setAttribute('data-font', next);
   localStorage.setItem('pos_font', next);
   return next;
+}
+
+/**
+ * Buka Modal / Bottom Sheet Personalisasi Tema, Suasana Latar, & Warna Aksen
+ * @param {Function} [onChanged] Callback saat tema/warna berubah ({ theme, accent, font })
+ */
+export function bukaModalTemaWarna(onChanged = null) {
+  const cfg = getThemeConfig();
+
+  const modal = showModal({
+    title: 'Tema, Warna & Suasana Aplikasi',
+    size: 'md',
+    body: `
+      <div class="theme-picker-wrap">
+        <!-- 1. Suasana Latar (Light / Warm / Dark) -->
+        <div class="theme-picker-section">
+          <div class="theme-picker-label">1. Suasana Latar Belakang</div>
+          <div class="theme-mode-grid" id="picker-theme-modes">
+            ${THEME_MODES.map((m) => `
+              <button type="button" class="theme-mode-card ${cfg.theme === m.id ? 'is-active' : ''}" data-theme-mode="${m.id}">
+                <div class="theme-mode-preview" style="background: ${m.bgPreview}; color: ${m.textPreview};">
+                  ${m.id === 'dark' ? ICONS.moon : ICONS.sun}
+                </div>
+                <div class="theme-mode-info">
+                  <div class="theme-mode-title">${escapeHtml(m.nama)}</div>
+                  <div class="theme-mode-desc">${escapeHtml(m.sub)}</div>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 2. Warna Aksen Utama (6 Pilihan Warna) -->
+        <div class="theme-picker-section">
+          <div class="theme-picker-label">2. Warna Aksen Utama</div>
+          <div class="theme-accent-grid" id="picker-accent-colors">
+            ${ACCENT_PALETTES.map((a) => `
+              <button type="button" class="theme-accent-card ${cfg.accent === a.id ? 'is-active' : ''}" data-accent-id="${a.id}">
+                <span class="theme-accent-swatch" style="background: ${a.hex};">
+                  ${ICONS.check}
+                </span>
+                <div style="min-width: 0; flex: 1;">
+                  <div class="theme-accent-name">${escapeHtml(a.nama)}</div>
+                  <div class="theme-accent-sub">${escapeHtml(a.sub)}</div>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 3. Ukuran Teks -->
+        <div class="theme-picker-section">
+          <div class="theme-picker-label">3. Ukuran Huruf Antarmuka</div>
+          <div class="row" style="gap: var(--sp-2);" id="picker-font-sizes">
+            <button type="button" class="btn btn-sm grow ${cfg.font !== 'besar' ? 'btn-primary' : 'btn-secondary'}" data-font-size="normal">
+              <span>Aa — Ukuran Normal (Standar)</span>
+            </button>
+            <button type="button" class="btn btn-sm grow ${cfg.font === 'besar' ? 'btn-primary' : 'btn-secondary'}" data-font-size="besar">
+              <span>Aa+ — Ukuran Besar (Jelas)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pratinjau Langsung -->
+        <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
+          <div class="row-between items-center" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <div>
+              <div class="fw-bold text-sm">Pratinjau Warna & Suasana</div>
+              <div class="text-xs text-muted">Perubahan langsung diterapkan ke seluruh layar aplikasi</div>
+            </div>
+            <div class="row" style="gap: 6px; align-items: center;">
+              <span class="badge badge-primary">Aksen Aktif</span>
+              <button type="button" class="btn btn-primary btn-xs">Tombol Utama</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row-between items-center" style="width: 100%; gap: var(--sp-2);">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-tema-default">Reset ke Standar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-selesai-tema">Selesai</button>
+      </div>
+    `
+  });
+
+  const emitChange = () => {
+    if (typeof onChanged === 'function') {
+      onChanged(getThemeConfig());
+    }
+  };
+
+  modal.el.querySelectorAll('[data-theme-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-theme-mode');
+      setThemeMode(mode);
+      modal.el.querySelectorAll('[data-theme-mode]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      emitChange();
+    });
+  });
+
+  modal.el.querySelectorAll('[data-accent-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const acc = btn.getAttribute('data-accent-id');
+      setAccentColor(acc);
+      modal.el.querySelectorAll('[data-accent-id]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      emitChange();
+    });
+  });
+
+  modal.el.querySelectorAll('[data-font-size]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const sz = btn.getAttribute('data-font-size') || 'normal';
+      document.documentElement.setAttribute('data-font', sz);
+      localStorage.setItem('pos_font', sz);
+      modal.el.querySelectorAll('[data-font-size]').forEach((b) => {
+        const active = b.getAttribute('data-font-size') === sz;
+        b.className = `btn btn-sm grow ${active ? 'btn-primary' : 'btn-secondary'}`;
+      });
+      emitChange();
+    });
+  });
+
+  modal.el.querySelector('#btn-reset-tema-default')?.addEventListener('click', () => {
+    setThemeMode('light');
+    setAccentColor('orange');
+    document.documentElement.setAttribute('data-font', 'normal');
+    localStorage.setItem('pos_font', 'normal');
+
+    modal.el.querySelectorAll('[data-theme-mode]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-theme-mode') === 'light'));
+    modal.el.querySelectorAll('[data-accent-id]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-accent-id') === 'orange'));
+    modal.el.querySelectorAll('[data-font-size]').forEach((b) => {
+      const active = b.getAttribute('data-font-size') === 'normal';
+      b.className = `btn btn-sm grow ${active ? 'btn-primary' : 'btn-secondary'}`;
+    });
+    emitChange();
+    showToast('Tema & warna dikembalikan ke setelan standar (Oranye Bata • Terang).', 'info', 2200);
+  });
+
+  modal.el.querySelector('#btn-selesai-tema')?.addEventListener('click', () => modal.close());
+
+  return modal;
 }
 

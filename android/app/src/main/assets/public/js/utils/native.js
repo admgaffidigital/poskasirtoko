@@ -65,11 +65,12 @@ export const haptic = {
 export async function syncStatusBarWithTheme(mode) {
   const currentTheme = mode || document.documentElement.getAttribute('data-theme') || 'light';
   const isDark = currentTheme === 'dark';
+  const bgColor = isDark ? '#0f172a' : (currentTheme === 'warm' ? '#fffdf8' : '#ffffff');
 
   // 1. Update HTML meta theme-color untuk browser & PWA
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
-    metaThemeColor.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
+    metaThemeColor.setAttribute('content', bgColor);
   }
 
   // 2. Update Android Native StatusBar via Capacitor Plugin jika tersedia
@@ -79,7 +80,7 @@ export async function syncStatusBarWithTheme(mode) {
       const StatusBar = capacitor.Plugins?.StatusBar;
       if (StatusBar) {
         await StatusBar.setBackgroundColor({
-          color: isDark ? '#0f172a' : '#ffffff'
+          color: bgColor
         });
         // Style 'DARK' = ikon putih (untuk latar gelap); Style 'LIGHT' = ikon hitam (untuk latar terang)
         await StatusBar.setStyle({
