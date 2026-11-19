@@ -16,6 +16,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.62] - 2026-11-19
+
 ### Added
 - [UI] [PWA] **6 Paket Peningkatan Native App (Web & Mobile)**:
   - **Swipe-Down Gesture Bottom Sheet**: Handle & header bottom sheet dapat digeser turun 60fps (`translate3d`) untuk menutup dengan spring snap-back & haptic feedback (`frontend/js/utils/ui.js`).
@@ -25,6 +27,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
   - **Smart Scroll-to-Top FAB & Mobile Pull-to-Refresh**: Tombol kembali ke atas otomatis di daftar panjang (tersembunyi di POS) + gestur tarik-ke-bawah untuk `sinkronkanDataGlobal()`.
   - **Quick Command Palette (`Ctrl+K`)**: Pencarian cepat lintas modul (sesuai peran pengguna) & aksi cepat sistem dengan navigasi keyboard lengkap (`frontend/js/app.js`).
   - File terdampak: `frontend/js/app.js`, `frontend/js/utils/ui.js`, `frontend/css/components.css`, `frontend/css/layout.css`, `frontend/sw.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.62 (`versionCode 49`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` mencakup seluruh 6 Paket Native App.
 
 ## [1.0.61] - 2026-11-19
 

@@ -462,6 +462,7 @@
 }
 
 @media (min-width: 768px) {
+
   /* Di desktop/tablet, logo toko sudah ada di sidebar header, sembunyikan logo duplikat di topbar */
   .topbar-logo {
     display: none !important;
@@ -469,6 +470,7 @@
 }
 
 @media (min-width: 1024px) {
+
   /* Saat sidebar terbuka penuh di desktop, sembunyikan toggle topbar agar tidak berdampingan dengan tombol toggle di sidebar */
   .app:not(.sidebar-collapsed) .btn-sidebar-toggle-top {
     display: none !important;
@@ -565,6 +567,7 @@
 
 /* POS Kasir Full-Height Fluid Layout - Workstation Accurate POS Presisi */
 @media (min-width: 768px) {
+
   body.pos-route-active,
   .app.pos-mode,
   .app:has(.pos-wrapper) {
@@ -604,6 +607,7 @@
 }
 
 @media (max-width: 767px) {
+
   .content:has(.pos-wrapper),
   .content.pos-content-locked {
     height: auto;
@@ -664,7 +668,7 @@
     justify-content: space-between;
   }
 
-  .page-header.page-header-inline > div:first-child {
+  .page-header.page-header-inline>div:first-child {
     width: auto;
     flex: 1 1 auto;
     min-width: 0;
@@ -1409,7 +1413,7 @@
 }
 
 @media (max-width: 767px) {
-  .stat-grid-3 > *:nth-child(3):last-child {
+  .stat-grid-3>*:nth-child(3):last-child {
     grid-column: 1 / -1;
   }
 }
@@ -1545,22 +1549,22 @@
   box-sizing: border-box;
 }
 
-.simple-filter-bar > .filter-select-field {
+.simple-filter-bar>.filter-select-field {
   grid-column: 1 / -1;
   min-width: 0;
 }
 
-.simple-filter-bar > .filter-search-field {
+.simple-filter-bar>.filter-search-field {
   grid-column: 1 / 2;
   min-width: 0;
 }
 
-.simple-filter-bar > .filter-refresh-btn {
+.simple-filter-bar>.filter-refresh-btn {
   grid-column: 2 / 3;
   margin-bottom: 1px;
 }
 
-.simple-filter-bar > .filter-extra-field {
+.simple-filter-bar>.filter-extra-field {
   grid-column: 1 / -1;
   min-width: 0;
   padding-top: 2px;
@@ -1574,16 +1578,16 @@
     gap: var(--sp-2);
   }
 
-  .simple-filter-bar > .filter-select-field {
+  .simple-filter-bar>.filter-select-field {
     flex: 0 0 180px;
     width: 180px;
   }
 
-  .simple-filter-bar > .filter-search-field {
+  .simple-filter-bar>.filter-search-field {
     flex: 1 1 220px;
   }
 
-  .simple-filter-bar > .filter-extra-field {
+  .simple-filter-bar>.filter-extra-field {
     flex: 0 0 auto;
     padding-bottom: 10px;
     padding-top: 0;
@@ -1599,15 +1603,15 @@
   box-sizing: border-box;
 }
 
-.lap-subfilter-bar > .lap-subfilter-full,
-.lap-subfilter-bar > input[type="text"],
-.lap-subfilter-bar > input[type="search"],
-.lap-subfilter-bar > .input-group {
+.lap-subfilter-bar>.lap-subfilter-full,
+.lap-subfilter-bar>input[type="text"],
+.lap-subfilter-bar>input[type="search"],
+.lap-subfilter-bar>.input-group {
   grid-column: 1 / -1;
 }
 
-.lap-subfilter-bar > select,
-.lap-subfilter-bar > input {
+.lap-subfilter-bar>select,
+.lap-subfilter-bar>input {
   width: 100% !important;
   min-width: 0 !important;
 }
@@ -1621,12 +1625,12 @@
     gap: var(--sp-2);
   }
 
-  .lap-subfilter-bar > select {
+  .lap-subfilter-bar>select {
     width: 165px !important;
   }
 
-  .lap-subfilter-bar > input[type="text"],
-  .lap-subfilter-bar > input[type="search"] {
+  .lap-subfilter-bar>input[type="text"],
+  .lap-subfilter-bar>input[type="search"] {
     width: 220px !important;
   }
 }
