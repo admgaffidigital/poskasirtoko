@@ -16,6 +16,24 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.67] - 2026-11-19
+
+### Added
+- [UI] [POS-BELI] [OPNAME] [PRODUK] **Modal / Bottom Sheet Katalog Pemilih Produk Reusable (`frontend/js/utils/produk-picker.js`)**:
+  - Menyediakan tombol **`Pilih dari Katalog`** yang membuka Modal lega (`size: 'lg'`, grid 2-kolom di Desktop) dan Bottom Sheet nyaman (1-kolom di Mobile) untuk memilih produk & varian dengan 1 klik.
+  - Dilengkapi pencarian instan (nama/varian/SKU/barcode + fallback pencarian server untuk katalog >250 item), filter **Kategori**, serta chip filter **Stok** (`Semua`, `Stok Tersedia`, `Stok Habis / Menipis`).
+  - Terintegrasi ke **POS Pembelian** (`pembelian.js`), **Stok Opname** (`opname.js`), dan filter produk **Kartu Stok** (`kartu-stok.js`), serta di-cache di Service Worker (`sw.js`).
+  - File terdampak: `frontend/js/utils/produk-picker.js`, `frontend/js/modules/pembelian.js`, `frontend/js/modules/opname.js`, `frontend/js/modules/kartu-stok.js`, `frontend/sw.js`.
+
+### Changed
+- [UI] [POS-BELI] [OPNAME] [PRICETAG] **Ruang Pencarian Produk Lebih Lega di Desktop & Mobile (`frontend/css/components.css`)**:
+  - **Bebas Terpotong di Desktop**: Menambahkan kelas `.card-has-dropdown` (`overflow: visible !important`) agar dropdown pencarian produk melayang penuh melampaui batas kartu hingga `min(440px, 58vh)`, dilengkapi header sticky + tombol `Tutup`, jarak aman dari scrollbar, serta dukungan judul 2 baris.
+  - **Mode Inline di Mobile & Dialog**: Pada layar `< 768px` dan di dalam dialog modal (seperti Input Opname), `.autocomplete-dropdown` tampil secara inline mendorong form di bawahnya agar tidak menimpa input atau bertabrakan dengan Topbar/Bottom Nav.
+  - **Pembersihan Label SKU Ganda & Batas Hasil**: Mengganti `SKU: ${...}` manual menjadi `formatSkuLabel()` di dropdown POS Pembelian & Stok Opname (bebas `SKU: SKU-...`), menaikkan batas hasil pencarian dari 10 ke 25 produk, serta memperluas area daftar produk di modul **Cetak Price Tag** (`pricetag.js`) ke `min(460px, 55vh)`.
+  - File terdampak: `frontend/css/components.css`, `frontend/js/modules/pembelian.js`, `frontend/js/modules/opname.js`, `frontend/js/modules/pricetag.js`.
+- [APK] **Build Rilis Android Native v1.0.67 (`versionCode 54`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` (4.10 MB) dan pembaruan cache Service Worker `pos-kasir-static-v1.0.67`.
+
 ## [1.0.66] - 2026-11-19
 
 ### Fixed

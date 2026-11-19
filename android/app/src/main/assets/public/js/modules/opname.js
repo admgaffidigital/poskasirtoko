@@ -7,8 +7,9 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
-import { escapeHtml, formatQty, parseQty, formatTanggal } from '../utils/format.js';
+import { escapeHtml, formatQty, parseQty, formatTanggal, formatSkuLabel } from '../utils/format.js';
 import { bukaKameraScanner } from '../utils/barcode.js';
+import { bukaModalPilihProduk } from '../utils/produk-picker.js';
 
 export async function renderOpnameModule(container) {
   const user = store.get('user');
@@ -231,16 +232,25 @@ async function muatDataOpname(container, canEdit) {
 async function bukaModalInputOpname(container) {
   const modal = showModal({
     title: 'Input Stok Opname Fisik',
+    size: 'md',
     body: `
       <form id="form-input-opname" class="stack" style="gap: var(--sp-3);">
         <div class="field autocomplete-field">
-          <label class="field-label" for="op-cari-produk">Pilih Produk / Varian <span class="wajib">*</span></label>
+          <div class="row-between items-center" style="gap: var(--sp-2); margin-bottom: 6px; flex-wrap: wrap;">
+            <label class="field-label" for="op-cari-produk" style="margin: 0;">Pilih Produk / Varian <span class="wajib">*</span></label>
+            <div class="picker-trigger-actions">
+              <button type="button" class="btn btn-secondary btn-xs" id="btn-katalog-opname" title="Buka Katalog Produk Lengkap">
+                ${ICONS.grid}
+                <span>Pilih dari Katalog</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-xs btn-icon" id="btn-scan-barcode-opname" title="Scan Barcode Kamera">
+                ${ICONS.scan || ICONS.box}
+              </button>
+            </div>
+          </div>
           <div class="input-group">
             <span class="input-icon">${ICONS.search}</span>
             <input type="text" class="input" id="op-cari-produk" placeholder="Ketik nama produk, SKU, atau varian..." autocomplete="off" required>
-            <button type="button" class="btn btn-ghost btn-sm btn-icon" id="btn-scan-barcode-opname" title="Scan Barcode Kamera">
-              ${ICONS.scan || ICONS.box}
-            </button>
           </div>
           <div id="op-dropdown-produk" class="autocomplete-dropdown"></div>
         </div>
@@ -295,6 +305,19 @@ async function bukaModalInputOpname(container) {
   const btnSimpan = $('#btn-simpan-opname', modal.el);
   let timeoutCari = null;
 
+  // Pilih Produk dari Katalog Lengkap (Modal / Bottom Sheet lega)
+  modal.el.querySelector('#btn-katalog-opname')?.addEventListener('click', () => {
+    if (dropdown) dropdown.style.display = 'none';
+    bukaModalPilihProduk({
+      title: 'Pilih Produk untuk Stok Opname',
+      mode: 'opname',
+      initialQuery: inputCari?.value?.trim() || '',
+      onSelect: (chosen) => {
+        pilihItemOpname(chosen.id, chosen.varian_id || '', chosen.nama, chosen.stok, chosen.satuan_dasar || 'Pcs');
+      }
+    });
+  });
+
   // Scan Barcode Kamera
   modal.el.querySelector('#btn-scan-barcode-opname')?.addEventListener('click', () => {
     bukaKameraScanner(async (kode) => {
@@ -336,25 +359,37 @@ async function bukaModalInputOpname(container) {
 
     timeoutCari = setTimeout(async () => {
       try {
-        const res = await apiCall('produk.list', { q, limit: 10, aktif_saja: true });
+        const res = await apiCall('produk.list', { q, limit: 25, aktif_saja: true });
         const prods = res.items || [];
         if (!prods.length) {
-          dropdown.innerHTML = `<div class="p-3 text-sm text-muted text-center">Produk "${escapeHtml(q)}" tidak ditemukan.</div>`;
+          dropdown.innerHTML = `
+            <div class="autocomplete-header">
+              <span>Hasil Pencarian</span>
+              <button type="button" class="autocomplete-close-btn" data-close-dropdown>${ICONS.x} Tutup</button>
+            </div>
+            <div class="p-3 text-sm text-muted text-center">Produk "${escapeHtml(q)}" tidak ditemukan.</div>
+          `;
           dropdown.style.display = 'block';
+          dropdown.querySelector('[data-close-dropdown]')?.addEventListener('click', () => {
+            dropdown.style.display = 'none';
+          });
           return;
         }
 
         let html = `
           <div class="autocomplete-header">
             <span>Ditemukan ${prods.length} produk</span>
-            <span>Ketuk untuk memilih</span>
+            <div class="autocomplete-header-actions">
+              <span class="d-none-mobile">Ketuk untuk memilih</span>
+              <button type="button" class="autocomplete-close-btn" data-close-dropdown>${ICONS.x} Tutup</button>
+            </div>
           </div>
         `;
         prods.forEach((p) => {
           if (p.punya_varian && p.varian && p.varian.length) {
             p.varian.forEach((v) => {
-              const skuText = v.sku || p.sku || '';
-              const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+              const skuFmt = formatSkuLabel(v.sku || p.sku || '');
+              const skuBadge = skuFmt ? `<span class="badge badge-secondary">${escapeHtml(skuFmt)}</span>` : '';
               const stokVal = Number(v.stok || 0);
               const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
 
@@ -380,8 +415,8 @@ async function bukaModalInputOpname(container) {
               `;
             });
           } else {
-            const skuText = p.sku || '';
-            const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+            const skuFmt = formatSkuLabel(p.sku || '');
+            const skuBadge = skuFmt ? `<span class="badge badge-secondary">${escapeHtml(skuFmt)}</span>` : '';
             const stokVal = Number(p.stok || 0);
             const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
 
@@ -410,6 +445,11 @@ async function bukaModalInputOpname(container) {
 
         dropdown.innerHTML = html;
         dropdown.style.display = 'block';
+
+        dropdown.querySelector('[data-close-dropdown]')?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          dropdown.style.display = 'none';
+        });
 
         dropdown.querySelectorAll('.item-op-select').forEach((el) => {
           el.addEventListener('click', () => {

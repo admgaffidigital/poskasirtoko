@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, formatTanggal } from '../utils/format.js';
+import { bukaModalPilihProduk } from '../utils/produk-picker.js';
 
 export async function renderKartuStokModule(container) {
   const user = store.get('user');
@@ -27,9 +28,14 @@ export async function renderKartuStokModule(container) {
         <div class="ks-filter-bar">
           <div class="field" style="min-width: 0;">
             <label class="field-label" for="filter-ks-produk">Pilih Produk</label>
-            <select class="input" id="filter-ks-produk">
-              <option value="">-- Semua Produk --</option>
-            </select>
+            <div class="row" style="gap: var(--sp-1); flex-wrap: nowrap;">
+              <select class="input grow" id="filter-ks-produk" style="min-width: 0;">
+                <option value="">-- Semua Produk --</option>
+              </select>
+              <button type="button" class="btn btn-secondary btn-icon" id="btn-katalog-ks" title="Pilih Produk dari Katalog Lengkap" aria-label="Pilih Produk dari Katalog">
+                ${ICONS.grid}
+              </button>
+            </div>
           </div>
 
           <div class="field" style="min-width: 0;">
@@ -111,6 +117,24 @@ export async function renderKartuStokModule(container) {
   };
 
   $('#filter-ks-produk', container)?.addEventListener('change', pemicuMuat);
+  $('#btn-katalog-ks', container)?.addEventListener('click', () => {
+    bukaModalPilihProduk({
+      title: 'Pilih Produk untuk Kartu Stok',
+      mode: 'kartu-stok',
+      onSelect: (chosen) => {
+        const selectProd = $('#filter-ks-produk', container);
+        if (!selectProd) return;
+        if (!Array.from(selectProd.options).some((opt) => opt.value === String(chosen.id))) {
+          const opt = document.createElement('option');
+          opt.value = chosen.id;
+          opt.textContent = `${chosen.nama} (${chosen.sku || '-'})`;
+          selectProd.appendChild(opt);
+        }
+        selectProd.value = String(chosen.id);
+        pemicuMuat();
+      }
+    });
+  });
   $('#filter-ks-tipe', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-dari', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sampai', container)?.addEventListener('change', pemicuMuat);

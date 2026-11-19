@@ -48,7 +48,7 @@ export async function renderPriceTagModule(container) {
           </div>
 
           <!-- Daftar Produk dengan Checkbox -->
-          <div id="area-list-produk-ptag" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-2);">
+          <div id="area-list-produk-ptag" style="max-height: min(460px, 55vh); overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-2);">
             ${renderSkeleton(4)}
           </div>
 

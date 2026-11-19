@@ -2358,28 +2358,67 @@ a.list-item:hover {
 }
 
 /* ---------- Native App Autocomplete & Product Selection Dropdown ---------- */
+.card-has-dropdown {
+  overflow: visible !important;
+  position: relative;
+  z-index: 15;
+}
+
 .autocomplete-field {
   position: relative;
 }
 
 .autocomplete-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 120;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.18), 0 6px 14px -4px rgba(0, 0, 0, 0.08);
-  max-height: 280px;
+  box-shadow: 0 18px 42px -6px rgba(15, 23, 42, 0.22), 0 6px 16px -4px rgba(15, 23, 42, 0.1);
+  max-height: min(440px, 58vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   display: none;
   animation: muncul var(--dur-fast) var(--ease);
 }
 
+[data-theme="dark"] .autocomplete-dropdown {
+  box-shadow: 0 20px 48px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Di layar mobile (<768px) atau di dalam dialog scrollable, tampilkan inline agar lega & tidak terpotong */
+@media (max-width: 767px) {
+  .autocomplete-dropdown {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    margin-top: var(--sp-2);
+    max-height: 48vh;
+    box-shadow: var(--shadow-xs);
+    z-index: auto;
+  }
+}
+
+.dialog .autocomplete-dropdown {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  margin-top: var(--sp-2);
+  max-height: min(320px, 44vh);
+  box-shadow: var(--shadow-xs);
+  z-index: auto;
+}
+
 .autocomplete-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   padding: var(--sp-2) var(--sp-3);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
@@ -2391,6 +2430,41 @@ a.list-item:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--sp-2);
+}
+
+.autocomplete-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.autocomplete-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.autocomplete-close-btn:hover {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  border-color: var(--danger);
+}
+
+.autocomplete-close-btn svg {
+  width: 12px;
+  height: 12px;
 }
 
 .autocomplete-item {
@@ -2398,7 +2472,7 @@ a.list-item:hover {
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: 10px 14px;
+  padding: 12px 16px 12px 14px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
@@ -2415,8 +2489,8 @@ a.list-item:hover {
 }
 
 .autocomplete-item-icon {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-md);
   background: var(--brand-primary-soft, var(--primary-soft));
   color: var(--brand-primary, var(--primary));
@@ -2440,17 +2514,19 @@ a.list-item:hover {
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   color: var(--text);
-  line-height: 1.35;
-  white-space: nowrap;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .autocomplete-item-meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: var(--fs-xs);
   color: var(--text-muted);
   flex-wrap: wrap;
@@ -2465,6 +2541,7 @@ a.list-item:hover {
 .autocomplete-item-side {
   text-align: right;
   flex-shrink: 0;
+  padding-left: var(--sp-2);
 }
 
 .autocomplete-item-side-label {
@@ -2477,6 +2554,264 @@ a.list-item:hover {
   font-weight: var(--fw-bold);
   font-family: var(--font-mono);
   color: var(--brand-primary, var(--primary));
+  white-space: nowrap;
+}
+
+/* ---------- Modal / Bottom Sheet Katalog Pemilih Produk (Produk Picker) ---------- */
+.prod-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
+}
+
+.prod-picker-toolbar {
+  position: sticky;
+  top: calc(-1 * var(--sp-4));
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0 var(--sp-2);
+  margin-top: calc(-1 * var(--sp-3));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .prod-picker-toolbar {
+  background: #111a2e;
+}
+
+.prod-picker-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.prod-picker-search-row .input-group {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.prod-picker-cat-select {
+  flex: 0 1 210px;
+  min-width: 160px;
+}
+
+@media (max-width: 639px) {
+  .prod-picker-cat-select {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+.prod-picker-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.prod-picker-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.prod-picker-chip {
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.prod-picker-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.prod-picker-chip.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.prod-picker-count {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.prod-picker-list-area {
+  min-height: 240px;
+}
+
+.prod-picker-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+}
+
+@media (min-width: 720px) {
+  .prod-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3);
+  }
+}
+
+.prod-picker-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color var(--dur-fast), background var(--dur-fast), transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.prod-picker-item:hover {
+  border-color: var(--primary);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-xs);
+}
+
+.prod-picker-item:active {
+  transform: scale(0.99);
+}
+
+[data-theme="dark"] .prod-picker-item {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+[data-theme="dark"] .prod-picker-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--primary);
+}
+
+.prod-picker-item-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.prod-picker-item-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.prod-picker-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.prod-picker-item-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.prod-picker-variant {
+  color: var(--primary);
+  font-weight: var(--fw-medium);
+}
+
+.prod-picker-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.prod-picker-item-meta .badge {
+  font-size: var(--fs-2xs);
+  padding: 2px 7px;
+  font-weight: var(--fw-semibold);
+}
+
+.prod-picker-item-side {
+  text-align: right;
+  flex-shrink: 0;
+  padding-left: var(--sp-1);
+}
+
+.prod-picker-side-label {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+}
+
+.prod-picker-side-value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.prod-picker-loading,
+.prod-picker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--text-muted);
+}
+
+.prod-picker-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prod-picker-empty-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Header bar aksi pemilih produk di Pembelian / Opname */
+.picker-trigger-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.picker-trigger-actions .btn svg {
+  width: 15px;
+  height: 15px;
 }
 
 .product-selected-card {

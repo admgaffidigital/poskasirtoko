@@ -11,9 +11,10 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
-import { escapeHtml, formatRupiah, formatQty, parseRupiah, parseQty, formatTanggal } from '../utils/format.js';
+import { escapeHtml, formatRupiah, formatQty, parseRupiah, parseQty, formatTanggal, formatSkuLabel } from '../utils/format.js';
 import { bukaKameraScanner } from '../utils/barcode.js';
 import { bukaModalPilihanCetakPembelian } from '../utils/printer.js';
+import { bukaModalPilihProduk } from '../utils/produk-picker.js';
 
 let tabAktifBeli = 'input';
 let activeDocClickBeli = null;
@@ -139,15 +140,21 @@ function renderFormInputBeli() {
         </div>
 
         <!-- Pemilih Produk & Input Item -->
-        <div class="card card-body stack" style="gap: var(--sp-3);">
-          <div class="row-between">
+        <div class="card card-body card-has-dropdown stack" style="gap: var(--sp-3);">
+          <div class="row-between" style="gap: var(--sp-2); flex-wrap: wrap;">
             <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 8px;">
               <span style="color: var(--primary);">${ICONS.package || ICONS.box}</span>
               <span>Tambah Barang ke Faktur Pembelian</span>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm btn-icon" id="btn-scan-barcode-beli" title="Pindai Barcode Kamera">
-              ${ICONS.scan || ICONS.box}
-            </button>
+            <div class="picker-trigger-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-katalog-beli" title="Buka Katalog Produk Lengkap">
+                ${ICONS.grid}
+                <span>Pilih dari Katalog</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm btn-icon" id="btn-scan-barcode-beli" title="Pindai Barcode Kamera">
+                ${ICONS.scan || ICONS.box}
+              </button>
+            </div>
           </div>
 
           <div class="field autocomplete-field">
@@ -312,6 +319,26 @@ async function initFormInputBeli(container) {
   const dropdown = $('#beli-dropdown-produk', container);
   let timeoutCari = null;
 
+  // Buka Katalog Produk Lengkap (Modal / Bottom Sheet lega)
+  $('#btn-katalog-beli', container)?.addEventListener('click', () => {
+    if (dropdown) dropdown.style.display = 'none';
+    bukaModalPilihProduk({
+      title: 'Pilih Produk untuk Pembelian',
+      mode: 'beli',
+      initialQuery: inputCari?.value?.trim() || '',
+      onSelect: (chosen) => {
+        if (inputCari) inputCari.value = chosen.nama;
+        pilihProdukUntukBeli(container, {
+          id: chosen.id,
+          varian_id: chosen.varian_id || '',
+          nama: chosen.nama,
+          satuan_dasar: chosen.satuan_dasar || 'Pcs',
+          hpp: chosen.hpp || 0
+        });
+      }
+    });
+  });
+
   // Scanner Barcode Kamera
   $('#btn-scan-barcode-beli', container)?.addEventListener('click', () => {
     bukaKameraScanner(async (kode) => {
@@ -347,25 +374,37 @@ async function initFormInputBeli(container) {
     }
     timeoutCari = setTimeout(async () => {
       try {
-        const res = await apiCall('produk.list', { q, limit: 10, aktif_saja: true });
+        const res = await apiCall('produk.list', { q, limit: 25, aktif_saja: true });
         const prods = res.items || [];
         if (!prods.length) {
-          dropdown.innerHTML = `<div class="p-3 text-sm text-muted text-center">Produk "${escapeHtml(q)}" tidak ditemukan.</div>`;
+          dropdown.innerHTML = `
+            <div class="autocomplete-header">
+              <span>Hasil Pencarian</span>
+              <button type="button" class="autocomplete-close-btn" data-close-dropdown>${ICONS.x} Tutup</button>
+            </div>
+            <div class="p-3 text-sm text-muted text-center">Produk "${escapeHtml(q)}" tidak ditemukan.</div>
+          `;
           dropdown.style.display = 'block';
+          dropdown.querySelector('[data-close-dropdown]')?.addEventListener('click', () => {
+            dropdown.style.display = 'none';
+          });
           return;
         }
 
         let html = `
           <div class="autocomplete-header">
             <span>Ditemukan ${prods.length} produk</span>
-            <span>Ketuk untuk memilih</span>
+            <div class="autocomplete-header-actions">
+              <span class="d-none-mobile">Ketuk untuk memilih</span>
+              <button type="button" class="autocomplete-close-btn" data-close-dropdown>${ICONS.x} Tutup</button>
+            </div>
           </div>
         `;
         prods.forEach((p) => {
           if (p.punya_varian && p.varian && p.varian.length) {
             p.varian.forEach((v) => {
-              const skuText = v.sku || p.sku || '';
-              const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+              const skuFmt = formatSkuLabel(v.sku || p.sku || '');
+              const skuBadge = skuFmt ? `<span class="badge badge-secondary">${escapeHtml(skuFmt)}</span>` : '';
               const stokVal = Number(v.stok || 0);
               const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
               const hppVal = v.hpp || p.hpp || 0;
@@ -392,8 +431,8 @@ async function initFormInputBeli(container) {
               `;
             });
           } else {
-            const skuText = p.sku || '';
-            const skuBadge = (skuText && skuText !== '-') ? `<span class="badge badge-secondary">SKU: ${escapeHtml(skuText)}</span>` : '';
+            const skuFmt = formatSkuLabel(p.sku || '');
+            const skuBadge = skuFmt ? `<span class="badge badge-secondary">${escapeHtml(skuFmt)}</span>` : '';
             const stokVal = Number(p.stok || 0);
             const stokBadge = `<span class="badge ${stokVal > 0 ? 'badge-success' : 'badge-danger'}">Stok: ${formatQty(stokVal)} ${escapeHtml(p.satuan_dasar || 'Pcs')}</span>`;
             const hppVal = p.hpp || 0;
@@ -422,6 +461,11 @@ async function initFormInputBeli(container) {
         });
         dropdown.innerHTML = html;
         dropdown.style.display = 'block';
+
+        dropdown.querySelector('[data-close-dropdown]')?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          dropdown.style.display = 'none';
+        });
 
         dropdown.querySelectorAll('.item-prod-select').forEach((el) => {
           el.addEventListener('click', async () => {
