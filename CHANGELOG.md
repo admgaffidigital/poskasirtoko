@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.66] - 2026-11-19
+
+### Fixed
+- [CETAK] **Perbaikan Error Skema `intent:` RawBT di Browser Desktop & Bug Bluetooth X-Report (`frontend/js/utils/printer.js`)**:
+  - **Guard Platform Android & Fallback Cetak Browser**: Menambahkan deteksi Android (`/android/i.test(navigator.userAgent)`) pada `cetakRawBT()`, `cetakRawBTPembelian()`, dan `cetakRawBTShift()`. Pada Windows/Mac/Desktop (non-Android), tidak lagi memicu error browser `Failed to launch 'intent:base64,...' because the scheme does not have a registered handler`, melainkan otomatis dialihkan mulus ke dialog Cetak Browser thermal (58mm/80mm) disertai notifikasi informatif.
+  - **Perbaikan `ReferenceError` Bluetooth X-Report**: Memperbaiki `cetakBluetoothShift()` yang sebelumnya memanggil `kirimKePrinterBluetooth(teks)` (tidak terdefinisi) menjadi `kirimBytesKeBluetooth(teksKeEscPos(teks))`, serta menstandarkan `cetakRawBTShift()` menggunakan ESC/POS Intent resmi Android.
+  - **Pembersihan Console Error Pembatalan Bluetooth**: Tidak lagi mencetak `console.error` saat pengguna membatalkan popup pemilihan perangkat Bluetooth (`NotFoundError`).
+  - File terdampak: `frontend/js/utils/printer.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.66 (`versionCode 53`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.66`.
+
 ## [1.0.65] - 2026-11-19
 
 ### Fixed

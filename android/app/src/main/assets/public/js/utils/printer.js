@@ -286,11 +286,11 @@ async function kirimBytesKeBluetooth(escposBytes) {
     showToast('Struk berhasil dicetak via Bluetooth.', 'success', 3000);
     return true;
   } catch (err) {
-    console.error('Gagal cetak Bluetooth:', err);
-    if (err.name === 'NotFoundError') {
-      showToast('Pencarian Bluetooth dibatalkan.', 'info', 2000);
+    if (err && err.name === 'NotFoundError') {
+      showToast('Pencarian perangkat Bluetooth dibatalkan.', 'info', 2200);
     } else {
-      showToast('Gagal cetak Bluetooth: ' + (err.message || 'Koneksi terputus'), 'error', 4500);
+      console.error('Gagal cetak Bluetooth:', err);
+      showToast('Gagal cetak Bluetooth: ' + (err?.message || 'Koneksi terputus'), 'error', 4500);
     }
     return false;
   }
@@ -408,6 +408,12 @@ export async function cetakUjiStruk(jalur = 'rawbt', ukuran = '58') {
  * @param {'58'|'80'} [ukuran='58']
  */
 export function cetakRawBT(dataStruk, ukuran = '58') {
+  const isAndroid = /android/i.test(navigator.userAgent || '');
+  if (!isAndroid) {
+    showToast('RawBT khusus Android. Dialihkan ke dialog Cetak Browser komputer...', 'info', 3000);
+    return cetakBrowser(dataStruk, ukuran);
+  }
+
   let base64Data = '';
   try {
     const teksStruk = susunTeksStruk(dataStruk, ukuran);
@@ -977,6 +983,12 @@ export function susunTeksStrukPembelian(data, ukuran = '58') {
  * @returns {boolean}
  */
 export function cetakRawBTPembelian(dataPembelian, ukuran = '58') {
+  const isAndroid = /android/i.test(navigator.userAgent || '');
+  if (!isAndroid) {
+    showToast('RawBT khusus Android. Dialihkan ke dialog Cetak Browser komputer...', 'info', 3000);
+    return cetakBrowserPembelian(dataPembelian, ukuran);
+  }
+
   let base64Data = '';
   try {
     const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
@@ -1361,10 +1373,37 @@ export function susunTeksXReport(data, ukuran = '58') {
  * Cetak X-Report shift via aplikasi RawBT (Android)
  */
 export async function cetakRawBTShift(dataReport, ukuran = '58') {
-  const teks = susunTeksXReport(dataReport, ukuran);
-  const base64 = btoa(unescape(encodeURIComponent(teks)));
-  const url = `rawbt:data:text/plain;base64,${base64}`;
-  window.location.href = url;
+  const isAndroid = /android/i.test(navigator.userAgent || '');
+  if (!isAndroid) {
+    showToast('RawBT khusus Android. Dialihkan ke dialog Cetak Browser komputer...', 'info', 3000);
+    return cetakBrowserShift(dataReport, ukuran);
+  }
+
+  let base64Data = '';
+  try {
+    const teks = susunTeksXReport(dataReport, ukuran);
+    const escposBytes = teksKeEscPos(teks);
+    let binary = '';
+    for (let i = 0; i < escposBytes.byteLength; i++) {
+      binary += String.fromCharCode(escposBytes[i]);
+    }
+    base64Data = window.btoa(binary);
+
+    const intentUri = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
+    const a = document.createElement('a');
+    a.href = intentUri;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 150);
+    showToast('Mengirim rekap shift ke printer via RawBT...', 'info', 2500);
+    return true;
+  } catch (err) {
+    console.error('Gagal cetak RawBT Shift:', err);
+    showToast('Gagal memproses rekap shift untuk RawBT: ' + (err?.message || ''), 'error', 3500);
+    return false;
+  }
 }
 
 /**
@@ -1372,7 +1411,8 @@ export async function cetakRawBTShift(dataReport, ukuran = '58') {
  */
 export async function cetakBluetoothShift(dataReport, ukuran = '58') {
   const teks = susunTeksXReport(dataReport, ukuran);
-  return kirimKePrinterBluetooth(teks);
+  const escposBytes = teksKeEscPos(teks);
+  return await kirimBytesKeBluetooth(escposBytes);
 }
 
 /**
