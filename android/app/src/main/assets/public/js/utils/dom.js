@@ -26,7 +26,8 @@ export function on(event, selector, handler, parent = document) {
  * @param {number} [count=3]
  * @returns {string}
  */
-export function renderSkeleton(count = 3) {
+export function renderSkeleton(countOrType = 3, countFallback = 3) {
+  const count = typeof countOrType === 'number' ? countOrType : (Number(countFallback) || 3);
   let html = '';
   for (let i = 0; i < count; i++) {
     html += `

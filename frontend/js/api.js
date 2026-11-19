@@ -54,6 +54,7 @@ const CACHE_CONFIG = {
   'hutang.detail': 60000,          // 1 menit
   'retur.list': 60000,             // 1 menit
   'retur.detail': 60000,           // 1 menit
+  'biaya.list': 60000,             // 1 menit
   'member.riwayatPoin': 60000,     // 1 menit
   'laporan.ringkasan': 60000,      // 1 menit
   'laporan.penjualan': 60000,      // 1 menit
@@ -89,6 +90,9 @@ const MUTATION_PATTERNS = [
   { trigger: 'supplier.', targets: ['supplier.', 'hutang.', 'laporan.'] },
   { trigger: 'hadiah.', targets: ['hadiah.', 'pelanggan.', 'member.'] },
   { trigger: 'member.', targets: ['pelanggan.', 'hadiah.', 'member.'] },
+  { trigger: 'biaya.', targets: ['biaya.', 'laporan.'] },
+  { trigger: 'stok.', targets: ['stok.', 'produk.', 'laporan.'] },
+  { trigger: 'sistem.', targets: [''] },
   { trigger: 'pengaturan.', targets: ['pengaturan.'] },
   { trigger: 'user.', targets: ['user.', 'auth.'] },
   { trigger: 'auth.gantiPin', targets: ['auth.'] },
@@ -251,11 +255,18 @@ export async function apiCall(action, payload = {}, options = {}) {
 
   // Jika ini aksi mutasi (create/update/delete/bayar/void), hapus cache terkait seketika
   if (adalahAksiMutasi(action)) {
+    let matched = false;
     MUTATION_PATTERNS.forEach(({ trigger, targets }) => {
       if (action.startsWith(trigger)) {
+        matched = true;
         targets.forEach((t) => invalidateApiCache(t));
       }
     });
+    if (!matched) {
+      const ns = action.split('.')[0];
+      if (ns) invalidateApiCache(ns + '.');
+      invalidateApiCache('laporan.');
+    }
   }
 
   const token = ambilTokenAktif(options.token);

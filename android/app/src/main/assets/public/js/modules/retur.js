@@ -472,12 +472,19 @@ function bukaModalFormReturJual(container) {
   const modalInstance = showModal({
     title: 'Buat Retur Penjualan (Pelanggan)',
     body: modalBody,
-    width: '640px'
+    size: 'lg'
   });
 
   const inputNota = $('#rj-no-nota', modalBody);
   const btnCekNota = $('#btn-cek-nota', modalBody);
   const areaHasil = $('#area-hasil-nota', modalBody);
+
+  inputNota?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      btnCekNota?.click();
+    }
+  });
 
   btnCekNota?.addEventListener('click', async () => {
     const noNota = inputNota.value.trim().toUpperCase();
@@ -800,12 +807,19 @@ function bukaModalFormReturBeli(container) {
   const modalInstance = showModal({
     title: 'Buat Retur Pembelian ke Supplier',
     body: modalBody,
-    width: '640px'
+    size: 'lg'
   });
 
   const inputFaktur = $('#rb-no-faktur', modalBody);
   const btnCekFaktur = $('#btn-cek-faktur', modalBody);
   const areaHasil = $('#area-hasil-faktur', modalBody);
+
+  inputFaktur?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      btnCekFaktur?.click();
+    }
+  });
 
   btnCekFaktur?.addEventListener('click', async () => {
     const noFaktur = inputFaktur.value.trim().toUpperCase();

@@ -16,6 +16,34 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.68] - 2026-11-19
+
+### Fixed
+- [UI] **Penanganan Modal Bertingkat (Stacked Modals), `onClose` Lifecycle, & `showConfirm` (`frontend/js/utils/ui.js`)**:
+  - **Escape Guard Modal Paling Atas**: Menekan `Escape` saat modal bertingkat terbuka (mis. Kalkulator HPP, Katalog Pemilih Produk, Scanner Kamera, atau Dialog Konfirmasi di atas modal form utama) kini hanya menutup modal paling atas (atau menutup dropdown `.cat-picker` / `.autocomplete-dropdown` yang sedang terbuka terlebih dahulu) tanpa merusak/menutup form induk di bawahnya.
+  - **Jaminan Resolusi `showConfirm` & `onClose`**: Menambahkan callback `onClose` terpusat pada `showModal()` yang selalu terpanggil baik saat ditutup lewat tombol `X`, klik backdrop, swipe-down bottom sheet, maupun tombol `Escape`, sehingga Promise `showConfirm()` selalu ter-resolve (`false`) dan tidak pernah menggantung.
+  - **Dukungan Opsi `width`**: Mendukung pemetaan otomatis parameter `width` ke ukuran dialog (`sm`/`md`/`lg`) di `hutang-piutang.js`, `loyalti.js`, dan `retur.js`.
+  - File terdampak: `frontend/js/utils/ui.js`, `frontend/js/utils/produk-picker.js`.
+- [POS-JUAL] [PRODUK] **Pembersihan Stream Kamera Barcode & Proteksi Fokus Scanner Fisik (`frontend/js/utils/barcode.js`, `frontend/js/modules/pos.js`)**:
+  - **Bebas Kebocoran Kamera (`bukaKameraScanner`)**: Menambahkan `onClose: hentikanKamera` dan guard pasca-tutup pada `getUserMedia().then(...)` agar stream kamera & interval deteksi selalu dihentikan meskipun modal ditutup lewat tombol `X`, backdrop, swipe-down, atau `Escape`.
+  - **Proteksi Input Form dari Scanner Fisik (`pasangScannerFisik`)**: Mencegah listener keyboard scanner fisik (capture phase) membajak ketikan cepat + `Enter` saat modal sedang terbuka atau saat pengguna mengetik di dalam input form selain kolom pencarian POS, serta membersihkan sisa teks barcode di `#pos-search-input` setelah scan berhasil.
+  - **Pembersihan Timer Debounce POS**: Menambahkan `clearTimeout(searchDebounceTimer)` pada fungsi cleanup `renderPosModule`.
+  - File terdampak: `frontend/js/utils/barcode.js`, `frontend/js/modules/pos.js`.
+- [MEMBER] **Perbaikan Riwayat Penukaran Hadiah, Tombol Submit Tukar Poin, & Preselect Hadiah (`frontend/js/modules/loyalti.js`, `backend/kode.gs`)**:
+  - **Perbaikan Bug `muatRiwayatPenukaran`**: Memperbaiki bug urutan destrukturisasi `Promise.all` di mana ID hadiah (`resPel.items[0].id`) sebelumnya dikirim sebagai `pelanggan_id` ke `member.riwayatPoin` (menyebabkan tab Riwayat Penukaran selalu kosong). Kini mendukung pengambilan riwayat penukaran poin lintas seluruh member toko beserta nama member (dengan fallback otomatis untuk server GAS lama).
+  - **Reset Tombol `#btn-submit-tukar-poin`**: Memindahkan pemulihan status tombol submit ke blok `finally` agar tombol tidak terkunci (`disabled`) setelah penukaran poin berhasil.
+  - **Eliminasi Race Condition `.btn-tukar-langsung`**: Mengirim `preselectedHadiahId` langsung ke `inisialisasiFormTukar(container, id)` setelah data selesai dimuat, menggantikan `setTimeout(..., 150)`.
+  - File terdampak: `frontend/js/modules/loyalti.js`, `backend/kode.gs`.
+- [DASHBOARD] [SETTING] [RETUR] **Invalidasi Cache Mutasi API, Presisi Nilai `0%` Pengaturan, & UX Modal Retur (`frontend/js/api.js`, `frontend/js/modules/pengaturan.js`, `frontend/js/modules/biaya.js`, `frontend/js/modules/retur.js`, `frontend/js/utils/dom.js`, `frontend/js/app.js`)**:
+  - **Invalidasi Cache Mutasi Lengkap**: Menambahkan `'biaya.list'` ke `CACHE_CONFIG` serta pola mutasi `biaya.`, `stok.`, dan `sistem.` (+ fallback namespace otomatis) ke `MUTATION_PATTERNS` di `api.js` agar perubahan Biaya Operasional atau pembersihan Kartu Stok langsung menyegarkan cache Laporan Laba Rugi & Kas.
+  - **Dukungan Nilai `0%` di Pengaturan Umum**: Memperbaiki `parseFloat(...) || 10` dan `|| 11` di `pengaturan.js` menggunakan `Number.isFinite` & nullish coalescing (`??`) agar Owner dapat menetapkan batas diskon kasir `0%` atau PPN `0%` tanpa tertimpa kembali ke `10%`/`11%`.
+  - **Ketahanan `renderSkeleton` & Shortcut Retur**: Memperbaiki `renderSkeleton('table', 5)` di `biaya.js` & `dom.js` agar selalu merender skeleton dengan benar, memperluas modal Retur Penjualan/Pembelian ke `size: 'lg'` dengan dukungan tombol `Enter` pada input cek nomor nota/faktur, serta memperbarui indikator `27 Sheet Lengkap` di halaman Diagnostik Sistem.
+  - File terdampak: `frontend/js/api.js`, `frontend/js/modules/pengaturan.js`, `frontend/js/modules/biaya.js`, `frontend/js/modules/retur.js`, `frontend/js/utils/dom.js`, `frontend/js/app.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.68 (`versionCode 55`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.68`.
+
 ## [1.0.67] - 2026-11-19
 
 ### Added

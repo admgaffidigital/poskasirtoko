@@ -430,7 +430,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.67'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.68'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -483,7 +483,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.67'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.68'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1524,7 +1524,7 @@ class App {
               <dd>${escapeHtml(res.nama || '-')}</dd>
 
               <dt>Status Database</dt>
-              <dd>${res.db_siap ? '<span class="text-success fw-bold">Siap (26 Sheet Lengkap)</span>' : '<span class="text-danger fw-bold">Belum Siap</span>'}</dd>
+              <dd>${res.db_siap ? '<span class="text-success fw-bold">Siap (27 Sheet Lengkap)</span>' : '<span class="text-danger fw-bold">Belum Siap</span>'}</dd>
 
               <dt>Versi Skema Backend</dt>
               <dd>${res.versi_skema || 1}</dd>

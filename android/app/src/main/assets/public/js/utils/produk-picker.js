@@ -130,11 +130,21 @@ export function bukaModalPilihProduk({
     </div>
   `;
 
+  let allRows = [];
+  let loadedFull = false;
+  let activeStokFilter = 'semua';
+  let serverSearchTimer = null;
+  let isClosed = false;
+
   const modal = showModal({
     title,
     body: bodyHtml,
     footer: footerHtml,
-    size: 'lg'
+    size: 'lg',
+    onClose: () => {
+      isClosed = true;
+      clearTimeout(serverSearchTimer);
+    }
   });
 
   const inputCari = modal.el.querySelector('#picker-search-input');
@@ -144,19 +154,6 @@ export function bukaModalPilihProduk({
   const listArea = modal.el.querySelector('#picker-list-area');
 
   modal.el.querySelector('#picker-btn-tutup')?.addEventListener('click', () => modal.close());
-
-  let allRows = [];
-  let loadedFull = false;
-  let activeStokFilter = 'semua';
-  let serverSearchTimer = null;
-  let isClosed = false;
-
-  const origClose = modal.close;
-  modal.close = () => {
-    isClosed = true;
-    clearTimeout(serverSearchTimer);
-    origClose();
-  };
 
   function getFilteredRows(sourceRows) {
     const q = (inputCari?.value || '').trim().toLowerCase();

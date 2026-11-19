@@ -179,7 +179,7 @@ export async function renderBiayaModule(container) {
       <!-- Area Tabel & Kartu Daftar Pengeluaran -->
       <div class="card card-body" id="area-tabel-biaya" style="padding: 0; overflow: hidden;">
         <div style="padding: var(--sp-4);">
-          ${renderSkeleton('table', 5)}
+          ${renderSkeleton(5)}
         </div>
       </div>
     </div>

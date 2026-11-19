@@ -167,7 +167,7 @@ export async function renderLoyaltiModule(container) {
   const panelTukar = $('#panel-tukar', container);
   const panelRiwayat = $('#panel-riwayat', container);
 
-  const setTab = (aktif) => {
+  const setTab = (aktif, preselectedHadiahId = '') => {
     tabAktifLoyalti = aktif;
     btnKatalog.setAttribute('aria-pressed', aktif === 'katalog');
     btnTukar.setAttribute('aria-pressed', aktif === 'tukar');
@@ -178,7 +178,7 @@ export async function renderLoyaltiModule(container) {
     panelRiwayat.style.display = aktif === 'riwayat' ? 'flex' : 'none';
 
     if (aktif === 'katalog') muatDataHadiah(container);
-    if (aktif === 'tukar') inisialisasiFormTukar(container);
+    if (aktif === 'tukar') inisialisasiFormTukar(container, preselectedHadiahId);
     if (aktif === 'riwayat') muatRiwayatPenukaran(container);
   };
 
@@ -297,16 +297,23 @@ async function muatDataHadiah(container) {
     // Pasang Event Listeners
     area.querySelectorAll('.btn-tukar-langsung').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        const tabTukar = $('#tab-btn-tukar', container);
-        if (tabTukar) tabTukar.click();
-        setTimeout(() => {
-          const selH = $('#tukar-hadiah-select', container);
-          if (selH) {
-            selH.value = id;
-            selH.dispatchEvent(new Event('change'));
-          }
-        }, 150);
+        const id = btn.getAttribute('data-id') || '';
+        const btnTukar = $('#tab-btn-tukar', container);
+        const btnKat = $('#tab-btn-katalog', container);
+        const btnRiw = $('#tab-btn-riwayat', container);
+        const pKat = $('#panel-katalog', container);
+        const pTuk = $('#panel-tukar', container);
+        const pRiw = $('#panel-riwayat', container);
+
+        tabAktifLoyalti = 'tukar';
+        if (btnKat) btnKat.setAttribute('aria-pressed', 'false');
+        if (btnTukar) btnTukar.setAttribute('aria-pressed', 'true');
+        if (btnRiw) btnRiw.setAttribute('aria-pressed', 'false');
+        if (pKat) pKat.style.display = 'none';
+        if (pTuk) pTuk.style.display = 'flex';
+        if (pRiw) pRiw.style.display = 'none';
+
+        inisialisasiFormTukar(container, id);
       });
     });
 
@@ -346,7 +353,7 @@ async function muatDataHadiah(container) {
 /* FORMULIR PENUKARAN POIN                                                    */
 /* ========================================================================== */
 
-async function inisialisasiFormTukar(container) {
+async function inisialisasiFormTukar(container, preselectedHadiahId = '') {
   const selMember = $('#tukar-member-select', container);
   const selHadiah = $('#tukar-hadiah-select', container);
   const inputQty = $('#tukar-qty', container);
@@ -375,6 +382,10 @@ async function inisialisasiFormTukar(container) {
 
     selHadiah.innerHTML = '<option value="">-- Pilih Hadiah Tersedia --</option>' +
       hadiahs.map((h) => `<option value="${escapeHtml(h.id)}" data-poin="${h.poin_dibutuhkan || 0}" data-stok="${h.stok || 0}">${escapeHtml(h.nama)} (${(h.poin_dibutuhkan || 0).toLocaleString('id-ID')} Poin, Stok: ${h.stok})</option>`).join('');
+
+    if (preselectedHadiahId) {
+      selHadiah.value = preselectedHadiahId;
+    }
 
     const hitungPoin = () => {
       const optM = selMember.selectedOptions[0];
@@ -427,8 +438,10 @@ async function inisialisasiFormTukar(container) {
       }
 
       const btnSub = $('#btn-submit-tukar-poin', container);
-      btnSub.disabled = true;
-      btnSub.innerHTML = '<span class="spinner spinner-sm"></span> Memproses...';
+      if (btnSub) {
+        btnSub.disabled = true;
+        btnSub.innerHTML = '<span class="spinner spinner-sm"></span> Memproses...';
+      }
 
       try {
         const resTukar = await apiCall('member.tukarPoin', {
@@ -441,13 +454,17 @@ async function inisialisasiFormTukar(container) {
         showToast(resTukar.pesan || 'Penukaran poin berhasil!', 'success', 5000);
 
         // Reset form & kembali muat
-        $('#tukar-catatan', container).value = '';
+        const inputCatatan = $('#tukar-catatan', container);
+        if (inputCatatan) inputCatatan.value = '';
         inputQty.value = 1;
-        inisialisasiFormTukar(container);
+        await inisialisasiFormTukar(container);
       } catch (err) {
         showToast(err.message || 'Gagal memproses penukaran poin', 'error');
-        btnSub.disabled = false;
-        btnSub.innerHTML = `${ICONS.check} <span>Konfirmasi Penukaran Hadiah</span>`;
+      } finally {
+        if (btnSub) {
+          btnSub.disabled = false;
+          btnSub.innerHTML = `${ICONS.check} <span>Konfirmasi Penukaran Hadiah</span>`;
+        }
       }
     };
 
@@ -467,19 +484,27 @@ async function muatRiwayatPenukaran(container) {
   area.innerHTML = renderSkeleton(4);
 
   try {
-    // Ambil log mutasi poin bertipe 'tukar' dari Poin_Log
-    const [resLog, resPel, resH] = await Promise.all([
-      apiCall('pelanggan.list', { limit: 100 }),
-      apiCall('hadiah.list', { limit: 100 }),
-      apiCall('pelanggan.list', { tipe: 'member', limit: 1 })
-    ]);
-
-    // Ambil semua mutasi poin tukar
-    const memberContoh = resPel.items && resPel.items[0] ? resPel.items[0].id : '';
     let items = [];
-    if (memberContoh) {
-      const resPoin = await apiCall('member.riwayatPoin', { pelanggan_id: memberContoh, limit: 100 });
-      items = (resPoin.items || []).filter((l) => l.jenis === 'tukar');
+    const resPel = await apiCall('pelanggan.list', { tipe: 'member', limit: 100 });
+    const members = resPel.items || [];
+    const memberMap = new Map(members.map((m) => [m.id, m.nama]));
+
+    try {
+      // Coba ambil riwayat klaim hadiah lintas seluruh member toko
+      const resAll = await apiCall('member.riwayatPoin', { jenis: 'tukar', limit: 100 });
+      items = (resAll.items || []).filter((l) => l.jenis === 'tukar');
+    } catch (_) {
+      // Fallback kompatibilitas jika server Apps Script lama wajib menyertakan pelanggan_id
+      const logPromises = members.slice(0, 25).map((m) =>
+        apiCall('member.riwayatPoin', { pelanggan_id: m.id, limit: 50 })
+          .then((r) => (r.items || []).filter((l) => l.jenis === 'tukar').map((l) => ({
+            ...l,
+            nama_pelanggan: l.nama_pelanggan || m.nama
+          })))
+          .catch(() => [])
+      );
+      const grouped = await Promise.all(logPromises);
+      items = grouped.flat().sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     }
 
     if (items.length === 0) {
@@ -489,24 +514,29 @@ async function muatRiwayatPenukaran(container) {
 
     area.innerHTML = `
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table-card-2col">
           <thead>
             <tr>
               <th>Waktu Penukaran</th>
               <th>Nomor Bukti</th>
+              <th>Pelanggan Member</th>
               <th class="num">Poin Dipotong</th>
               <th class="num">Sisa Poin Member</th>
             </tr>
           </thead>
           <tbody>
-            ${items.map((it) => `
-              <tr>
-                <td class="text-xs" data-label="Waktu">${formatTanggal(it.created_at, true)}</td>
-                <td data-label="Nomor Bukti"><span class="font-mono fw-semibold">${escapeHtml(it.ref_id || '-')}</span></td>
-                <td class="num fw-bold text-danger" data-label="Poin Dipotong">${it.jumlah} Poin</td>
-                <td class="num font-mono fw-bold" data-label="Sisa Poin">${(it.saldo || 0).toLocaleString('id-ID')} Poin</td>
-              </tr>
-            `).join('')}
+            ${items.map((it) => {
+              const namaPel = it.nama_pelanggan || memberMap.get(it.pelanggan_id) || '-';
+              return `
+                <tr>
+                  <td class="text-xs" data-label="Waktu">${formatTanggal(it.created_at, true)}</td>
+                  <td data-label="Nomor Bukti"><span class="font-mono fw-semibold">${escapeHtml(it.ref_id || '-')}</span></td>
+                  <td data-label="Member"><span class="fw-semibold">${escapeHtml(namaPel)}</span></td>
+                  <td class="num fw-bold text-danger" data-label="Poin Dipotong">${it.jumlah} Poin</td>
+                  <td class="num font-mono fw-bold" data-label="Sisa Poin">${(it.saldo || 0).toLocaleString('id-ID')} Poin</td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>

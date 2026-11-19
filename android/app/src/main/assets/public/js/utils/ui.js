@@ -139,13 +139,25 @@ export function showModal({
   footer = null,
   isSheet = false,
   size = 'md',
-  closeOnOverlay = true
+  width = null,
+  closeOnOverlay = true,
+  onClose = null
 }) {
   const overlay = document.createElement('div');
   overlay.className = `overlay ${isSheet ? 'is-sheet' : 'is-modal'}`;
 
+  let resolvedSize = size;
+  if (width && size === 'md') {
+    const px = parseInt(String(width), 10);
+    if (px >= 640) resolvedSize = 'lg';
+    else if (px > 0 && px <= 480) resolvedSize = 'sm';
+  }
+
   const dialog = document.createElement('div');
-  dialog.className = `dialog ${size === 'lg' ? 'dialog-lg' : size === 'md' ? 'dialog-md' : size === 'sm' ? 'dialog-sm' : ''}`;
+  dialog.className = `dialog ${resolvedSize === 'lg' ? 'dialog-lg' : resolvedSize === 'md' ? 'dialog-md' : resolvedSize === 'sm' ? 'dialog-sm' : ''}`;
+  if (width) {
+    dialog.style.setProperty('--custom-dialog-w', String(width));
+  }
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
 
@@ -181,23 +193,29 @@ export function showModal({
   document.body.appendChild(overlay);
 
   let isClosing = false;
-  const close = () => {
+  const baseClose = () => {
     if (isClosing) return;
     isClosing = true;
     window.removeEventListener('keydown', handleKey);
+    if (typeof onClose === 'function') {
+      try { onClose(); } catch (_) {}
+    }
     overlay.classList.add('keluar');
     setTimeout(() => {
       if (overlay.parentElement) overlay.remove();
     }, 200);
   };
 
+  const modalRef = { close: baseClose, el: overlay };
+  const triggerClose = () => modalRef.close();
+
   dialog.querySelectorAll('.btn-close-modal, .btn-batal-modal, .btn-cancel').forEach((btn) => {
-    btn.addEventListener('click', close);
+    btn.addEventListener('click', triggerClose);
   });
 
   if (closeOnOverlay) {
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
+      if (e.target === overlay) triggerClose();
     });
   }
 
@@ -251,7 +269,7 @@ export function showModal({
       overlay.style.backgroundColor = '';
       dialog.style.transition = 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)';
       dialog.style.transform = 'translate3d(0, 100%, 0)';
-      close();
+      triggerClose();
     } else {
       overlay.style.backgroundColor = '';
       dialog.style.transition = 'transform 0.22s cubic-bezier(0.2, 0.9, 0.2, 1)';
@@ -271,10 +289,30 @@ export function showModal({
     target.addEventListener('touchcancel', onTouchEnd, { passive: true });
   });
 
-  // Escape key support
+  // Escape key support (hanya menutup modal paling atas & menutup dropdown internal terlebih dahulu)
   const handleKey = (e) => {
     if (e.key === 'Escape') {
-      close();
+      const activeOverlays = document.querySelectorAll('.overlay:not(.keluar)');
+      const topOverlay = activeOverlays[activeOverlays.length - 1];
+      if (topOverlay && topOverlay !== overlay) return;
+
+      const openCatPicker = dialog.querySelector('.cat-picker.is-open');
+      if (openCatPicker) {
+        openCatPicker.classList.remove('is-open');
+        const panel = openCatPicker.querySelector('.cat-picker-panel');
+        if (panel) panel.hidden = true;
+        return;
+      }
+
+      const openAutocomplete = Array.from(dialog.querySelectorAll('.autocomplete-dropdown')).find(
+        (el) => el.style.display === 'block'
+      );
+      if (openAutocomplete) {
+        openAutocomplete.style.display = 'none';
+        return;
+      }
+
+      triggerClose();
     }
   };
   window.addEventListener('keydown', handleKey);
@@ -285,7 +323,7 @@ export function showModal({
     autoEl?.focus();
   }, 100);
 
-  return { close, el: overlay };
+  return modalRef;
 }
 
 /**
@@ -373,7 +411,8 @@ export function showConfirm(titleOrOptions, messageOrOptions, extraOptions = {})
       body: bodyHtml,
       footer,
       isSheet: false,
-      size: 'sm'
+      size: 'sm',
+      onClose: () => safeResolve(false)
     });
 
     const headerTitleEl = modal.el.querySelector('.dialog-title');

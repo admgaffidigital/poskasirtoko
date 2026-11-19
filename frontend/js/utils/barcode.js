@@ -51,22 +51,34 @@ export function bunyikanBeep() {
 export function pasangScannerFisik(onScanCallback) {
   let buffer = '';
   let lastTime = 0;
-  const AMBANG_MS = 60; // Ambang jeda antar karakter barcode scanner fisik
+  const AMBANG_MS = 50; // Ambang jeda antar karakter barcode scanner fisik
 
   const handler = (e) => {
-    // Abaikan jika fokus di textarea atau input non-search
+    // Abaikan jika modal sedang terbuka atau fokus berada pada input form selain kolom cari POS
+    if (document.querySelector('.overlay:not(.keluar)')) {
+      buffer = '';
+      return;
+    }
     const target = e.target;
-    const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+    const tag = target && target.tagName ? target.tagName.toUpperCase() : '';
+    const isPosSearch = target && target.id === 'pos-search-input';
+    if ((tag === 'INPUT' && !isPosSearch) || tag === 'TEXTAREA' || tag === 'SELECT' || (target && target.isContentEditable)) {
+      buffer = '';
+      return;
+    }
 
     const currentTime = Date.now();
     const diff = currentTime - lastTime;
     lastTime = currentTime;
 
     if (e.key === 'Enter') {
-      if (buffer.length >= 3 && diff <= AMBANG_MS * 2) {
+      if (buffer.length >= 4 && diff <= AMBANG_MS * 2) {
         e.preventDefault();
         const code = buffer.trim();
         buffer = '';
+        if (isPosSearch && target) {
+          target.value = '';
+        }
         bunyikanBeep();
         if (typeof onScanCallback === 'function') {
           onScanCallback(code);
@@ -77,8 +89,8 @@ export function pasangScannerFisik(onScanCallback) {
       return;
     }
 
-    // Tangkap hanya karakter cetak
-    if (e.key && e.key.length === 1) {
+    // Tangkap hanya karakter cetak tanpa modifier
+    if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (diff > AMBANG_MS && buffer.length > 0) {
         // Jeda terlalu lama -> kemungkinan ketikan manual manusia, reset buffer
         buffer = '';
@@ -101,9 +113,22 @@ export function bukaKameraScanner(onScanCallback) {
   let scanInterval = null;
   let isScanning = true;
 
+  const hentikanKamera = () => {
+    isScanning = false;
+    if (scanInterval) {
+      clearInterval(scanInterval);
+      scanInterval = null;
+    }
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop());
+      mediaStream = null;
+    }
+  };
+
   const modal = showModal({
     title: 'Pindai Barcode Produk',
     size: 'sm',
+    onClose: hentikanKamera,
     body: `
       <div class="scanner-camera-container" style="display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);">
         <div style="position: relative; width: 100%; max-width: 320px; aspect-ratio: 4/3; background: #000; border-radius: var(--radius-md); overflow: hidden;">
@@ -146,15 +171,6 @@ export function bukaKameraScanner(onScanCallback) {
   const btnManual = modal.el.querySelector('#btn-manual-barcode');
   const btnTutup = modal.el.querySelector('#btn-tutup-scanner');
 
-  const hentikanKamera = () => {
-    isScanning = false;
-    if (scanInterval) clearInterval(scanInterval);
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((track) => track.stop());
-      mediaStream = null;
-    }
-  };
-
   btnTutup?.addEventListener('click', () => {
     hentikanKamera();
     modal.close();
@@ -188,6 +204,10 @@ export function bukaKameraScanner(onScanCallback) {
     video: { facingMode: { ideal: 'environment' } },
     audio: false
   }).then((stream) => {
+    if (!isScanning) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
     mediaStream = stream;
     if (videoEl) {
       videoEl.srcObject = stream;

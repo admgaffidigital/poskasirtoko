@@ -5385,12 +5385,35 @@ function aksiMemberTukarPoin_(ctx) {
 /** member.riwayatPoin — Riwayat transaksi penambahan/pengurangan poin member. */
 function aksiMemberRiwayatPoin_(ctx) {
   const p = ctx.payload || {};
-  if (!p.pelanggan_id) gagal_(KODE.VALIDATION, 'ID pelanggan member wajib diberikan.');
+  const filterPelangganId = String(p.pelanggan_id || '').trim();
+  const filterJenis = String(p.jenis || '').trim().toLowerCase();
+
+  if (!filterPelangganId && !filterJenis) {
+    gagal_(KODE.VALIDATION, 'ID pelanggan member wajib diberikan.');
+  }
 
   const semuaLog = bacaSemua_('Poin_Log');
+  const mapPel = {};
+  if (!filterPelangganId) {
+    bacaSemua_('Pelanggan').forEach(function (pl) {
+      mapPel[pl.id] = pl.nama;
+    });
+  }
+
   const data = semuaLog
-    .filter(function (l) { return l.pelanggan_id === p.pelanggan_id && !l.deleted; })
-    .sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+    .filter(function (l) {
+      if (l.deleted) return false;
+      if (filterPelangganId && l.pelanggan_id !== filterPelangganId) return false;
+      if (filterJenis && String(l.jenis || '').toLowerCase() !== filterJenis) return false;
+      return true;
+    })
+    .sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); })
+    .map(function (l) {
+      if (!filterPelangganId && mapPel[l.pelanggan_id]) {
+        return Object.assign({}, l, { nama_pelanggan: mapPel[l.pelanggan_id] });
+      }
+      return l;
+    });
 
   const limit = Math.min(Math.max(parseInt(p.limit, 10) || 50, 1), 200);
   const page = Math.max(parseInt(p.page, 10) || 1, 1);

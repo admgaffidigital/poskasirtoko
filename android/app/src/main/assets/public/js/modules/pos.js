@@ -2846,6 +2846,7 @@ export function renderPosModule(container) {
 
   // Return cleanup bila berganti rute
   return () => {
+    clearTimeout(searchDebounceTimer);
     window.removeEventListener('keydown', handleKeyShortcuts);
     window.removeEventListener('resize', handleResize);
     lepasScannerFisik();

@@ -115,7 +115,7 @@ async function muatPengaturan(container) {
           <div class="form-grid cols-2" style="margin-top: var(--sp-2);">
             <div class="field">
               <label class="field-label" for="cfg-diskon-kasir">Batas Diskon Maksimal Kasir (%)</label>
-              <input type="number" class="input input-num" id="cfg-diskon-kasir" value="${cfg.diskon_maks_kasir_persen || 10}" min="0" max="100">
+              <input type="number" class="input input-num" id="cfg-diskon-kasir" value="${cfg.diskon_maks_kasir_persen ?? 10}" min="0" max="100">
               <span class="field-hint">Diskon di atas persentase ini memerlukan persetujuan Owner/Admin.</span>
             </div>
           </div>
@@ -168,7 +168,7 @@ async function muatPengaturan(container) {
               </label>
               <div class="field" style="margin-top: var(--sp-2);">
                 <label class="field-label" for="cfg-pajak-persen">Tarif PPN (%)</label>
-                <input type="number" class="input input-num" id="cfg-pajak-persen" value="${cfg.pajak_persen || 11}" min="0" max="100">
+                <input type="number" class="input input-num" id="cfg-pajak-persen" value="${cfg.pajak_persen ?? 11}" min="0" max="100">
               </div>
             </div>
 
@@ -219,16 +219,18 @@ async function muatPengaturan(container) {
       btnSimpan.setAttribute('aria-busy', 'true');
       btnSimpan.disabled = true;
 
+      const parsedDiskonKasir = parseFloat($('#cfg-diskon-kasir', form).value);
+      const parsedPajakPersen = parseFloat($('#cfg-pajak-persen', form).value);
       const payload = {
         toko_nama: $('#cfg-toko-nama', form).value.trim(),
         toko_hp: $('#cfg-toko-hp', form).value.trim(),
         toko_alamat: $('#cfg-toko-alamat', form).value.trim(),
         printer_ukuran: $('#cfg-printer-ukuran', form).value,
         printer_jalur: $('#cfg-printer-jalur', form).value,
-        diskon_maks_kasir_persen: parseFloat($('#cfg-diskon-kasir', form).value) || 10,
+        diskon_maks_kasir_persen: Number.isFinite(parsedDiskonKasir) ? parsedDiskonKasir : 10,
         nota_footer: $('#cfg-nota-footer', form).value.trim(),
         pajak_aktif: $('#cfg-pajak-aktif', form).checked,
-        pajak_persen: parseFloat($('#cfg-pajak-persen', form).value) || 11,
+        pajak_persen: Number.isFinite(parsedPajakPersen) ? parsedPajakPersen : 11,
         pembulatan_aktif: $('#cfg-pembulatan-aktif', form).checked,
         stok_minus: $('#cfg-stok-minus', form).checked,
         poin_per_rupiah: parseInt($('#cfg-poin-rupiah', form).value, 10) || 10000
