@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.65] - 2026-11-19
+
+### Fixed
+- [UI] [SUPPLIER] [PRODUK] [KATEGORI] **Perbaikan Spesifisitas Grid 2-Kolom Mobile & Perataan Judul Kartu Mobile**:
+  - **Judul Kartu Mobile Rata Kiri (`frontend/css/components.css`)**: Menambahkan `text-align: left !important` pada `.table-wrap:not(.keep-table) .table td:first-child` dan elemen anaknya agar judul & subjudul kartu (nama produk, nama supplier, nama kategori) tidak lagi terdorong rata kanan oleh aturan `td:not(.d-none-mobile)`.
+  - **Aktivasi Penuh Grid 2-Kolom Mobile (`frontend/css/components.css`)**: Meningkatkan spesifisitas selektor `.table-wrap:not(.keep-table) .table.table-* tbody tr` sehingga `display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)` benar-benar menang atas aturan `flex-direction: column` bawaan di seluruh modul (Produk, Supplier, Kartu Stok, Pelanggan, Users, Pembelian, Biaya, Hutang/Piutang, Opname, Retur, Laporan).
+  - **Bar Pencarian & Alamat Supplier Mobile (`frontend/js/modules/supplier.js`, `components.css`)**: Memasangkan input cari dan tombol refresh berdampingan dalam 1 baris (`flex-wrap: nowrap`) serta menampilkan alamat supplier utuh tanpa terpotong ellipsis di kartu mobile.
+  - File terdampak: `frontend/css/components.css`, `frontend/js/modules/supplier.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.65 (`versionCode 52`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.65`.
+
 ## [1.0.64] - 2026-11-19
 
 ### Fixed

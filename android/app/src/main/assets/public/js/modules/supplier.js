@@ -31,12 +31,12 @@ export async function renderSupplierModule(container) {
       </div>
 
       <div class="card card-body">
-        <div class="row" style="gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-3);">
-          <div class="input-group grow">
+        <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: nowrap; margin-bottom: var(--sp-3);">
+          <div class="input-group grow" style="min-width: 0;">
             <span class="input-icon">${ICONS.search}</span>
             <input type="search" class="input" id="search-supplier" placeholder="Cari nama supplier, kontak PIC, HP, atau alamat...">
           </div>
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-supplier" title="Muat Ulang" aria-label="Muat Ulang">
+          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-supplier" title="Muat Ulang" aria-label="Muat Ulang" style="flex-shrink: 0;">
             ${ICONS.refresh}
           </button>
         </div>
