@@ -33,7 +33,7 @@ const CACHE_CONFIG = {
   'pengaturan.get': 300000,        // 5 menit
   'produk.list': 90000,            // 1.5 menit (katalog instan per filter & paginasi)
   'produk.detail': 90000,          // 1.5 menit
-  'pelanggan.list': 90000,         // 1.5 menit
+  'pelanggan.list': 300000,        // 5 menit (instan 0ms di POS Kasir, Pelanggan, & Loyalti)
   'pelanggan.detail': 60000,       // 1 menit
   'supplier.list': 90000,          // 1.5 menit
   'hadiah.list': 90000,            // 1.5 menit
@@ -349,6 +349,19 @@ export async function apiCall(action, payload = {}, options = {}) {
               expiry: now + ttl,
               staleExpiry: now + Math.max(ttl * 6, 900000)
             });
+            // Cross-seed varian cache pelanggan.list agar POS Kasir, Modul Pelanggan, & Loyalti berbagi cache 0ms
+            if (action === 'pelanggan.list' && data.data && Array.isArray(data.data.items)) {
+              const isUnfilteredAll = (!payload.cari && !payload.q && !payload.tipe && !payload.level) &&
+                (payload.semua === true || payload.aktif_saja === false || Object.keys(payload).length === 0);
+              if (isUnfilteredAll) {
+                const allItems = data.data.items;
+                const activeItems = allItems.filter((it) => it.aktif !== false);
+                const activeMembers = activeItems.filter((it) => it.tipe === 'member');
+                seedApiCache('pelanggan.list', { semua: true }, { items: activeItems, total: activeItems.length, page: 1, limit: activeItems.length }, token);
+                seedApiCache('pelanggan.list', { tipe: 'member', aktif_saja: true, limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
+                seedApiCache('pelanggan.list', { tipe: 'member', limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
+              }
+            }
             if (PERSISTABLE_ACTIONS.has(action)) {
               jadwalkanSimpanCachePersisten();
             }

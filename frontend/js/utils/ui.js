@@ -419,8 +419,8 @@ export function showConfirm(titleOrOptions, messageOrOptions, extraOptions = {})
     if (headerTitleEl) headerTitleEl.style.display = 'none';
 
     modal.el.querySelector('.btn-cancel')?.addEventListener('click', () => {
-      modal.close();
       safeResolve(false);
+      modal.close();
     });
 
     modal.el.querySelector('.btn-close-modal')?.addEventListener('click', () => {
@@ -428,8 +428,8 @@ export function showConfirm(titleOrOptions, messageOrOptions, extraOptions = {})
     });
 
     modal.el.querySelector('.btn-confirm')?.addEventListener('click', () => {
-      modal.close();
       safeResolve(true);
+      modal.close();
     });
 
     modal.el.addEventListener('click', (e) => {

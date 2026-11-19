@@ -145,6 +145,7 @@ class App {
       apiCall('kategori.list', { aktif_saja: true }).catch(() => {});
       apiCall('produk.list', { aktif_saja: true, page: 1, limit: 30 }).catch(() => {});
       apiCall('produk.list', { q: '', kategori_id: '', filter_stok: '', status: '', sort: 'terbaru', aktif_saja: false, page: 1, limit: 20 }).catch(() => {});
+      apiCall('pelanggan.list', { cari: '', tipe: '', level: '', aktif_saja: false, limit: 100 }).catch(() => {});
       apiCall('penjualan.pending.list', {}).catch(() => {});
     };
     if (typeof requestIdleCallback === 'function') {
@@ -430,7 +431,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.68'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.69'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -483,7 +484,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.68'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.69'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {

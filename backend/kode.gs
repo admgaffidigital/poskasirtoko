@@ -2004,28 +2004,9 @@ function aksiUserResetPin_(ctx) {
 /** pelanggan.list — Daftar pelanggan aktif, limit kredit, dan piutang berjalan. */
 function aksiPelangganList_(ctx) {
   const p = ctx.payload || {};
-  const semuaPelanggan = bacaSemua_('Pelanggan');
-  const semuaPiutang = bacaSemua_('Piutang');
+  let data = bacaSemua_('Pelanggan');
 
-  // Hitung total piutang berjalan aktif per pelanggan (status !== 'lunas')
-  const piutangPeta = {};
-  semuaPiutang.forEach(function (pt) {
-    if (pt.deleted || pt.status === 'lunas') return;
-    const pid = pt.pelanggan_id;
-    if (!pid) return;
-    piutangPeta[pid] = (piutangPeta[pid] || 0) + (Number(pt.sisa) || 0);
-  });
-
-  let data = semuaPelanggan.map(function (pel) {
-    const copy = Object.assign({}, pel);
-    const hutangAktif = piutangPeta[pel.id] || 0;
-    const limitKredit = Number(pel.limit_kredit) || 0;
-    copy.piutang_berjalan = hutangAktif;
-    copy.sisa_limit = Math.max(0, limitKredit - hutangAktif);
-    return copy;
-  });
-
-  // Filter aktif
+  // Filter aktif lebih awal sebelum baca sheet Piutang
   if (p.aktif_saja !== false) {
     data = data.filter(function (pel) { return pel.aktif; });
   }
@@ -2050,6 +2031,27 @@ function aksiPelangganList_(ctx) {
         String(pel.alamat || '').toLowerCase().indexOf(q) !== -1;
     });
   }
+
+  // Hitung total piutang berjalan aktif hanya jika ada pelanggan yang dikembalikan
+  const piutangPeta = {};
+  if (data.length > 0) {
+    const semuaPiutang = bacaSemua_('Piutang');
+    semuaPiutang.forEach(function (pt) {
+      if (pt.deleted || pt.status === 'lunas') return;
+      const pid = pt.pelanggan_id;
+      if (!pid) return;
+      piutangPeta[pid] = (piutangPeta[pid] || 0) + (Number(pt.sisa) || 0);
+    });
+  }
+
+  data = data.map(function (pel) {
+    const copy = Object.assign({}, pel);
+    const hutangAktif = piutangPeta[pel.id] || 0;
+    const limitKredit = Number(pel.limit_kredit) || 0;
+    copy.piutang_berjalan = hutangAktif;
+    copy.sisa_limit = Math.max(0, limitKredit - hutangAktif);
+    return copy;
+  });
 
   // Urutkan nama
   data.sort(function (a, b) { return String(a.nama || '').localeCompare(String(b.nama || '')); });

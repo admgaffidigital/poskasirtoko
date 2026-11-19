@@ -16,6 +16,23 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.69] - 2026-11-19
+
+### Fixed
+- [POS-JUAL] [UI] **Perbaikan Bug Reset Keranjang Belanja & Konfirmasi `showConfirm` (`frontend/js/utils/ui.js`, `frontend/js/modules/pos.js`)**:
+  - **Urutan Resolusi `showConfirm`**: Memanggil `safeResolve(true)` **sebelum** `modal.close()` pada tombol konfirmasi `.btn-confirm` di `ui.js`. Sebelumnya, `modal.close()` memicu `onClose: () => safeResolve(false)` terlebih dahulu sehingga tombol **"Ya, Kosongkan"** saat Reset Keranjang selalu menghasilkan `false` dan keranjang gagal di-reset.
+  - **Reset Lengkap Keranjang, Member, & Diskon**: Tombol **Reset** (`#btn-clear-cart`) di POS Kasir kini juga mereset pilihan member, diskon transaksi, dan catatan pengiriman, serta memberikan umpan balik toast ketika diklik saat keranjang kosong.
+  - File terdampak: `frontend/js/utils/ui.js`, `frontend/js/modules/pos.js`.
+- [POS-JUAL] [PELANGGAN] [MEMBER] **Akselerasi Pemuatan Data Member Instan 0ms (`frontend/js/modules/pos.js`, `frontend/js/api.js`, `frontend/js/app.js`, `backend/kode.gs`)**:
+  - **Modal Pilih Member Non-Blocking**: Mengubah `bukaModalPilihPelanggan()` di `pos.js` agar langsung membuka dialog **Pilih Pelanggan / Member** dalam **0ms** tanpa menunggu request jaringan selesai terlebih dahulu, dilengkapi pre-warm `state.daftarPelanggan` di latar belakang saat POS dibuka, tombol **Segarkan Data Member**, dan area daftar lebih lega (`min(380px, 50vh)`).
+  - **Cross-Seeding Cache `pelanggan.list` Lintas Modul**: Menambahkan pre-warming `pelanggan.list` di `hangatkanCacheLatarBelakang()` (`app.js`), menaikkan TTL cache `pelanggan.list` ke 5 menit (SWR 30 menit di `localStorage`), dan melakukan *cross-seeding* otomatis untuk varian payload `{ semua: true }`, `{ tipe: 'member', aktif_saja: true, limit: 100 }`, serta `{ tipe: 'member', limit: 100 }` di `api.js` agar POS Kasir, Data Pelanggan, dan Loyalti berbagi cache instan 0ms.
+  - **Optimasi `aksiPelangganList_` Backend**: Memfilter baris `Pelanggan` terlebih dahulu sebelum membaca sheet `Piutang` di `backend/kode.gs`.
+  - File terdampak: `frontend/js/modules/pos.js`, `frontend/js/api.js`, `frontend/js/app.js`, `backend/kode.gs`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.69 (`versionCode 56`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` dan pembaruan cache Service Worker `pos-kasir-static-v1.0.69`.
+
 ## [1.0.68] - 2026-11-19
 
 ### Fixed

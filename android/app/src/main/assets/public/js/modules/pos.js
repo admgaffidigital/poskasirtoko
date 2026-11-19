@@ -43,6 +43,7 @@ export function renderPosModule(container) {
     mobileView: 'catalog', // 'catalog' | 'cart'
     keranjang: [],
     pelanggan: null, // null = Pelanggan Umum
+    daftarPelanggan: [],
     diskonTransaksi: { tipe: '', nilai: 0 },
     pengiriman: 'ambil', // 'ambil' | 'dikirim'
     alamatKirim: '',
@@ -431,6 +432,13 @@ export function renderPosModule(container) {
           if (resPending.ok) {
             state.pendingCount = (resPending.data.items || []).length;
             perbaruiBadgePending();
+          }
+        }).catch(() => {});
+
+        // Pre-warm daftar pelanggan/member di latar belakang agar tombol "Pilih Member" terbuka instan (0ms)
+        api.post('pelanggan.list', { semua: true }).then((resPel) => {
+          if (resPel.ok && resPel.data) {
+            state.daftarPelanggan = resPel.data.items || [];
           }
         }).catch(() => {});
       } else {
@@ -1720,17 +1728,11 @@ export function renderPosModule(container) {
     });
   }
 
-  // ---------- Dialog Pemilihan Pelanggan / Member ----------
+  // ---------- Dialog Pemilihan Pelanggan / Member (Instan Non-Blocking) ----------
   elBtnCustomer?.addEventListener('click', bukaModalPilihPelanggan);
 
   async function bukaModalPilihPelanggan() {
-    let daftarPelanggan = [];
-    try {
-      const res = await api.post('pelanggan.list', { semua: true });
-      if (res.ok) daftarPelanggan = res.data.items || [];
-    } catch (err) {
-      showToast('Gagal memuat pelanggan: ' + err.message, 'error');
-    }
+    let daftarPelanggan = Array.isArray(state.daftarPelanggan) ? state.daftarPelanggan : [];
 
     const modal = showModal({
       title: 'Pilih Pelanggan / Member',
@@ -1744,14 +1746,22 @@ export function renderPosModule(container) {
             </button>
           </div>
 
-          <div class="divider" style="margin: var(--sp-2) 0;"></div>
+          <div class="divider" style="margin: var(--sp-1) 0;"></div>
 
           <div>
-            <label class="form-label fw-bold">Cari Member Terdaftar:</label>
-            <input type="text" id="input-cari-member" class="input" placeholder="Ketik nama, no HP, atau kode..." />
+            <label class="form-label fw-bold" for="input-cari-member">Cari Member Terdaftar:</label>
+            <div class="row" style="gap: var(--sp-2); flex-wrap: nowrap;">
+              <div class="input-group grow">
+                <span class="input-icon">${ICONS.search}</span>
+                <input type="search" id="input-cari-member" class="input" placeholder="Ketik nama, no HP, atau kode member..." autocomplete="off" data-autofocus />
+              </div>
+              <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-member-pos" title="Segarkan Data Member" aria-label="Segarkan Data Member">
+                ${ICONS.refresh}
+              </button>
+            </div>
           </div>
 
-          <div class="list" id="member-list-container" style="max-height: 280px; overflow-y: auto;">
+          <div class="list" id="member-list-container" style="max-height: min(380px, 50vh); overflow-y: auto;">
             <!-- Diisi JavaScript -->
           </div>
         </div>
@@ -1765,9 +1775,11 @@ export function renderPosModule(container) {
 
     const elInputCari = modal.el.querySelector('#input-cari-member');
     const elListContainer = modal.el.querySelector('#member-list-container');
+    const elBtnRefreshMember = modal.el.querySelector('#btn-refresh-member-pos');
 
     const renderMemberList = (q = '') => {
-      let filtered = daftarPelanggan.filter((pel) => pel.tipe === 'member');
+      if (!elListContainer) return;
+      let filtered = daftarPelanggan.filter((pel) => pel.tipe === 'member' && pel.aktif !== false);
       const qLow = q.trim().toLowerCase();
       if (qLow) {
         filtered = filtered.filter((pel) =>
@@ -1797,7 +1809,7 @@ export function renderPosModule(container) {
               </div>
               <div class="text-xs text-muted mono">${escapeHtml(pel.kode || '')} • ${escapeHtml(pel.hp || '-')}</div>
               <div class="text-xs text-muted" style="margin-top: 2px;">
-                Poin: <b>${pel.poin || 0}</b> | Sisa Limit: <b class="text-success">${formatRupiah(pel.sisa_limit || pel.limit_kredit || 0)}</b>
+                Poin: <b>${pel.poin || 0}</b> | Sisa Limit: <b class="text-success">${formatRupiah(pel.sisa_limit ?? pel.limit_kredit ?? 0)}</b>
               </div>
             </div>
           </button>
@@ -1815,7 +1827,50 @@ export function renderPosModule(container) {
       });
     };
 
-    renderMemberList();
+    const muatDaftarMember = async (forceRefresh = false) => {
+      if (!forceRefresh && daftarPelanggan.length > 0) {
+        renderMemberList(elInputCari?.value || '');
+        // Revalidasi ringan di latar belakang tanpa menahan UI
+        api.post('pelanggan.list', { semua: true }).then((res) => {
+          if (res.ok && res.data && Array.isArray(res.data.items)) {
+            daftarPelanggan = res.data.items;
+            state.daftarPelanggan = daftarPelanggan;
+            renderMemberList(elInputCari?.value || '');
+          }
+        }).catch(() => {});
+        return;
+      }
+
+      if (elListContainer && daftarPelanggan.length === 0) {
+        elListContainer.innerHTML = `
+          <div class="row" style="justify-content: center; align-items: center; gap: 8px; padding: var(--sp-5); color: var(--text-muted);">
+            <div class="spinner spinner-sm"></div>
+            <span class="text-xs">Memuat data member...</span>
+          </div>
+        `;
+      }
+
+      try {
+        const res = await api.post('pelanggan.list', { semua: true }, { skipCache: forceRefresh });
+        if (res.ok && res.data) {
+          daftarPelanggan = res.data.items || [];
+          state.daftarPelanggan = daftarPelanggan;
+        }
+        renderMemberList(elInputCari?.value || '');
+        if (forceRefresh) {
+          showToast('Daftar member berhasil diperbarui', 'success', 1600);
+        }
+      } catch (err) {
+        showToast('Gagal memuat pelanggan: ' + err.message, 'error');
+        renderMemberList(elInputCari?.value || '');
+      }
+    };
+
+    muatDaftarMember(false);
+
+    elBtnRefreshMember?.addEventListener('click', () => {
+      muatDaftarMember(true);
+    });
 
     elInputCari?.addEventListener('input', (e) => {
       renderMemberList(e.target.value);
@@ -2655,9 +2710,22 @@ export function renderPosModule(container) {
     });
   }
 
-  // ---------- Kosongkan Keranjang ----------
+  // ---------- Kosongkan / Reset Keranjang ----------
   elBtnClear?.addEventListener('click', async () => {
-    if (state.keranjang.length === 0) return;
+    if (state.keranjang.length === 0) {
+      if (state.pelanggan || state.diskonTransaksi.nilai > 0 || state.catatan || state.alamatKirim) {
+        state.pelanggan = null;
+        state.diskonTransaksi = { tipe: '', nilai: 0 };
+        state.catatan = '';
+        state.alamatKirim = '';
+        perbaruiTampilanPelanggan();
+        renderKeranjang();
+        showToast('Pilihan member & diskon transaksi telah direset.', 'info', 1800);
+      } else {
+        showToast('Keranjang belanja sudah kosong.', 'info', 1500);
+      }
+      return;
+    }
     const yakin = await showConfirm({
       title: 'Kosongkan Keranjang Belanja?',
       message: 'Semua item barang yang sudah dipilih akan dihapus dari daftar keranjang transaksi saat ini.',
@@ -2666,8 +2734,13 @@ export function renderPosModule(container) {
       danger: true
     });
     if (!yakin) return;
+    haptic.delete();
     state.keranjang = [];
     state.diskonTransaksi = { tipe: '', nilai: 0 };
+    state.pelanggan = null;
+    state.catatan = '';
+    state.alamatKirim = '';
+    perbaruiTampilanPelanggan();
     renderKeranjang();
     showToast('Keranjang belanja telah dikosongkan.', 'info');
     if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
