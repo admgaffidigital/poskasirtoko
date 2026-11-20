@@ -1,17 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fb923c"/>
-      <stop offset="50%" stop-color="#f97316"/>
-      <stop offset="100%" stop-color="#ea580c"/>
-    </linearGradient>
-    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#7c2d12" flood-opacity="0.3"/>
-    </filter>
-  </defs>
-  <!-- Background Squircle / Rounded Square -->
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
-  
+  <!-- Background Squircle Solid (Tanpa Gradasi) -->
+  <rect width="512" height="512" rx="112" fill="#e8590c"/>
+
   <!-- Storefront Brand Logo (Scaled from 24x24 ICONS.store) -->
   <g transform="translate(88, 88) scale(14.0)" stroke="#ffffff" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" fill="none">
     <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>

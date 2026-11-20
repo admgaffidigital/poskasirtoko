@@ -422,3 +422,28 @@
   letter-spacing: -0.015em;
 }
 
+/* ---- Pilihan Jenis Font (Font Family Picker — 6 Pilihan) ---- */
+[data-font-family="system"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+[data-font-family="inter"] {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-font-family="jakarta"] {
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-font-family="poppins"] {
+  --font-sans: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-font-family="roboto"] {
+  --font-sans: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
+[data-font-family="mono"] {
+  --font-sans: "JetBrains Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+}
+

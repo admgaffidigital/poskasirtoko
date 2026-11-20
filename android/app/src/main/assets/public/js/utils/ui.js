@@ -477,6 +477,64 @@ export const FONT_STYLE_MODES = [
   { id: 'ramping', nama: 'Ramping & Padat', sub: 'Spasi rapat muat banyak' }
 ];
 
+export const FONT_FAMILIES = [
+  {
+    id: 'system',
+    nama: 'Sistem Bawaan',
+    sub: 'Cepat & tajam 0 KB',
+    stack: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+    googleUrl: ''
+  },
+  {
+    id: 'inter',
+    nama: 'Inter',
+    sub: 'Modern & presisi angka',
+    stack: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    googleUrl: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+  },
+  {
+    id: 'jakarta',
+    nama: 'Plus Jakarta',
+    sub: 'Geometris & elegan',
+    stack: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    googleUrl: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'
+  },
+  {
+    id: 'poppins',
+    nama: 'Poppins',
+    sub: 'Bulat ramah & rapi',
+    stack: '"Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    googleUrl: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap'
+  },
+  {
+    id: 'roboto',
+    nama: 'Roboto',
+    sub: 'Tegas khas Android',
+    stack: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    googleUrl: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap'
+  },
+  {
+    id: 'mono',
+    nama: 'JetBrains Mono',
+    sub: 'Gaya struk sejajar',
+    stack: '"JetBrains Mono", "SFMono-Regular", Consolas, Menlo, monospace',
+    googleUrl: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap'
+  }
+];
+
+function ensureFontFamilyLoaded(familyId) {
+  if (typeof document === 'undefined') return;
+  const item = FONT_FAMILIES.find((f) => f.id === familyId);
+  if (!item || !item.googleUrl) return;
+  const linkId = `pos-gfont-${item.id}`;
+  if (document.getElementById(linkId)) return;
+  const link = document.createElement('link');
+  link.id = linkId;
+  link.rel = 'stylesheet';
+  link.href = item.googleUrl;
+  document.head.appendChild(link);
+}
+
 export function initTheme() {
   const savedTheme = localStorage.getItem('pos_theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
@@ -496,6 +554,10 @@ export function initTheme() {
 
   const savedFontStyle = localStorage.getItem('pos_font_style') || 'standar';
   document.documentElement.setAttribute('data-font-style', savedFontStyle);
+
+  const savedFontFamily = localStorage.getItem('pos_font_family') || 'system';
+  document.documentElement.setAttribute('data-font-family', savedFontFamily);
+  ensureFontFamilyLoaded(savedFontFamily);
 }
 
 export function getThemeConfig() {
@@ -511,7 +573,8 @@ export function getThemeConfig() {
     font: fontId,
     fontScale: activeScale,
     fontPct: activePct,
-    fontStyle: document.documentElement.getAttribute('data-font-style') || localStorage.getItem('pos_font_style') || 'standar'
+    fontStyle: document.documentElement.getAttribute('data-font-style') || localStorage.getItem('pos_font_style') || 'standar',
+    fontFamily: document.documentElement.getAttribute('data-font-family') || localStorage.getItem('pos_font_family') || 'system'
   };
 }
 
@@ -562,6 +625,14 @@ export function setFontStyleMode(styleId) {
   return valid;
 }
 
+export function setFontFamily(familyId) {
+  const found = FONT_FAMILIES.find((f) => f.id === familyId) || FONT_FAMILIES[0];
+  ensureFontFamilyLoaded(found.id);
+  document.documentElement.setAttribute('data-font-family', found.id);
+  localStorage.setItem('pos_font_family', found.id);
+  return found;
+}
+
 export function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'dark' ? 'light' : 'dark';
@@ -582,9 +653,13 @@ export function toggleFontSize() {
  */
 export function bukaModalTemaWarna(onChanged = null) {
   const cfg = getThemeConfig();
+  const activeFontFamily = FONT_FAMILIES.find((f) => f.id === cfg.fontFamily) || FONT_FAMILIES[0];
+
+  // Muat pratinjau Google Fonts ringan saat modal dibuka agar kartu sampel langsung tampil sesuai jenis hurufnya
+  FONT_FAMILIES.forEach((f) => ensureFontFamilyLoaded(f.id));
 
   const modal = showModal({
-    title: 'Tema, Warna & Ukuran Huruf',
+    title: 'Tema, Warna & Tipografi',
     size: 'md',
     body: `
       <div class="theme-picker-wrap">
@@ -606,9 +681,9 @@ export function bukaModalTemaWarna(onChanged = null) {
           </div>
         </div>
 
-        <!-- 2. Warna Aksen Utama (6 Pilihan Warna) -->
+        <!-- 2. Warna Aksen Utama (6 Pilihan Warna Solid) -->
         <div class="theme-picker-section">
-          <div class="theme-picker-label">2. Warna Aksen Utama</div>
+          <div class="theme-picker-label">2. Warna Aksen Utama (Solid)</div>
           <div class="theme-accent-grid" id="picker-accent-colors">
             ${ACCENT_PALETTES.map((a) => `
               <button type="button" class="theme-accent-card ${cfg.accent === a.id ? 'is-active' : ''}" data-accent-id="${a.id}">
@@ -624,10 +699,29 @@ export function bukaModalTemaWarna(onChanged = null) {
           </div>
         </div>
 
-        <!-- 3. Ukuran Huruf (5 Preset + Slider Kustom Presisi 85% - 125%) -->
+        <!-- 3. Jenis Font (6 Pilihan Real-Time) -->
         <div class="theme-picker-section">
           <div class="row-between items-center">
-            <div class="theme-picker-label">3. Ukuran Huruf (5 Varian + Skala Kustom)</div>
+            <div class="theme-picker-label">3. Jenis Font (6 Pilihan)</div>
+            <span class="font-slider-badge" id="picker-font-family-badge">${escapeHtml(activeFontFamily.nama)}</span>
+          </div>
+          <div class="font-family-grid" id="picker-font-families">
+            ${FONT_FAMILIES.map((ff) => `
+              <button type="button" class="font-family-card ${cfg.fontFamily === ff.id ? 'is-active' : ''}" data-font-family-id="${ff.id}" style="font-family: ${ff.stack};">
+                <span class="font-family-sample">Aa</span>
+                <div style="min-width: 0; flex: 1;">
+                  <div class="theme-mode-title">${escapeHtml(ff.nama)}</div>
+                  <div class="theme-mode-desc">${escapeHtml(ff.sub)}</div>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 4. Ukuran Huruf (5 Preset + Slider Kustom Presisi 85% - 125%) -->
+        <div class="theme-picker-section">
+          <div class="row-between items-center">
+            <div class="theme-picker-label">4. Ukuran Huruf (5 Varian + Skala Kustom)</div>
             <span class="font-slider-badge" id="picker-font-pct-badge">${cfg.fontPct}%</span>
           </div>
           <div class="font-preset-grid" id="picker-font-presets">
@@ -647,9 +741,9 @@ export function bukaModalTemaWarna(onChanged = null) {
           </div>
         </div>
 
-        <!-- 4. Gaya & Ketebalan Huruf (3 Varian) -->
+        <!-- 5. Gaya & Ketebalan Huruf (3 Varian) -->
         <div class="theme-picker-section">
-          <div class="theme-picker-label">4. Gaya & Ketebalan Huruf</div>
+          <div class="theme-picker-label">5. Gaya & Ketebalan Huruf</div>
           <div class="font-style-grid" id="picker-font-styles">
             ${FONT_STYLE_MODES.map((s) => `
               <button type="button" class="theme-mode-card ${cfg.fontStyle === s.id ? 'is-active' : ''}" data-font-style-id="${s.id}">
@@ -666,11 +760,11 @@ export function bukaModalTemaWarna(onChanged = null) {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="row-between items-center" style="gap: var(--sp-2); flex-wrap: wrap;">
             <div>
-              <div class="fw-bold text-sm">Pratinjau Teks, Warna & Suasana</div>
+              <div class="fw-bold text-sm">Pratinjau Font, Warna &amp; Suasana</div>
               <div class="text-xs text-muted">Contoh angka: <span class="mono fw-bold text-primary">Rp 1.250.000</span> • Stok: 25 Pcs</div>
             </div>
             <div class="row" style="gap: 6px; align-items: center;">
-              <span class="badge badge-primary">Aksen Aktif</span>
+              <span class="badge badge-primary">Warna Solid</span>
               <button type="button" class="btn btn-primary btn-xs">Tombol Utama</button>
             </div>
           </div>
@@ -687,6 +781,7 @@ export function bukaModalTemaWarna(onChanged = null) {
 
   const sliderEl = modal.el.querySelector('#input-font-scale-slider');
   const badgePctEl = modal.el.querySelector('#picker-font-pct-badge');
+  const badgeFamilyEl = modal.el.querySelector('#picker-font-family-badge');
 
   const emitChange = () => {
     if (typeof onChanged === 'function') {
@@ -716,6 +811,16 @@ export function bukaModalTemaWarna(onChanged = null) {
       const acc = btn.getAttribute('data-accent-id');
       setAccentColor(acc);
       modal.el.querySelectorAll('[data-accent-id]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      emitChange();
+    });
+  });
+
+  modal.el.querySelectorAll('[data-font-family-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const fid = btn.getAttribute('data-font-family-id') || 'system';
+      const applied = setFontFamily(fid);
+      if (badgeFamilyEl) badgeFamilyEl.textContent = applied.nama;
+      modal.el.querySelectorAll('[data-font-family-id]').forEach((b) => b.classList.toggle('is-active', b === btn));
       emitChange();
     });
   });
@@ -761,15 +866,18 @@ export function bukaModalTemaWarna(onChanged = null) {
   modal.el.querySelector('#btn-reset-tema-default')?.addEventListener('click', () => {
     setThemeMode('light');
     setAccentColor('orange');
+    const defFamily = setFontFamily('system');
     setFontSizePreset('normal');
     setFontStyleMode('standar');
 
     modal.el.querySelectorAll('[data-theme-mode]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-theme-mode') === 'light'));
     modal.el.querySelectorAll('[data-accent-id]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-accent-id') === 'orange'));
+    modal.el.querySelectorAll('[data-font-family-id]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-font-family-id') === 'system'));
     modal.el.querySelectorAll('[data-font-style-id]').forEach((b) => b.classList.toggle('is-active', b.getAttribute('data-font-style-id') === 'standar'));
+    if (badgeFamilyEl) badgeFamilyEl.textContent = defFamily.nama;
     syncFontUi(100, 'normal');
     emitChange();
-    showToast('Tema, warna, & ukuran huruf dikembalikan ke standar (100% • Oranye Bata).', 'info', 2200);
+    showToast('Tema, warna, & font dikembalikan ke standar (100% • Oranye Bata • Sistem).', 'info', 2200);
   });
 
   modal.el.querySelector('#btn-selesai-tema')?.addEventListener('click', () => modal.close());

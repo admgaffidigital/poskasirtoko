@@ -423,7 +423,7 @@ class App {
     if (!isInstalled) {
       // KONDISI 1: Belum Diinstal (Dibuka lewat Web Browser biasa)
       return `
-        <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--border); border-left: 4px solid var(--primary);">
+        <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--primary);">
           <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
             <div class="row" style="gap: var(--sp-3); align-items: center;">
               <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(232, 89, 12, 0.3);">
@@ -468,7 +468,7 @@ class App {
     if (hasUpdate) {
       // Kasus A: Ada Pembaruan Siap Diterapkan!
       return `
-        <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: linear-gradient(135deg, rgba(232, 89, 12, 0.08) 0%, var(--surface-2) 100%); border: 1px solid var(--primary); border-left: 4px solid var(--primary);">
+        <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: var(--primary-soft); border: 1px solid var(--primary); border-left: 4px solid var(--primary);">
           <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
             <div class="row" style="gap: var(--sp-3); align-items: center;">
               <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(232, 89, 12, 0.35);">
@@ -495,7 +495,7 @@ class App {
 
     // Kasus B: Aplikasi Up-To-Date & Terpasang Aktif
     return `
-      <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--border); border-left: 4px solid var(--green-500);">
+      <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--green-500);">
         <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
           <div class="row" style="gap: var(--sp-3); align-items: center;">
             <div style="background: var(--surface-3); color: var(--primary); width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; border: 1px solid var(--border);">
@@ -506,7 +506,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.73'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.74'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -559,7 +559,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.73'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.74'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1677,7 +1677,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.73'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.74'}</div>
         </div>
       `;
     };
@@ -1956,7 +1956,7 @@ class App {
     let html = `
       <div class="menu-list-container">
         <!-- Kartu Profil & Identitas Toko Ringkas -->
-        <div class="card card-body" style="background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%); margin-bottom: var(--sp-2);">
+        <div class="card card-body" style="background: var(--surface); margin-bottom: var(--sp-2);">
           <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-3);">
             <div class="row" style="align-items: center; gap: var(--sp-3); flex: 1; min-width: 0;">
               <div class="brand-logo" style="width: 44px; height: 44px; font-size: var(--fs-lg); border-radius: var(--radius-xl); flex-shrink: 0;">

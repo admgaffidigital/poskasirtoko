@@ -13,7 +13,7 @@
 
   <title>POS Kasir Toko</title>
 
-  <!-- Sinkronisasi tema, warna aksen & skala huruf sebelum first paint (Zero-FOUC) -->
+  <!-- Sinkronisasi tema, warna aksen, jenis font & skala huruf sebelum first paint (Zero-FOUC) -->
   <script>
     (function () {
       try {
@@ -21,13 +21,15 @@
         var t = localStorage.getItem('pos_theme') || 'light';
         var a = localStorage.getItem('pos_accent') || 'orange';
         var f = localStorage.getItem('pos_font') || 'normal';
-        var s = parseInt(localStorage.getItem('pos_font_scale') || '0', 10);
-        var w = localStorage.getItem('pos_font_weight') || 'standar';
+        var s = parseFloat(localStorage.getItem('pos_font_scale') || '');
+        var st = localStorage.getItem('pos_font_style') || 'standar';
+        var ff = localStorage.getItem('pos_font_family') || 'system';
         r.setAttribute('data-theme', t);
         r.setAttribute('data-accent', a);
         r.setAttribute('data-font', f);
-        r.setAttribute('data-font-weight', w);
-        if (s >= 85 && s <= 125) r.style.setProperty('--font-scale', (s / 100).toFixed(2));
+        r.setAttribute('data-font-style', st);
+        r.setAttribute('data-font-family', ff);
+        if (isFinite(s) && s >= 0.8 && s <= 1.35) r.style.setProperty('--font-scale', String(s));
       } catch (_) {}
     })();
   </script>
@@ -71,7 +73,7 @@
       align-items: center;
       justify-content: space-between;
       padding: calc(32px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
-      background: radial-gradient(circle at 50% 38%, #f8fafc 0%, #edf2f7 100%);
+      background: #f1f5f9;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       box-sizing: border-box;
       user-select: none;
@@ -79,11 +81,11 @@
     }
 
     [data-theme="dark"] .splash-screen {
-      background: radial-gradient(circle at 50% 38%, #1e293b 0%, #0f172a 100%);
+      background: #0a101e;
     }
 
     [data-theme="warm"] .splash-screen {
-      background: radial-gradient(circle at 50% 38%, #fdfaf3 0%, #f4efe3 100%);
+      background: #f4f0e6;
     }
 
     .splash-content {
@@ -200,7 +202,7 @@
       bottom: 0;
       left: 0;
       width: 45%;
-      background: linear-gradient(90deg, #ea580c 0%, #fb923c 100%);
+      background: #e8590c;
       border-radius: 9999px;
       animation: splash-bar 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
@@ -304,7 +306,7 @@
 
       <!-- Versi di Bagian Bawah -->
       <div class="splash-footer">
-        <span>v1.0.73 • Terenkripsi &amp; Siap Offline</span>
+        <span>v1.0.74 • Terenkripsi &amp; Siap Offline</span>
       </div>
     </div>
   </div>

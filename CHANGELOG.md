@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.74] - 2026-11-21
+
+### Changed
+- [UI] **Desain Warna Solid 100% Tanpa Gradasi & Tanpa Glassmorphism (`frontend/css/layout.css`, `frontend/css/components.css`, `frontend/index.html`, `frontend/assets/icon.svg`, `frontend/js/app.js`)**:
+  - Menghapus seluruh efek `linear-gradient`, `radial-gradient`, dan `backdrop-filter` (glassmorphism/blur) di Topbar, Bottom Navigation, Sidebar Backdrop, Logo Brand, Splash Screen, Skeleton Loader, POS Avatar/Total Row, Scroll-to-Top FAB, Banner Update, serta Ikon Brand SVG.
+  - `.brand-logo` kini menggunakan warna solid `var(--primary)` sehingga warna logo ikut berubah otomatis mengikuti warna aksen pilihan pengguna, sekaligus mengurangi beban GPU pada HP Android.
+
+### Added
+- [UI] **Fitur Pemilih Jenis Font Real-Time (6 Pilihan) (`frontend/css/tokens.css`, `frontend/css/components.css`, `frontend/js/utils/ui.js`, `frontend/index.html`)**:
+  - Menambahkan 6 pilihan jenis font yang berubah secara realtime di modal **Tema, Warna & Tipografi**: **Sistem Bawaan** (`0 KB`), **Inter**, **Plus Jakarta Sans**, **Poppins**, **Roboto**, dan **JetBrains Mono** (gaya struk angka sejajar).
+  - Font web dimuat secara *lazy* (on-demand) hanya saat dipilih agar startup tetap super ringan dan 100% aman saat offline (fallback otomatis ke font sistem).
+  - Tersimpan persisten di `localStorage` (`pos_font_family`) dan diterapkan sejak sebelum *first paint* di `index.html`.
+
 ## [1.0.73] - 2026-11-21
 
 ### Changed

@@ -1993,9 +1993,17 @@ a.list-item:hover {
 .skeleton {
   display: block;
   border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 37%, var(--skeleton-a) 63%);
-  background-size: 400% 100%;
-  animation: kilau 1.4s ease infinite;
+  background: var(--skeleton-a);
+  animation: skeleton-solid 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-solid {
+  0%, 100% {
+    background-color: var(--skeleton-a);
+  }
+  50% {
+    background-color: var(--skeleton-b);
+  }
 }
 
 .skeleton-text {
@@ -3110,6 +3118,62 @@ a.list-item:hover {
   gap: var(--sp-2);
 }
 
+.font-family-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.font-family-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+
+.font-family-card:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.font-family-card.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.font-family-sample {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.font-family-card.is-active .font-family-sample {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+@media (max-width: 540px) {
+  .font-family-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 480px) {
   .font-style-grid {
     grid-template-columns: 1fr;
@@ -3646,15 +3710,13 @@ a.list-item:hover {
 }
 
 .pos-card-opt-badge {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 [data-theme="dark"] .pos-card-opt-badge {
-  background: rgba(17, 26, 46, 0.9);
+  background: var(--surface);
   color: var(--text);
   border-color: var(--border-strong);
 }
@@ -3814,7 +3876,7 @@ a.list-item:hover {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--surface-2) 0%, var(--primary-soft) 100%);
+  background: var(--primary-soft);
   color: var(--primary);
   display: grid;
   place-items: center;
@@ -4323,7 +4385,7 @@ a.list-item:hover {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   margin-top: 4px;
@@ -5276,9 +5338,7 @@ a.list-item:hover {
   height: 42px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-strong);
-  background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow-md);
   display: grid;
@@ -5290,7 +5350,7 @@ a.list-item:hover {
 }
 
 [data-theme="dark"] .scroll-top-fab {
-  background: rgba(23, 34, 58, 0.92);
+  background: var(--surface);
 }
 
 .scroll-top-fab.is-visible {
