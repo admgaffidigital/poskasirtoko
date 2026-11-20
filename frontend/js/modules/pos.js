@@ -426,21 +426,21 @@ export function renderPosModule(container) {
               nota_footer: state.pengaturan.nota_footer
             });
           }
-        }).catch(() => {});
+        }).catch(() => { });
 
         api.post('penjualan.pending.list').then((resPending) => {
           if (resPending.ok) {
             state.pendingCount = (resPending.data.items || []).length;
             perbaruiBadgePending();
           }
-        }).catch(() => {});
+        }).catch(() => { });
 
         // Pre-warm daftar pelanggan/member di latar belakang agar tombol "Pilih Member" terbuka instan (0ms)
         api.post('pelanggan.list', { semua: true }).then((resPel) => {
           if (resPel.ok && resPel.data) {
             state.daftarPelanggan = resPel.data.items || [];
           }
-        }).catch(() => {});
+        }).catch(() => { });
       } else {
         // Ambil produk halaman berikutnya (Load More)
         const resProd = await api.post('produk.list', payloadPrd);
@@ -1502,14 +1502,14 @@ export function renderPosModule(container) {
           </div>
           <div class="stack" style="gap: var(--sp-2);">
             ${satuanList.map((s) => {
-              const aktif = s.satuan === it.satuan;
-              let hargaDisplay = s.harga_ritel;
-              if (it._var) {
-                hargaDisplay = Math.round((it._var.harga_ritel || 0) * (s.faktor || 1));
-              } else if (it.tipe_harga === 'grosir' && s.harga_grosir > 0) {
-                hargaDisplay = s.harga_grosir;
-              }
-              return `
+        const aktif = s.satuan === it.satuan;
+        let hargaDisplay = s.harga_ritel;
+        if (it._var) {
+          hargaDisplay = Math.round((it._var.harga_ritel || 0) * (s.faktor || 1));
+        } else if (it.tipe_harga === 'grosir' && s.harga_grosir > 0) {
+          hargaDisplay = s.harga_grosir;
+        }
+        return `
                 <button type="button" class="btn btn-sm btn-pilih-satuan-item ${aktif ? 'btn-primary' : 'btn-secondary'}" data-sat="${escapeHtml(s.satuan)}" style="justify-content: space-between; padding: 10px 14px; text-align: left;">
                   <div style="display: flex; flex-direction: column; gap: 2px;">
                     <span class="fw-bold" style="font-size: var(--fs-sm);">${escapeHtml(s.satuan)} ${s.faktor > 1 ? `<small style="font-weight: normal; opacity: 0.85;">(Isi ${s.faktor} ${escapeHtml(p.satuan_dasar)})</small>` : '<small style="font-weight: normal; opacity: 0.85;">(Satuan Dasar)</small>'}</span>
@@ -1520,7 +1520,7 @@ export function renderPosModule(container) {
                   </div>
                 </button>
               `;
-            }).join('')}
+      }).join('')}
           </div>
         </div>
       `,
@@ -1848,7 +1848,7 @@ export function renderPosModule(container) {
             state.daftarPelanggan = daftarPelanggan;
             renderMemberList(elInputCari?.value || '');
           }
-        }).catch(() => {});
+        }).catch(() => { });
         return;
       }
 
@@ -2222,7 +2222,7 @@ export function renderPosModule(container) {
     store.set('pos_terakhir', dataStruk);
     try {
       localStorage.setItem('pos_last_receipt', JSON.stringify(dataStruk));
-    } catch (e) {}
+    } catch (e) { }
 
     bukaModalPilihanCetakPenjualan(dataStruk, {
       isNewTransaction: true,
@@ -2813,7 +2813,7 @@ export function renderPosModule(container) {
             }
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     if (matchProd) {
