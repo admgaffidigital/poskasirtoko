@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.72';
+const CACHE_NAME = 'pos-kasir-static-v1.0.73';
 
 const ASSETS = [
   './',
@@ -167,23 +167,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategi Cache First dengan Network Fallback untuk aset statis lokal
+  // Strategi Pure Cache-First untuk aset statis lokal berversi (CACHE_NAME berubah setiap rilis).
+  // Menghilangkan puluhan background fetch berulang pada setiap boot agar bandwidth 100% fokus ke API kasir.
   event.respondWith(
     (async () => {
       try {
         const cachedResponse = await caches.match(req);
         if (cachedResponse) {
-          // Ambil versi terbaru di latar belakang untuk memperbarui cache
-          fetch(req.url, { credentials: 'same-origin', redirect: 'follow' })
-            .then(async (networkResponse) => {
-              if (networkResponse && networkResponse.status === 200) {
-                const cleanNet = await bersihkanRedirect(networkResponse);
-                const cache = await caches.open(CACHE_NAME);
-                await cache.put(req, cleanNet);
-              }
-            })
-            .catch(() => { /* offline, abaikan */ });
-
           return await bersihkanRedirect(cachedResponse);
         }
 

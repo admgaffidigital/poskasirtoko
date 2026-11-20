@@ -10,24 +10,45 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="POS Toko">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
 
   <title>POS Kasir Toko</title>
 
-  <!-- Preconnect & DNS Prefetch ke Backend Google Script untuk pangkas latensi TLS/DNS -->
+  <!-- Sinkronisasi tema, warna aksen & skala huruf sebelum first paint (Zero-FOUC) -->
+  <script>
+    (function () {
+      try {
+        var r = document.documentElement;
+        var t = localStorage.getItem('pos_theme') || 'light';
+        var a = localStorage.getItem('pos_accent') || 'orange';
+        var f = localStorage.getItem('pos_font') || 'normal';
+        var s = parseInt(localStorage.getItem('pos_font_scale') || '0', 10);
+        var w = localStorage.getItem('pos_font_weight') || 'standar';
+        r.setAttribute('data-theme', t);
+        r.setAttribute('data-accent', a);
+        r.setAttribute('data-font', f);
+        r.setAttribute('data-font-weight', w);
+        if (s >= 85 && s <= 125) r.style.setProperty('--font-scale', (s / 100).toFixed(2));
+      } catch (_) {}
+    })();
+  </script>
+
+  <!-- Preconnect & DNS Prefetch ke Backend Google Script & CDN Foto Google Drive -->
   <link rel="preconnect" href="https://script.google.com" crossorigin>
   <link rel="dns-prefetch" href="https://script.google.com">
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+  <link rel="dns-prefetch" href="https://lh3.googleusercontent.com">
 
-  <!-- Module Preload Critical Scripts -->
+  <!-- Module Preload Critical Core Shell Scripts (tanpa waterfall) -->
   <link rel="modulepreload" href="./js/app.js">
   <link rel="modulepreload" href="./js/api.js">
   <link rel="modulepreload" href="./js/state.js">
   <link rel="modulepreload" href="./js/routes.js">
   <link rel="modulepreload" href="./js/config.js">
+  <link rel="modulepreload" href="./js/utils/ui.js">
+  <link rel="modulepreload" href="./js/utils/dom.js">
+  <link rel="modulepreload" href="./js/utils/format.js">
 
   <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="./manifest.json">
@@ -59,6 +80,10 @@
 
     [data-theme="dark"] .splash-screen {
       background: radial-gradient(circle at 50% 38%, #1e293b 0%, #0f172a 100%);
+    }
+
+    [data-theme="warm"] .splash-screen {
+      background: radial-gradient(circle at 50% 38%, #fdfaf3 0%, #f4efe3 100%);
     }
 
     .splash-content {
@@ -279,7 +304,7 @@
 
       <!-- Versi di Bagian Bawah -->
       <div class="splash-footer">
-        <span>v1.0.72 • Terenkripsi &amp; Siap Offline</span>
+        <span>v1.0.73 • Terenkripsi &amp; Siap Offline</span>
       </div>
     </div>
   </div>

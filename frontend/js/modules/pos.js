@@ -498,26 +498,37 @@ export function renderPosModule(container) {
       </button>
     `;
 
-    // Kelompokkan parent dan sub-kategori
-    const parents = state.kategori.filter((k) => !k.parent_id);
-    parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+    // Hitung jumlah produk per kategori dalam 1 pass O(N) agar cepat saat katalog besar
+    const countByCat = new Map();
+    for (let i = 0; i < state.katalog.length; i++) {
+      const cid = state.katalog[i].kategori_id;
+      if (cid) countByCat.set(cid, (countByCat.get(cid) || 0) + 1);
+    }
 
+    // Kelompokkan parent dan sub-kategori
+    const parents = [];
+    const parentIdSet = new Set();
     const subsByParent = {};
     state.kategori.forEach((k) => {
-      if (k.parent_id) {
+      if (!k.parent_id) {
+        parents.push(k);
+        parentIdSet.add(k.id);
+      } else {
         if (!subsByParent[k.parent_id]) subsByParent[k.parent_id] = [];
         subsByParent[k.parent_id].push(k);
       }
     });
+    parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
 
     parents.forEach((kat) => {
       const subs = subsByParent[kat.id] || [];
       subs.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
 
-      // Total barang di kategori induk + seluruh sub-kategorinya
-      const subIds = subs.map((s) => s.id);
-      const targetIds = new Set([kat.id, ...subIds]);
-      const jumlahTotal = state.katalog.filter((p) => targetIds.has(p.kategori_id)).length;
+      // Total barang di kategori induk + seluruh sub-kategorinya (O(1) lookup)
+      let jumlahTotal = countByCat.get(kat.id) || 0;
+      for (let j = 0; j < subs.length; j++) {
+        jumlahTotal += countByCat.get(subs[j].id) || 0;
+      }
 
       const isAktif = state.kategoriAktif === kat.id;
       const anakAktif = subs.some((s) => s.id === state.kategoriAktif);
@@ -531,7 +542,7 @@ export function renderPosModule(container) {
       // Jika kategori induk atau salah satu sub-kategorinya sedang aktif, munculkan chip sub-kategori di sebelahnya
       if (isAktif || anakAktif) {
         subs.forEach((sub) => {
-          const subJumlah = state.katalog.filter((p) => p.kategori_id === sub.id).length;
+          const subJumlah = countByCat.get(sub.id) || 0;
           const isSubAktif = state.kategoriAktif === sub.id;
           html += `
             <button type="button" class="pos-chip ${isSubAktif ? 'active' : ''}" data-cat="${sub.id}" style="border-left: 2px solid var(--primary); padding-left: 8px;">
@@ -543,9 +554,9 @@ export function renderPosModule(container) {
     });
 
     // Handle orphans jika ada
-    const orphans = state.kategori.filter((k) => k.parent_id && !parents.some((p) => p.id === k.parent_id));
+    const orphans = state.kategori.filter((k) => k.parent_id && !parentIdSet.has(k.parent_id));
     orphans.forEach((kat) => {
-      const jumlah = state.katalog.filter((p) => p.kategori_id === kat.id).length;
+      const jumlah = countByCat.get(kat.id) || 0;
       html += `
         <button type="button" class="pos-chip ${state.kategoriAktif === kat.id ? 'active' : ''}" data-cat="${kat.id}">
           ${escapeHtml(kat.nama)} (${jumlah})
@@ -651,7 +662,7 @@ export function renderPosModule(container) {
         <div class="pos-product-card" data-id="${p.id}" tabindex="0">
           <div class="pos-card-visual">
             ${p.foto_url ? `
-              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
+              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
               <div class="pos-card-icon-wrap" style="display: none;">
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -765,7 +776,7 @@ export function renderPosModule(container) {
         <div class="pos-list-item" data-id="${p.id}" tabindex="0">
           <div class="pos-list-avatar">
             ${p.foto_url ? `
-              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" loading="lazy" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
+              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
               <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" style="display: none;">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                 <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>

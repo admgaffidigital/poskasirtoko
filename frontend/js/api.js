@@ -101,6 +101,25 @@ const MUTATION_PATTERNS = [
 ];
 
 let persistTimer = null;
+const MAX_MEMORY_CACHE_ENTRIES = 120;
+const MAX_PERSIST_BYTES = 450000; // Batas ~450 KB agar localStorage tidak pernah meluap (QuotaExceeded)
+
+function pangkasCacheMemori() {
+  const now = Date.now();
+  for (const [k, v] of memoryApiCache.entries()) {
+    if (!v || (v.staleExpiry && now >= v.staleExpiry)) {
+      memoryApiCache.delete(k);
+    }
+  }
+  if (memoryApiCache.size > MAX_MEMORY_CACHE_ENTRIES) {
+    const excess = memoryApiCache.size - MAX_MEMORY_CACHE_ENTRIES;
+    let removed = 0;
+    for (const k of memoryApiCache.keys()) {
+      memoryApiCache.delete(k);
+      if (++removed >= excess) break;
+    }
+  }
+}
 
 function muatCachePersisten() {
   if (typeof localStorage === 'undefined') return;
@@ -109,11 +128,15 @@ function muatCachePersisten() {
     if (!raw) return;
     const obj = JSON.parse(raw);
     const now = Date.now();
+    let expiredFound = false;
     for (const [k, v] of Object.entries(obj)) {
       if (v && v.staleExpiry && now < v.staleExpiry) {
         memoryApiCache.set(k, v);
+      } else {
+        expiredFound = true;
       }
     }
+    if (expiredFound) jadwalkanSimpanCachePersisten();
   } catch (_) {}
 }
 
@@ -122,19 +145,69 @@ function jadwalkanSimpanCachePersisten() {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     try {
+      pangkasCacheMemori();
       const obj = {};
       const now = Date.now();
       let count = 0;
+      let estBytes = 2;
       for (const [k, v] of memoryApiCache.entries()) {
         const act = k.split('::')[0] || '';
         if (PERSISTABLE_ACTIONS.has(act) && v && now < v.staleExpiry && count < 40) {
+          const entryJson = JSON.stringify(v);
+          if (estBytes + k.length + entryJson.length > MAX_PERSIST_BYTES) continue;
           obj[k] = v;
+          estBytes += k.length + entryJson.length + 6;
           count++;
         }
       }
       localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify(obj));
     } catch (_) {}
   }, 150);
+}
+
+/**
+ * Periksa apakah aksi + payload sudah memiliki cache yang masih segar di memori
+ */
+export function hasFreshApiCache(action, payload = {}, explicitToken = null) {
+  if (!CACHE_CONFIG[action]) return false;
+  const token = ambilTokenAktif(explicitToken);
+  const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
+  const cacheKey = `${action}::${token}::${payloadStr}`;
+  const entry = memoryApiCache.get(cacheKey);
+  return Boolean(entry && Date.now() < entry.expiry);
+}
+
+/**
+ * Ringkasan statistik cache API klien untuk halaman Perawatan & Diagnostik Sistem
+ */
+export function getApiCacheStats() {
+  pangkasCacheMemori();
+  const now = Date.now();
+  let freshCount = 0;
+  let staleCount = 0;
+  for (const v of memoryApiCache.values()) {
+    if (v && now < v.expiry) freshCount++;
+    else if (v && now < v.staleExpiry) staleCount++;
+  }
+  let persistedBytes = 0;
+  let totalStorageBytes = 0;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      persistedBytes = (localStorage.getItem(PERSISTENT_CACHE_KEY) || '').length;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) totalStorageBytes += key.length + (localStorage.getItem(key) || '').length;
+      }
+    } catch (_) {}
+  }
+  return {
+    totalEntries: memoryApiCache.size,
+    freshEntries: freshCount,
+    staleEntries: staleCount,
+    inFlightCount: inFlightRequests.size,
+    persistedKB: Number((persistedBytes / 1024).toFixed(1)),
+    totalStorageKB: Number((totalStorageBytes / 1024).toFixed(1))
+  };
 }
 
 // Hidrasi cache dari localStorage saat modul dimuat pertama kali
@@ -349,6 +422,14 @@ export async function apiCall(action, payload = {}, options = {}) {
               expiry: now + ttl,
               staleExpiry: now + Math.max(ttl * 6, 900000)
             });
+            // Cross-seed varian cache kategori.list ({} <-> { aktif_saja: true }) agar tidak ada panggilan ganda
+            if (action === 'kategori.list' && data.data && Array.isArray(data.data.items)) {
+              if (Object.keys(payload).length === 0) {
+                seedApiCache('kategori.list', { aktif_saja: true }, data.data, token);
+              } else if (payload.aktif_saja === true && Object.keys(payload).length === 1) {
+                seedApiCache('kategori.list', {}, data.data, token);
+              }
+            }
             // Cross-seed varian cache pelanggan.list agar POS Kasir, Modul Pelanggan, & Loyalti berbagi cache 0ms
             if (action === 'pelanggan.list' && data.data && Array.isArray(data.data.items)) {
               const isUnfilteredAll = (!payload.cari && !payload.q && !payload.tipe && !payload.level) &&
@@ -361,6 +442,9 @@ export async function apiCall(action, payload = {}, options = {}) {
                 seedApiCache('pelanggan.list', { tipe: 'member', aktif_saja: true, limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
                 seedApiCache('pelanggan.list', { tipe: 'member', limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
               }
+            }
+            if (memoryApiCache.size > MAX_MEMORY_CACHE_ENTRIES) {
+              pangkasCacheMemori();
             }
             if (PERSISTABLE_ACTIONS.has(action)) {
               jadwalkanSimpanCachePersisten();

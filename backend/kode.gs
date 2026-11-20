@@ -215,6 +215,7 @@ const PENGATURAN_DEFAULT = {
  */
 const RUTE = {
   'sistem.ping': { publik: true, handler: aksiSistemPing_ },
+  'sistem.maintenance': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiSistemMaintenance_ },
 
   // Auth (Fase 1)
   'auth.login': { publik: true, tulis: true, handler: aksiAuthLogin_ },
@@ -555,6 +556,24 @@ function dariSel_(nilai, tipe) {
   }
 }
 
+/** Sheet master yang sering dibaca: di-cache di CacheService (L2) untuk memangkas RPC Google Sheets. */
+const MASTER_CACHE_SHEETS = Object.freeze({
+  Kategori: 180,
+  Produk: 120,
+  Varian: 120,
+  Satuan_Konversi: 120,
+  Pelanggan: 180,
+  Supplier: 180,
+  Hadiah: 180
+});
+
+/** Hapus cache L2 CacheService untuk sheet master saat ada penulisan data. */
+function hapusCacheSheetMaster_(namaSheet) {
+  if (MASTER_CACHE_SHEETS[namaSheet]) {
+    cacheHapus_('sh_v1_' + namaSheet);
+  }
+}
+
 /**
  * Baca semua baris sheet sebagai array objek bertipe.
  * opsi.termasukTerhapus = true untuk ikut membaca baris soft delete.
@@ -572,11 +591,27 @@ function bacaSemua_(namaSheet, opsi) {
     return aktif;
   }
 
+  // L2 CacheService lintas-request untuk sheet master (hemat ~400-1200ms per baca)
+  const pakaiCacheMaster = !opsi.termasukTerhapus && !opsi.lewatCache && !!MASTER_CACHE_SHEETS[namaSheet];
+  if (pakaiCacheMaster) {
+    const cached = cacheAmbil_('sh_v1_' + namaSheet);
+    if (cached && Array.isArray(cached.items) && Array.isArray(cached.rows) && cached.items.length === cached.rows.length) {
+      const dipulihkan = cached.items.map(function (it, idx) {
+        const obj = Object.assign({}, it);
+        Object.defineProperty(obj, '_baris', { value: cached.rows[idx], enumerable: false });
+        return obj;
+      });
+      if (_CACHE_BACA_REQ) _CACHE_BACA_REQ[cacheKey] = dipulihkan;
+      return dipulihkan;
+    }
+  }
+
   const sh = sheet_(namaSheet);
   const lastRow = sh.getLastRow();
   const lastCol = sh.getLastColumn();
   if (lastRow < 2 || lastCol < 1) {
     if (_CACHE_BACA_REQ) _CACHE_BACA_REQ[cacheKey] = [];
+    if (pakaiCacheMaster) cacheSimpan_('sh_v1_' + namaSheet, { items: [], rows: [] }, MASTER_CACHE_SHEETS[namaSheet]);
     return [];
   }
   const nilai = sh.getRange(1, 1, lastRow, lastCol).getValues();
@@ -597,6 +632,12 @@ function bacaSemua_(namaSheet, opsi) {
     hasil.push(obj);
   }
   if (_CACHE_BACA_REQ) _CACHE_BACA_REQ[cacheKey] = hasil;
+  if (pakaiCacheMaster) {
+    cacheSimpan_('sh_v1_' + namaSheet, {
+      items: hasil,
+      rows: hasil.map(function (o) { return o._baris; })
+    }, MASTER_CACHE_SHEETS[namaSheet]);
+  }
   return hasil;
 }
 
@@ -618,6 +659,7 @@ function tambahBaris_(namaSheet, daftar, userId) {
     delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
     delete _CACHE_BACA_REQ[namaSheet + '_semua'];
   }
+  hapusCacheSheetMaster_(namaSheet);
   if (!daftar || !daftar.length) return [];
   const sh = sheet_(namaSheet);
   const header = petaHeader_(sh);
@@ -668,6 +710,7 @@ function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-un
     delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
     delete _CACHE_BACA_REQ[namaSheet + '_semua'];
   }
+  hapusCacheSheetMaster_(namaSheet);
   const indeks = {};
   semua.forEach(function (o) { indeks[o.id] = o; });
   const waktu = sekarang_();
@@ -985,7 +1028,10 @@ function aksiSistemPing_() {
   let versiSkemaDb = null;
   try {
     const ss = ss_();
-    dbSiap = Object.keys(SKEMA).every(function (n) { return !!ss.getSheetByName(n); });
+    // 1 RPC getSheets() jauh lebih cepat daripada 27 panggilan getSheetByName()
+    const namaAda = {};
+    ss.getSheets().forEach(function (sh) { namaAda[sh.getName()] = true; });
+    dbSiap = Object.keys(SKEMA).every(function (n) { return !!namaAda[n]; });
     if (dbSiap) versiSkemaDb = ambilPengaturan_().versi_skema;
   } catch (err) {
     dbSiap = false;
@@ -997,6 +1043,55 @@ function aksiSistemPing_() {
     versi_skema: APP.VERSI_SKEMA,
     versi_skema_db: versiSkemaDb,
     db_siap: dbSiap,
+    waktu_server: sekarang_()
+  };
+}
+
+/** Bersihkan sesi kedaluwarsa di sheet Sesi agar verifikasi login tetap ringan. */
+function bersihkanSesiKedaluwarsa_() {
+  const sekarangMs = Date.now();
+  const semuaSesi = bacaSemua_('Sesi');
+  const perubahan = [];
+  semuaSesi.forEach(function (s) {
+    if (!s.kedaluwarsa) return;
+    const tExp = new Date(String(s.kedaluwarsa).replace(' ', 'T')).getTime();
+    if (isFinite(tExp) && tExp < sekarangMs) {
+      perubahan.push({ id: s.id, data: { deleted: true } });
+    }
+  });
+  if (perubahan.length) {
+    ubahBaris_('Sesi', perubahan, 'sistem');
+  }
+  return perubahan.length;
+}
+
+/** sistem.maintenance — Segarkan cache server, bersihkan sesi kedaluwarsa, & cek kesehatan DB (Owner/Admin). */
+function aksiSistemMaintenance_(ctx) {
+  const namaMaster = Object.keys(MASTER_CACHE_SHEETS);
+  namaMaster.forEach(function (n) { cacheHapus_('sh_v1_' + n); });
+  cacheHapus_('pengaturan');
+
+  const sesiDibersihkan = bersihkanSesiKedaluwarsa_();
+
+  const ringkasan = {
+    produk: bacaSemua_('Produk', { lewatCache: true }).length,
+    kategori: bacaSemua_('Kategori', { lewatCache: true }).length,
+    pelanggan: bacaSemua_('Pelanggan', { lewatCache: true }).length,
+    penjualan: bacaSemua_('Penjualan').length,
+    pembelian: bacaSemua_('Pembelian').length,
+    sesi_aktif: bacaSemua_('Sesi').length
+  };
+
+  catatAudit_(ctx.user.id, 'sistem_maintenance', 'SISTEM', '', {
+    cache_dibersihkan: namaMaster.length,
+    sesi_dibersihkan: sesiDibersihkan
+  });
+
+  return {
+    pesan: 'Perawatan server dan penyegaran cache berhasil.',
+    cache_dibersihkan: namaMaster.length,
+    sesi_dibersihkan: sesiDibersihkan,
+    ringkasan_db: ringkasan,
     waktu_server: sekarang_()
   };
 }
@@ -6747,8 +6842,13 @@ function setupTriggers() {
   infoAdmin_('Trigger', 'Trigger backup harian terpasang (setiap hari antara pukul 23:00–24:00 WIB).');
 }
 
-/** Dipanggil trigger harian. */
+/** Dipanggil trigger harian (backup + pembersihan sesi kedaluwarsa otomatis). */
 function backupTerjadwal() {
+  try {
+    bersihkanSesiKedaluwarsa_();
+  } catch (errSesi) {
+    console.warn('Pembersihan sesi terjadwal gagal: ' + errSesi);
+  }
   try {
     backupSekarang({ diam: true });
   } catch (err) {

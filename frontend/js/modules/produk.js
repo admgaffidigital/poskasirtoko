@@ -474,7 +474,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               <div class="prd-table-head" style="display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%; flex-wrap: nowrap;">
                 <div class="prd-table-avatar" style="flex-shrink: 0;">
                   ${p.foto_url ? `
-                    <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" loading="lazy" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
+                    <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
                     <div style="display: none; width: 100%; height: 100%; place-items: center;">${ICONS.package}</div>
                   ` : ICONS.package}
                 </div>
@@ -544,7 +544,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
           <div class="card stack-sm" style="padding: var(--sp-4);">
             ${p.foto_url ? `
               <div style="aspect-ratio: 1 / 1; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); margin-bottom: var(--sp-2); border: 1px solid var(--border); position: relative;">
-                <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" onerror="this.parentElement.style.display='none';">
+                <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" decoding="async" onerror="this.parentElement.style.display='none';">
               </div>
             ` : ''}
             <div class="row-between">

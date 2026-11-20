@@ -5,7 +5,7 @@
 
 import { CONFIG, setApiUrl } from './config.js';
 import { ROUTES, cariRute } from './routes.js';
-import { apiCall, invalidateApiCache, seedApiCache, forceNextApiCallsFresh } from './api.js';
+import { apiCall, invalidateApiCache, seedApiCache, forceNextApiCallsFresh, hasFreshApiCache, getApiCacheStats } from './api.js';
 import { store } from './state.js';
 import {
   ICONS,
@@ -27,26 +27,69 @@ import {
 import { $, $$, renderSkeleton, renderEmpty, renderError } from './utils/dom.js';
 import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
-// Modul-modul Fase 1, 2, 3, 4, & 5
+// Core Auth & Native Utilities (dibutuhkan segera saat boot)
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin, tutupModalAuth } from './modules/auth.js';
-import { renderKategoriModule } from './modules/kategori.js';
-import { renderProdukModule } from './modules/produk.js';
-import { renderPengaturanModule } from './modules/pengaturan.js';
-import { renderUsersModule } from './modules/users.js';
-import { renderPosModule } from './modules/pos.js';
-import { renderSupplierModule } from './modules/supplier.js';
-import { renderPembelianModule } from './modules/pembelian.js';
-import { renderKartuStokModule } from './modules/kartu-stok.js';
-import { renderOpnameModule } from './modules/opname.js';
-import { renderHutangPiutangModule } from './modules/hutang-piutang.js';
-import { renderReturModule } from './modules/retur.js';
-import { renderBiayaModule } from './modules/biaya.js';
-import { renderPelangganModule } from './modules/pelanggan.js';
-import { renderLoyaltiModule } from './modules/loyalti.js';
-import { renderPriceTagModule } from './modules/pricetag.js';
-import { renderLaporanModule } from './modules/laporan.js';
 import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton } from './utils/native.js';
-import { tampilkanModalKoneksiPrinter } from './utils/printer.js';
+
+// Lazy-Loader per Rute (Code Splitting Native ES Modules — memangkas >600 KB JS saat boot awal)
+const ROUTE_MODULE_LOADERS = {
+  pos: () => import('./modules/pos.js').then((m) => m.renderPosModule),
+  dashboard: () => import('./modules/laporan.js').then((m) => m.renderLaporanModule),
+  kategori: () => import('./modules/kategori.js').then((m) => m.renderKategoriModule),
+  produk: () => import('./modules/produk.js').then((m) => m.renderProdukModule),
+  supplier: () => import('./modules/supplier.js').then((m) => m.renderSupplierModule),
+  pembelian: () => import('./modules/pembelian.js').then((m) => m.renderPembelianModule),
+  'kartu-stok': () => import('./modules/kartu-stok.js').then((m) => m.renderKartuStokModule),
+  opname: () => import('./modules/opname.js').then((m) => m.renderOpnameModule),
+  'hutang-piutang': () => import('./modules/hutang-piutang.js').then((m) => m.renderHutangPiutangModule),
+  retur: () => import('./modules/retur.js').then((m) => m.renderReturModule),
+  biaya: () => import('./modules/biaya.js').then((m) => m.renderBiayaModule),
+  pelanggan: () => import('./modules/pelanggan.js').then((m) => m.renderPelangganModule),
+  loyalti: () => import('./modules/loyalti.js').then((m) => m.renderLoyaltiModule),
+  pricetag: () => import('./modules/pricetag.js').then((m) => m.renderPriceTagModule),
+  pengaturan: () => import('./modules/pengaturan.js').then((m) => m.renderPengaturanModule),
+  users: () => import('./modules/users.js').then((m) => m.renderUsersModule)
+};
+
+const loadedRouteModules = new Map();
+const pendingRouteLoads = new Map();
+
+function loadRouteModule(routeId) {
+  if (loadedRouteModules.has(routeId)) {
+    return Promise.resolve(loadedRouteModules.get(routeId));
+  }
+  if (pendingRouteLoads.has(routeId)) {
+    return pendingRouteLoads.get(routeId);
+  }
+  const loader = ROUTE_MODULE_LOADERS[routeId];
+  if (!loader) return Promise.resolve(null);
+  const p = loader()
+    .then((fn) => {
+      loadedRouteModules.set(routeId, fn);
+      return fn;
+    })
+    .finally(() => {
+      pendingRouteLoads.delete(routeId);
+    });
+  pendingRouteLoads.set(routeId, p);
+  return p;
+}
+
+function preloadRouteModule(routeId) {
+  if (!routeId || !ROUTE_MODULE_LOADERS[routeId] || loadedRouteModules.has(routeId) || pendingRouteLoads.has(routeId)) {
+    return;
+  }
+  loadRouteModule(routeId).catch(() => {});
+}
+
+let cachedPrinterModalFn = null;
+async function bukaKoneksiPrinterLazy() {
+  if (!cachedPrinterModalFn) {
+    const mod = await import('./utils/printer.js');
+    cachedPrinterModalFn = mod.tampilkanModalKoneksiPrinter;
+  }
+  return cachedPrinterModalFn();
+}
 
 class App {
   constructor() {
@@ -71,7 +114,7 @@ class App {
     this.initRouter();
     this.registerServiceWorker();
     hideNativeSplashScreen();
-    window.bukaKoneksiPrinter = tampilkanModalKoneksiPrinter;
+    window.bukaKoneksiPrinter = bukaKoneksiPrinterLazy;
 
     // Pantau perubahan identitas toko & pengaturan secara reaktif
     store.subscribe('toko', (toko) => this.updateBrandUI(toko));
@@ -143,23 +186,43 @@ class App {
   }
 
   /**
-   * Pemanasan cache in-memory & persisten di latar belakang saat CPU idle
-   * Memastikan pembukaan modul POS Kasir, Katalog Produk, Kategori, dan Pelanggan berlangsung instan (0ms)
+   * Pemanasan cache bertahap (staggered) di latar belakang saat CPU idle
+   * Menghindari lonjakan request serentak ke Apps Script dan hanya memuat endpoint yang belum segar di cache
    */
   hangatkanCacheLatarBelakang() {
-    const warmup = () => {
-      if (!store.get('token')) return;
-      apiCall('kategori.list', {}).catch(() => {});
-      apiCall('kategori.list', { aktif_saja: true }).catch(() => {});
-      apiCall('produk.list', { aktif_saja: true, page: 1, limit: 30 }).catch(() => {});
-      apiCall('produk.list', { q: '', kategori_id: '', filter_stok: '', status: '', sort: 'terbaru', aktif_saja: false, page: 1, limit: 20 }).catch(() => {});
-      apiCall('pelanggan.list', { cari: '', tipe: '', level: '', aktif_saja: false, limit: 100 }).catch(() => {});
-      apiCall('penjualan.pending.list', {}).catch(() => {});
+    if (this._warmupRunning) return;
+    const queue = [
+      { action: 'kategori.list', payload: {} },
+      { action: 'pelanggan.list', payload: { cari: '', tipe: '', level: '', aktif_saja: false, limit: 100 } },
+      { action: 'penjualan.pending.list', payload: {} }
+    ];
+
+    const runStep = async () => {
+      if (!store.get('token') || !navigator.onLine) {
+        this._warmupRunning = false;
+        return;
+      }
+      this._warmupRunning = true;
+      // Prefetch ringan modul JS yang paling sering diakses berikutnya
+      preloadRouteModule('pos');
+      preloadRouteModule('produk');
+
+      for (let i = 0; i < queue.length; i++) {
+        if (!store.get('token') || !navigator.onLine) break;
+        const item = queue[i];
+        if (hasFreshApiCache(item.action, item.payload)) continue;
+        try {
+          await apiCall(item.action, item.payload);
+        } catch (_) {}
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      this._warmupRunning = false;
     };
+
     if (typeof requestIdleCallback === 'function') {
-      requestIdleCallback(warmup, { timeout: 1500 });
+      requestIdleCallback(() => { runStep(); }, { timeout: 2200 });
     } else {
-      setTimeout(warmup, 400);
+      setTimeout(() => { runStep(); }, 900);
     }
   }
 
@@ -305,18 +368,22 @@ class App {
           };
         };
 
-        // Cek pembaruan realtime saat tab dibuka kembali / kembali dari latar belakang
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') {
-            registration.update().catch(() => {});
-          }
-        });
-        window.addEventListener('focus', () => {
+        // Cek pembaruan dengan jeda minimal 60 detik agar visibilitychange + focus tidak memicu spam
+        let lastSwCheck = Date.now();
+        const cekUpdateThrottled = () => {
+          const now = Date.now();
+          if (now - lastSwCheck < 60000) return;
+          lastSwCheck = now;
           registration.update().catch(() => {});
+        };
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') cekUpdateThrottled();
         });
+        window.addEventListener('focus', cekUpdateThrottled);
 
         // Cek pembaruan berkala otomatis setiap 5 menit
         setInterval(() => {
+          lastSwCheck = Date.now();
           registration.update().catch(() => {});
         }, 5 * 60 * 1000);
       }).catch((err) => {
@@ -439,7 +506,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.72'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.73'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -492,7 +559,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.72'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.73'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -782,6 +849,18 @@ class App {
         tutupMobileSidebar();
       }
     });
+
+    // Prefetch modul rute secara proaktif saat pointer hover / sentuh navigasi (0ms transisi)
+    const handleNavPrefetch = (e) => {
+      const link = e.target && typeof e.target.closest === 'function' ? e.target.closest('a[data-path], a[href^="#/"]') : null;
+      if (!link) return;
+      const path = link.getAttribute('data-path') || link.getAttribute('href') || '';
+      const r = cariRute(path);
+      if (r && r.id) preloadRouteModule(r.id);
+    };
+    $('#sidebar-nav')?.addEventListener('pointerenter', handleNavPrefetch, true);
+    $('#bottomnav')?.addEventListener('touchstart', handleNavPrefetch, { passive: true, capture: true });
+    $('#bottomnav')?.addEventListener('pointerenter', handleNavPrefetch, true);
 
     $('#btn-cmd-palette')?.addEventListener('click', () => {
       haptic.light();
@@ -1209,7 +1288,7 @@ class App {
         kataKunci: 'printer bluetooth rawbt thermal cetak struk tes',
         ikon: ICONS.printer,
         hint: 'Print',
-        aksi: () => tampilkanModalKoneksiPrinter()
+        aksi: () => bukaKoneksiPrinterLazy()
       },
       {
         grup: 'Aksi Cepat',
@@ -1226,14 +1305,15 @@ class App {
       {
         grup: 'Aksi Cepat',
         id: 'act-font',
-        judul: 'Ubah Ukuran Teks (Normal / Besar)',
-        sub: 'Aksesibilitas skala huruf antarmuka',
-        kataKunci: 'font huruf ukuran teks aksesibilitas besar normal aa',
+        judul: 'Ganti Preset Ukuran Huruf (5 Pilihan)',
+        sub: 'Ringkas 88% • Kecil 94% • Normal 100% • Besar 108% • Ekstra 116%',
+        kataKunci: 'font huruf ukuran teks aksesibilitas besar normal kecil ringkas ekstra aa',
         ikon: ICONS.sparkles,
         hint: 'Aa',
         aksi: () => {
-          const mode = toggleFontSize();
-          showToast(`Ukuran teks: ${mode === 'besar' ? 'Besar' : 'Normal'}`, 'info', 1800);
+          const id = toggleFontSize();
+          const preset = FONT_SIZE_PRESETS.find((f) => f.id === id);
+          showToast(`Ukuran huruf: ${preset ? `${preset.nama} (${preset.pct}%)` : id}`, 'info', 1800);
         }
       }
     ];
@@ -1428,61 +1508,71 @@ class App {
     }
     content.classList.toggle('pos-content-locked', isPos);
 
-    let maybeCleanup = null;
-    if (rute.id === 'pos') {
-      maybeCleanup = renderPosModule(content);
-    } else if (rute.id === 'dashboard') {
-      maybeCleanup = renderLaporanModule(content);
-    } else if (rute.id === 'sistem') {
+    const attachCleanup = (maybeCleanup) => {
+      if (typeof maybeCleanup === 'function') {
+        if (renderToken === this._renderSeq) {
+          this._activeCleanup = maybeCleanup;
+        } else {
+          try { maybeCleanup(); } catch (_) {}
+        }
+      } else if (maybeCleanup && typeof maybeCleanup.then === 'function') {
+        maybeCleanup.then((fn) => {
+          if (typeof fn !== 'function') return;
+          if (renderToken === this._renderSeq) {
+            this._activeCleanup = fn;
+          } else {
+            try { fn(); } catch (_) {}
+          }
+        }).catch(() => {});
+      }
+    };
+
+    if (rute.id === 'sistem') {
       this.renderHalamanSistem(content);
-    } else if (rute.id === 'desainsistem') {
+      return;
+    }
+    if (rute.id === 'desainsistem') {
       this.renderHalamanDesainSistem(content);
-    } else if (rute.id === 'kategori') {
-      maybeCleanup = renderKategoriModule(content);
-    } else if (rute.id === 'produk') {
-      maybeCleanup = renderProdukModule(content);
-    } else if (rute.id === 'supplier') {
-      maybeCleanup = renderSupplierModule(content);
-    } else if (rute.id === 'pembelian') {
-      maybeCleanup = renderPembelianModule(content);
-    } else if (rute.id === 'kartu-stok') {
-      maybeCleanup = renderKartuStokModule(content);
-    } else if (rute.id === 'opname') {
-      maybeCleanup = renderOpnameModule(content);
-    } else if (rute.id === 'hutang-piutang') {
-      maybeCleanup = renderHutangPiutangModule(content);
-    } else if (rute.id === 'retur') {
-      maybeCleanup = renderReturModule(content);
-    } else if (rute.id === 'biaya') {
-      maybeCleanup = renderBiayaModule(content);
-    } else if (rute.id === 'pelanggan') {
-      maybeCleanup = renderPelangganModule(content);
-    } else if (rute.id === 'loyalti') {
-      maybeCleanup = renderLoyaltiModule(content);
-    } else if (rute.id === 'pricetag') {
-      maybeCleanup = renderPriceTagModule(content);
-    } else if (rute.id === 'pengaturan') {
-      maybeCleanup = renderPengaturanModule(content);
-    } else if (rute.id === 'users') {
-      maybeCleanup = renderUsersModule(content);
-    } else if (rute.id === 'lainnya') {
+      return;
+    }
+    if (rute.id === 'lainnya') {
       this.renderHalamanLainnya(content);
-    } else {
-      this.renderPlaceholder(content, rute);
+      return;
     }
 
-    if (typeof maybeCleanup === 'function') {
-      this._activeCleanup = maybeCleanup;
-    } else if (maybeCleanup && typeof maybeCleanup.then === 'function') {
-      maybeCleanup.then((fn) => {
-        if (typeof fn !== 'function') return;
-        if (renderToken === this._renderSeq) {
-          this._activeCleanup = fn;
-        } else {
-          try { fn(); } catch (_) {}
-        }
-      }).catch(() => {});
+    if (ROUTE_MODULE_LOADERS[rute.id]) {
+      const cachedRender = loadedRouteModules.get(rute.id);
+      if (cachedRender) {
+        attachCleanup(cachedRender(content));
+        return;
+      }
+
+      content.innerHTML = renderSkeleton(3);
+      loadRouteModule(rute.id)
+        .then((renderFn) => {
+          if (renderToken !== this._renderSeq) return;
+          if (typeof renderFn === 'function') {
+            attachCleanup(renderFn(content));
+          } else {
+            this.renderPlaceholder(content, rute);
+          }
+        })
+        .catch((err) => {
+          if (renderToken !== this._renderSeq) return;
+          console.error(`Gagal memuat modul ${rute.id}:`, err);
+          content.innerHTML = renderError({
+            title: `Gagal Memuat Modul ${rute.title}`,
+            message: err?.message || 'Periksa koneksi internet Anda lalu muat ulang halaman.',
+            retryAction: `<button type="button" class="btn btn-primary btn-sm" id="btn-retry-lazy-mod">${ICONS.refresh} Coba Lagi</button>`
+          });
+          content.querySelector('#btn-retry-lazy-mod')?.addEventListener('click', () => {
+            this.renderPage(rute);
+          });
+        });
+      return;
     }
+
+    this.renderPlaceholder(content, rute);
   }
 
   /* ======================================================================== */
@@ -1535,10 +1625,144 @@ class App {
 
         <!-- Banner Pintar Status Aplikasi / Update / Unduh -->
         ${this.renderBannerAppHtml(true)}
+
+        <!-- Panel Perawatan, Cache & Optimasi Performa -->
+        <div class="card card-body stack" id="panel-perawatan-sistem">
+          <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-2); align-items: center;">
+            <div>
+              <div class="fw-bold" style="font-size: var(--fs-md);">Perawatan &amp; Optimasi Performa</div>
+              <div class="text-xs text-muted">Pantau cache lokal, bersihkan memori usang, dan jalankan perawatan database server</div>
+            </div>
+            <span class="badge badge-info" id="badge-env-mode">${this.isAppInstalled() ? 'Mode Aplikasi' : 'Mode Web Browser'}</span>
+          </div>
+
+          <div class="grid-3" id="stats-perawatan-lokal" style="gap: var(--sp-2);"></div>
+
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-bersihkan-cache-lokal">
+              ${ICONS.refresh}
+              <span>Bersihkan Cache Lokal</span>
+            </button>
+            ${store.get('user') && (store.get('user').role === 'owner' || store.get('user').role === 'admin') ? `
+              <button type="button" class="btn btn-primary btn-sm" id="btn-maintenance-server">
+                ${ICONS.database}
+                <span>Jalankan Perawatan Server &amp; Database</span>
+              </button>
+            ` : ''}
+          </div>
+
+          <div id="hasil-maintenance-server"></div>
+        </div>
       </div>
     `;
 
     this.pasangEventBanner(container.querySelector('#banner-app-install-update'));
+
+    const statsPerawatanEl = $('#stats-perawatan-lokal', container);
+    const renderStatsPerawatan = () => {
+      if (!statsPerawatanEl) return;
+      const st = getApiCacheStats();
+      const swAktif = Boolean('serviceWorker' in navigator && navigator.serviceWorker.controller);
+      statsPerawatanEl.innerHTML = `
+        <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
+          <div class="text-xs text-muted">Cache API Aktif</div>
+          <div class="fw-bold mono" style="font-size: var(--fs-md); margin-top: 2px;">${st.freshEntries} segar / ${st.totalEntries} entri</div>
+          <div class="text-xs text-muted">Ukuran cache: ${st.persistedKB} KB</div>
+        </div>
+        <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
+          <div class="text-xs text-muted">Penyimpanan Lokal</div>
+          <div class="fw-bold mono" style="font-size: var(--fs-md); margin-top: 2px;">${st.totalStorageKB} KB</div>
+          <div class="text-xs text-muted">Modul dimuat: ${loadedRouteModules.size} / ${Object.keys(ROUTE_MODULE_LOADERS).length}</div>
+        </div>
+        <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
+          <div class="text-xs text-muted">Service Worker Offline</div>
+          <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.73'}</div>
+        </div>
+      `;
+    };
+    renderStatsPerawatan();
+
+    $('#btn-bersihkan-cache-lokal', container)?.addEventListener('click', async () => {
+      const btn = $('#btn-bersihkan-cache-lokal', container);
+      if (btn) btn.disabled = true;
+      try {
+        invalidateApiCache();
+        forceNextApiCallsFresh(3000);
+        let swDeleted = 0;
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          const currentPrefix = `pos-kasir-static-v${CONFIG.VERSION || ''}`;
+          for (const k of keys) {
+            if (k !== currentPrefix) {
+              await caches.delete(k);
+              swDeleted++;
+            }
+          }
+        }
+        renderStatsPerawatan();
+        showToast(
+          swDeleted > 0
+            ? `Cache lokal & ${swDeleted} cache lama dibersihkan! Sesi & keranjang tetap aman.`
+            : 'Cache API lokal berhasil dibersihkan! Data segar akan dimuat otomatis.',
+          'success',
+          3200
+        );
+      } catch (err) {
+        showToast('Gagal membersihkan cache: ' + (err.message || err), 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    $('#btn-maintenance-server', container)?.addEventListener('click', async () => {
+      const btn = $('#btn-maintenance-server', container);
+      const outEl = $('#hasil-maintenance-server', container);
+      if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+      }
+      if (outEl) {
+        outEl.innerHTML = `<div class="row text-sm text-muted" style="gap: 8px;"><div class="spinner-sm"></div><span>Membersihkan cache server &amp; sesi kedaluwarsa...</span></div>`;
+      }
+      const mulai = Date.now();
+      try {
+        const res = await apiCall('sistem.maintenance', {}, { skipCache: true });
+        const durasi = Date.now() - mulai;
+        invalidateApiCache();
+        renderStatsPerawatan();
+        const r = res?.ringkasan_db || {};
+        if (outEl) {
+          outEl.innerHTML = `
+            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1px solid var(--border); padding: var(--sp-3);">
+              <div class="row-between">
+                <span class="badge badge-success">Perawatan Selesai (${durasi} ms)</span>
+                <span class="text-xs text-muted mono">${escapeHtml(res?.waktu_server || '')}</span>
+              </div>
+              <dl class="kv" style="margin-top: 4px;">
+                <dt>Cache Server Disegarkan</dt>
+                <dd>${res?.cache_dibersihkan ?? 0} tabel master + pengaturan</dd>
+                <dt>Sesi Kedaluwarsa Dibersihkan</dt>
+                <dd>${res?.sesi_dibersihkan ?? 0} sesi lama</dd>
+                <dt>Data Aktif Database</dt>
+                <dd class="mono text-xs">Produk: ${r.produk ?? 0} • Kategori: ${r.kategori ?? 0} • Pelanggan: ${r.pelanggan ?? 0} • Penjualan: ${r.penjualan ?? 0} • Sesi Aktif: ${r.sesi_aktif ?? 0}</dd>
+              </dl>
+            </div>
+          `;
+        }
+        showToast('Perawatan server & penyegaran cache database berhasil!', 'success');
+      } catch (err) {
+        if (outEl) {
+          outEl.innerHTML = `<div class="alert alert-danger">${ICONS.alertTriangle}<div>${escapeHtml(err.message || 'Gagal menjalankan perawatan server.')}</div></div>`;
+        }
+        showToast(err.message || 'Gagal menjalankan perawatan server', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.removeAttribute('aria-busy');
+        }
+      }
+    });
 
     const inputUrl = $('#cfg-api-url', container);
     const btnSimpan = $('#btn-simpan-api-url', container);
@@ -1852,9 +2076,9 @@ class App {
       this.sinkronkanDataGlobal();
     });
 
-    // Event handler: Printer Bluetooth
+    // Event handler: Printer Bluetooth (lazy-loaded)
     container.querySelector('#btn-printer-tile')?.addEventListener('click', () => {
-      tampilkanModalKoneksiPrinter();
+      bukaKoneksiPrinterLazy();
     });
 
     // Event handler: Tema & Warna Suasana

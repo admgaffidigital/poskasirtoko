@@ -922,6 +922,37 @@ async function runAudit() {
     assert.strictEqual(resListPrd.data.items[0].foto_url, 'https://lh3.googleusercontent.com/d/mock-drive-id-12345');
   });
 
+  test('15. Perawatan Server (sistem.maintenance), Cache Master L2 & Pembersihan Sesi Kedaluwarsa', () => {
+    // 1. Kasir tidak boleh menjalankan sistem.maintenance
+    const resKasirMaint = callApi('sistem.maintenance', tokenKasir, {});
+    assert.strictEqual(resKasirMaint.ok, false);
+    assert.strictEqual(resKasirMaint.code, 'FORBIDDEN');
+
+    // 2. Tambahkan 1 sesi kedaluwarsa buatan untuk memastikan pembersihan bekerja
+    app.tambahBaris_('Sesi', [{
+      user_id: 'u-expired-test',
+      token_hash: 'hash_expired_test_123',
+      kedaluwarsa: '2020-01-01 00:00:00',
+      terakhir_aktif: '2020-01-01 00:00:00',
+      perangkat: 'TestOld'
+    }], 'sistem');
+
+    // 3. Owner menjalankan sistem.maintenance
+    const resMaint = callApi('sistem.maintenance', tokenOwner, {});
+    assert.strictEqual(resMaint.ok, true, 'sistem.maintenance harus sukses untuk Owner');
+    assert.ok(resMaint.data.cache_dibersihkan >= 7, 'Minimal 7 tabel master dibersihkan dari cache');
+    assert.ok(resMaint.data.sesi_dibersihkan >= 1, 'Sesi kedaluwarsa harus ikut dibersihkan');
+    assert.ok(resMaint.data.ringkasan_db && resMaint.data.ringkasan_db.produk > 0, 'Ringkasan DB mengembalikan jumlah produk aktif');
+
+    // 4. Verifikasi cache L2 sheet master otomatis terinvalidasi setelah kategori.create
+    const katAwal = callApi('kategori.list', tokenOwner, {});
+    const jmlAwal = katAwal.data.items.length;
+    const buatKat = callApi('kategori.create', tokenOwner, { nama: 'Kategori Cache L2 Uji' });
+    assert.strictEqual(buatKat.ok, true);
+    const katSetelah = callApi('kategori.list', tokenOwner, {});
+    assert.strictEqual(katSetelah.data.items.length, jmlAwal + 1, 'Cache L2 Kategori wajib langsung segar setelah tambah data');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

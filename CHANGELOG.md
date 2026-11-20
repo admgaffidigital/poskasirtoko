@@ -16,6 +16,29 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.73] - 2026-11-21
+
+### Changed
+- [UI] [PWA] **Optimasi Kecepatan Boot & Code Splitting Rute (`frontend/js/app.js`, `frontend/index.html`, `frontend/sw.js`, `vercel.json`)**:
+  - **Lazy Loading ES Modules per Rute**: Mengubah 16 modul rute dan `printer.js` (`69 KB`) di `app.js` dari impor statis menjadi dynamic `import()` berbasis permintaan + cache in-memory, memangkas **>620 KB JS** dan ~20 request awal saat aplikasi dibuka pertama kali.
+  - **Proactive Hover/Touch Prefetch**: Menambahkan `preloadRouteModule()` saat kursor mengarah/menyentuh tautan sidebar & bottom navigation sehingga perpindahan menu terasa instan (`0ms`).
+  - **Zero-FOUC Boot & Resource Hints (`index.html`)**: Menghapus meta tag `no-store` yang menghambat cache/bfcache, menambahkan `preconnect` ke `lh3.googleusercontent.com` (CDN foto produk), menambahkan `modulepreload` utilitas inti (`ui.js`, `dom.js`, `format.js`), serta skrip sinkron mini di `<head>` untuk menerapkan tema/warna/font sebelum first paint tanpa kedip.
+  - **Pure Cache-First Service Worker (`sw.js`) & Edge Cache (`vercel.json`)**: Menghilangkan puluhan background fetch berulang untuk aset statis berversi di setiap boot agar bandwidth 100% terfokus ke API kasir; menambahkan header `Cache-Control` optimal di `vercel.json` untuk `/css/*`, `/js/*`, dan `/assets/*`.
+  - **Staggered Warmup & Throttled SW Update (`app.js`, `api.js`)**: Mengganti ledakan 6 request paralel saat boot menjadi antrean pemanasan bertahap yang melewati cache segar (`hasFreshApiCache`), menambahkan cross-seed `kategori.list` (`{}` ↔ `{ aktif_saja: true }`), batas ukuran cache lokal (`120` entri / `450 KB`), serta jeda minimal 60 detik untuk cek update SW saat pindah tab.
+- [POS-JUAL] [PRODUK] **Optimasi Rendering Katalog & Dekode Gambar (`frontend/js/modules/pos.js`, `frontend/js/modules/produk.js`)**:
+  - Mengubah penghitungan badge kategori di `renderKategoriBar()` dari `O(K × N)` menjadi 1-pass `O(N)` `Map`.
+  - Menambahkan `decoding="async"` pada seluruh gambar produk di POS Kasir dan Manajemen Produk agar scrolling tetap mulus 60fps.
+- [BACKEND] [DB] **Cache L2 Sheet Master & Optimasi Ping (`backend/kode.gs`)**:
+  - Menambahkan lapisan cache L2 `CacheService` (`120–180 detik`) di `bacaSemua_()` untuk 7 sheet master (`Kategori`, `Produk`, `Varian`, `Satuan_Konversi`, `Pelanggan`, `Supplier`, `Hadiah`) dengan invalidasi otomatis di `tambahBaris_()`, `ubahBaris_()`, dan `hapusLunak_()`.
+  - Mempercepat `aksiSistemPing_()` dari 27 panggilan `getSheetByName()` menjadi **1** panggilan `ss.getSheets()`.
+
+### Added
+- [SETTING] [BACKEND] **Perawatan & Optimasi Sistem (`frontend/js/app.js`, `backend/kode.gs`)**:
+  - Menambahkan endpoint `sistem.maintenance` (Owner/Admin) untuk menyegarkan seluruh cache server, membersihkan sesi kedaluwarsa di sheet `Sesi`, dan menampilkan ringkasan kesehatan database.
+  - Mengintegrasikan pembersihan sesi kedaluwarsa (`bersihkanSesiKedaluwarsa_()`) otomatis ke dalam trigger malam harian `backupTerjadwal()`.
+  - Menambahkan panel **Perawatan & Optimasi Performa** di halaman `#/sistem` lengkap dengan statistik live cache lokal, tombol 1-klik **Bersihkan Cache Lokal**, dan tombol **Jalankan Perawatan Server & Database**.
+  - Menambahkan skenario uji regresi #15 di `tests/test_debug_final.js`.
+
 ## [1.0.72] - 2026-11-20
 
 ### Fixed
