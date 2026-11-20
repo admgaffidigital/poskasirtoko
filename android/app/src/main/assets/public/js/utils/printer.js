@@ -309,18 +309,117 @@ export async function cetakBluetooth(dataStruk, ukuran = '58') {
 }
 
 /**
+ * Helper internal: konversi Uint8Array ESC/POS ke string Base64
+ * @param {Uint8Array} escposBytes
+ * @returns {string}
+ */
+function escPosKeBase64(escposBytes) {
+  let binary = '';
+  const len = escposBytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(escposBytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+/**
+ * Helper internal: deteksi apakah berjalan di Android (APK Native atau Browser Android)
+ * @returns {boolean}
+ */
+function adalahPerangkatAndroid() {
+  return Boolean(window.AndroidRawBT) || /android/i.test(navigator.userAgent || '');
+}
+
+/**
+ * Helper internal terpusat: kirim perintah ESC/POS ke RawBT Android.
+ * Prioritas:
+ * 1. Native Android APK Bridge (`window.AndroidRawBT.printBase64`) — instan, stabil, bebas ERR_UNKNOWN_URL_SCHEME
+ * 2. Chrome Android Intent URL (`intent:base64,...#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;...`)
+ * @param {Uint8Array} escposBytes
+ * @param {string} [label='struk']
+ * @returns {boolean}
+ */
+function kirimEscPosKeRawBT(escposBytes, label = 'struk') {
+  let base64Data = '';
+  try {
+    base64Data = escPosKeBase64(escposBytes);
+
+    // Jalur 1: Native Android APK Bridge (Capacitor MainActivity.java)
+    if (window.AndroidRawBT && typeof window.AndroidRawBT.printBase64 === 'function') {
+      const hasil = window.AndroidRawBT.printBase64(base64Data);
+      if (hasil === 'OK') {
+        showToast(`Mengirim ${label} ke printer via RawBT...`, 'success', 2400);
+        return true;
+      }
+      if (hasil === 'NOT_INSTALLED') {
+        showToast('Aplikasi RawBT belum terpasang di HP ini. Membuka Google Play Store...', 'warning', 4500);
+        return false;
+      }
+    }
+
+    // Jalur 2: Intent URL resmi Android (Chrome PWA / Browser Android)
+    const intentUri = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
+    const a = document.createElement('a');
+    a.href = intentUri;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 150);
+
+    showToast(`Mengirim ${label} ke printer via RawBT...`, 'info', 2500);
+    return true;
+  } catch (err) {
+    try {
+      if (!base64Data) throw err;
+      window.location.href = `rawbt:base64,${base64Data}`;
+      return true;
+    } catch (e2) {
+      console.error('Gagal cetak RawBT:', err);
+      showToast(`Gagal memproses ${label} untuk RawBT: ` + (err?.message || ''), 'error', 3500);
+      return false;
+    }
+  }
+}
+
+/**
+ * Buka Pengaturan Bluetooth Android secara langsung (khusus APK Android Native)
+ */
+export function bukaPengaturanBluetoothHP() {
+  if (window.AndroidRawBT && typeof window.AndroidRawBT.openBluetoothSettings === 'function') {
+    window.AndroidRawBT.openBluetoothSettings();
+    showToast('Membuka Pengaturan Bluetooth HP...', 'info', 2000);
+    return true;
+  }
+  showToast('Buka menu Setelan (Settings) > Bluetooth di HP Anda lalu pasangkan (pair) printer thermal.', 'info', 4000);
+  return false;
+}
+
+/**
  * Buka aplikasi RawBT di Android, atau buka Google Play Store jika belum terpasang
  * @returns {boolean}
  */
 export function bukaAplikasiRawBT() {
-  const isAndroid = /android/i.test(navigator.userAgent);
-  if (!isAndroid) {
+  if (!adalahPerangkatAndroid()) {
     showToast('Aplikasi RawBT khusus untuk perangkat Android. Pada komputer/laptop, gunakan dialog Cetak Browser atau Web Bluetooth.', 'warning', 4500);
     return false;
   }
 
+  // Jalur 1: Native Android APK Bridge (langsung buka RawBT tanpa error WebView)
+  if (window.AndroidRawBT && typeof window.AndroidRawBT.openRawBT === 'function') {
+    const hasil = window.AndroidRawBT.openRawBT();
+    if (hasil === 'OK') {
+      showToast('Membuka aplikasi RawBT...', 'success', 2000);
+      return true;
+    }
+    if (hasil === 'NOT_INSTALLED') {
+      showToast('Aplikasi RawBT belum terpasang. Membuka Google Play Store...', 'warning', 4000);
+      return false;
+    }
+  }
+
   try {
-    // Intent URL launcher resmi Android dengan fallback ke Play Store
+    // Jalur 2: Intent URL launcher resmi Android dengan fallback ke Play Store
     const intentUri = 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;';
     const a = document.createElement('a');
     a.href = intentUri;
@@ -341,6 +440,11 @@ export function bukaAplikasiRawBT() {
  * Buka halaman Google Play Store untuk mengunduh aplikasi RawBT
  */
 export function pasangAplikasiRawBT() {
+  if (window.AndroidRawBT && typeof window.AndroidRawBT.openPlayStoreRawBT === 'function') {
+    window.AndroidRawBT.openPlayStoreRawBT();
+    showToast('Membuka RawBT di Google Play Store...', 'info', 2000);
+    return;
+  }
   const url = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
   window.open(url, '_blank');
 }
@@ -408,51 +512,14 @@ export async function cetakUjiStruk(jalur = 'rawbt', ukuran = '58') {
  * @param {'58'|'80'} [ukuran='58']
  */
 export function cetakRawBT(dataStruk, ukuran = '58') {
-  const isAndroid = /android/i.test(navigator.userAgent || '');
-  if (!isAndroid) {
+  if (!adalahPerangkatAndroid()) {
     showToast('RawBT khusus Android. Dialihkan ke dialog Cetak Browser komputer...', 'info', 3000);
     return cetakBrowser(dataStruk, ukuran);
   }
 
-  let base64Data = '';
-  try {
-    const teksStruk = susunTeksStruk(dataStruk, ukuran);
-    const escposBytes = teksKeEscPos(teksStruk);
-
-    // Convert bytes ke base64 string
-    let binary = '';
-    const len = escposBytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(escposBytes[i]);
-    }
-    base64Data = window.btoa(binary);
-
-    // Intent URL resmi Android untuk RawBT dengan fallback Google Play Store
-    const intentUri = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
-
-    // Coba luncurkan lewat anchor click (standar WebView & Browser)
-    const a = document.createElement('a');
-    a.href = intentUri;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      if (a.parentNode) a.parentNode.removeChild(a);
-    }, 150);
-
-    showToast('Mengirim struk ke printer via RawBT...', 'info', 2500);
-    return true;
-  } catch (err) {
-    try {
-      if (!base64Data) throw err;
-      const rawbtUri = `rawbt:data:base64,${base64Data}`;
-      window.location.href = rawbtUri;
-      return true;
-    } catch (e2) {
-      console.error('Gagal cetak RawBT:', err);
-      showToast('Gagal memproses struk untuk RawBT: ' + err.message, 'error', 3500);
-      return false;
-    }
-  }
+  const teksStruk = susunTeksStruk(dataStruk, ukuran);
+  const escposBytes = teksKeEscPos(teksStruk);
+  return kirimEscPosKeRawBT(escposBytes, 'struk penjualan');
 }
 
 /**
@@ -460,24 +527,55 @@ export function cetakRawBT(dataStruk, ukuran = '58') {
  */
 export function tampilkanModalKoneksiPrinter() {
   const cfg = store.get('pengaturan') || {};
-  const ukuranKertas = cfg.printer_ukuran || '58';
+  let ukuranKertas = cfg.printer_ukuran === '80' ? '80' : '58';
+
+  const hasNativeBridge = Boolean(window.AndroidRawBT);
+  let rawbtInstalled = null;
+  let btEnabled = null;
+  if (hasNativeBridge) {
+    try {
+      rawbtInstalled = typeof window.AndroidRawBT.isRawBTInstalled === 'function' ? Boolean(window.AndroidRawBT.isRawBTInstalled()) : null;
+      btEnabled = typeof window.AndroidRawBT.isBluetoothEnabled === 'function' ? Boolean(window.AndroidRawBT.isBluetoothEnabled()) : null;
+    } catch (_) {}
+  }
+
+  const statusBadgesHtml = hasNativeBridge ? `
+    <div class="row" style="gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+      ${rawbtInstalled === true
+        ? '<span class="badge badge-success badge-dot">RawBT Terpasang &amp; Siap</span>'
+        : '<span class="badge badge-warning badge-dot">RawBT Belum Terpasang</span>'}
+      ${btEnabled === true
+        ? '<span class="badge badge-success badge-dot">Bluetooth HP Aktif</span>'
+        : (btEnabled === false ? '<span class="badge badge-danger badge-dot">Bluetooth HP Mati</span>' : '')}
+    </div>
+  ` : '';
 
   const modal = showModal({
     title: 'Koneksi Printer Bluetooth (RawBT)',
     size: 'md',
     body: `
       <div class="stack" style="gap: var(--sp-3);">
-        <div class="card card-body" style="background: linear-gradient(135deg, rgba(234, 88, 12, 0.08), rgba(249, 115, 22, 0.04)); border: 1.5px solid var(--primary-soft);">
+        <div class="card card-body" style="background: var(--primary-soft); border: 1.5px solid rgba(var(--primary-rgb, 232, 89, 12), 0.25);">
           <div class="row" style="align-items: flex-start; gap: var(--sp-3);">
             <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
               ${ICONS.printer}
             </div>
-            <div class="stack-sm" style="flex: 1;">
+            <div class="stack-sm" style="flex: 1; min-width: 0;">
               <div class="fw-bold text-base" style="color: var(--text);">Sambungkan Printer Thermal Bluetooth</div>
-              <p class="text-sm text-muted" style="margin: 0; line-height: 1.4;">
-                Aplikasi POS Kasir menggunakan <strong>RawBT Print Service</strong> untuk mencetak nota kasir secara instan, stabil, dan otomatis ke printer Bluetooth thermal Anda di Android.
+              <p class="text-sm text-muted" style="margin: 0; line-height: 1.45;">
+                Aplikasi POS Kasir terhubung langsung secara native ke <strong>RawBT Print Service</strong> untuk mencetak nota kasir secara instan dan stabil di HP/Tablet Android.
               </p>
+              ${statusBadgesHtml}
             </div>
+          </div>
+        </div>
+
+        <!-- Pilih Ukuran Kertas Cepat -->
+        <div class="row-between items-center" style="gap: var(--sp-2); flex-wrap: wrap; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border);">
+          <span class="text-xs fw-semibold text-muted">Ukuran Kertas Uji Cetak:</span>
+          <div class="row" style="gap: 6px;" id="modal-printer-size-toggle">
+            <button type="button" class="btn btn-xs ${ukuranKertas === '58' ? 'btn-primary' : 'btn-secondary'}" data-paper-size="58">58 mm (Standar)</button>
+            <button type="button" class="btn btn-xs ${ukuranKertas === '80' ? 'btn-primary' : 'btn-secondary'}" data-paper-size="80">80 mm (Lebar)</button>
           </div>
         </div>
 
@@ -485,22 +583,33 @@ export function tampilkanModalKoneksiPrinter() {
         <div class="stack-sm">
           <div class="fw-bold text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">Aksi Cepat &amp; Uji Cetak:</div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-open-rawbt" style="min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+            ${rawbtInstalled === false ? `
+              <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-install-rawbt-top" style="min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.download}
+                <span>Pasang RawBT (Play Store)</span>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-test-rawbt" style="min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.printer}
+                <span id="lbl-btn-test-rawbt">Uji Cetak RawBT (${ukuranKertas}mm)</span>
+              </button>
+            `}
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-modal-open-rawbt" style="min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.smartphone}
               <span>Buka Aplikasi RawBT</span>
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-modal-test-rawbt" style="min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-              <span>Uji Cetak RawBT (${ukuranKertas}mm)</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px;">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-modal-open-bt-settings" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.bluetooth}
+              <span>Pengaturan Bluetooth HP</span>
+            </button>
             <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-ble" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
-              <span>Uji Web Bluetooth Direct</span>
+              ${ICONS.bluetooth}
+              <span>Uji Web Bluetooth</span>
             </button>
             <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+              ${ICONS.printer}
               <span>Uji Cetak Browser</span>
             </button>
           </div>
@@ -518,8 +627,8 @@ export function tampilkanModalKoneksiPrinter() {
               <div>
                 <strong>Pasang Aplikasi RawBT</strong> dari Google Play Store di HP/Tablet Android Anda jika belum ada.
                 <div style="margin-top: 4px;">
-                  <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-modal-download-rawbt" style="padding: 2px 8px; border: 1px solid var(--primary-soft); display: inline-flex; align-items: center; gap: 4px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                  <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-modal-download-rawbt" style="padding: 2px 8px; border: 1px solid rgba(var(--primary-rgb, 232, 89, 12), 0.25); display: inline-flex; align-items: center; gap: 4px;">
+                    ${ICONS.download}
                     <span>Unduh RawBT di Google Play Store</span>
                   </button>
                 </div>
@@ -529,36 +638,36 @@ export function tampilkanModalKoneksiPrinter() {
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">2</span>
               <div>
-                <strong>Nyalakan Printer &amp; Bluetooth</strong>: Hidupkan printer thermal Anda. Buka menu Bluetooth di HP, cari nama printer (cth: <em>RPP02N, PT-210, MPT-II, POS-58</em>), lalu pasangkan/pairing (PIN bawaan biasanya <code>0000</code> atau <code>1234</code>).
+                <strong>Nyalakan Printer &amp; Bluetooth</strong>: Ketuk tombol <strong>Pengaturan Bluetooth HP</strong> di atas, cari nama printer (cth: <em>RPP02N, PT-210, MPT-II, POS-58</em>), lalu pasangkan/pairing (PIN bawaan biasanya <code>0000</code> atau <code>1234</code>).
               </div>
             </div>
 
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">3</span>
               <div>
-                <strong>Pilih Printer di RawBT</strong>: Buka aplikasi RawBT &gt; buka menu <strong>Settings (Pengaturan)</strong> &gt; pilih tipe koneksi <strong>Bluetooth</strong> &gt; tekan <strong>Pilih Printer</strong> dan pilih nama printer Anda.
+                <strong>Pilih Printer di RawBT</strong>: Ketuk <strong>Buka Aplikasi RawBT</strong> &gt; buka menu <strong>Settings (Pengaturan)</strong> &gt; pilih tipe koneksi <strong>Bluetooth</strong> &gt; tekan <strong>Pilih Printer</strong> dan pilih nama printer Anda.
               </div>
             </div>
 
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">4</span>
               <div>
-                <strong>Tekan Tombol Uji Cetak</strong>: Tekan tombol <span class="badge badge-secondary" style="font-weight: var(--fw-semibold);">Uji Cetak RawBT</span> di atas. Jika kertas struk keluar, printer Anda sudah <strong>100% SIAP</strong> digunakan mencetak nota kasir!
+                <strong>Tekan Tombol Uji Cetak</strong>: Ketuk tombol <span class="badge badge-secondary" style="font-weight: var(--fw-semibold);">Uji Cetak RawBT</span> di atas. Jika kertas struk keluar, printer Anda sudah <strong>100% SIAP</strong> digunakan mencetak nota kasir!
               </div>
             </div>
           </div>
         </div>
 
         <div class="alert alert-info text-xs" style="margin-top: var(--sp-1); padding: 8px 12px; display: flex; align-items: flex-start; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          <div><strong>Tips Kasir:</strong> Setelah printer terhubung di RawBT, Anda tidak perlu mengulang proses koneksi lagi. Setiap kali selesai transaksi kasir, struk dapat langsung dicetak cukup dengan 1 kali klik.</div>
+          ${ICONS.info}
+          <div><strong>Tips Kasir:</strong> Setelah printer dipilih satu kali di aplikasi RawBT, Anda tidak perlu menyambungkan ulang. Cetak nota dari POS Kasir cukup 1 klik dan langsung terkirim ke printer.</div>
         </div>
       </div>
     `,
     footer: `
       <div class="row-between" style="width: 100%;">
         <button type="button" class="btn btn-ghost btn-sm" id="btn-modal-ke-pengaturan" style="display: inline-flex; align-items: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          ${ICONS.settings}
           <span>Pengaturan Nota &amp; Kertas</span>
         </button>
         <button type="button" class="btn btn-primary btn-sm" id="btn-modal-tutup-koneksi">
@@ -568,8 +677,27 @@ export function tampilkanModalKoneksiPrinter() {
     `
   });
 
+  modal.el.querySelectorAll('[data-paper-size]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      ukuranKertas = btn.getAttribute('data-paper-size') === '80' ? '80' : '58';
+      modal.el.querySelectorAll('[data-paper-size]').forEach((b) => {
+        b.className = `btn btn-xs ${b === btn ? 'btn-primary' : 'btn-secondary'}`;
+      });
+      const lbl = modal.el.querySelector('#lbl-btn-test-rawbt');
+      if (lbl) lbl.textContent = `Uji Cetak RawBT (${ukuranKertas}mm)`;
+    });
+  });
+
   modal.el.querySelector('#btn-modal-open-rawbt')?.addEventListener('click', () => {
     bukaAplikasiRawBT();
+  });
+
+  modal.el.querySelector('#btn-modal-open-bt-settings')?.addEventListener('click', () => {
+    bukaPengaturanBluetoothHP();
+  });
+
+  modal.el.querySelector('#btn-modal-install-rawbt-top')?.addEventListener('click', () => {
+    pasangAplikasiRawBT();
   });
 
   modal.el.querySelector('#btn-modal-download-rawbt')?.addEventListener('click', () => {
@@ -983,48 +1111,14 @@ export function susunTeksStrukPembelian(data, ukuran = '58') {
  * @returns {boolean}
  */
 export function cetakRawBTPembelian(dataPembelian, ukuran = '58') {
-  const isAndroid = /android/i.test(navigator.userAgent || '');
-  if (!isAndroid) {
+  if (!adalahPerangkatAndroid()) {
     showToast('RawBT khusus Android. Dialihkan ke dialog Cetak Browser komputer...', 'info', 3000);
     return cetakBrowserPembelian(dataPembelian, ukuran);
   }
 
-  let base64Data = '';
-  try {
-    const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
-    const escposBytes = teksKeEscPos(teksStruk);
-
-    let binary = '';
-    const len = escposBytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(escposBytes[i]);
-    }
-    base64Data = window.btoa(binary);
-
-    const intentUri = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
-
-    const a = document.createElement('a');
-    a.href = intentUri;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      if (a.parentNode) a.parentNode.removeChild(a);
-    }, 150);
-
-    showToast('Mengirim faktur pembelian ke RawBT...', 'info', 2500);
-    return true;
-  } catch (err) {
-    try {
-      if (!base64Data) throw err;
-      const rawbtUri = `rawbt:data:base64,${base64Data}`;
-      window.location.href = rawbtUri;
-      return true;
-    } catch (e2) {
-      console.error('Gagal cetak RawBT Pembelian:', err);
-      showToast('Gagal memproses faktur untuk RawBT: ' + err.message, 'error', 3500);
-      return false;
-    }
-  }
+  const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
+  const escposBytes = teksKeEscPos(teksStruk);
+  return kirimEscPosKeRawBT(escposBytes, 'faktur pembelian');
 }
 
 /**
@@ -1373,37 +1467,14 @@ export function susunTeksXReport(data, ukuran = '58') {
  * Cetak X-Report shift via aplikasi RawBT (Android)
  */
 export async function cetakRawBTShift(dataReport, ukuran = '58') {
-  const isAndroid = /android/i.test(navigator.userAgent || '');
-  if (!isAndroid) {
+  if (!adalahPerangkatAndroid()) {
     showToast('RawBT khusus Android. Dialihkan ke dialog Cetak Browser komputer...', 'info', 3000);
     return cetakBrowserShift(dataReport, ukuran);
   }
 
-  let base64Data = '';
-  try {
-    const teks = susunTeksXReport(dataReport, ukuran);
-    const escposBytes = teksKeEscPos(teks);
-    let binary = '';
-    for (let i = 0; i < escposBytes.byteLength; i++) {
-      binary += String.fromCharCode(escposBytes[i]);
-    }
-    base64Data = window.btoa(binary);
-
-    const intentUri = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
-    const a = document.createElement('a');
-    a.href = intentUri;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      if (a.parentNode) a.parentNode.removeChild(a);
-    }, 150);
-    showToast('Mengirim rekap shift ke printer via RawBT...', 'info', 2500);
-    return true;
-  } catch (err) {
-    console.error('Gagal cetak RawBT Shift:', err);
-    showToast('Gagal memproses rekap shift untuk RawBT: ' + (err?.message || ''), 'error', 3500);
-    return false;
-  }
+  const teks = susunTeksXReport(dataReport, ukuran);
+  const escposBytes = teksKeEscPos(teks);
+  return kirimEscPosKeRawBT(escposBytes, 'rekap shift');
 }
 
 /**

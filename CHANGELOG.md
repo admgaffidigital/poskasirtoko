@@ -16,6 +16,25 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.72] - 2026-11-20
+
+### Fixed
+- [CETAK] [APK] **Native Android RawBT Bridge & WebView Scheme Interceptor (`android/app/src/main/java/com/admgaffidigital/poskasirtoko/MainActivity.java`, `frontend/js/utils/printer.js`)**:
+  - **Akar Masalah APK Android**: Sebelumnya `MainActivity.java` tidak memiliki handler `BridgeWebViewClient.shouldOverrideUrlLoading` maupun bridge native, sehingga klik tautan `intent:base64,...` atau `rawbt:` dari dalam WebView APK sering gagal (`ERR_UNKNOWN_URL_SCHEME` atau tidak merespons) dan menyulitkan penyambungan ke RawBT.
+  - **Bridge Native `window.AndroidRawBT`**: Menambahkan JavaScript Interface native di `MainActivity.java` dengan 6 fungsi langsung ke sistem Android:
+    - `printBase64(base64)` — Mengirim perintah ESC/POS langsung lewat `Intent.ACTION_VIEW` (`rawbt:base64,...`, package `ru.a402d.rawbtprinter`) dengan fallback `rawbt:data:base64,` dan auto-buka Play Store jika RawBT belum terpasang.
+    - `openRawBT()` — Membuka aplikasi RawBT langsung lewat `PackageManager.getLaunchIntentForPackage`.
+    - `openBluetoothSettings()` — Membuka Pengaturan Bluetooth HP Android dalam 1 ketukan untuk pairing printer.
+    - `isRawBTInstalled()` & `isBluetoothEnabled()` — Diagnostik live status RawBT & Bluetooth HP.
+    - `openPlayStoreRawBT()` — Membuka halaman RawBT di aplikasi Google Play Store secara native.
+  - **WebView External Scheme Interceptor**: Menambahkan `shouldOverrideUrlLoading` pada `BridgeWebViewClient` untuk menangani `rawbt:`, `intent:`, `market:`, `whatsapp:`, `tel:`, dan `mailto:` secara aman tanpa error WebView.
+  - **Modal Koneksi Printer Ditingkatkan (`printer.js`)**: Memusatkan pengiriman RawBT di `kirimEscPosKeRawBT()` untuk Penjualan, Pembelian, dan X-Report Shift, menambahkan badge status **RawBT Terpasang & Siap** / **Bluetooth HP Aktif**, tombol 1-klik **Pengaturan Bluetooth HP**, serta toggle cepat ukuran kertas uji (`58mm` / `80mm`).
+  - File terdampak: `android/app/src/main/java/com/admgaffidigital/poskasirtoko/MainActivity.java`, `frontend/js/utils/printer.js`.
+
+### Changed
+- [APK] **Build Rilis Android Native v1.0.72 (`versionCode 59`)**:
+  - Kompilasi ulang APK terbaru `frontend/download/poskasirtoko.apk` (berisi native `AndroidRawBT` bridge) dan pembaruan cache Service Worker `pos-kasir-static-v1.0.72`.
+
 ## [1.0.71] - 2026-11-19
 
 ### Added
