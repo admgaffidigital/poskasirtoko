@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.83] - 2026-11-21
+
+### Fixed
+- [UI] **Finalisasi Audit Total Komponen CSS**:
+  - Melengkapi 4 class badge & alert terakhir yang ditemukan pada audit menyeluruh lintas 31 file JS (`.badge-secondary`, `.badge-xs`, `.badge-subtle`, `.alert-subtle`, serta `.produk-filter-card`) di `frontend/css/components.css` dengan 100% token warna solid sehingga 0 class CSS hilang, 0 ikon `ICONS.*` undefined, 0 gradient/blur, dan seluruh 16 suite pengujian otomatis lulus penuh.
+
 ## [1.0.82] - 2026-11-21
 
 ### Changed

@@ -878,6 +878,21 @@ input[type="password"] {
   gap: 4px;
 }
 
+.badge-xs {
+  height: 17px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  gap: 3px;
+}
+
+.badge-secondary,
+.badge-subtle {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
 .badge-primary {
   background: var(--primary-soft);
   color: var(--primary-soft-text);
@@ -1966,6 +1981,13 @@ a.list-item:hover {
   color: var(--danger-text);
   border-color: var(--border);
   border-left: 3px solid var(--danger);
+}
+
+.alert-subtle {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-color: var(--border);
+  border-left: 3px solid var(--border-strong);
 }
 
 /* Pertahankan inline agar <strong> dalam kalimat tidak mematahkan paragraf */
@@ -5981,6 +6003,10 @@ tr.is-bulk-selected td {
 }
 
 /* ---------- Filter Bar Manajemen Produk Padat & Simetris ---------- */
+.produk-filter-card {
+  gap: var(--sp-2);
+}
+
 .produk-filter-top {
   flex-wrap: wrap;
 }
