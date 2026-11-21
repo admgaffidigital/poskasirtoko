@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.89] - 2026-11-21
+
+### Fixed
+- [PRODUK] [UI] **Perluasan & Anti-Terpotong Dropdown Pemilih Kategori di Modal Produk (`produk.js`, `components.css`)**:
+  - Memindahkan render `.cat-picker-dropdown` ke viewport-level (`document.body` dengan `position: fixed; z-index: 2050`) serta kalkulasi arah otomatis (bawah/atas menyesuaikan ruang layar yang paling lega) sehingga daftar kategori tidak lagi terpotong oleh batas `.dialog-body` maupun footer modal `Ubah/Tambah Produk`.
+  - Memperlebar panel pemilih kategori hingga `460px` pada desktop (dan proporsional penuh di mobile) dengan tinggi daftar hingga `400px`, ukuran font item lebih nyaman dibaca (`var(--fs-sm)`, padding `9px 12px`), auto-scroll otomatis ke kategori yang sedang aktif, pembersihan listener/DOM otomatis saat modal ditutup, serta mengganti focus shadow oranye hardcoded menjadi `rgba(var(--primary-rgb), 0.16)`.
+
 ## [1.0.88] - 2026-11-21
 
 ### Fixed

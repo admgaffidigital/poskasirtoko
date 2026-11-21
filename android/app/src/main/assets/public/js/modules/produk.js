@@ -1427,17 +1427,72 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
     });
   }
 
+  const scrollParent = wrap.closest('.dialog-body') || modalEl;
+
+  function positionDropdown() {
+    if (!wrap.classList.contains('is-open') || !btnTrigger) return;
+    const rect = btnTrigger.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 12;
+
+    // Lebar leluasa agar nama kategori Induk > Sub panjang terbaca penuh
+    const desiredW = vw <= 640
+      ? Math.min(vw - margin * 2, 480)
+      : Math.max(rect.width, Math.min(460, vw - margin * 2));
+
+    let left = rect.left;
+    if (left + desiredW > vw - margin) {
+      left = Math.max(margin, vw - margin - desiredW);
+    }
+    if (left < margin) left = margin;
+
+    const spaceBelow = vh - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+    const idealH = 400;
+
+    dropdown.style.position = 'fixed';
+    dropdown.style.width = `${Math.round(desiredW)}px`;
+    dropdown.style.left = `${Math.round(left)}px`;
+    dropdown.style.right = 'auto';
+    dropdown.style.zIndex = '2050';
+
+    // Pilih sisi yang paling lega (bawah atau atas) agar tidak pernah terpotong dialog-body
+    if (spaceBelow >= 260 || spaceBelow >= spaceAbove) {
+      const availH = Math.min(idealH, Math.max(220, spaceBelow - 6));
+      dropdown.style.top = `${Math.round(rect.bottom + 6)}px`;
+      dropdown.style.bottom = 'auto';
+      dropdown.style.maxHeight = `${Math.round(availH)}px`;
+    } else {
+      const availH = Math.min(idealH, Math.max(220, spaceAbove - 6));
+      dropdown.style.top = 'auto';
+      dropdown.style.bottom = `${Math.round(vh - rect.top + 6)}px`;
+      dropdown.style.maxHeight = `${Math.round(availH)}px`;
+    }
+  }
+
   function openDropdown() {
+    // Pindahkan dropdown ke document.body agar bebas dari clipping overflow dialog-body & footer
+    if (dropdown.parentElement !== document.body) {
+      document.body.appendChild(dropdown);
+    }
     wrap.classList.add('is-open');
+    dropdown.classList.add('is-floating');
     dropdown.style.display = 'flex';
     btnTrigger?.setAttribute('aria-expanded', 'true');
     searchInput.value = '';
     renderList('');
-    setTimeout(() => searchInput?.focus(), 50);
+    positionDropdown();
+    setTimeout(() => {
+      const activeItem = listEl.querySelector('.cat-picker-item.is-selected');
+      activeItem?.scrollIntoView({ block: 'nearest' });
+      searchInput?.focus();
+    }, 30);
   }
 
   function closeDropdown() {
     wrap.classList.remove('is-open');
+    dropdown.classList.remove('is-floating');
     dropdown.style.display = 'none';
     btnTrigger?.setAttribute('aria-expanded', 'false');
   }
@@ -1481,15 +1536,22 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
   });
 
   const onDocClick = (e) => {
-    if (!wrap.contains(e.target)) {
+    if (!wrap.contains(e.target) && !dropdown.contains(e.target)) {
       closeDropdown();
     }
   };
+  const onReposition = () => positionDropdown();
+
   document.addEventListener('click', onDocClick);
+  window.addEventListener('resize', onReposition);
+  scrollParent?.addEventListener('scroll', onReposition, { passive: true });
 
   const observer = new MutationObserver((mutations, obs) => {
     if (!document.body.contains(wrap)) {
       document.removeEventListener('click', onDocClick);
+      window.removeEventListener('resize', onReposition);
+      scrollParent?.removeEventListener('scroll', onReposition);
+      dropdown.remove();
       obs.disconnect();
     }
   });
