@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.82] - 2026-11-21
+
+### Changed
+- [POS-JUAL] [POS-BELI] [PRODUK] [UI] **Optimasi Kepadatan & Tata Letak Mobile untuk POS Kasir, Pembelian, & Manajemen Produk**:
+  - **Kartu POS Tanpa Foto Padat & Anti-Kotak Kosong (`pos.js`, `components.css`)**: Produk tanpa foto kini menampilkan header strip solid ramping setinggi `46px` (ikon produk + badge stok + badge varian/in-cart dalam satu baris rapi) alih-alih kotak kosong persegi `1:1`, sehingga 6–8 produk langsung muat di layar HP (produk yang memiliki foto tetap tampil penuh `1:1`).
+  - **Form Input POS Pembelian 2-Kolom di Mobile (`components.css`)**: Mengubah `.beli-inputs-grid` mobile menjadi grid 2 kolom presisi (`[Satuan | Qty Beli]` dan `[Harga Beli | Diskon %]` diikuti tombol penuh `Tambah ke Faktur`) sehingga tinggi formulir terpangkas hampir separuh.
+  - **Bilah Filter Manajemen Produk Ringkas & Tombol Aksi Seimbang (`produk.js`, `components.css`)**: Menyatukan toggle tampilan, tombol `Pilih`, dan dropdown `Urutkan` ke 1 baris rapi tanpa ruang kosong, menyusun dropdown Kategori & Status dalam grid `2 kolom` simetris, merapikan 5 chip filter cepat menjadi 1 baris *horizontal scroll* bersih, serta menyelaraskan tombol `Hapus` menjadi `.btn-outline-danger` agar keempat tombol aksi (`Cepat`, `Ubah`, `Salin`, `Hapus`) seimbang.
+
 ## [1.0.81] - 2026-11-21
 
 ### Changed

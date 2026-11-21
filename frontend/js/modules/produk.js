@@ -125,55 +125,53 @@ export async function renderProdukModule(container) {
       </div>
 
       <!-- Bilah Filter & Pencarian Komprehensif -->
-      <div class="card card-body stack-sm" style="gap: var(--sp-3);">
-        <!-- Baris 1: Pencarian Cepat & Pengaturan Tampilan -->
-        <div class="row" style="gap: var(--sp-2);">
+      <div class="card card-body stack-sm produk-filter-card" style="gap: var(--sp-2);">
+        <!-- Baris 1: Pencarian Cepat, Mode Tampilan, Pilih, & Urutkan (Rapat Tanpa Ruang Kosong) -->
+        <div class="row produk-filter-top" style="gap: var(--sp-2); align-items: center;">
           <div class="input-group grow" style="min-width: 200px;">
             <span class="input-icon">${ICONS.search}</span>
             <input type="text" class="input" id="filter-produk-q" placeholder="Cari nama barang, SKU, atau barcode..." value="${escapeHtml(filterState.q)}">
           </div>
 
-          <div class="segmented" id="toggle-view">
-            <button type="button" data-view="table" aria-pressed="${filterState.view === 'table'}" title="Tampilan Tabel / Kartu">${ICONS.list}</button>
-            <button type="button" data-view="grid" aria-pressed="${filterState.view === 'grid'}" title="Tampilan Grid">${ICONS.grid}</button>
+          <div class="produk-filter-controls">
+            <div class="segmented" id="toggle-view" style="flex-shrink: 0;">
+              <button type="button" data-view="table" aria-pressed="${filterState.view === 'table'}" title="Tampilan Tabel / Kartu">${ICONS.list}</button>
+              <button type="button" data-view="grid" aria-pressed="${filterState.view === 'grid'}" title="Tampilan Grid">${ICONS.grid}</button>
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-select-produk" title="Mode Tandai & Pilih Banyak Produk" style="gap: 5px; height: var(--control-h); flex-shrink: 0;">
+              ${ICONS.check}
+              <span>Pilih</span>
+            </button>
+
+            <!-- Dropdown Urutkan menyatu di baris yang sama agar bebas ruang kosong -->
+            <div class="field grow" style="min-width: 130px;">
+              <select class="select" id="filter-produk-sort" title="Urutan Tampilan">
+                <option value="terbaru" ${filterState.sort === 'terbaru' ? 'selected' : ''}>Terbaru</option>
+                <option value="terlama" ${filterState.sort === 'terlama' ? 'selected' : ''}>Terlama</option>
+                <option value="nama_asc" ${filterState.sort === 'nama_asc' ? 'selected' : ''}>Nama (A - Z)</option>
+                <option value="nama_desc" ${filterState.sort === 'nama_desc' ? 'selected' : ''}>Nama (Z - A)</option>
+                <option value="stok_asc" ${filterState.sort === 'stok_asc' ? 'selected' : ''}>Stok Terendah</option>
+                <option value="stok_desc" ${filterState.sort === 'stok_desc' ? 'selected' : ''}>Stok Tertinggi</option>
+                <option value="harga_desc" ${filterState.sort === 'harga_desc' ? 'selected' : ''}>Harga Tertinggi</option>
+                <option value="harga_asc" ${filterState.sort === 'harga_asc' ? 'selected' : ''}>Harga Terendah</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-icon" id="btn-reset-filter" title="Reset Semua Filter" style="display: none; flex-shrink: 0;">
+              ${ICONS.x}
+            </button>
           </div>
-
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-select-produk" title="Mode Tandai & Pilih Banyak Produk" style="gap: 5px; height: var(--control-h); flex-shrink: 0;">
-            ${ICONS.check}
-            <span>Pilih</span>
-          </button>
-
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-reset-filter" title="Reset Semua Filter" style="display: none;">
-            ${ICONS.x}
-          </button>
         </div>
 
-        <!-- Baris 2: Dropdown Filter & Pengurutan (Urutkan, Kategori, Status Stok, Status Keaktifan) -->
-        <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
-          <!-- Dropdown Urutkan (Default: Terbaru selalu di atas) -->
-          <div class="field" style="flex: 1 1 180px; min-width: 150px;">
-            <select class="select" id="filter-produk-sort" title="Urutan Tampilan">
-              <option value="terbaru" ${filterState.sort === 'terbaru' ? 'selected' : ''}>Terbaru (Baru Ditambahkan)</option>
-              <option value="terlama" ${filterState.sort === 'terlama' ? 'selected' : ''}>Terlama (Awal Ditambahkan)</option>
-              <option value="nama_asc" ${filterState.sort === 'nama_asc' ? 'selected' : ''}>Nama Barang (A - Z)</option>
-              <option value="nama_desc" ${filterState.sort === 'nama_desc' ? 'selected' : ''}>Nama Barang (Z - A)</option>
-              <option value="stok_asc" ${filterState.sort === 'stok_asc' ? 'selected' : ''}>Stok Terendah (Menipis)</option>
-              <option value="stok_desc" ${filterState.sort === 'stok_desc' ? 'selected' : ''}>Stok Tertinggi</option>
-              <option value="harga_desc" ${filterState.sort === 'harga_desc' ? 'selected' : ''}>Harga Ritel Tertinggi</option>
-              <option value="harga_asc" ${filterState.sort === 'harga_asc' ? 'selected' : ''}>Harga Ritel Terendah</option>
-            </select>
-          </div>
-
-          <!-- Dropdown Kategori -->
-          <div class="field" style="flex: 1 1 180px; min-width: 150px;">
+        <!-- Baris 2: Filter Kategori & Status (2 Kolom Simetris) -->
+        <div class="produk-filter-selects">
+          <div class="field">
             <select class="select" id="filter-produk-kategori" title="Kategori Produk">
               <option value="">Semua Kategori</option>
             </select>
           </div>
-
-
-          <!-- Dropdown Status Keaktifan -->
-          <div class="field" style="flex: 1 1 140px; min-width: 130px;">
+          <div class="field">
             <select class="select" id="filter-produk-status" title="Status Produk">
               <option value="" ${filterState.status === '' ? 'selected' : ''}>Semua Status</option>
               <option value="aktif" ${filterState.status === 'aktif' ? 'selected' : ''}>Aktif Saja</option>
@@ -182,8 +180,8 @@ export async function renderProdukModule(container) {
           </div>
         </div>
 
-        <!-- Baris 3: Filter Cepat Chips -->
-        <div class="row" style="gap: 6px; overflow-x: auto; padding-bottom: 2px;" id="filter-chips-wrap">
+        <!-- Baris 3: Filter Cepat Chips (1 Baris Horizontal Rapi Bisa Digulir) -->
+        <div class="produk-chips-strip" id="filter-chips-wrap">
           <button type="button" class="btn btn-xs ${!filterState.filter_stok && filterState.sort === 'terbaru' && !filterState.kategori_id && !filterState.status && !filterState.q ? 'btn-primary' : 'btn-secondary'}" data-chip="semua">
             Semua Produk
           </button>
@@ -795,7 +793,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                     <span>Salin</span>
                   </button>
-                  <button type="button" class="btn btn-ghost btn-xs text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="padding: 0 5px; height: 26px; min-height: 26px;">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="padding: 0 5px; height: 26px; min-height: 26px;">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span class="d-none-desktop">Hapus</span>
                   </button>
@@ -870,7 +868,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   <span>Salin</span>
                 </button>
-                <button type="button" class="btn btn-ghost btn-xs text-danger btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="width: 32px; height: 32px; flex-shrink: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                <button type="button" class="btn btn-outline-danger btn-xs btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="width: 32px; height: 32px; flex-shrink: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
               </div>

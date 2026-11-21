@@ -785,12 +785,12 @@ export function renderPosModule(container) {
 
       html += `
         <div class="pos-product-card ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
-          <div class="pos-card-visual">
+          <div class="pos-card-visual ${p.foto_url ? 'has-photo' : 'no-photo'}">
             ${state.multiSelectMode ? `<div class="pos-multi-check-badge">${ICONS.check}</div>` : ''}
             ${p.foto_url ? `
-              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
+              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
               <div class="pos-card-icon-wrap" style="display: none;">
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                   <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
@@ -798,17 +798,17 @@ export function renderPosModule(container) {
               </div>
             ` : `
               <div class="pos-card-icon-wrap">
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                   <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
               </div>
             `}
+            ${infoOpsi ? `<div class="pos-card-badges-left">${infoOpsi}</div>` : ''}
             <div class="pos-card-badges-top">
               ${badgeStok}
             </div>
-            ${infoOpsi ? `<div class="pos-card-badges-left">${infoOpsi}</div>` : ''}
           </div>
 
           <div class="pos-card-content">

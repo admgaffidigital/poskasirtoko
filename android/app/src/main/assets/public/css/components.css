@@ -4602,8 +4602,14 @@ a.list-item:hover {
 
 .beli-inputs-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-2);
+  align-items: flex-end;
+}
+
+.beli-inputs-grid button#btn-tambah-item-beli {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .beli-inputs-grid .field {
@@ -4629,6 +4635,8 @@ a.list-item:hover {
   }
 
   .beli-inputs-grid button#btn-tambah-item-beli {
+    grid-column: auto;
+    width: auto;
     white-space: nowrap;
     padding: 0 16px;
   }
@@ -5916,6 +5924,105 @@ tr.is-bulk-selected td {
 
   .dash-row-val {
     font-size: var(--fs-xs);
+  }
+}
+
+/* ---------- POS Compact Header Untuk Produk Tanpa Foto (Anti-Kotak Kosong Besar) ---------- */
+.pos-card-visual.no-photo {
+  aspect-ratio: auto !important;
+  height: 46px !important;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.pos-card-visual.no-photo .pos-card-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  box-shadow: none;
+}
+
+.pos-card-visual.no-photo .pos-card-icon-wrap svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pos-card-visual.no-photo .pos-multi-check-badge {
+  position: static;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.pos-card-visual.no-photo .pos-card-badges-left {
+  position: static;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pos-card-visual.no-photo .pos-card-badges-top {
+  position: static;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.pos-card-visual.no-photo .pos-in-cart-pill {
+  position: static;
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10.5px;
+}
+
+/* ---------- Filter Bar Manajemen Produk Padat & Simetris ---------- */
+.produk-filter-top {
+  flex-wrap: wrap;
+}
+
+.produk-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.produk-filter-selects {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.produk-chips-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.produk-chips-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.produk-chips-strip > .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .produk-filter-controls {
+    width: 100%;
+    flex-basis: 100%;
   }
 }
 
