@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.88] - 2026-11-21
+
+### Fixed
+- [UI] [PRODUK] [SUPPLIER] [PELANGGAN] [PRICETAG] **Perapihan Tata Letak & Konsistensi Tombol 4 Modul (Kategori, Supplier, Pelanggan, Price Tag)**:
+  - **Kategori Produk (`kategori.js`)**: Melipat sub-kategori secara default saat halaman pertama dibuka agar daftar kategori induk ringkas dan mudah dipindai (otomatis terbuka saat mencari, membuka tab `Sub Kategori`, atau menambah sub baru), memadatkan kolom `Tipe & Hirarki` sub-kategori menjadi 1 baris inline, serta menyeragamkan ikon tombol aksi (`ICONS.edit` & `ICONS.trash`).
+  - **Data Supplier (`supplier.js`)**: Memperbaiki bug ikon avatar truk yang turun ke baris terpisah pada nama supplier panjang (menambahkan `flex-wrap: nowrap` & `flex-shrink: 0`), menyeragamkan ikon `Ubah`/`Hapus` menjadi `ICONS.edit` & `ICONS.trash`, dan menambahkan mode `danger: true` pada dialog hapus.
+  - **Pelanggan & Member (`pelanggan.js`)**: Mengunci baris avatar nama pelanggan agar anti-wrap (`flex-wrap: nowrap`, `flex-shrink: 0`) dan menyelaraskan bingkai tombol `Rincian`, `Ubah`, serta `Pilih`.
+  - **Price Tag Harga (`pricetag.js`, `components.css`)**: Menyelaraskan tinggi panel pratinjau kanan dengan kolom kiri (`align-items: stretch` + `flex: 1`), membingkai tombol `Kosongkan` (`btn-outline-secondary`), menghapus prefiks ganda `SKU: SKU-...` pada daftar & pratinjau label, serta menyembunyikan baris `Grosir:` otomatis bila harga grosir sama dengan harga ritel.
+  - **Global `.btn-secondary` (`components.css`)**: Memberi bingkai halus berbasis aksen tema (`rgba(var(--primary-rgb), 0.28)`) dan menghilangkan warna hover oranye hardcoded agar konsisten di seluruh tema warna.
+
 ## [1.0.87] - 2026-11-21
 
 ### Fixed

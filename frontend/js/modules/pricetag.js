@@ -26,7 +26,7 @@ export async function renderPriceTagModule(container) {
         </div>
       </div>
 
-      <div class="grid grid-2" style="gap: var(--sp-4); align-items: flex-start;">
+      <div class="grid grid-2" style="gap: var(--sp-4); align-items: stretch;">
         <!-- Kolom Kiri: Pemilihan Produk & Format -->
         <div class="card card-body stack">
           <h3 style="margin-bottom: var(--sp-1);">1. Pilih Produk & Pengaturan Label</h3>
@@ -42,7 +42,7 @@ export async function renderPriceTagModule(container) {
           <div class="row" style="gap: var(--sp-2); align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: var(--sp-2);">
             <div class="row" style="gap: var(--sp-2); align-items: center;">
               <button type="button" class="btn btn-xs btn-secondary" id="btn-pilih-semua-ptag">Pilih Semua</button>
-              <button type="button" class="btn btn-xs btn-ghost" id="btn-batal-semua-ptag">Kosongkan</button>
+              <button type="button" class="btn btn-xs btn-outline-secondary" id="btn-batal-semua-ptag">Kosongkan</button>
             </div>
             <span class="text-xs text-muted fw-semibold" id="label-terpilih-count">0 produk dipilih</span>
           </div>
@@ -205,6 +205,11 @@ export async function renderPriceTagModule(container) {
 
       const barcodeValue = prod.barcode || prod.sku || prod.id.substring(0, 8);
       const barcodeSvg = showBarcode ? generateBarcodeSvg(barcodeValue, { height: tpl === 'kompak' ? 30 : 40, showText: true }) : '';
+      const rawSku = String(prod.sku || '').trim();
+      const skuText = !rawSku || rawSku === '-' ? '-' : (/^sku[\s:-]/i.test(rawSku) ? rawSku : `SKU: ${rawSku}`);
+      const hargaRitelNum = Number(prod.harga_ritel) || 0;
+      const hargaGrosirNum = Number(prod.harga_grosir) || 0;
+      const tampilkanGrosir = showGrosir && hargaGrosirNum > 0 && hargaGrosirNum !== hargaRitelNum;
 
       const card = `
         <div class="ptag-card ptag-card-print" style="
@@ -239,7 +244,7 @@ export async function renderPriceTagModule(container) {
                 SATUAN: ${escapeHtml((prod.satuan_dasar || 'PCS').toUpperCase())}
               </span>
               <span style="font-size: 9px; font-family: monospace; color: #4a5568;">
-                SKU: ${escapeHtml(prod.sku || '-')}
+                ${escapeHtml(skuText)}
               </span>
             </div>
           </div>
@@ -249,9 +254,9 @@ export async function renderPriceTagModule(container) {
             <div style="font-size: ${tpl === 'display' ? '28px' : '22px'}; font-weight: 900; color: #c53030; line-height: 1;">
               ${formatRupiah(prod.harga_ritel)}
             </div>
-            ${showGrosir && prod.harga_grosir ? `
+            ${tampilkanGrosir ? `
               <div style="font-size: 10px; font-weight: 600; color: #2b6cb0; margin-top: 2px;">
-                Grosir: ${formatRupiah(prod.harga_grosir)}
+                Grosir: ${formatRupiah(hargaGrosirNum)}
               </div>
             ` : ''}
           </div>
@@ -306,6 +311,8 @@ export async function renderPriceTagModule(container) {
       areaList.innerHTML = list.map((p) => {
         const isChecked = terpilihIds.has(p.id);
         const stok = Number(p.stok || 0);
+        const rawSku = String(p.sku || '').trim();
+        const skuBadgeText = rawSku && rawSku !== '-' ? (/^sku[\s:-]/i.test(rawSku) ? rawSku : `SKU: ${rawSku}`) : '';
         return `
           <label class="ptag-prod-item ${isChecked ? 'is-selected' : ''}">
             <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
@@ -313,7 +320,7 @@ export async function renderPriceTagModule(container) {
               <div style="min-width: 0;">
                 <div class="fw-semibold text-sm" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.nama)}</div>
                 <div class="text-xs text-muted" style="display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap;">
-                  ${(p.sku && p.sku !== '-') ? `<span class="badge badge-secondary badge-sm">SKU: ${escapeHtml(p.sku)}</span>` : ''}
+                  ${skuBadgeText ? `<span class="badge badge-secondary badge-sm">${escapeHtml(skuBadgeText)}</span>` : ''}
                   <span>${escapeHtml(p.satuan_dasar || '')}</span>
                   <span class="badge ${stok > 0 ? 'badge-success' : 'badge-danger'} badge-sm">Stok: ${formatQty(stok)}</span>
                 </div>

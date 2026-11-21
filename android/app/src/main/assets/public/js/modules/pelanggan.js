@@ -421,8 +421,8 @@ async function muatDataPelanggan(container) {
                     </td>
                   ` : ''}
                   <td data-label="Pelanggan">
-                    <div class="row" style="align-items: center; gap: var(--sp-2);">
-                      <div class="prd-table-avatar" style="width: 36px; height: 36px;">
+                    <div class="row" style="align-items: center; gap: var(--sp-2); flex-wrap: nowrap;">
+                      <div class="prd-table-avatar" style="width: 36px; height: 36px; flex-shrink: 0;">
                         ${ICONS.users}
                       </div>
                       <div class="grow" style="min-width: 0;">

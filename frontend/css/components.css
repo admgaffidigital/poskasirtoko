@@ -67,12 +67,13 @@
 .btn-secondary {
   --btn-bg: var(--primary-soft);
   --btn-text: var(--primary-soft-text);
-  --btn-border: transparent;
-  --btn-bg-hover: var(--orange-100);
+  --btn-border: rgba(var(--primary-rgb), 0.28);
+  --btn-bg-hover: rgba(var(--primary-rgb), 0.16);
 }
 
 [data-theme="dark"] .btn-secondary {
-  --btn-bg-hover: rgba(247, 107, 28, 0.24);
+  --btn-border: rgba(var(--primary-rgb), 0.36);
+  --btn-bg-hover: rgba(var(--primary-rgb), 0.24);
 }
 
 .btn-ghost {
@@ -4797,8 +4798,9 @@ a.list-item:hover {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
-  min-height: 380px;
-  max-height: 600px;
+  min-height: 420px;
+  max-height: 700px;
+  flex: 1 1 auto;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -4811,6 +4813,8 @@ a.list-item:hover {
   .ptag-preview-sticky {
     position: sticky;
     top: calc(var(--topbar-h) + var(--sp-4));
+    display: flex;
+    flex-direction: column;
   }
 }
 

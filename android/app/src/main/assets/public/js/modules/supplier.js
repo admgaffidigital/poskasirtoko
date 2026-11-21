@@ -106,8 +106,8 @@ async function muatSupplierList(container, canEdit, query = '') {
       html += `
         <tr>
           <td data-label="Supplier">
-            <div class="row" style="align-items: center; gap: var(--sp-2);">
-              <div class="prd-table-avatar" style="width: 36px; height: 36px;">
+            <div class="row" style="align-items: center; gap: var(--sp-2); flex-wrap: nowrap;">
+              <div class="prd-table-avatar" style="width: 36px; height: 36px; flex-shrink: 0;">
                 ${ICONS.truck}
               </div>
               <div class="grow" style="min-width: 0;">
@@ -148,11 +148,11 @@ async function muatSupplierList(container, canEdit, query = '') {
             <td style="text-align: right; min-width: 170px; width: 170px; white-space: nowrap;" data-label="Aksi">
               <div class="table-actions">
                 <button type="button" class="btn btn-secondary btn-sm btn-edit-supplier" data-id="${s.id}" title="Ubah">
-                  ${ICONS.settings}
+                  ${ICONS.edit}
                   <span>Ubah</span>
                 </button>
                 <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-supplier" data-id="${s.id}" data-nama="${escapeHtml(s.nama)}" title="Hapus">
-                  ${ICONS.x}
+                  ${ICONS.trash}
                   <span>Hapus</span>
                 </button>
               </div>
@@ -188,7 +188,8 @@ async function muatSupplierList(container, canEdit, query = '') {
           title: 'Hapus Supplier',
           message: `Apakah Anda yakin ingin menghapus data supplier "${nama}"? Supplier yang memiliki saldo hutang aktif tidak dapat dihapus.`,
           confirmText: 'Ya, Hapus',
-          cancelText: 'Batal'
+          cancelText: 'Batal',
+          danger: true
         });
 
         if (!yakin) return;

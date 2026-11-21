@@ -14,6 +14,7 @@ const stateKategori = {
   cari: '',
   filterTipe: 'semua', // 'semua' | 'induk' | 'sub'
   collapsedParents: new Set(),
+  sudahInisialisasiLipat: false,
   selectMode: false,
   selectedIds: new Set()
 };
@@ -52,6 +53,8 @@ export async function renderKategoriModule(container) {
   const canEdit = user && (user.role === 'owner' || user.role === 'admin');
   stateKategori.selectMode = false;
   stateKategori.selectedIds.clear();
+  stateKategori.collapsedParents.clear();
+  stateKategori.sudahInisialisasiLipat = false;
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-3);">
@@ -303,6 +306,14 @@ async function muatKategori(container, canEdit) {
     const items = res.items || [];
     kategoriCache = items;
 
+    // Default terlipat ringkas saat pertama kali masuk halaman kategori agar daftar utama mudah dipindai
+    if (!stateKategori.sudahInisialisasiLipat) {
+      items.forEach((k) => {
+        if (!k.parent_id) stateKategori.collapsedParents.add(k.id);
+      });
+      stateKategori.sudahInisialisasiLipat = true;
+    }
+
     // Perbarui counter global
     const totalSemua = items.length;
     const totalInduk = items.filter(k => !k.parent_id).length;
@@ -488,8 +499,8 @@ function renderTabelKategori(container, canEdit) {
   filteredParents.forEach(({ parent: p, subs, isParentMatch }) => {
     const totalSubsParent = (subsByParent[p.id] || []).length;
     const hasSubs = totalSubsParent > 0;
-    // Jika sedang dalam mode pencarian dengan keyword dan ada sub yang cocok, jangan dilipat agar hasil langsung terlihat
-    const isCollapsed = !keyword && stateKategori.collapsedParents.has(p.id);
+    // Jika sedang dalam mode pencarian atau tab Sub Kategori, jangan dilipat agar hasil langsung terlihat
+    const isCollapsed = !keyword && filterTipe !== 'sub' && stateKategori.collapsedParents.has(p.id);
 
     // Jika filterTipe bukan 'sub', tampilkan baris Kategori Utama
     if (filterTipe !== 'sub') {
@@ -538,11 +549,11 @@ function renderTabelKategori(container, canEdit) {
                   <span>Sub</span>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${p.id}" title="Ubah">
-                  ${ICONS.settings}
+                  ${ICONS.edit}
                   <span>Ubah</span>
                 </button>
                 <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-kat" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" data-sub-count="${totalSubsParent}" title="Hapus">
-                  ${ICONS.x}
+                  ${ICONS.trash}
                   <span>Hapus</span>
                 </button>
               </div>
@@ -575,9 +586,9 @@ function renderTabelKategori(container, canEdit) {
               </div>
             </td>
             <td data-label="Tipe & Hirarki">
-              <div class="kat-hirarki-val">
+              <div class="kat-hirarki-val" style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <span class="badge badge-sm" style="background: var(--surface-3); border: 1px solid var(--border);">Sub Kategori</span>
-                <div class="text-xs text-muted" style="line-height: 1.35;">Induk: <strong style="color: var(--text);">${escapeHtml(p.nama)}</strong></div>
+                <span class="text-xs text-muted" style="line-height: 1.35;">Induk: <strong style="color: var(--text);">${escapeHtml(p.nama)}</strong></span>
               </div>
             </td>
             <td class="num" data-label="Urutan">${c.urutan || 0}</td>
@@ -585,11 +596,11 @@ function renderTabelKategori(container, canEdit) {
               <td style="text-align: right;" data-label="Aksi">
                 <div class="table-actions">
                   <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${c.id}" title="Ubah">
-                    ${ICONS.settings}
+                    ${ICONS.edit}
                     <span>Ubah</span>
                   </button>
                   <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-kat" data-id="${c.id}" data-nama="${escapeHtml(c.nama)}" data-sub-count="0" title="Hapus">
-                    ${ICONS.x}
+                    ${ICONS.trash}
                     <span>Hapus</span>
                   </button>
                 </div>
@@ -627,11 +638,11 @@ function renderTabelKategori(container, canEdit) {
           <td style="text-align: right;" data-label="Aksi">
             <div class="table-actions">
               <button type="button" class="btn btn-secondary btn-sm btn-edit-kat" data-id="${o.id}" title="Ubah">
-                ${ICONS.settings}
+                ${ICONS.edit}
                 <span>Ubah</span>
               </button>
               <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-kat" data-id="${o.id}" data-nama="${escapeHtml(o.nama)}" data-sub-count="0" title="Hapus">
-                ${ICONS.x}
+                ${ICONS.trash}
                 <span>Hapus</span>
               </button>
             </div>
@@ -929,6 +940,9 @@ function bukaModalFormKategori(container, kat, semuaKategori = [], defaultParent
       } else {
         await apiCall('kategori.create', { nama, parent_id, urutan });
         showToast('Kategori baru berhasil ditambahkan.', 'success');
+      }
+      if (parent_id) {
+        stateKategori.collapsedParents.delete(parent_id);
       }
       modal.close();
       await muatKategori(container, true);
