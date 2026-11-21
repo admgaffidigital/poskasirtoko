@@ -6102,5 +6102,63 @@ tr.is-bulk-selected td {
   }
 }
 
+/* ---------- Frame Thumbnail Seragam Grid Manajemen Produk (Anti-Kartu Bolong) ---------- */
+.prd-grid-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--sp-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.prd-grid-thumb.has-photo {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.prd-grid-thumb.no-photo {
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+}
+
+.prd-grid-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+  display: block;
+}
+
+.prd-grid-thumb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+}
+
+.prd-grid-thumb-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+}
+
+.prd-grid-thumb-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 
 

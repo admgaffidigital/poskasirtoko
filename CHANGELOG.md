@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.86] - 2026-11-21
+
+### Fixed
+- [PRODUK] [UI] **Penyeragaman Tinggi & Frame Thumbnail Grid View Manajemen Produk**:
+  - Menambahkan bingkai thumbnail seragam `.prd-grid-thumb` (`aspect-ratio: 4 / 3`) pada seluruh kartu Grid View di `produk.js` dan `components.css` — foto produk tampil utuh (`object-fit: contain`), sedangkan produk tanpa foto tampil dengan placeholder ikon solid rapi (`Belum ada foto`) sehingga tidak ada lagi rongga kosong besar di tengah kartu maupun tinggi baris yang jomplang antar produk.
+  - Menyelaraskan bingkai tombol `Ubah` di Grid View agar seragam dengan `Cepat`, `Salin`, dan `Hapus`.
+
 ## [1.0.85] - 2026-11-21
 
 ### Changed

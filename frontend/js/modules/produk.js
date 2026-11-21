@@ -830,17 +830,26 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                 </label>
               </div>
             ` : ''}
-            ${p.foto_url ? `
-              <div style="aspect-ratio: 1 / 1; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); margin-bottom: var(--sp-2); border: 1px solid var(--border); position: relative;">
-                <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" decoding="async" onerror="this.parentElement.style.display='none';">
-              </div>
-            ` : ''}
-            <div class="row-between">
+            <div class="prd-grid-thumb ${p.foto_url ? 'has-photo' : 'no-photo'}">
+              ${p.foto_url ? `
+                <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="prd-grid-thumb-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
+                <div class="prd-grid-thumb-empty" style="display: none;">
+                  <div class="prd-grid-thumb-icon">${ICONS.package}</div>
+                  <span>Belum ada foto</span>
+                </div>
+              ` : `
+                <div class="prd-grid-thumb-empty">
+                  <div class="prd-grid-thumb-icon">${ICONS.package}</div>
+                  <span>Belum ada foto</span>
+                </div>
+              `}
+            </div>
+            <div class="row-between" style="align-items: center; gap: 6px;">
               <span class="badge ${stokBadge.kelas}">Stok: ${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
-              ${p.sku ? `<span class="mono text-xs text-muted">${escapeHtml(p.sku)}</span>` : ''}
+              ${p.sku ? `<span class="mono text-xs text-muted" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.sku)}</span>` : ''}
             </div>
 
-            <div class="fw-semibold text-md" style="min-height: 44px; margin-top: var(--sp-1);">
+            <div class="fw-semibold text-md" style="min-height: 40px; margin-top: 2px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="${escapeHtml(p.nama)}">
               ${escapeHtml(p.nama)}
             </div>
 
@@ -863,7 +872,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                   <span>Cepat</span>
                 </button>
-                <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
+                <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px; border: 1px solid var(--border-strong);">
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                   <span>Ubah</span>
                 </button>
