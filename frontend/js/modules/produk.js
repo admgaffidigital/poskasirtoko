@@ -164,43 +164,45 @@ export async function renderProdukModule(container) {
           </div>
         </div>
 
-        <!-- Baris 2: Filter Kategori & Status (2 Kolom Simetris) -->
-        <div class="produk-filter-selects">
-          <div class="field">
-            <select class="select" id="filter-produk-kategori" title="Kategori Produk">
-              <option value="">Semua Kategori</option>
-            </select>
+        <!-- Baris 2: Filter Kategori, Status & Chip Cepat (Menyatu Rapi di Desktop, 2 Baris di Mobile) -->
+        <div class="produk-filter-bottom">
+          <div class="produk-filter-selects">
+            <div class="field">
+              <select class="select" id="filter-produk-kategori" title="Kategori Produk">
+                <option value="">Semua Kategori</option>
+              </select>
+            </div>
+            <div class="field">
+              <select class="select" id="filter-produk-status" title="Status Produk">
+                <option value="" ${filterState.status === '' ? 'selected' : ''}>Semua Status</option>
+                <option value="aktif" ${filterState.status === 'aktif' ? 'selected' : ''}>Aktif Saja</option>
+                <option value="nonaktif" ${filterState.status === 'nonaktif' ? 'selected' : ''}>Nonaktif</option>
+              </select>
+            </div>
           </div>
-          <div class="field">
-            <select class="select" id="filter-produk-status" title="Status Produk">
-              <option value="" ${filterState.status === '' ? 'selected' : ''}>Semua Status</option>
-              <option value="aktif" ${filterState.status === 'aktif' ? 'selected' : ''}>Aktif Saja</option>
-              <option value="nonaktif" ${filterState.status === 'nonaktif' ? 'selected' : ''}>Nonaktif</option>
-            </select>
-          </div>
-        </div>
 
-        <!-- Baris 3: Filter Cepat Chips (1 Baris Horizontal Rapi Bisa Digulir) -->
-        <div class="produk-chips-strip" id="filter-chips-wrap">
-          <button type="button" class="btn btn-xs ${!filterState.filter_stok && filterState.sort === 'terbaru' && !filterState.kategori_id && !filterState.status && !filterState.q ? 'btn-primary' : 'btn-secondary'}" data-chip="semua">
-            Semua Produk
-          </button>
-          <button type="button" class="btn btn-xs ${filterState.sort === 'terbaru' && !filterState.filter_stok ? 'btn-primary' : 'btn-secondary'}" data-chip="terbaru" style="display: inline-flex; align-items: center; gap: 4px;">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span>Terbaru</span>
-          </button>
-          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'menipis' ? 'btn-warning' : 'btn-secondary'}" data-chip="menipis" style="display: inline-flex; align-items: center; gap: 4px;">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-            <span>Stok Menipis</span>
-          </button>
-          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'habis' ? 'btn-danger' : 'btn-secondary'}" data-chip="habis" style="display: inline-flex; align-items: center; gap: 4px;">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
-            <span>Stok Habis</span>
-          </button>
-          <button type="button" class="btn btn-xs ${filterState.filter_stok === 'tersedia' ? 'btn-primary' : 'btn-secondary'}" data-chip="tersedia" style="display: inline-flex; align-items: center; gap: 4px;">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span>Ada Stok</span>
-          </button>
+          <!-- Filter Cepat Chips (1 Baris Horizontal Rapi) -->
+          <div class="produk-chips-strip" id="filter-chips-wrap">
+            <button type="button" class="btn btn-xs ${!filterState.filter_stok && filterState.sort === 'terbaru' && !filterState.kategori_id && !filterState.status && !filterState.q ? 'btn-primary' : 'btn-secondary'}" data-chip="semua">
+              Semua Produk
+            </button>
+            <button type="button" class="btn btn-xs ${filterState.sort === 'terbaru' && !filterState.filter_stok ? 'btn-primary' : 'btn-secondary'}" data-chip="terbaru" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>Terbaru</span>
+            </button>
+            <button type="button" class="btn btn-xs ${filterState.filter_stok === 'menipis' ? 'btn-warning' : 'btn-secondary'}" data-chip="menipis" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              <span>Stok Menipis</span>
+            </button>
+            <button type="button" class="btn btn-xs ${filterState.filter_stok === 'habis' ? 'btn-danger' : 'btn-secondary'}" data-chip="habis" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+              <span>Stok Habis</span>
+            </button>
+            <button type="button" class="btn btn-xs ${filterState.filter_stok === 'tersedia' ? 'btn-primary' : 'btn-secondary'}" data-chip="tersedia" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span>Ada Stok</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -757,7 +759,8 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                 <div class="grow" style="flex: 1 1 auto; min-width: 0;">
                   <div class="fw-bold text-md prd-table-nama" style="word-break: break-word; line-height: 1.35;">${escapeHtml(p.nama)}</div>
                   <div class="row" style="gap: 4px; margin-top: 3px; flex-wrap: wrap;">
-                    ${p.sku ? `<span class="mono text-xs text-muted" style="white-space: nowrap;">${escapeHtml(p.sku)}</span>` : ''}
+                    ${p.sku ? `<span class="mono text-xs text-muted d-none-desktop" style="white-space: nowrap;">${escapeHtml(p.sku)}</span>` : ''}
+                    ${p.kategori_nama ? `<span class="badge badge-secondary badge-sm d-none-mobile">${escapeHtml(p.kategori_nama)}</span>` : ''}
                     ${p.punya_varian && p.varian && p.varian.length ? `<span class="badge badge-info badge-sm">${p.varian.length} Varian</span>` : ''}
                     ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge badge-sm">+${p.satuan_konversi.length} Satuan</span>` : ''}
                   </div>
@@ -785,7 +788,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     <span>Cepat</span>
                   </button>
-                  <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
+                  <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px; border: 1px solid var(--border-strong);">
                     <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     <span>Ubah</span>
                   </button>

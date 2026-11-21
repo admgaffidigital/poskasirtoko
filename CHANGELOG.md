@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.85] - 2026-11-21
+
+### Changed
+- [PRODUK] [UI] **Perapihan Tata Letak Desktop Manajemen Produk**:
+  - **Filter Bar Desktop 2-Baris Padat (`produk.js`, `components.css`)**: Menyatukan pencarian + toggle List/Grid + Pilih + dropdown Urutkan (`185px`, tidak lagi melebar penuh) pada Baris 1, serta menyatukan dropdown Kategori & Status bersama 5 chip filter cepat di Baris 2 — memangkas tinggi panel filter desktop hingga separuh.
+  - **Eliminasi Duplikasi SKU & Penambahan Badge Kategori (`produk.js`)**: Menyembunyikan teks SKU duplikat di bawah Nama Produk pada layar desktop (karena sudah tampil di kolom `SKU / BARCODE`) dan menggantinya dengan badge kategori produk yang ringkas, sekaligus memberi bingkai tegas pada tombol aksi `Ubah` agar seragam dengan `Cepat`, `Salin`, dan `Hapus`.
+
 ## [1.0.84] - 2026-11-21
 
 ### Fixed

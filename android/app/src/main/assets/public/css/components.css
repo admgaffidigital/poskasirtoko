@@ -6031,6 +6031,12 @@ tr.is-bulk-selected td {
   min-width: 0;
 }
 
+.produk-filter-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
 .produk-filter-selects {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6055,6 +6061,38 @@ tr.is-bulk-selected td {
 .produk-chips-strip > .btn {
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+@media (min-width: 960px) {
+  .produk-filter-top {
+    flex-wrap: nowrap;
+  }
+
+  .produk-filter-controls {
+    flex: 0 0 auto;
+  }
+
+  .produk-filter-controls .field {
+    flex: 0 0 185px;
+    width: 185px;
+  }
+
+  .produk-filter-bottom {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+
+  .produk-filter-selects {
+    flex: 0 0 360px;
+    width: 360px;
+  }
+
+  .produk-chips-strip {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    padding-bottom: 0;
+  }
 }
 
 @media (max-width: 767px) {
