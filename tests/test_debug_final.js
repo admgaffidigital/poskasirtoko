@@ -953,6 +953,92 @@ async function runAudit() {
     assert.strictEqual(katSetelah.data.items.length, jmlAwal + 1, 'Cache L2 Kategori wajib langsung segar setelah tambah data');
   });
 
+  test('16. Akurasi Poin Loyalitas: Level Silver/Gold/Platinum, Anti-Downgrade, Piutang Lunas, & Retur Berbasis Nota Asal', () => {
+    // 1. Set aturan poin Rp 10.000 = 1 poin
+    const setCfg = callApi('pengaturan.set', tokenOwner, { poin_per_rupiah: 10000 });
+    assert.strictEqual(setCfg.ok, true);
+    assert.strictEqual(setCfg.data.pengaturan.poin_per_rupiah, 10000);
+
+    // 2. Buat member level Gold (pengali 1.5x) dengan limit kredit Rp 1.000.000
+    const resPel = callApi('pelanggan.create', tokenOwner, {
+      nama: 'Member Gold Uji Poin',
+      hp: '081234567891',
+      tipe: 'member',
+      level: 'Gold',
+      limit_kredit: 1000000,
+      tempo_hari: 30
+    });
+    assert.strictEqual(resPel.ok, true);
+    const pelId = resPel.data.pelanggan.id;
+
+    // Buat produk uji khusus dengan HPP Rp 15.000 & Harga Ritel Rp 20.000 agar angka poin 100% deterministik
+    const resProdUji = callApi('produk.create', tokenOwner, {
+      nama: 'Produk Uji Poin Loyalitas',
+      satuan_dasar: 'Pcs',
+      hpp: 15000,
+      harga_ritel: 20000,
+      stok: 50
+    });
+    assert.strictEqual(resProdUji.ok, true, 'Produk uji poin harus berhasil dibuat');
+    const prod = resProdUji.data.produk || resProdUji.data;
+
+    // 3. Transaksi Tunai Rp 100.000 (qty 5 x Rp 20.000) -> 100.000 / 10.000 * 1.5 = 15 poin
+    const resTunai = callApi('penjualan.create', tokenOwner, {
+      pelanggan_id: pelId,
+      items: [{ produk_id: prod.id, satuan: prod.satuan_dasar, faktor: 1, qty: 5, harga: 20000, tipe_harga: 'ritel' }],
+      pembayaran: [{ metode: 'tunai', jumlah: 100000 }]
+    });
+    assert.strictEqual(resTunai.ok, true, 'Transaksi tunai member Gold harus sukses');
+    assert.strictEqual(resTunai.data.penjualan.poin_didapat, 15, 'Member Gold wajib mendapat pengali 1.5x (15 poin)');
+    assert.strictEqual(resTunai.data.pelanggan.poin, 15, 'Respons penjualan.create wajib membawa saldo poin terbaru (15)');
+    assert.strictEqual(resTunai.data.pelanggan.level, 'Gold', 'Level Gold tidak boleh turun otomatis menjadi Reguler');
+
+    // 4. Transaksi Tempo Rp 100.000 -> poin saat transaksi = 0
+    const resTempo = callApi('penjualan.create', tokenOwner, {
+      pelanggan_id: pelId,
+      items: [{ produk_id: prod.id, satuan: prod.satuan_dasar, faktor: 1, qty: 5, harga: 20000, tipe_harga: 'ritel' }],
+      pembayaran: [{ metode: 'tempo', jumlah: 100000 }]
+    });
+    assert.strictEqual(resTempo.ok, true);
+    assert.strictEqual(resTempo.data.penjualan.poin_didapat, 0, 'Transaksi tempo belum mendapat poin sebelum lunas');
+    assert.strictEqual(resTempo.data.pelanggan.poin, 15, 'Saldo poin member tetap 15 saat transaksi tempo dibuat');
+
+    // 5. Retur 2 qty (Rp 40.000) dari NOTA TEMPO (belum lunas, poin_didapat = 0) -> saldo poin TIDAK BOLEH terpotong!
+    const resReturTempo = callApi('retur.create', tokenOwner, {
+      tipe: 'jual',
+      ref_id: resTempo.data.penjualan.id,
+      pihak_id: pelId,
+      alasan: 'Uji retur nota tempo belum lunas',
+      metode_refund: 'potong_piutang',
+      items: [{ produk_id: prod.id, nama: prod.nama, satuan: prod.satuan_dasar, faktor: 1, qty: 2, harga: 20000 }]
+    });
+    assert.strictEqual(resReturTempo.ok, true);
+    const pelAfterReturTempo = callApi('pelanggan.detail', tokenOwner, { id: pelId });
+    assert.strictEqual(pelAfterReturTempo.data.pelanggan.poin, 15, 'Retur dari nota tempo tanpa poin tidak boleh memotong poin member');
+
+    // 6. Lunasi sisa piutang Rp 60.000 (100.000 - retur 40.000) -> dapat 60.000 / 10.000 * 1.5 = 9 poin -> saldo jadi 24
+    const listPt = callApi('piutang.list', tokenOwner, { pelanggan_id: pelId });
+    const ptTarget = listPt.data.items.find((pt) => pt.penjualan_id === resTempo.data.penjualan.id);
+    assert.ok(ptTarget && ptTarget.sisa === 60000, 'Sisa piutang setelah retur potong piutang harus Rp 60.000');
+    const resBayarPt = callApi('piutang.bayar', tokenOwner, { id: ptTarget.id, jumlah: 60000, metode: 'tunai' });
+    assert.strictEqual(resBayarPt.ok, true);
+    assert.strictEqual(resBayarPt.data.poin_didapat, 9, 'Pelunasan sisa piutang Rp 60.000 untuk Gold wajib menghasilkan 9 poin');
+    assert.strictEqual(resBayarPt.data.poin_saldo, 24, 'Saldo poin member harus menjadi 24');
+
+    // 7. Retur 2 qty (Rp 40.000) dari NOTA TUNAI (yang mendapat 15 poin) -> potong langsung 6 poin (40.000 / 10.000 * 1.5) -> saldo jadi 18!
+    const resReturTunai = callApi('retur.create', tokenOwner, {
+      tipe: 'jual',
+      ref_id: resTunai.data.penjualan.id,
+      pihak_id: pelId,
+      alasan: 'Uji retur nota tunai berpoin',
+      metode_refund: 'tunai',
+      items: [{ produk_id: prod.id, nama: prod.nama, satuan: prod.satuan_dasar, faktor: 1, qty: 2, harga: 20000 }]
+    });
+    assert.strictEqual(resReturTunai.ok, true);
+    const pelAfterReturTunai = callApi('pelanggan.detail', tokenOwner, { id: pelId });
+    assert.strictEqual(pelAfterReturTunai.data.pelanggan.poin, 18, 'Retur Rp 40.000 dari nota tunai Gold wajib langsung memotong 6 poin (24 -> 18)');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

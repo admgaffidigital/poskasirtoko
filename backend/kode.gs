@@ -183,8 +183,9 @@ const PENGATURAN_DEFAULT = {
   poin_per_rupiah: 10000,
   level_member: [
     { nama: 'Reguler', min_belanja: 0, pengali: 1 },
-    { nama: 'Perak', min_belanja: 10000000, pengali: 1.25 },
-    { nama: 'Emas', min_belanja: 50000000, pengali: 1.5 }
+    { nama: 'Silver', min_belanja: 10000000, pengali: 1.2 },
+    { nama: 'Gold', min_belanja: 50000000, pengali: 1.5 },
+    { nama: 'Platinum', min_belanja: 100000000, pengali: 2 }
   ],
   pajak_aktif: false,
   pajak_persen: 11,
@@ -899,6 +900,56 @@ function catatAudit_(userId, aksi, modul, refId, detail) {
   } catch (err) {
     console.error('Gagal mencatat audit: ' + err);
   }
+}
+
+/** Hitung faktor pengali poin berdasarkan level member (case-insensitive + kompatibel alias Perak/Silver, Emas/Gold, Platinum). */
+function hitungPengaliPoin_(levelNama, pengaturan) {
+  const norm = String(levelNama || 'Reguler').trim().toLowerCase();
+  const alias = { perak: 'silver', silver: 'silver', emas: 'gold', gold: 'gold', platinum: 'platinum', reguler: 'reguler' };
+  const target = alias[norm] || norm;
+
+  const daftar = Array.isArray(pengaturan && pengaturan.level_member) ? pengaturan.level_member : [];
+  for (let i = 0; i < daftar.length; i++) {
+    const lvl = daftar[i];
+    const lvlNorm = String(lvl && lvl.nama || '').trim().toLowerCase();
+    const lvlCanonical = alias[lvlNorm] || lvlNorm;
+    if (lvlCanonical === target) {
+      return Number(lvl.pengali) || 1;
+    }
+  }
+  const bawaan = { reguler: 1, silver: 1.2, gold: 1.5, platinum: 2 };
+  return bawaan[target] || 1;
+}
+
+/**
+ * Evaluasi kenaikan level member berdasarkan total belanja baru.
+ * Hanya menaikkan level secara otomatis dan TIDAK PERNAH menurunkan level member yang sudah lebih tinggi.
+ */
+function evaluasiLevelMember_(levelLama, totalBelanjaBaru, pengaturan) {
+  const rankMap = { reguler: 0, silver: 1, perak: 1, gold: 2, emas: 2, platinum: 3 };
+  const namaKanonik = { perak: 'Silver', silver: 'Silver', emas: 'Gold', gold: 'Gold', platinum: 'Platinum', reguler: 'Reguler' };
+
+  const lamaRaw = String(levelLama || 'Reguler').trim();
+  const lamaKey = lamaRaw.toLowerCase();
+  let levelTerbaik = namaKanonik[lamaKey] || lamaRaw || 'Reguler';
+  let rankTerbaik = rankMap[lamaKey] !== undefined ? rankMap[lamaKey] : 0;
+
+  const daftar = Array.isArray(pengaturan && pengaturan.level_member) && pengaturan.level_member.length
+    ? pengaturan.level_member
+    : PENGATURAN_DEFAULT.level_member;
+
+  daftar.forEach(function (lvl) {
+    const minBelanja = Number(lvl && lvl.min_belanja) || 0;
+    if (totalBelanjaBaru >= minBelanja) {
+      const k = String(lvl.nama || '').trim().toLowerCase();
+      const r = rankMap[k] !== undefined ? rankMap[k] : 0;
+      if (r > rankTerbaik) {
+        rankTerbaik = r;
+        levelTerbaik = namaKanonik[k] || lvl.nama;
+      }
+    }
+  });
+  return levelTerbaik;
 }
 
 /** Pengaturan aktif (default + nilai tersimpan), di-cache. */
@@ -1936,6 +1987,7 @@ function aksiPengaturanSet_(ctx) {
       let val = p[k];
       if (k === 'diskon_maks_kasir_persen') val = V_.angka(val, 'Maks Diskon Kasir', { min: 0, max: 100 });
       if (k === 'pajak_persen') val = V_.angka(val, 'Pajak Persen', { min: 0, max: 100 });
+      if (k === 'poin_per_rupiah') val = V_.angka(val, 'Aturan Poin (Rp per 1 Poin)', { min: 100 });
       if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
       if (k === 'printer_jalur') val = ['otomatis', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
 
@@ -2472,12 +2524,10 @@ function aksiPenjualanCreate_(ctx) {
   // Hitung Loyalty Points (Aturan Bisnis #7: hanya dari transaksi tunai/non-tempo lunas saat final)
   let poinDidapat = 0;
   const bayarLunasSaatIni = grandTotal - totalTempo;
-  if (pelanggan && pelanggan.tipe === 'member' && bayarLunasSaatIni > 0 && pengaturan.poin_per_rupiah > 0) {
-    let pengali = 1;
-    (pengaturan.level_member || []).forEach(function (lvl) {
-      if (lvl.nama === pelanggan.level) pengali = Number(lvl.pengali) || 1;
-    });
-    poinDidapat = Math.floor((bayarLunasSaatIni / pengaturan.poin_per_rupiah) * pengali);
+  const nominalPerPoin = Number(pengaturan.poin_per_rupiah) || 0;
+  if (pelanggan && String(pelanggan.tipe || '').toLowerCase() === 'member' && bayarLunasSaatIni > 0 && nominalPerPoin > 0) {
+    const pengali = hitungPengaliPoin_(pelanggan.level, pengaturan);
+    poinDidapat = Math.floor((bayarLunasSaatIni / nominalPerPoin) * pengali);
   }
 
   // 1. Simpan Header Penjualan
@@ -2599,19 +2649,15 @@ function aksiPenjualanCreate_(ctx) {
   }
 
   // 6. Update Poin & Total Belanja Member (Aturan Bisnis #7 & #16)
-  if (pelanggan && pelanggan.tipe === 'member') {
+  let pelangganRespon = pelanggan;
+  if (pelanggan && String(pelanggan.tipe || '').toLowerCase() === 'member') {
     const totalBelanjaLama = Number(pelanggan.total_belanja || 0);
     const totalBelanjaBaru = totalBelanjaLama + bayarLunasSaatIni;
     const poinLama = Number(pelanggan.poin || 0);
     const poinBaru = poinLama + poinDidapat;
 
-    // Evaluasi kenaikan level member berdasarkan total belanja baru
-    let levelBaru = pelanggan.level || 'Reguler';
-    (pengaturan.level_member || []).forEach(function (lvl) {
-      if (totalBelanjaBaru >= (Number(lvl.min_belanja) || 0)) {
-        levelBaru = lvl.nama;
-      }
-    });
+    // Evaluasi kenaikan level member secara aman (tidak pernah menurunkan level yang sudah tinggi)
+    const levelBaru = evaluasiLevelMember_(pelanggan.level, totalBelanjaBaru, pengaturan);
 
     ubahBaris_('Pelanggan', [{
       id: pelanggan.id,
@@ -2621,6 +2667,13 @@ function aksiPenjualanCreate_(ctx) {
         level: levelBaru
       }
     }], ctx.user.id);
+
+    // Pastikan objek pelanggan di respons transaksi & struk membawa saldo poin & level terbaru
+    pelangganRespon = Object.assign({}, pelanggan, {
+      total_belanja: totalBelanjaBaru,
+      poin: poinBaru,
+      level: levelBaru
+    });
 
     if (poinDidapat > 0) {
       tambahBaris_('Poin_Log', [{
@@ -2664,7 +2717,7 @@ function aksiPenjualanCreate_(ctx) {
     penjualan: penjualanTersimpan,
     items: itemsTersimpan,
     pembayaran: bayarTersimpan,
-    pelanggan: pelanggan,
+    pelanggan: pelangganRespon,
     kasir: {
       id: ctx.user.id,
       nama: ctx.user.nama || ctx.user.username
@@ -4278,30 +4331,48 @@ function aksiPiutangBayar_(ctx) {
 
   // 4. Aturan Bisnis #7 & #16: Jika lunas dan pelanggan adalah Member, berikan poin dari nilai tempo
   let poinDiberikan = 0;
+  let poinSaldoBaru = null;
+  let levelMemberBaru = null;
   if (statusBaru === 'lunas' && piutang.pelanggan_id) {
     const pel = cariById_('Pelanggan', piutang.pelanggan_id);
-    if (pel && pel.tipe === 'member') {
+    if (pel && String(pel.tipe || '').toLowerCase() === 'member') {
       const pengaturan = ambilPengaturan_();
-      if (pengaturan.poin_per_rupiah > 0) {
-        let pengali = 1;
-        (pengaturan.level_member || []).forEach(function (lvl) {
-          if (lvl.nama === pel.level) pengali = Number(lvl.pengali) || 1;
-        });
-        poinDiberikan = Math.floor((Number(piutang.total) / pengaturan.poin_per_rupiah) * pengali);
+      const nominalPerPoin = Number(pengaturan.poin_per_rupiah) || 0;
+      const nominalLunasEfektif = terbayarBaru;
+      if (nominalPerPoin > 0 && nominalLunasEfektif > 0) {
+        const pengali = hitungPengaliPoin_(pel.level, pengaturan);
+        poinDiberikan = Math.floor((nominalLunasEfektif / nominalPerPoin) * pengali);
       }
 
       const totalBelanjaLama = Number(pel.total_belanja || 0);
-      const totalBelanjaBaru = totalBelanjaLama + Number(piutang.total);
+      const totalBelanjaBaru = totalBelanjaLama + nominalLunasEfektif;
       const poinLama = Number(pel.poin || 0);
       const poinBaru = poinLama + poinDiberikan;
+      const levelBaru = evaluasiLevelMember_(pel.level, totalBelanjaBaru, pengaturan);
+      poinSaldoBaru = poinBaru;
+      levelMemberBaru = levelBaru;
 
       ubahBaris_('Pelanggan', [{
         id: pel.id,
         data: {
           poin: poinBaru,
-          total_belanja: totalBelanjaBaru
+          total_belanja: totalBelanjaBaru,
+          level: levelBaru
         }
       }], ctx.user.id);
+
+      // Sinkronkan juga poin_didapat pada nota Penjualan asal agar riwayat & void akurat
+      if (piutang.penjualan_id && poinDiberikan > 0) {
+        const pjAsal = cariById_('Penjualan', piutang.penjualan_id);
+        if (pjAsal) {
+          ubahBaris_('Penjualan', [{
+            id: pjAsal.id,
+            data: {
+              poin_didapat: (Number(pjAsal.poin_didapat) || 0) + poinDiberikan
+            }
+          }], ctx.user.id);
+        }
+      }
 
       if (poinDiberikan > 0) {
         tambahBaris_('Poin_Log', [{
@@ -4327,7 +4398,9 @@ function aksiPiutangBayar_(ctx) {
     pesan: 'Pembayaran ' + formatRupiah_(jumlahBayar) + ' berhasil dicatat. Status: ' + statusBaru + '.',
     sisa: sisaBaru,
     status: statusBaru,
-    poin_didapat: poinDiberikan
+    poin_didapat: poinDiberikan,
+    poin_saldo: poinSaldoBaru,
+    level_baru: levelMemberBaru
   };
 }
 
@@ -4979,29 +5052,60 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
 
   // 3. Efek Finansial & Piutang/Hutang
   if (tipe === 'jual') {
-    // Kurangi poin & total belanja member jika ada
+    const pjAsal = retur.ref_id ? cariById_('Penjualan', retur.ref_id) : null;
+    const poinNotaTersisa = pjAsal ? Math.max(0, Number(pjAsal.poin_didapat || 0)) : 0;
+
+    // Kurangi poin & total belanja member HANYA jika nota sebelumnya memang sudah mendapatkan poin / sudah dibayar
     if (retur.pihak_id) {
       const pel = cariById_('Pelanggan', retur.pihak_id);
-      if (pel && pel.tipe === 'member') {
+      if (pel && String(pel.tipe || '').toLowerCase() === 'member') {
         const pengaturan = ambilPengaturan_();
         let poinPotong = 0;
-        if (pengaturan.poin_per_rupiah > 0) {
-          let pengali = 1;
-          (pengaturan.level_member || []).forEach(function (l) { if (l.nama === pel.level) pengali = Number(l.pengali) || 1; });
-          poinPotong = Math.floor((Number(retur.total) / pengaturan.poin_per_rupiah) * pengali);
+
+        if (poinNotaTersisa > 0) {
+          const totalNotaAsal = pjAsal ? Number(pjAsal.total || 0) : 0;
+          const nominalPerPoin = Number(pengaturan.poin_per_rupiah) || 0;
+          if (totalNotaAsal > 0 && Number(retur.total) >= totalNotaAsal) {
+            // Retur penuh dari nota yang mendapat poin -> potong seluruh sisa poin nota tersebut
+            poinPotong = poinNotaTersisa;
+          } else if (nominalPerPoin > 0) {
+            // Retur sebagian -> potong proporsional sesuai aturan poin, maksimal sebesar sisa poin nota asal
+            const pengali = hitungPengaliPoin_(pel.level, pengaturan);
+            const hitungProporsional = Math.floor((Number(retur.total) / nominalPerPoin) * pengali);
+            poinPotong = Math.min(poinNotaTersisa, hitungProporsional);
+          } else {
+            poinPotong = poinNotaTersisa;
+          }
         }
+
+        // Kurangi total_belanja hanya sebesar bagian yang memang sudah pernah dibayar (bukan piutang belum lunas)
+        const statusBayarAsal = pjAsal ? String(pjAsal.status_bayar || '') : 'lunas';
+        const bayarTercatatAsal = pjAsal ? Math.min(Number(pjAsal.total || 0), Number(pjAsal.bayar || 0)) : Number(retur.total);
+        const belanjaDikurangi = statusBayarAsal === 'belum_lunas'
+          ? 0
+          : (statusBayarAsal === 'sebagian' ? Math.min(Number(retur.total), bayarTercatatAsal) : Number(retur.total));
 
         const poinLama = Number(pel.poin || 0);
         const poinBaru = Math.max(0, poinLama - poinPotong);
         const belanjaLama = Number(pel.total_belanja || 0);
-        const belanjaBaru = Math.max(0, belanjaLama - Number(retur.total));
+        const belanjaBaru = Math.max(0, belanjaLama - belanjaDikurangi);
 
-        ubahBaris_('Pelanggan', [{
-          id: pel.id,
-          data: { poin: poinBaru, total_belanja: belanjaBaru }
-        }], ctx.user.id);
+        if (poinPotong > 0 || belanjaDikurangi > 0) {
+          ubahBaris_('Pelanggan', [{
+            id: pel.id,
+            data: { poin: poinBaru, total_belanja: belanjaBaru }
+          }], ctx.user.id);
+        }
 
         if (poinPotong > 0) {
+          // Perbarui sisa poin_didapat pada nota asal agar retur berulang tidak memotong melebihi poin nota
+          if (pjAsal) {
+            ubahBaris_('Penjualan', [{
+              id: pjAsal.id,
+              data: { poin_didapat: Math.max(0, poinNotaTersisa - poinPotong) }
+            }], ctx.user.id);
+          }
+
           tambahBaris_('Poin_Log', [{
             pelanggan_id: pel.id,
             jumlah: -poinPotong,

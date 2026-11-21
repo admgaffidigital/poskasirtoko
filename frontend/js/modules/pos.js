@@ -2031,7 +2031,8 @@ export function renderPosModule(container) {
   function perbaruiTampilanPelanggan() {
     if (state.pelanggan) {
       elLabelPelNama.textContent = state.pelanggan.nama;
-      elLabelPelSub.textContent = `Member ${state.pelanggan.level || 'Reguler'} • Limit: ${formatRupiah(state.pelanggan.sisa_limit || state.pelanggan.limit_kredit || 0)}`;
+      const poinSaatIni = Number(state.pelanggan.poin || 0).toLocaleString('id-ID');
+      elLabelPelSub.textContent = `Member ${state.pelanggan.level || 'Reguler'} • ${poinSaatIni} Poin • Limit: ${formatRupiah(state.pelanggan.sisa_limit || state.pelanggan.limit_kredit || 0)}`;
       elBtnCustomer.textContent = 'Ganti';
     } else {
       elLabelPelNama.textContent = 'Pelanggan Umum';
@@ -2066,8 +2067,9 @@ export function renderPosModule(container) {
                 <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary);">${formatRupiah(grandTotal)}</div>
                 <div class="text-xs text-muted" style="margin-top: 4px;">
                   Pelanggan: <b>${escapeHtml(state.pelanggan ? state.pelanggan.nama : 'Pelanggan Umum')}</b>
-                  ${isMember ? `(Sisa Limit: <span class="text-success">${formatRupiah(state.pelanggan.sisa_limit || 0)}</span>)` : ''}
+                  ${isMember ? `(Poin: <b>${Number(state.pelanggan.poin || 0).toLocaleString('id-ID')}</b> • Sisa Limit: <span class="text-success">${formatRupiah(state.pelanggan.sisa_limit || 0)}</span>)` : ''}
                 </div>
+                ${isMember ? `<div id="checkout-poin-preview" class="text-xs" style="margin-top: 6px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--surface-3); color: var(--text);"></div>` : ''}
               </div>
             </div>
 
@@ -2147,6 +2149,7 @@ export function renderPosModule(container) {
               <div id="sec-tempo" style="display: none;">
                 <div class="alert alert-info text-xs" style="margin-bottom: var(--sp-2);">
                   Jatuh tempo: <b>${state.pelanggan?.tempo_hari || 30} Hari</b> dari sekarang. Piutang akan dicatat atas nama <b>${escapeHtml(state.pelanggan?.nama || '')}</b>.
+                  <div style="margin-top: 4px;">Poin loyalitas transaksi tempo akan <b>otomatis bertambah saat piutang dilunasi</b>.</div>
                 </div>
               </div>
 
@@ -2190,6 +2193,60 @@ export function renderPosModule(container) {
     const inputTunai = modal.el.querySelector('#input-tunai-terima');
     const labelKembalian = modal.el.querySelector('#label-kembalian');
     const boxKirim = modal.el.querySelector('#box-detail-kirim');
+    const elPoinPreview = modal.el.querySelector('#checkout-poin-preview');
+
+    // Hitung pratinjau estimasi poin member sesuai metode bayar & aturan poin toko
+    const hitungPengaliLokal = (levelNama) => {
+      const k = String(levelNama || 'Reguler').trim().toLowerCase();
+      const mapAlias = { perak: 'silver', silver: 'silver', emas: 'gold', gold: 'gold', platinum: 'platinum', reguler: 'reguler' };
+      const target = mapAlias[k] || k;
+      const daftar = Array.isArray(state.pengaturan?.level_member) ? state.pengaturan.level_member : [];
+      for (const lvl of daftar) {
+        const lk = String(lvl?.nama || '').trim().toLowerCase();
+        if ((mapAlias[lk] || lk) === target) return Number(lvl.pengali) || 1;
+      }
+      return ({ reguler: 1, silver: 1.2, gold: 1.5, platinum: 2 })[target] || 1;
+    };
+
+    const perbaruiPreviewPoin = () => {
+      if (!elPoinPreview || !isMember) return;
+      const perRupiah = Number(state.pengaturan?.poin_per_rupiah) || 10000;
+      const pengali = hitungPengaliLokal(state.pelanggan?.level);
+      const calcPoin = (nominal) => (perRupiah > 0 && nominal > 0) ? Math.floor((nominal / perRupiah) * pengali) : 0;
+
+      if (activeMetode === 'tempo') {
+        const estLunas = calcPoin(grandTotal);
+        elPoinPreview.innerHTML = estLunas > 0
+          ? `Poin Tempo: <b>+${estLunas.toLocaleString('id-ID')} Poin</b> akan masuk otomatis saat piutang <b>Lunas</b>.`
+          : `Aturan poin: 1 poin tiap <b>${formatRupiah(perRupiah)}</b> belanja lunas.`;
+        return;
+      }
+
+      if (activeMetode === 'kombinasi') {
+        const nTempo = parseRupiah(modal.el.querySelector('#komb-tempo')?.value || 0);
+        const lunasSekarang = Math.max(0, grandTotal - nTempo);
+        const pSekarang = calcPoin(lunasSekarang);
+        const pNanti = calcPoin(Math.min(grandTotal, nTempo));
+        if (nTempo > 0) {
+          elPoinPreview.innerHTML = `Estimasi Poin: <b>+${pSekarang.toLocaleString('id-ID')} Poin</b> langsung masuk (DP lunas), dan <b>+${pNanti.toLocaleString('id-ID')} Poin</b> masuk saat piutang lunas.`;
+        } else {
+          elPoinPreview.innerHTML = pSekarang > 0
+            ? `Estimasi Poin Didapat: <b class="text-success">+${pSekarang.toLocaleString('id-ID')} Poin</b> (${pengali}x level ${escapeHtml(state.pelanggan?.level || 'Reguler')}).`
+            : `Belanja di bawah ${formatRupiah(perRupiah)} (belum mendapat poin).`;
+        }
+        return;
+      }
+
+      const est = calcPoin(grandTotal);
+      elPoinPreview.innerHTML = est > 0
+        ? `Estimasi Poin Didapat: <b class="text-success">+${est.toLocaleString('id-ID')} Poin</b> (${pengali}x level ${escapeHtml(state.pelanggan?.level || 'Reguler')}).`
+        : `Belanja di bawah ${formatRupiah(perRupiah)} (minimal ${formatRupiah(perRupiah)} untuk 1 poin).`;
+    };
+    perbaruiPreviewPoin();
+
+    modal.el.querySelector('#komb-tempo')?.addEventListener('input', perbaruiPreviewPoin);
+    modal.el.querySelector('#komb-tunai')?.addEventListener('input', perbaruiPreviewPoin);
+    modal.el.querySelector('#komb-transfer')?.addEventListener('input', perbaruiPreviewPoin);
 
     // Pengiriman toggle
     modal.el.querySelectorAll('.btn-opt-kirim').forEach((b) => {
@@ -2230,6 +2287,7 @@ export function renderPosModule(container) {
         elTrfSec.style.display = (activeMetode === 'transfer' || activeMetode === 'qris') ? 'block' : 'none';
         elTempoSec.style.display = activeMetode === 'tempo' ? 'block' : 'none';
         elKombSec.style.display = activeMetode === 'kombinasi' ? 'block' : 'none';
+        perbaruiPreviewPoin();
       });
     });
 
@@ -2327,6 +2385,40 @@ export function renderPosModule(container) {
         bunyikanBeep();
         haptic.success();
         modal.close();
+
+        // Sinkronkan saldo poin, total belanja & level member terbaru di layar POS dan cache daftar member
+        const pelTerbaru = res.data?.pelanggan;
+        if (pelTerbaru && pelTerbaru.id) {
+          const totalTempoDipakai = daftarBayar.filter((b) => b.metode === 'tempo').reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+          if (state.pelanggan && state.pelanggan.id === pelTerbaru.id) {
+            const sisaLimitLama = Number(state.pelanggan.sisa_limit ?? state.pelanggan.limit_kredit ?? 0);
+            state.pelanggan = {
+              ...state.pelanggan,
+              poin: pelTerbaru.poin,
+              total_belanja: pelTerbaru.total_belanja,
+              level: pelTerbaru.level,
+              sisa_limit: Math.max(0, sisaLimitLama - totalTempoDipakai)
+            };
+            perbaruiTampilanPelanggan();
+          }
+          if (Array.isArray(state.daftarPelanggan)) {
+            const idxPel = state.daftarPelanggan.findIndex((p) => p.id === pelTerbaru.id);
+            if (idxPel !== -1) {
+              const sisaLama = Number(state.daftarPelanggan[idxPel].sisa_limit ?? state.daftarPelanggan[idxPel].limit_kredit ?? 0);
+              state.daftarPelanggan[idxPel] = {
+                ...state.daftarPelanggan[idxPel],
+                poin: pelTerbaru.poin,
+                total_belanja: pelTerbaru.total_belanja,
+                level: pelTerbaru.level,
+                sisa_limit: Math.max(0, sisaLama - totalTempoDipakai)
+              };
+            }
+          }
+        }
+        const poinBaruDapat = Number(res.data?.penjualan?.poin_didapat || 0);
+        if (poinBaruDapat > 0 && pelTerbaru) {
+          showToast(`+${poinBaruDapat.toLocaleString('id-ID')} Poin ditambahkan ke ${pelTerbaru.nama} (Saldo: ${Number(pelTerbaru.poin || 0).toLocaleString('id-ID')} Poin)`, 'success', 3500);
+        }
 
         // Tampilkan modal struk sukses
         bukaModalStrukSukses(res.data);

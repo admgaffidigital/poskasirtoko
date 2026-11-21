@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.79] - 2026-11-21
+
+### Fixed
+- [BACKEND] [POS-JUAL] [MEMBER] [HUTANG-PIUTANG] [SETTING] **Perbaikan Menyeluruh Sistem Poin Loyalitas & Level Member**:
+  - **Saldo Poin Terbaru di Struk & Layar POS (`kode.gs`, `pos.js`)**: `aksiPenjualanCreate_` kini mengembalikan objek `pelanggan` yang sudah diperbarui (`poin`, `total_belanja`, `level`) sehingga saldo poin di struk thermal/WA dan header POS Kasir langsung menampilkan angka terbaru secara real-time, lengkap dengan notifikasi toast `+X Poin` dan sinkronisasi cache member lokal.
+  - **Penyelarasan Pengali Level & Proteksi Anti-Downgrade (`kode.gs`)**: Menambahkan helper `hitungPengaliPoin_()` dan `evaluasiLevelMember_()` yang mendukung nama level `Reguler (1x)`, `Silver (1.2x)`, `Gold (1.5x)`, `Platinum (2x)` secara *case-insensitive* (sekaligus kompatibel dengan alias lama `Perak`/`Emas`), serta memastikan level member yang diset tinggi oleh Owner/Admin tidak pernah turun otomatis ke `Reguler` saat transaksi.
+  - **Sinkronisasi Pelunasan Piutang (`kode.gs`, `api.js`)**: `aksiPiutangBayar_` saat status berubah menjadi `lunas` kini turut mengevaluasi kenaikan level member, memperbarui `Penjualan.poin_didapat` pada nota asal, dan `api.js` mengosongkan cache `member.` (riwayat poin) secara otomatis.
+  - **Validasi & Kejelasan UX Aturan Poin (`kode.gs`, `pengaturan.js`, `pos.js`)**: Memvalidasi `poin_per_rupiah` sebagai angka bulat minimal Rp 100 di backend & form Pengaturan, serta menampilkan pratinjau estimasi poin real-time pada modal Pembayaran POS Kasir (termasuk keterangan bahwa poin transaksi Tempo/Piutang otomatis masuk saat piutang berstatus Lunas).
+  - **Potong Poin Retur Akurat Berbasis Nota Asal (`kode.gs`, `api.js`)**: Retur penjualan kini hanya memotong poin member **jika nota sebelumnya memang pernah mendapatkan poin** (`poin_didapat > 0`), dibatasi maksimal sebesar sisa poin nota asal, sekaligus memperbarui `Penjualan.poin_didapat` dan tidak memotong poin member bila meretur nota piutang yang belum pernah lunas. Saat piutang yang pernah dipotong retur dilunasi, poin dihitung akurat dari nominal uang riil yang dibayar (`terbayar`).
+
 ## [1.0.78] - 2026-11-21
 
 ### Changed

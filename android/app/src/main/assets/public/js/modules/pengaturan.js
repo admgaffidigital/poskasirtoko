@@ -204,9 +204,9 @@ async function muatPengaturan(container) {
             <label class="field-label" for="cfg-poin-rupiah">Belanja untuk Mendapat 1 Poin (Rp)</label>
             <div class="input-prefix">
               <span>Rp</span>
-              <input type="number" class="input input-num" id="cfg-poin-rupiah" value="${cfg.poin_per_rupiah || 10000}" min="1000" step="500">
+              <input type="number" class="input input-num" id="cfg-poin-rupiah" value="${cfg.poin_per_rupiah || 10000}" min="100" step="100">
             </div>
-            <span class="field-hint">Standar: 1 poin tiap kelipatan Rp 10.000 belanja lunas.</span>
+            <span class="field-hint">Standar: 1 poin tiap kelipatan Rp 10.000 belanja lunas (khusus pelanggan Member). Untuk transaksi Piutang/Tempo, poin otomatis ditambahkan saat piutang berstatus <strong>Lunas</strong>.</span>
           </div>
         </div>
 
