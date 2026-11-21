@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.87] - 2026-11-21
+
+### Fixed
+- [POS-JUAL] [UI] **Penyeragaman Tinggi Kartu Grid View POS Kasir (Desktop & Mobile)**:
+  - Menyeragamkan tinggi frame visual `.pos-card-visual` menjadi kompak seragam (`96px` mobile / `118px` desktop) baik untuk produk berfoto (`object-fit: contain`) maupun tanpa foto, serta menambatkan konten SKU & nama tepat di bawah visual (`.pos-card-content` `flex-start`, `.pos-card-bottom` `margin-top: auto`) sehingga tidak ada lagi teks mengambang atau rongga kosong saat produk berfoto dan tanpa foto berada dalam satu baris.
+  - Menghilangkan bayangan oranye hardcoded pada `.pos-chip.active` agar 100% selaras di seluruh 6 tema warna aksen.
+
 ## [1.0.86] - 2026-11-21
 
 ### Fixed

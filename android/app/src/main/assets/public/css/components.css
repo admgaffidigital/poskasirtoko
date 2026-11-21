@@ -3669,7 +3669,7 @@ a.list-item:hover {
   background: var(--primary) !important;
   color: #ffffff !important;
   border-color: var(--primary) !important;
-  box-shadow: 0 2px 8px rgba(247, 107, 28, 0.35);
+  box-shadow: var(--shadow-xs);
 }
 
 .pos-product-area {
@@ -3728,12 +3728,11 @@ a.list-item:hover {
   background: var(--surface-2);
 }
 
-/* Visual Hero Banner Atas Kartu Grid (Rasio 1:1 Persegi Proporsional) */
+/* Visual Hero Banner Atas Kartu Grid (Tinggi Seragam Kompak 96px Mobile / 118px Desktop) */
 .pos-card-visual {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  height: auto;
+  height: 96px;
   background: var(--surface-2);
   display: grid;
   place-items: center;
@@ -3742,12 +3741,17 @@ a.list-item:hover {
   overflow: hidden;
 }
 
+.pos-card-visual.has-photo {
+  background: var(--surface);
+}
+
 .pos-card-img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 6px;
   background: var(--surface);
   display: block;
 }
@@ -3758,8 +3762,7 @@ a.list-item:hover {
 
 @media (min-width: 768px) {
   .pos-card-visual {
-    height: auto;
-    aspect-ratio: 1 / 1;
+    height: 118px;
   }
 }
 
@@ -3820,7 +3823,7 @@ a.list-item:hover {
   padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex: 1;
   gap: 4px;
 }
@@ -3860,8 +3863,8 @@ a.list-item:hover {
   align-items: flex-end;
   justify-content: space-between;
   gap: 6px;
-  margin-top: 4px;
-  padding-top: 6px;
+  margin-top: auto;
+  padding-top: 8px;
   border-top: 1px dashed var(--border);
 }
 
@@ -5961,57 +5964,20 @@ tr.is-bulk-selected td {
   }
 }
 
-/* ---------- POS Compact Header Untuk Produk Tanpa Foto (Anti-Kotak Kosong Besar) ---------- */
+/* ---------- POS Visual Seragam Kompak (Selaras Foto & Tanpa Foto Dalam 1 Baris) ---------- */
 .pos-card-visual.no-photo {
-  aspect-ratio: auto !important;
-  height: 46px !important;
-  padding: 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
   background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
 }
 
 .pos-card-visual.no-photo .pos-card-icon-wrap {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  box-shadow: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
 }
 
 .pos-card-visual.no-photo .pos-card-icon-wrap svg {
-  width: 16px;
-  height: 16px;
-}
-
-.pos-card-visual.no-photo .pos-multi-check-badge {
-  position: static;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-}
-
-.pos-card-visual.no-photo .pos-card-badges-left {
-  position: static;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.pos-card-visual.no-photo .pos-card-badges-top {
-  position: static;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.pos-card-visual.no-photo .pos-in-cart-pill {
-  position: static;
-  flex-shrink: 0;
+  width: 20px;
   height: 20px;
-  padding: 0 6px;
-  font-size: 10.5px;
 }
 
 /* ---------- Filter Bar Manajemen Produk Padat & Simetris ---------- */
