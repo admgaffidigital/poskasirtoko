@@ -58,7 +58,7 @@ export function renderPosModule(container) {
     hasMore: false,
     isLoadingMore: false,
     multiSelectMode: false,
-    multiSelectedIds: new Set()
+    multiSelectedMap: new Map()
   };
 
   const isOwnerAtauAdmin = state.user.role === 'owner' || state.user.role === 'admin';
@@ -341,7 +341,7 @@ export function renderPosModule(container) {
     if (elBtnMultiSelect) {
       elBtnMultiSelect.className = `btn btn-sm ${state.multiSelectMode ? 'btn-primary' : 'btn-secondary'}`;
     }
-    const cnt = state.multiSelectedIds.size;
+    const cnt = state.multiSelectedMap.size;
     if (elPosMultiCount) elPosMultiCount.textContent = String(cnt);
     if (elBtnPosMultiAdd) {
       elBtnPosMultiAdd.disabled = cnt === 0;
@@ -356,7 +356,7 @@ export function renderPosModule(container) {
   const setPosMultiSelectMode = (aktif) => {
     state.multiSelectMode = Boolean(aktif);
     if (!state.multiSelectMode) {
-      state.multiSelectedIds.clear();
+      state.multiSelectedMap.clear();
     }
     syncPosMultiBar();
     renderKatalog();
@@ -381,10 +381,10 @@ export function renderPosModule(container) {
   });
 
   elBtnPosMultiAdd?.addEventListener('click', () => {
-    if (state.multiSelectedIds.size === 0) return;
+    if (state.multiSelectedMap.size === 0) return;
     let addedCount = 0;
-    state.multiSelectedIds.forEach((id) => {
-      const p = state.katalog.find((x) => x.id === id);
+    state.multiSelectedMap.forEach((cachedProd, id) => {
+      const p = state.katalog.find((x) => x.id === id) || cachedProd;
       if (!p) return;
       const punyaVarian = p.punya_varian && Array.isArray(p.varian) && p.varian.length > 0;
       if (punyaVarian) {
@@ -790,7 +790,7 @@ export function renderPosModule(container) {
 
       const rawKode = p.sku || p.barcode || '';
       const skuLabel = formatSkuLabel(rawKode);
-      const isMultiSelected = state.multiSelectMode && state.multiSelectedIds.has(p.id);
+      const isMultiSelected = state.multiSelectMode && state.multiSelectedMap.has(p.id);
 
       html += `
         <div class="pos-product-card ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
@@ -906,7 +906,7 @@ export function renderPosModule(container) {
 
       const rawKode = p.sku || p.barcode || '';
       const skuLabel = formatSkuLabel(rawKode);
-      const isMultiSelected = state.multiSelectMode && state.multiSelectedIds.has(p.id);
+      const isMultiSelected = state.multiSelectMode && state.multiSelectedMap.has(p.id);
 
       html += `
         <div class="pos-list-item ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
@@ -995,19 +995,19 @@ export function renderPosModule(container) {
       const el = e.target.closest('.pos-product-card, .pos-product-row, .pos-list-item');
       if (!el) return;
       const id = el.getAttribute('data-id');
+      const p = state.katalog.find((x) => x.id === id);
       if (state.multiSelectMode) {
-        if (state.multiSelectedIds.has(id)) {
-          state.multiSelectedIds.delete(id);
+        if (state.multiSelectedMap.has(id)) {
+          state.multiSelectedMap.delete(id);
           el.classList.remove('is-multi-selected');
-        } else {
-          state.multiSelectedIds.add(id);
+        } else if (p) {
+          state.multiSelectedMap.set(id, p);
           el.classList.add('is-multi-selected');
         }
         haptic.light();
         syncPosMultiBar();
         return;
       }
-      const p = state.katalog.find((x) => x.id === id);
       if (p) pilihProduk(p);
     });
 

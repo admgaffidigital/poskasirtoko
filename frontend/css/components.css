@@ -2455,7 +2455,7 @@ a.list-item:hover {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: var(--fw-semibold);
   text-transform: none;
@@ -2634,7 +2634,7 @@ a.list-item:hover {
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--surface-2);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   cursor: pointer;

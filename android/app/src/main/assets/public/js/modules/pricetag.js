@@ -295,7 +295,7 @@ export async function renderPriceTagModule(container) {
           }
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const renderDaftarChecklist = (list) => {
       if (list.length === 0) {
@@ -361,18 +361,18 @@ export async function renderPriceTagModule(container) {
     $('#btn-pilih-semua-ptag', container)?.addEventListener('click', () => {
       semuaProduk.forEach((p) => terpilihIds.add(p.id));
       renderDaftarChecklist(semuaProduk);
-    if (terpilihIds.size > 0) {
-      updatePreview();
-    }
+      if (terpilihIds.size > 0) {
+        updatePreview();
+      }
       updatePreview();
     });
 
     $('#btn-batal-semua-ptag', container)?.addEventListener('click', () => {
       terpilihIds.clear();
       renderDaftarChecklist(semuaProduk);
-    if (terpilihIds.size > 0) {
-      updatePreview();
-    }
+      if (terpilihIds.size > 0) {
+        updatePreview();
+      }
       updatePreview();
     });
 

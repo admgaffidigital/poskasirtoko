@@ -12,7 +12,7 @@ import { bukaModalPilihanCetakPenjualan } from '../utils/printer.js';
 
 let pelangganCache = [];
 let pelangganSelectMode = false;
-const pelangganSelectedIds = new Set();
+const pelangganSelectedMap = new Map();
 
 function syncPelBulkBar(container, isOwnerOrAdmin) {
   const bar = $('#pel-bulk-bar', container);
@@ -22,11 +22,13 @@ function syncPelBulkBar(container, isOwnerOrAdmin) {
     btnToggle.innerHTML = `${ICONS.check}<span>${pelangganSelectMode ? 'Selesai Pilih' : 'Pilih'}</span>`;
   }
   if (!bar) return;
-  const cnt = pelangganSelectedIds.size;
+  const cnt = pelangganSelectedMap.size;
   const elCnt = $('#pel-bulk-count', bar);
   if (elCnt) elCnt.textContent = String(cnt);
   bar.style.display = pelangganSelectMode ? 'flex' : 'none';
   bar.querySelectorAll('[data-needs-sel]').forEach((b) => { b.disabled = cnt === 0; });
+  const btnLvl = $('#btn-bulk-pel-level', bar);
+  if (btnLvl) btnLvl.style.display = isOwnerOrAdmin ? 'inline-flex' : 'none';
   const btnDel = $('#btn-bulk-pel-hapus', bar);
   if (btnDel) btnDel.style.display = isOwnerOrAdmin ? 'inline-flex' : 'none';
 }
@@ -36,7 +38,7 @@ export async function renderPelangganModule(container) {
   const canEdit = Boolean(user);
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin');
   pelangganSelectMode = false;
-  pelangganSelectedIds.clear();
+  pelangganSelectedMap.clear();
 
   container.innerHTML = `
     <div class="stack">
@@ -177,7 +179,7 @@ export async function renderPelangganModule(container) {
   const keluarSelectPel = () => {
     if (!pelangganSelectMode) return false;
     pelangganSelectMode = false;
-    pelangganSelectedIds.clear();
+    pelangganSelectedMap.clear();
     syncPelBulkBar(container, isOwnerOrAdmin);
     muatDataPelanggan(container);
     return true;
@@ -187,7 +189,7 @@ export async function renderPelangganModule(container) {
   if (canEdit) {
     $('#btn-toggle-select-pel', container)?.addEventListener('click', () => {
       pelangganSelectMode = !pelangganSelectMode;
-      if (!pelangganSelectMode) pelangganSelectedIds.clear();
+      if (!pelangganSelectMode) pelangganSelectedMap.clear();
       syncPelBulkBar(container, isOwnerOrAdmin);
       muatDataPelanggan(container);
     });
@@ -195,19 +197,20 @@ export async function renderPelangganModule(container) {
     $('#btn-bulk-pel-cancel', container)?.addEventListener('click', keluarSelectPel);
 
     $('#btn-bulk-pel-all', container)?.addEventListener('click', () => {
-      const semuaTerpilih = pelangganCache.length > 0 && pelangganCache.every((p) => pelangganSelectedIds.has(p.id));
+      const semuaTerpilih = pelangganCache.length > 0 && pelangganCache.every((p) => pelangganSelectedMap.has(p.id));
       if (semuaTerpilih) {
-        pelangganSelectedIds.clear();
+        pelangganCache.forEach((p) => pelangganSelectedMap.delete(p.id));
       } else {
-        pelangganCache.forEach((p) => pelangganSelectedIds.add(p.id));
+        pelangganCache.forEach((p) => pelangganSelectedMap.set(p.id, p));
       }
       syncPelBulkBar(container, isOwnerOrAdmin);
       muatDataPelanggan(container);
     });
 
-    // Ubah Level Member Massal
+    // Ubah Level Member Massal (Khusus Owner & Admin)
     $('#btn-bulk-pel-level', container)?.addEventListener('click', () => {
-      const terpilih = pelangganCache.filter((p) => pelangganSelectedIds.has(p.id));
+      if (!isOwnerOrAdmin) return;
+      const terpilih = Array.from(pelangganSelectedMap.values());
       if (!terpilih.length) return;
       const modalLvl = showModal({
         title: `Ubah Level (${terpilih.length} Pelanggan)`,
@@ -241,27 +244,21 @@ export async function renderPelangganModule(container) {
           try {
             await apiCall('pelanggan.update', {
               id: it.id,
-              nama: it.nama,
-              hp: it.hp || '',
-              alamat: it.alamat || '',
               tipe: 'member',
-              level: levelBaru,
-              limit_kredit: Number(it.limit_kredit || 0),
-              tempo_hari: Number(it.tempo_hari || 30),
-              aktif: it.aktif !== false
+              level: levelBaru
             });
             sukses++;
-          } catch (_) {}
+          } catch (_) { }
         }
         modalLvl.close();
-        showToast(`${sukses} pelanggan berhasil diperbarui ke level ${levelBaru}.`, 'success');
+        showToast(`${sukses} dari ${terpilih.length} pelanggan berhasil diperbarui ke level ${levelBaru}.`, sukses > 0 ? 'success' : 'warning');
         keluarSelectPel();
       });
     });
 
     // Salin Daftar Kontak WA Pelanggan Terpilih
     $('#btn-bulk-pel-wa', container)?.addEventListener('click', () => {
-      const terpilih = pelangganCache.filter((p) => pelangganSelectedIds.has(p.id));
+      const terpilih = Array.from(pelangganSelectedMap.values());
       if (!terpilih.length) return;
       const lines = terpilih.map((p, i) => `${i + 1}. ${p.nama} (${p.hp || 'Tanpa HP'})${p.tipe === 'member' ? ` - ${p.level || 'Member'}` : ''}`);
       const teks = lines.join('\n');
@@ -291,7 +288,7 @@ export async function renderPelangganModule(container) {
 
     // Hapus Massal Pelanggan (Owner/Admin)
     $('#btn-bulk-pel-hapus', container)?.addEventListener('click', async () => {
-      const terpilih = pelangganCache.filter((p) => pelangganSelectedIds.has(p.id));
+      const terpilih = Array.from(pelangganSelectedMap.values());
       if (!terpilih.length) return;
       const setuju = await showConfirm({
         title: `Hapus ${terpilih.length} Pelanggan Terpilih?`,
@@ -328,7 +325,7 @@ export async function renderPelangganModule(container) {
 
   return () => {
     pelangganSelectMode = false;
-    pelangganSelectedIds.clear();
+    pelangganSelectedMap.clear();
     if (window.__posCancelSelectMode === keluarSelectPel) {
       window.__posCancelSelectMode = null;
     }
@@ -408,23 +405,23 @@ async function muatDataPelanggan(container) {
           </thead>
           <tbody>
             ${items.map((it) => {
-              const isMember = it.tipe === 'member';
-              const isChecked = pelangganSelectMode && pelangganSelectedIds.has(it.id);
-              let badgeTipe = '<span class="badge badge-info">Umum</span>';
-              if (isMember) {
-                let badgeColor = 'badge-primary';
-                if (it.level === 'Gold') badgeColor = 'badge-warning';
-                if (it.level === 'Platinum') badgeColor = 'badge-success';
-                badgeTipe = `<span class="badge ${badgeColor}">${escapeHtml(it.level || 'Member')}</span>`;
-              }
+      const isMember = it.tipe === 'member';
+      const isChecked = pelangganSelectMode && pelangganSelectedMap.has(it.id);
+      let badgeTipe = '<span class="badge badge-info">Umum</span>';
+      if (isMember) {
+        let badgeColor = 'badge-primary';
+        if (it.level === 'Gold') badgeColor = 'badge-warning';
+        if (it.level === 'Platinum') badgeColor = 'badge-success';
+        badgeTipe = `<span class="badge ${badgeColor}">${escapeHtml(it.level || 'Member')}</span>`;
+      }
 
-              const statusBadge = it.aktif !== false
-                ? '<span class="badge badge-success text-xs">Aktif</span>'
-                : '<span class="badge badge-danger text-xs">Nonaktif</span>';
+      const statusBadge = it.aktif !== false
+        ? '<span class="badge badge-success text-xs">Aktif</span>'
+        : '<span class="badge badge-danger text-xs">Nonaktif</span>';
 
-              const piutangAktif = Number(it.piutang_berjalan) || 0;
+      const piutangAktif = Number(it.piutang_berjalan) || 0;
 
-              return `
+      return `
                 <tr class="pel-selectable-row ${isChecked ? 'is-bulk-selected' : ''}" data-id="${escapeHtml(it.id)}">
                   ${pelangganSelectMode ? `
                     <td data-label="Pilih" style="width: 38px; text-align: center;">
@@ -489,7 +486,7 @@ async function muatDataPelanggan(container) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -502,11 +499,12 @@ async function muatDataPelanggan(container) {
           e.stopPropagation();
           const id = cb.getAttribute('data-id');
           const tr = cb.closest('tr');
+          const obj = items.find((x) => x.id === id);
           if (cb.checked) {
-            pelangganSelectedIds.add(id);
+            if (obj) pelangganSelectedMap.set(id, obj);
             tr?.classList.add('is-bulk-selected');
           } else {
-            pelangganSelectedIds.delete(id);
+            pelangganSelectedMap.delete(id);
             tr?.classList.remove('is-bulk-selected');
           }
           syncPelBulkBar(container, isOwnerOrAdmin);
@@ -520,12 +518,13 @@ async function muatDataPelanggan(container) {
           const id = tr.getAttribute('data-id');
           if (!id) return;
           const cb = tr.querySelector('.cb-pel-select');
-          if (pelangganSelectedIds.has(id)) {
-            pelangganSelectedIds.delete(id);
+          const obj = items.find((x) => x.id === id);
+          if (pelangganSelectedMap.has(id)) {
+            pelangganSelectedMap.delete(id);
             tr.classList.remove('is-bulk-selected');
             if (cb) cb.checked = false;
           } else {
-            pelangganSelectedIds.add(id);
+            if (obj) pelangganSelectedMap.set(id, obj);
             tr.classList.add('is-bulk-selected');
             if (cb) cb.checked = true;
           }

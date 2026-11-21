@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.77] - 2026-11-21
+
+### Fixed
+- [UI] [PRODUK] [POS-JUAL] [PELANGGAN] [AUTH] **Debugging Total & Finalisasi Lintas Lapisan**:
+  - **Persistensi Pilihan Lintas Halaman & Filter (`produk.js`, `pos.js`, `pelanggan.js`)**: Mengubah penyimpanan multi-select dari `Set` ID menjadi `Map` (`id -> objek`) sehingga produk/pelanggan yang ditandai di Halaman 1 atau Kategori A tetap terbawa utuh saat pengguna berpindah ke Halaman 2 atau Kategori B sebelum mengeksekusi aksi massal.
+  - **Hak Akses & Validasi Ubah Level Massal Pelanggan (`pelanggan.js`)**: Menyembunyikan tombol **Ubah Level** untuk peran Kasir (sesuai aturan backend `aksiPelangganUpdate_`) dan mengirim payload minimal `{ id, tipe: 'member', level }` agar tidak gagal validasi HP kosong pada data lama.
+  - **Navigasi Internal Tanpa Polusi History (`app.js`, `auth.js`, `produk.js`, `printer.js`)**: Mengekspos `window.__posNavigate()` berbasis `replaceState` untuk seluruh pengalihan rute programatik sehingga tombol Kembali di PWA/Mobile Browser selalu 100% berurutan bebas lompat ganda.
+  - **0 Variabel CSS Tidak Terdefinisi (`components.css`)**: Mengganti 2 referensi `var(--text-secondary)` yang tidak terdefinisi di `components.css` menjadi `var(--text-muted)`.
+
 ## [1.0.76] - 2026-11-21
 
 ### Added

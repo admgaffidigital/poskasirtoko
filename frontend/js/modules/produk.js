@@ -71,7 +71,7 @@ let filterState = {
 let cacheDaftarProduk = [];
 let cacheDaftarKategoriPrd = [];
 let produkSelectMode = false;
-const produkSelectedIds = new Set();
+const produkSelectedMap = new Map();
 
 function syncProdukBulkBar(container, canEdit) {
   const bar = $('#produk-bulk-bar', container);
@@ -81,7 +81,7 @@ function syncProdukBulkBar(container, canEdit) {
     btnToggle.innerHTML = `${ICONS.check}<span>${produkSelectMode ? 'Selesai Pilih' : 'Pilih'}</span>`;
   }
   if (!bar) return;
-  const cnt = produkSelectedIds.size;
+  const cnt = produkSelectedMap.size;
   const elCnt = $('#produk-bulk-count', bar);
   if (elCnt) elCnt.textContent = String(cnt);
   bar.style.display = produkSelectMode ? 'flex' : 'none';
@@ -101,7 +101,7 @@ export async function renderProdukModule(container) {
   const canEdit = user && (user.role === 'owner' || user.role === 'admin');
   const isKasir = user && user.role === 'kasir';
   produkSelectMode = false;
-  produkSelectedIds.clear();
+  produkSelectedMap.clear();
 
   container.innerHTML = `
     <div class="stack">
@@ -378,7 +378,7 @@ export async function renderProdukModule(container) {
   const keluarSelectModePrd = () => {
     if (!produkSelectMode) return false;
     produkSelectMode = false;
-    produkSelectedIds.clear();
+    produkSelectedMap.clear();
     syncProdukBulkBar(container, canEdit);
     muatProduk(container, canEdit, isKasir, false);
     return true;
@@ -388,7 +388,7 @@ export async function renderProdukModule(container) {
 
   $('#btn-toggle-select-produk', container)?.addEventListener('click', () => {
     produkSelectMode = !produkSelectMode;
-    if (!produkSelectMode) produkSelectedIds.clear();
+    if (!produkSelectMode) produkSelectedMap.clear();
     syncProdukBulkBar(container, canEdit);
     muatProduk(container, canEdit, isKasir, false);
   });
@@ -398,11 +398,11 @@ export async function renderProdukModule(container) {
   });
 
   $('#btn-bulk-prd-all', container)?.addEventListener('click', () => {
-    const allSelected = cacheDaftarProduk.length > 0 && cacheDaftarProduk.every((p) => produkSelectedIds.has(p.id));
+    const allSelected = cacheDaftarProduk.length > 0 && cacheDaftarProduk.every((p) => produkSelectedMap.has(p.id));
     if (allSelected) {
-      cacheDaftarProduk.forEach((p) => produkSelectedIds.delete(p.id));
+      cacheDaftarProduk.forEach((p) => produkSelectedMap.delete(p.id));
     } else {
-      cacheDaftarProduk.forEach((p) => produkSelectedIds.add(p.id));
+      cacheDaftarProduk.forEach((p) => produkSelectedMap.set(p.id, p));
     }
     syncProdukBulkBar(container, canEdit);
     muatProduk(container, canEdit, isKasir, false);
@@ -410,18 +410,22 @@ export async function renderProdukModule(container) {
 
   // 1. Cetak Price Tag Massal
   $('#btn-bulk-prd-ptag', container)?.addEventListener('click', () => {
-    if (!produkSelectedIds.size) return;
+    if (!produkSelectedMap.size) return;
     try {
-      sessionStorage.setItem('pos_pricetag_preselect', JSON.stringify(Array.from(produkSelectedIds)));
-    } catch (_) {}
+      sessionStorage.setItem('pos_pricetag_preselect', JSON.stringify(Array.from(produkSelectedMap.keys())));
+    } catch (_) { }
     produkSelectMode = false;
-    produkSelectedIds.clear();
-    window.location.hash = '#/pricetag';
+    produkSelectedMap.clear();
+    if (typeof window.__posNavigate === 'function') {
+      window.__posNavigate('#/pricetag');
+    } else {
+      window.location.hash = '#/pricetag';
+    }
   });
 
   // 2. Pindah Kategori Massal
   $('#btn-bulk-prd-kat', container)?.addEventListener('click', () => {
-    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    const terpilih = Array.from(produkSelectedMap.values());
     if (!terpilih.length) return;
     const modalKat = showModal({
       title: `Pindah Kategori (${terpilih.length} Produk)`,
@@ -467,7 +471,7 @@ export async function renderProdukModule(container) {
             aktif: p.aktif !== false
           });
           sukses++;
-        } catch (_) {}
+        } catch (_) { }
       }
       modalKat.close();
       showToast(`${sukses} dari ${terpilih.length} produk berhasil dipindahkan kategorinya.`, 'success');
@@ -477,7 +481,7 @@ export async function renderProdukModule(container) {
 
   // 3. Ubah Status Aktif / Nonaktif Massal
   $('#btn-bulk-prd-status', container)?.addEventListener('click', () => {
-    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    const terpilih = Array.from(produkSelectedMap.values());
     if (!terpilih.length) return;
     const modalSt = showModal({
       title: `Ubah Status (${terpilih.length} Produk)`,
@@ -516,7 +520,7 @@ export async function renderProdukModule(container) {
             aktif: statusAktif
           });
           sukses++;
-        } catch (_) {}
+        } catch (_) { }
       }
       showToast(`${sukses} produk berhasil di-${statusAktif ? 'aktifkan' : 'nonaktifkan'}.`, 'success');
       keluarSelectModePrd();
@@ -528,7 +532,7 @@ export async function renderProdukModule(container) {
 
   // 4. Salin / Kirim Daftar Produk Terpilih ke WhatsApp (Untuk Pembeli / Restok Supplier)
   $('#btn-bulk-prd-wa', container)?.addEventListener('click', () => {
-    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    const terpilih = Array.from(produkSelectedMap.values());
     if (!terpilih.length) return;
     const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Toko';
     const lines = [
@@ -567,7 +571,7 @@ export async function renderProdukModule(container) {
 
   // 5. Hapus Massal Produk
   $('#btn-bulk-prd-hapus', container)?.addEventListener('click', async () => {
-    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    const terpilih = Array.from(produkSelectedMap.values());
     if (!terpilih.length) return;
     const setuju = await showConfirm({
       title: `Hapus ${terpilih.length} Produk Terpilih?`,
@@ -583,7 +587,7 @@ export async function renderProdukModule(container) {
       try {
         await apiCall('produk.delete', { id: p.id });
         sukses++;
-      } catch (_) {}
+      } catch (_) { }
     }
     showToast(`${sukses} dari ${terpilih.length} produk berhasil dihapus.`, 'success');
     keluarSelectModePrd();
@@ -603,7 +607,7 @@ export async function renderProdukModule(container) {
 
   return () => {
     produkSelectMode = false;
-    produkSelectedIds.clear();
+    produkSelectedMap.clear();
     if (window.__posCancelSelectMode === keluarSelectModePrd) {
       window.__posCancelSelectMode = null;
     }
@@ -754,7 +758,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
 
       items.forEach((p) => {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
-        const isChecked = produkSelectMode && produkSelectedIds.has(p.id);
+        const isChecked = produkSelectMode && produkSelectedMap.has(p.id);
         html += `
           <tr class="prd-selectable-item ${isChecked ? 'is-bulk-selected' : ''}" data-prd-id="${escapeHtml(p.id)}">
             ${produkSelectMode ? `
@@ -832,7 +836,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       let html = '<div class="card-grid">';
       items.forEach((p) => {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
-        const isChecked = produkSelectMode && produkSelectedIds.has(p.id);
+        const isChecked = produkSelectMode && produkSelectedMap.has(p.id);
         html += `
           <div class="card stack-sm prd-selectable-item ${isChecked ? 'is-bulk-selected' : ''}" data-prd-id="${escapeHtml(p.id)}" style="padding: var(--sp-4); position: relative;">
             ${produkSelectMode ? `
@@ -899,15 +903,16 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
     // Pasang interaksi Mode Tandai & Pilih (Checkbox + Klik Baris/Kartu + Long-Press HP)
     const toggleItemSelectPrd = (id, rowEl) => {
       if (!id) return;
-      if (produkSelectedIds.has(id)) {
-        produkSelectedIds.delete(id);
+      const obj = items.find((x) => x.id === id);
+      if (produkSelectedMap.has(id)) {
+        produkSelectedMap.delete(id);
         rowEl?.classList.remove('is-bulk-selected');
       } else {
-        produkSelectedIds.add(id);
+        if (obj) produkSelectedMap.set(id, obj);
         rowEl?.classList.add('is-bulk-selected');
       }
       const cb = rowEl?.querySelector('.cb-prd-select');
-      if (cb) cb.checked = produkSelectedIds.has(id);
+      if (cb) cb.checked = produkSelectedMap.has(id);
       syncProdukBulkBar(container, canEdit);
     };
 
@@ -917,11 +922,12 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
           e.stopPropagation();
           const id = cb.getAttribute('data-id');
           const rowEl = cb.closest('.prd-selectable-item');
+          const obj = items.find((x) => x.id === id);
           if (cb.checked) {
-            produkSelectedIds.add(id);
+            if (obj) produkSelectedMap.set(id, obj);
             rowEl?.classList.add('is-bulk-selected');
           } else {
-            produkSelectedIds.delete(id);
+            produkSelectedMap.delete(id);
             rowEl?.classList.remove('is-bulk-selected');
           }
           syncProdukBulkBar(container, canEdit);
@@ -943,8 +949,9 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
           if (e.target.closest('button, a, input')) return;
           lpTimer = setTimeout(() => {
             const id = el.getAttribute('data-prd-id');
+            const obj = items.find((x) => x.id === id);
             produkSelectMode = true;
-            if (id) produkSelectedIds.add(id);
+            if (id && obj) produkSelectedMap.set(id, obj);
             syncProdukBulkBar(container, canEdit);
             muatProduk(container, canEdit, isKasir, false);
           }, 450);

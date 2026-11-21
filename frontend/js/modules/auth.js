@@ -13,6 +13,14 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $ } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
 
+function navigasiAman(path) {
+  if (typeof window !== 'undefined' && typeof window.__posNavigate === 'function') {
+    window.__posNavigate(path);
+  } else {
+    window.location.hash = path;
+  }
+}
+
 let modalLoginRef = null;
 let modalGantiPinRef = null;
 
@@ -217,7 +225,7 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
     modalGantiPinRef = null;
     modal.close();
     tampilkanModalLogin(onSuccess || (() => {
-      window.location.hash = '#/pos';
+      navigasiAman('#/pos');
     }));
   });
 
@@ -252,7 +260,7 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
       if (onSuccess) {
         onSuccess(user);
       } else {
-        window.location.hash = '#/pos';
+        navigasiAman('#/pos');
       }
     } catch (err) {
       showToast(err.message, 'error', 4500);
@@ -263,7 +271,7 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
         modalGantiPinRef = null;
         modal.close();
         tampilkanModalLogin(onSuccess || (() => {
-          window.location.hash = '#/pos';
+          navigasiAman('#/pos');
         }));
       }
     }

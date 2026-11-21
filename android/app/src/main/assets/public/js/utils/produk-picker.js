@@ -293,9 +293,9 @@ export function bukaModalPilihProduk({
       return `
         <button type="button" class="prod-picker-item ${isSelected ? 'is-bulk-selected' : ''}" data-picker-idx="${idx}">
           ${isMultiActive
-            ? `<div class="prod-picker-check">${ICONS.check}</div>`
-            : `<div class="prod-picker-item-icon">${ICONS.box}</div>`
-          }
+          ? `<div class="prod-picker-check">${ICONS.check}</div>`
+          : `<div class="prod-picker-item-icon">${ICONS.box}</div>`
+        }
           <div class="prod-picker-item-main">
             <div class="prod-picker-item-title">${titleHtml}</div>
             <div class="prod-picker-item-meta">

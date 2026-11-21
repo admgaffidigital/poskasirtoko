@@ -718,7 +718,11 @@ export function tampilkanModalKoneksiPrinter() {
 
   modal.el.querySelector('#btn-modal-ke-pengaturan')?.addEventListener('click', () => {
     modal.close();
-    window.location.hash = '#/pengaturan';
+    if (typeof window.__posNavigate === 'function') {
+      window.__posNavigate('#/pengaturan');
+    } else {
+      window.location.hash = '#/pengaturan';
+    }
   });
 
   modal.el.querySelector('#btn-modal-tutup-koneksi')?.addEventListener('click', () => {
