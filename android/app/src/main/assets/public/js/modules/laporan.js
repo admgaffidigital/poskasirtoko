@@ -730,6 +730,26 @@ function buatKomposisiMetodeBayar(metodeMap, totalOmset) {
   `;
 }
 
+function formatLabelStatusBayar(st) {
+  const s = String(st || '').toLowerCase();
+  if (s === 'lunas') return 'Lunas';
+  if (s === 'belum_lunas') return 'Belum Lunas';
+  if (s === 'sebagian') return 'Sebagian';
+  if (s === 'hutang') return 'Hutang';
+  if (s === 'tempo') return 'Tempo';
+  return st || '-';
+}
+
+function formatLabelMetodeBayar(m) {
+  const s = String(m || '').toLowerCase();
+  if (s === 'tunai') return 'Tunai';
+  if (s === 'transfer') return 'Transfer';
+  if (s === 'qris') return 'QRIS';
+  if (s === 'tempo') return 'Tempo';
+  if (s === 'kombinasi') return 'Kombinasi';
+  return m || '-';
+}
+
 /* ========================================================================== */
 /* 2. RENDER TAB: LAPORAN PENJUALAN                                           */
 /* ========================================================================== */
@@ -749,7 +769,10 @@ function renderTabPenjualan(container, data) {
         <div class="card stat">
           <div class="stat-label">Total Omset Penjualan</div>
           <div class="stat-value" style="color: var(--primary);">${formatRupiah(r.total_omset || 0)}</div>
-          <div class="stat-delta"><span class="badge badge-primary">${formatAngka(r.total_transaksi || 0)} Transaksi</span></div>
+          <div class="stat-delta" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span class="badge badge-primary">${formatAngka(r.total_transaksi || 0)} Transaksi Aktif</span>
+            ${(r.total_void || 0) > 0 ? `<span class="badge badge-danger">${formatAngka(r.total_void)} Batal</span>` : ''}
+          </div>
         </div>
         <div class="card stat">
           <div class="stat-label">Total Diskon Diberikan</div>
@@ -775,7 +798,7 @@ function renderTabPenjualan(container, data) {
             <select id="sel-filter-bayar-jual" class="input input-sm">
               <option value="">Semua Status</option>
               <option value="lunas" ${stateLaporan.filterPenjualan.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
-              <option value="tempo" ${stateLaporan.filterPenjualan.status_bayar === 'tempo' ? 'selected' : ''}>Tempo</option>
+              <option value="belum_lunas" ${stateLaporan.filterPenjualan.status_bayar === 'belum_lunas' ? 'selected' : ''}>Belum Lunas (Tempo)</option>
               <option value="sebagian" ${stateLaporan.filterPenjualan.status_bayar === 'sebagian' ? 'selected' : ''}>Sebagian</option>
             </select>
             <select id="sel-filter-metode-jual" class="input input-sm">
@@ -817,19 +840,19 @@ function renderTabPenjualan(container, data) {
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(j.tanggal)}</td>
                     <td data-label="Kasir">${escapeHtml(j.kasir_nama || 'Kasir')}</td>
                     <td data-label="Pelanggan">${escapeHtml(j.pelanggan_nama || 'Umum')}</td>
-                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(j.metode_bayar || 'tunai')}</span></td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(formatLabelMetodeBayar(j.metode_bayar || 'tunai'))}</span></td>
                     <td data-label="Status">
                       ${isVoided ? `
                         <span class="badge badge-danger" title="Transaksi Dibatalkan / Void">Dibatalkan</span>
                       ` : `
                         <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'tempo' || j.status_bayar === 'belum_lunas' ? 'badge-danger' : 'badge-warning')}">
-                          ${escapeHtml(j.status_bayar || 'lunas')}
+                          ${escapeHtml(formatLabelStatusBayar(j.status_bayar || 'lunas'))}
                         </span>
                       `}
                     </td>
-                    <td style="text-align: right; font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}" data-label="Total Transaksi">${formatRupiah(j.total)}</td>
+                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}" data-label="Total Transaksi">${formatRupiah(j.total)}</td>
                     ${isOwner ? `
-                      <td style="text-align: right; font-weight: var(--fw-semibold); color: ${isVoided ? 'var(--text-muted)' : 'var(--success)'};" data-label="Laba Kotor">
+                      <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-semibold); color: ${isVoided ? 'var(--text-muted)' : 'var(--success)'};" data-label="Laba Kotor">
                         ${isVoided ? '-' : formatRupiah(j.laba_kotor || 0)}
                       </td>
                     ` : ''}
@@ -1070,7 +1093,7 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
             ${isVoided ? `
               <span class="badge badge-danger">Dibatalkan (Void)</span>
             ` : `
-              <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : 'badge-danger'}">${escapeHtml(j.status_bayar || 'lunas')}</span>
+              <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'sebagian' ? 'badge-warning' : 'badge-danger')}">${escapeHtml(formatLabelStatusBayar(j.status_bayar || 'lunas'))}</span>
             `}
           </div>
         </div>
@@ -1244,13 +1267,13 @@ function renderTabPembelian(container, data) {
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(pb.tanggal)}</td>
                     <td style="font-weight: var(--fw-medium);" data-label="Supplier">${escapeHtml(pb.supplier_nama)}</td>
                     <td data-label="Status">
-                      <span class="badge ${pb.status_bayar === 'lunas' ? 'badge-success' : 'badge-danger'}">
-                        ${escapeHtml(pb.status_bayar)}
+                      <span class="badge ${pb.status_bayar === 'lunas' ? 'badge-success' : (pb.status_bayar === 'sebagian' ? 'badge-warning' : 'badge-danger')}">
+                        ${escapeHtml(formatLabelStatusBayar(pb.status_bayar))}
                       </span>
                     </td>
-                    <td style="text-align: right; font-weight: var(--fw-bold);" data-label="Total Nilai">${formatRupiah(pb.total)}</td>
-                    <td style="text-align: right; color: var(--success);" data-label="Dibayar">${formatRupiah(pb.bayar)}</td>
-                    <td style="text-align: right; font-weight: var(--fw-bold); color: ${pb.sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};" data-label="Sisa Hutang">
+                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold);" data-label="Total Nilai">${formatRupiah(pb.total)}</td>
+                    <td class="tabular" style="text-align: right; white-space: nowrap; color: var(--success);" data-label="Dibayar">${formatRupiah(pb.bayar)}</td>
+                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); color: ${pb.sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};" data-label="Sisa Hutang">
                       ${formatRupiah(pb.sisa_hutang)}
                     </td>
                     <td class="no-print" style="text-align: right;" data-label="Aksi">
@@ -1493,8 +1516,8 @@ function renderTabLabaRugi(container, data) {
         </div>
       </div>
 
-      <!-- Grid Analisis: Kategori Produk, Produk Laba Tertinggi, & Biaya Operasional -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <!-- Grid 2 Kolom Penuh Lebar (50/50 Desktop, 1 Kolom Mobile): Kategori Produk & Biaya Operasional -->
+      <div class="lap-grid-2col">
         <!-- Laba & Margin per Kategori -->
         <div class="card">
           <div class="card-header">
@@ -1506,9 +1529,9 @@ function renderTabLabaRugi(container, data) {
                 <thead>
                   <tr>
                     <th>Kategori Material</th>
-                    <th style="text-align: right;">Omset</th>
-                    <th style="text-align: right;">Laba Kotor</th>
-                    <th style="text-align: right;">Margin</th>
+                    <th style="text-align: right; white-space: nowrap;">Omset</th>
+                    <th style="text-align: right; white-space: nowrap;">Laba Kotor</th>
+                    <th style="text-align: right; white-space: nowrap;">Margin</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1517,9 +1540,9 @@ function renderTabLabaRugi(container, data) {
                   ` : kategoriList.map((k) => `
                     <tr>
                       <td data-label="Kategori Material" style="font-weight: var(--fw-medium);">${escapeHtml(k.kategori)}</td>
-                      <td data-label="Omset" style="text-align: right;">${formatRupiah(k.omset)}</td>
-                      <td data-label="Laba Kotor" style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(k.laba)}</td>
-                      <td data-label="Margin" style="text-align: right;"><span class="badge badge-success">${k.margin_persen}%</span></td>
+                      <td class="tabular" data-label="Omset" style="text-align: right; white-space: nowrap;">${formatRupiah(k.omset)}</td>
+                      <td class="tabular" data-label="Laba Kotor" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(k.laba)}</td>
+                      <td data-label="Margin" style="text-align: right; white-space: nowrap;"><span class="badge badge-success">${k.margin_persen}%</span></td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -1539,8 +1562,8 @@ function renderTabLabaRugi(container, data) {
                 <thead>
                   <tr>
                     <th>Kategori Pengeluaran</th>
-                    <th style="text-align: right;">Total Biaya</th>
-                    <th style="text-align: right;">Porsi</th>
+                    <th style="text-align: right; white-space: nowrap;">Total Biaya</th>
+                    <th style="text-align: right; white-space: nowrap;">Porsi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1549,8 +1572,8 @@ function renderTabLabaRugi(container, data) {
                   ` : analisisBiaya.map((b) => `
                     <tr>
                       <td data-label="Kategori Pengeluaran" style="font-weight: var(--fw-medium);">${escapeHtml(b.kategori)}</td>
-                      <td data-label="Total Biaya" style="text-align: right; font-weight: var(--fw-bold); color: var(--danger);">${formatRupiah(b.nominal)}</td>
-                      <td data-label="Porsi" style="text-align: right;"><span class="badge badge-secondary">${b.persen}%</span></td>
+                      <td class="tabular" data-label="Total Biaya" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); color: var(--danger);">${formatRupiah(b.nominal)}</td>
+                      <td data-label="Porsi" style="text-align: right; white-space: nowrap;"><span class="badge badge-secondary">${b.persen}%</span></td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -1558,37 +1581,37 @@ function renderTabLabaRugi(container, data) {
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- 10 Produk Kontribusi Laba Tertinggi -->
-        <div class="card" style="grid-column: 1 / -1;">
-          <div class="card-header">
-            <h3 class="card-title">${ICONS.award} 10 Produk Penyumbang Laba Terbesar</h3>
-          </div>
-          <div class="card-body card-table-body" style="padding: 0;">
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
+      <!-- 10 Produk Kontribusi Laba Tertinggi (Penuh Lebar) -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">${ICONS.award} 10 Produk Penyumbang Laba Terbesar</h3>
+        </div>
+        <div class="card-body card-table-body" style="padding: 0;">
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Produk Material</th>
+                  <th style="text-align: right; white-space: nowrap;">Qty</th>
+                  <th style="text-align: right; white-space: nowrap;">Total Laba</th>
+                  <th style="text-align: right; white-space: nowrap;">Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${produkMargin.length === 0 ? `
+                  <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada data produk</td></tr>
+                ` : produkMargin.map((p) => `
                   <tr>
-                    <th>Produk Material</th>
-                    <th style="text-align: right;">Qty</th>
-                    <th style="text-align: right;">Total Laba</th>
-                    <th style="text-align: right;">Margin</th>
+                    <td data-label="Produk Material" style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</td>
+                    <td class="tabular" data-label="Qty Terjual" style="text-align: right; white-space: nowrap;">${formatAngka(p.qty)}</td>
+                    <td class="tabular" data-label="Total Laba" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(p.laba)}</td>
+                    <td data-label="Margin" style="text-align: right; white-space: nowrap;"><span class="badge badge-info">${p.margin_persen}%</span></td>
                   </tr>
-                </thead>
-                <tbody>
-                  ${produkMargin.length === 0 ? `
-                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada data produk</td></tr>
-                  ` : produkMargin.map((p) => `
-                    <tr>
-                      <td data-label="Produk Material" style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</td>
-                      <td data-label="Qty Terjual" style="text-align: right;">${formatAngka(p.qty)}</td>
-                      <td data-label="Total Laba" style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">${formatRupiah(p.laba)}</td>
-                      <td data-label="Margin" style="text-align: right;"><span class="badge badge-info">${p.margin_persen}%</span></td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
+                `).join('')}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

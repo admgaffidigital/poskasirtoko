@@ -1037,6 +1037,26 @@ async function runAudit() {
     assert.strictEqual(resReturTunai.ok, true);
     const pelAfterReturTunai = callApi('pelanggan.detail', tokenOwner, { id: pelId });
     assert.strictEqual(pelAfterReturTunai.data.pelanggan.poin, 18, 'Retur Rp 40.000 dari nota tunai Gold wajib langsung memotong 6 poin (24 -> 18)');
+
+    // 8. Verifikasi laporan.penjualan tidak menghitung nota berstatus void ke total_omset & total_laba
+    const lapSebelumVoid = callApi('laporan.penjualan', tokenOwner, { periode: 'bulan_ini' });
+    assert.strictEqual(lapSebelumVoid.ok, true);
+    const omsetSebelum = lapSebelumVoid.data.ringkasan.total_omset;
+    const txSebelum = lapSebelumVoid.data.ringkasan.total_transaksi;
+
+    const jualUntukVoid = callApi('penjualan.create', tokenOwner, {
+      items: [{ produk_id: prod.id, satuan: prod.satuan_dasar, faktor: 1, qty: 2, harga: 20000, tipe_harga: 'ritel' }],
+      pembayaran: [{ metode: 'tunai', jumlah: 40000 }]
+    });
+    assert.strictEqual(jualUntukVoid.ok, true);
+    const voidRes = callApi('penjualan.void', tokenOwner, { id: jualUntukVoid.data.penjualan.id, alasan: 'Uji eksklusi void di laporan' });
+    assert.strictEqual(voidRes.ok, true);
+
+    const lapSetelahVoid = callApi('laporan.penjualan', tokenOwner, { periode: 'bulan_ini' });
+    assert.strictEqual(lapSetelahVoid.ok, true);
+    assert.strictEqual(lapSetelahVoid.data.ringkasan.total_omset, omsetSebelum, 'Nota void TIDAK BOLEH masuk total_omset laporan.penjualan');
+    assert.strictEqual(lapSetelahVoid.data.ringkasan.total_transaksi, txSebelum, 'Nota void TIDAK BOLEH masuk total_transaksi aktif');
+    assert.ok(lapSetelahVoid.data.ringkasan.total_void >= 1, 'ringkasan.total_void wajib menghitung nota dibatalkan secara terpisah');
   });
 
   console.log('\n=============================================');

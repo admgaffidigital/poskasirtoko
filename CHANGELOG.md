@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.84] - 2026-11-21
+
+### Fixed
+- [BACKEND] [DASHBOARD] **Perbaikan Akurasi Omset & Laba Tab Penjualan (Pengecualian Nota Void/Dibatalkan)**:
+  - `aksiLaporanPenjualan_` (`backend/kode.gs`) kini **tidak lagi menjumlahkan nota berstatus `void` (Dibatalkan) maupun `pending`** ke dalam `ringkasan.total_omset`, `ringkasan.total_diskon`, `ringkasan.total_pajak`, `ringkasan.total_laba`, dan `ringkasan.total_transaksi` — sehingga angka Omset & Laba di Tab Penjualan 100% sinkron dengan Tab Laba Rugi & Dashboard Eksekutif (nota void tetap tampil dicoret di tabel untuk audit, dan jumlahnya diringkas pada badge terpisah).
+  - Memperbaiki dropdown filter status Tab Penjualan (`laporan.js`) dari `value="tempo"` menjadi `value="belum_lunas"` agar filter nota piutang/belum lunas berfungsi akurat.
+
+### Changed
+- [DASHBOARD] [UI] **Perapihan Tata Letak Desktop 5 Tab Laporan (`laporan.js`, `components.css`)**:
+  - **Grid 50/50 Penuh Lebar pada Tab Laba Rugi (`lap-grid-2col`)**: Menghilangkan ruang kosong 40% di sisi kanan kartu *Analisis Laba & Margin per Kategori* & *Rincian Biaya Operasional*, serta mencegah angka Rupiah (`Rp 182.000`) terpecah 2 baris atau memunculkan *horizontal scrollbar*.
+  - **Penjajaran Horizontal Kartu KPI (`.card.stat`)**: Menyetel `justify-content: flex-start` agar seluruh angka KPI di Tab Penjualan, Pembelian, Arus Kas, dan Valuasi Stok sejajar lurus di satu garis horizontal.
+  - **Label Badge Bahasa Indonesia Rapi**: Memformat label `belum_lunas` → `Belum Lunas`, `lunas` → `Lunas`, `tempo` → `Tempo`, `tunai` → `Tunai`, `qris` → `QRIS`, `hutang` → `Hutang` secara konsisten di seluruh tabel laporan.
+
 ## [1.0.83] - 2026-11-21
 
 ### Fixed

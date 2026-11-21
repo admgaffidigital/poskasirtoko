@@ -5982,6 +5982,7 @@ function aksiLaporanPenjualan_(ctx) {
 
   let filtered = semuaPenjualan.filter(function (j) {
     if (j.deleted) return false;
+    if (!p.status && j.status === 'pending') return false;
     const tgl = String(j.tanggal || '').substring(0, 10);
     if (tgl < rentang.dari || tgl > rentang.sampai) return false;
 
@@ -6003,15 +6004,24 @@ function aksiLaporanPenjualan_(ctx) {
   let totalDiskon = 0;
   let totalPajak = 0;
   let totalLaba = 0;
+  let totalTransaksiAktif = 0;
+  let totalVoid = 0;
 
   const items = filtered.map(function (j) {
     const total = Number(j.total) || 0;
     const diskon = Number(j.diskon) || 0;
     const pajak = Number(j.pajak) || 0;
+    const isVoid = j.status === 'void';
+    const isAktif = !isVoid && j.status !== 'pending';
 
-    totalOmset += total;
-    totalDiskon += diskon;
-    totalPajak += pajak;
+    if (isAktif) {
+      totalOmset += total;
+      totalDiskon += diskon;
+      totalPajak += pajak;
+      totalTransaksiAktif += 1;
+    } else if (isVoid) {
+      totalVoid += 1;
+    }
 
     const row = {
       id: j.id,
@@ -6037,10 +6047,10 @@ function aksiLaporanPenjualan_(ctx) {
 
     if (isOwner) {
       const hppTot = hppByJual[j.id] || 0;
-      const laba = Math.round(total - hppTot);
+      const laba = isAktif ? Math.round(total - hppTot) : 0;
       row.laba_kotor = laba;
       row.hpp_total = hppTot;
-      totalLaba += laba;
+      if (isAktif) totalLaba += laba;
     }
 
     return row;
@@ -6056,7 +6066,8 @@ function aksiLaporanPenjualan_(ctx) {
       total_omset: totalOmset,
       total_diskon: totalDiskon,
       total_pajak: totalPajak,
-      total_transaksi: filtered.length,
+      total_transaksi: totalTransaksiAktif,
+      total_void: totalVoid,
       total_laba: isOwner ? totalLaba : null
     },
     items: items.slice(mulai, mulai + limit),

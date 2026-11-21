@@ -619,14 +619,26 @@ input[type="password"] {
 .stat {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--sp-1);
+  justify-content: flex-start;
+  gap: 6px;
   padding: var(--sp-4);
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.lap-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-4);
+}
+
+@media (min-width: 900px) {
+  .lap-grid-2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 [data-theme="dark"] .card.stat,

@@ -8,8 +8,8 @@ android {
         applicationId "com.admgaffidigital.poskasirtoko"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 70
-        versionName "1.0.83"
+        versionCode 71
+        versionName "1.0.84"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
