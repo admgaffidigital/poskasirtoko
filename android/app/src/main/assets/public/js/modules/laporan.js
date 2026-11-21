@@ -47,10 +47,6 @@ export async function renderLaporanModule(container) {
           <h2>Dashboard & Laporan Usaha</h2>
           <p>Ringkasan performa penjualan, pembelian, arus kas, persediaan stok, dan laba toko</p>
         </div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-segarkan-laporan" title="Muat ulang data terkini" style="flex-shrink: 0;">
-          ${ICONS.refresh}
-          <span>Segarkan</span>
-        </button>
       </div>
 
       <!-- Baris Filter Periode Cepat & Rentang Tanggal -->
@@ -268,15 +264,6 @@ function pasangEventHeader(container) {
         `;
       }
 
-      muatDataTabAktif(container);
-    });
-  }
-
-  // Tombol Segarkan
-  const btnRefresh = $('#btn-segarkan-laporan', container);
-  if (btnRefresh) {
-    btnRefresh.addEventListener('click', () => {
-      showToast('Memperbarui data laporan...', 'info', 1200);
       muatDataTabAktif(container);
     });
   }

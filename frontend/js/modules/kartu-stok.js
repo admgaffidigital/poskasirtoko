@@ -63,9 +63,6 @@ export async function renderKartuStokModule(container) {
           </div>
 
           <div class="row items-center" style="gap: var(--sp-2);">
-            <button type="button" class="btn btn-secondary btn-icon ks-btn-refresh" id="btn-refresh-ks" title="Muat Ulang">
-              ${ICONS.refresh}
-            </button>
             ${isOwner ? `
               <button type="button" class="btn btn-outline-danger btn-sm" id="btn-bersihkan-sampah-ks" title="Bersihkan Mutasi Produk Terhapus (Khusus Owner)" style="display: inline-flex; align-items: center; gap: 6px; height: 40px; white-space: nowrap; padding: 0 12px;">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -139,10 +136,6 @@ export async function renderKartuStokModule(container) {
   $('#filter-ks-dari', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sampai', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sembunyikan-terhapus', container)?.addEventListener('change', pemicuMuat);
-  $('#btn-refresh-ks', container)?.addEventListener('click', async () => {
-    await muatDataKartuStok(container);
-    showToast('Data kartu stok berhasil diperbarui', 'success', 1800);
-  });
 
   if (isOwner) {
     $('#btn-bersihkan-sampah-ks', container)?.addEventListener('click', async () => {

@@ -536,17 +536,17 @@ export function tampilkanModalKoneksiPrinter() {
     try {
       rawbtInstalled = typeof window.AndroidRawBT.isRawBTInstalled === 'function' ? Boolean(window.AndroidRawBT.isRawBTInstalled()) : null;
       btEnabled = typeof window.AndroidRawBT.isBluetoothEnabled === 'function' ? Boolean(window.AndroidRawBT.isBluetoothEnabled()) : null;
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const statusBadgesHtml = hasNativeBridge ? `
     <div class="row" style="gap: 6px; flex-wrap: wrap; margin-top: 8px;">
       ${rawbtInstalled === true
-        ? '<span class="badge badge-success badge-dot">RawBT Terpasang &amp; Siap</span>'
-        : '<span class="badge badge-warning badge-dot">RawBT Belum Terpasang</span>'}
+      ? '<span class="badge badge-success badge-dot">RawBT Terpasang &amp; Siap</span>'
+      : '<span class="badge badge-warning badge-dot">RawBT Belum Terpasang</span>'}
       ${btEnabled === true
-        ? '<span class="badge badge-success badge-dot">Bluetooth HP Aktif</span>'
-        : (btEnabled === false ? '<span class="badge badge-danger badge-dot">Bluetooth HP Mati</span>' : '')}
+      ? '<span class="badge badge-success badge-dot">Bluetooth HP Aktif</span>'
+      : (btEnabled === false ? '<span class="badge badge-danger badge-dot">Bluetooth HP Mati</span>' : '')}
     </div>
   ` : '';
 

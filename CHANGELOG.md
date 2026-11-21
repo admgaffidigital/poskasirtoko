@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.78] - 2026-11-21
+
+### Changed
+- [UI] **Penyederhanaan Ikon Sinkronisasi — Cukup 1 Tombol Global di Topbar**:
+  - Menghapus tombol sinkronisasi duplikat di footer sidebar (`#btn-sync-sidebar`) serta 17 tombol refresh redundan di bilah pencarian/toolbar seluruh modul (`pos.js`, `produk.js`, `kategori.js`, `pelanggan.js`, `pembelian.js`, `biaya.js`, `hutang-piutang.js`, `kartu-stok.js`, `opname.js`, `loyalti.js`, `retur.js`, `supplier.js`, `users.js`, `laporan.js`) agar area pencarian dan toolbar lebih lega, bersih, dan profesional.
+  - Seluruh penyegaran data kini terpusat di **1 tombol Sinkronisasi Global** pada Topbar (`#btn-sync-top`), ditambah gestur tarik ke bawah (Pull-to-Refresh), tombol `F5`, dan menu Status Sistem.
+
+### Fixed
+- [APK] [PWA] [UI] **Dialog Konfirmasi "Keluar dari Aplikasi?" Anti-Skip 100% di Android APK, Chrome PWA, & Browser**:
+  - **Android APK (`MainActivity.java`)**: Mendaftarkan `OnBackPressedCallback` prioritas tertinggi (LIFO) langsung pada `MainActivity.onCreate()` yang memanggil `window.__posHandleNativeBack()` di WebView, lengkap dengan fallback dialog native Android (`showNativeExitDialog()`) jika tombol Kembali ditekan sebelum JS selesai dimuat.
+  - **Chrome Android & PWA (`native.js`)**: Mengatasi *Chrome History Manipulation Intervention* dengan memperkuat sentinel riwayat (`pushState`) di dalam gestur nyata pengguna (`pointerdown`/`touchstart`/`keydown`) sehingga gestur/tombol Back di halaman utama **selalu** memicu dialog konfirmasi keluar dan tidak lagi melompat keluar secara langsung.
+  - **Pencegahan Double-Trigger & Proteksi Tab (`native.js`, `app.js`)**: Menambahkan debounce `180ms` pada `tanganiTombolKembali()`, proteksi `beforeunload` saat masih ada barang belum dibayar di keranjang, serta menambahkan pintasan **"Tutup Aplikasi"** di menu profil akun.
+  - File terdampak: `android/app/src/main/java/com/admgaffidigital/poskasirtoko/MainActivity.java`, `frontend/js/utils/native.js`, `frontend/js/app.js`, 14 file modul di `frontend/js/modules/`, `tests/audit_finalisasi.js`.
+
 ## [1.0.77] - 2026-11-21
 
 ### Fixed

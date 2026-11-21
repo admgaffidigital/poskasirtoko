@@ -54,9 +54,6 @@ export async function renderLoyaltiModule(container) {
               <span class="input-icon">${ICONS.search}</span>
               <input type="search" class="input" id="search-hadiah" placeholder="Cari nama hadiah atau deskripsi...">
             </div>
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-hadiah" title="Muat Ulang" aria-label="Muat Ulang">
-              ${ICONS.refresh}
-            </button>
           </div>
 
           <div id="area-grid-hadiah" style="margin-top: var(--sp-2);">
@@ -146,9 +143,6 @@ export async function renderLoyaltiModule(container) {
         <div class="card card-body stack">
           <div class="row" style="justify-content: space-between; align-items: center;">
             <h3 style="margin: 0;">Riwayat Klaim Hadiah Toko</h3>
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-riwayat" title="Muat Ulang">
-              ${ICONS.refresh}
-            </button>
           </div>
           <div id="area-tabel-riwayat-tukar" style="margin-top: var(--sp-2);">
             ${renderSkeleton(4)}
@@ -192,14 +186,6 @@ export async function renderLoyaltiModule(container) {
   inputSearch?.addEventListener('input', () => {
     clearTimeout(timeoutCari);
     timeoutCari = setTimeout(() => muatDataHadiah(container), 300);
-  });
-  $('#btn-refresh-hadiah', container)?.addEventListener('click', async () => {
-    await muatDataHadiah(container);
-    showToast('Katalog hadiah berhasil diperbarui', 'success', 1800);
-  });
-  $('#btn-refresh-riwayat', container)?.addEventListener('click', async () => {
-    await muatRiwayatPenukaran(container);
-    showToast('Riwayat klaim hadiah berhasil diperbarui', 'success', 1800);
   });
 
   if (isOwnerOrAdmin) {

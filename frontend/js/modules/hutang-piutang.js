@@ -87,10 +87,6 @@ export async function renderHutangPiutangModule(container) {
               </div>
             </div>
 
-            <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-pt" title="Muat Ulang" aria-label="Muat Ulang Piutang">
-              ${ICONS.refresh}
-            </button>
-
             <div class="field filter-extra-field">
               <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
                 <input type="checkbox" id="check-pt-overdue" style="width: 16px; height: 16px; accent-color: var(--danger);">
@@ -166,10 +162,6 @@ export async function renderHutangPiutangModule(container) {
                 </div>
               </div>
 
-              <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-ht" title="Muat Ulang" aria-label="Muat Ulang Hutang">
-                ${ICONS.refresh}
-              </button>
-
               <div class="field filter-extra-field">
                 <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
                   <input type="checkbox" id="check-ht-overdue" style="width: 16px; height: 16px; accent-color: var(--danger);">
@@ -227,10 +219,6 @@ export async function renderHutangPiutangModule(container) {
   });
   selStatusPt?.addEventListener('change', triggerMuatPt);
   chkOverduePt?.addEventListener('change', triggerMuatPt);
-  $('#btn-refresh-pt', container)?.addEventListener('click', async () => {
-    await muatDataPiutang(container);
-    showToast('Data piutang berhasil diperbarui', 'success', 1800);
-  });
 
   // Event Listeners Filter Hutang (jika owner/admin)
   if (isOwnerOrAdmin) {
@@ -247,10 +235,6 @@ export async function renderHutangPiutangModule(container) {
     });
     selStatusHt?.addEventListener('change', triggerMuatHt);
     chkOverdueHt?.addEventListener('change', triggerMuatHt);
-    $('#btn-refresh-ht', container)?.addEventListener('click', async () => {
-      await muatDataHutang(container);
-      showToast('Data hutang berhasil diperbarui', 'success', 1800);
-    });
   }
 
   // Muat data awal sesuai tab aktif

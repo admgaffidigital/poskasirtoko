@@ -68,9 +68,6 @@ export async function renderKategoriModule(container) {
               <span>Pilih</span>
             </button>
           ` : ''}
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-kategori" title="Muat Ulang Kategori" aria-label="Muat Ulang Kategori">
-            ${ICONS.refresh}
-          </button>
           ${canEdit ? `
             <button type="button" class="btn btn-primary grow" id="btn-tambah-kategori">
               ${ICONS.plus || ''}
@@ -207,16 +204,6 @@ export async function renderKategoriModule(container) {
     parents.forEach(p => stateKategori.collapsedParents.add(p.id));
     renderTabelKategori(container, canEdit);
     showToast('Seluruh sub-kategori dilipat ringkas.', 'info', 1500);
-  });
-
-  // Bind Tombol Refresh & Tambah
-  container.querySelector('#btn-refresh-kategori')?.addEventListener('click', async () => {
-    const area = container.querySelector('#area-kategori');
-    if (area) {
-      area.innerHTML = `<div style="padding: var(--sp-4);">${renderSkeleton(3)}</div>`;
-    }
-    await muatKategori(container, canEdit);
-    showToast('Data kategori berhasil diperbarui', 'success', 1800);
   });
 
   const keluarSelectKat = () => {

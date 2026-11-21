@@ -127,9 +127,6 @@ export async function renderBiayaModule(container) {
                 <input type="search" id="search-biaya" class="input input-sm w-full" placeholder="Cari nomor biaya, keterangan, atau kasir..." value="${escapeHtml(searchKeyword)}" />
               </div>
             </div>
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-biaya" title="Muat Ulang Data" style="height: var(--control-h-sm); width: var(--control-h-sm); flex-shrink: 0; margin-bottom: 2px;">
-              ${ICONS.refresh}
-            </button>
           </div>
         </div>
       </div>
@@ -244,11 +241,6 @@ export async function renderBiayaModule(container) {
       searchKeyword = elSearch.value.trim();
       muatDataBiaya();
     }, 350);
-  });
-
-  container.querySelector('#btn-refresh-biaya')?.addEventListener('click', () => {
-    muatDataBiaya();
-    showToast('Data biaya berhasil diperbarui', 'success', 1800);
   });
 
   container.querySelector('#btn-tambah-biaya')?.addEventListener('click', () => {

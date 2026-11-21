@@ -36,9 +36,6 @@ export async function renderSupplierModule(container) {
             <span class="input-icon">${ICONS.search}</span>
             <input type="search" class="input" id="search-supplier" placeholder="Cari nama supplier, kontak PIC, HP, atau alamat...">
           </div>
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-supplier" title="Muat Ulang" aria-label="Muat Ulang" style="flex-shrink: 0;">
-            ${ICONS.refresh}
-          </button>
         </div>
 
         <div id="area-supplier-list">
@@ -55,13 +52,6 @@ export async function renderSupplierModule(container) {
     timeoutCari = setTimeout(() => {
       muatSupplierList(container, canEdit, inputSearch.value.trim());
     }, 300);
-  });
-
-  $('#btn-refresh-supplier', container)?.addEventListener('click', async () => {
-    const area = $('#area-supplier-list', container);
-    if (area) area.innerHTML = renderSkeleton(4);
-    await muatSupplierList(container, canEdit, inputSearch ? inputSearch.value.trim() : '');
-    showToast('Data supplier berhasil diperbarui', 'success', 1800);
   });
 
   if (canEdit) {

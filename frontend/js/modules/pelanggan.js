@@ -128,10 +128,6 @@ export async function renderPelangganModule(container) {
                 <input type="search" class="input" id="search-pel" placeholder="Cari nama, kode member, no HP, alamat...">
               </div>
             </div>
-
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-pel" title="Muat Ulang" style="height: 40px; width: 40px; margin-bottom: 2px;">
-              ${ICONS.refresh}
-            </button>
           </div>
         </div>
 
@@ -171,10 +167,6 @@ export async function renderPelangganModule(container) {
   });
   selTipe?.addEventListener('change', triggerMuat);
   selLevel?.addEventListener('change', triggerMuat);
-  $('#btn-refresh-pel', container)?.addEventListener('click', async () => {
-    await muatDataPelanggan(container);
-    showToast('Data pelanggan berhasil diperbarui', 'success', 1800);
-  });
 
   const keluarSelectPel = () => {
     if (!pelangganSelectMode) return false;

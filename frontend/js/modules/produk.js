@@ -143,10 +143,6 @@ export async function renderProdukModule(container) {
             <span>Pilih</span>
           </button>
 
-          <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-produk" title="Muat Ulang Data Produk" aria-label="Muat Ulang Data Produk">
-            ${ICONS.refresh}
-          </button>
-
           <button type="button" class="btn btn-secondary btn-icon" id="btn-reset-filter" title="Reset Semua Filter" style="display: none;">
             ${ICONS.x}
           </button>
@@ -326,20 +322,6 @@ export async function renderProdukModule(container) {
       perbaruiTampilanFilter(container);
       muatProduk(container, canEdit, isKasir);
     });
-  });
-
-  // Tombol muat ulang data produk
-  $('#btn-refresh-produk', container)?.addEventListener('click', async () => {
-    apiCall('kategori.list', {})
-      .then((katRes) => {
-        const selKat = $('#filter-produk-kategori', container);
-        if (selKat) {
-          selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
-        }
-      })
-      .catch(() => { });
-    await muatProduk(container, canEdit, isKasir);
-    showToast('Katalog produk berhasil diperbarui', 'success', 1800);
   });
 
   // Tombol reset semua filter

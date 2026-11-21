@@ -10,6 +10,9 @@ let isBackHandlerInitialized = false;
 let isExitDialogOpen = false;
 let isExitingApp = false;
 let navControllerRef = null;
+let lastBackHandledAt = 0;
+let webGuardDepth = 0;
+let hasGestureArmedGuard = false;
 
 function isNativeCapacitor() {
   return Boolean(
@@ -165,8 +168,9 @@ function keluarDariAplikasi() {
     window.close();
   } catch (_) {}
   setTimeout(() => {
+    const stepsBack = Math.max(2, webGuardDepth + 1);
     try {
-      window.history.go(-2);
+      window.history.go(-stepsBack);
     } catch (_) {
       window.history.back();
     }
@@ -267,6 +271,11 @@ function tutupDropdownHalamanAktif() {
  * 7. Di halaman utama (#/pos) -> tampilkan Dialog Konfirmasi Keluar Aplikasi
  */
 export function tanganiTombolKembali() {
+  // Cegah pemicuan ganda (misalnya dari native MainActivity & Capacitor AppPlugin sekaligus)
+  const now = Date.now();
+  if (now - lastBackHandledAt < 180) return;
+  lastBackHandledAt = now;
+
   // 1. Jika dialog konfirmasi keluar sedang terbuka -> tutup saja (batal keluar)
   const exitModal = document.querySelector('.overlay[data-modal-id="exit-confirm"]:not(.keluar)');
   if (exitModal) {
@@ -351,11 +360,26 @@ export function setupHardwareBackButton(navController = null) {
   if (navController) {
     navControllerRef = navController;
   }
+  if (typeof window !== 'undefined') {
+    // Ekspos handler global agar MainActivity.java dapat memanggilnya langsung dari OnBackPressedDispatcher
+    window.__posHandleNativeBack = tanganiTombolKembali;
+  }
   if (isBackHandlerInitialized) return;
   isBackHandlerInitialized = true;
 
-  // Jalur 1: Native Android APK via Capacitor App Plugin
-  if (isNativeCapacitor()) {
+  // Peringatan standar browser jika pengguna menutup tab saat masih ada item belum dibayar di keranjang
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', (e) => {
+      if (isExitingApp) return;
+      if (hitungItemKeranjangAktif() > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  }
+
+  // Jalur 1: Native Android APK (MainActivity.java OnBackPressedDispatcher + Capacitor App Plugin fallback)
+  if (isNativeCapacitor() || (typeof window !== 'undefined' && window.AndroidApp)) {
     try {
       const App = window.Capacitor?.Plugins?.App;
       if (App && typeof App.addListener === 'function') {
@@ -369,28 +393,56 @@ export function setupHardwareBackButton(navController = null) {
     return;
   }
 
-  // Jalur 2: Web Browser & PWA (Android Chrome / Standalone) dengan History Sentinel tunggal
-  // Menjamin gestur/tombol Back menutup modal, drawer, keranjang, dan halaman secara berurutan
+  // Jalur 2: Web Browser & PWA (Android Chrome / Standalone) dengan History Sentinel anti-skip
+  // Chrome Android menerapkan History Manipulation Intervention yang melewati pushState tanpa interaksi user.
+  // Oleh karena itu sentinel diperkuat di dalam gestur nyata (pointerdown/touchstart/keydown) agar popstate 100% terpanggil.
   if (typeof window !== 'undefined' && window.history && typeof window.history.pushState === 'function') {
-    const armBackGuard = () => {
-      if (isExitingApp) return;
-      const curPath = (navControllerRef && typeof navControllerRef.getCurrentPath === 'function')
+    const getActivePath = () => (
+      (navControllerRef && typeof navControllerRef.getCurrentPath === 'function')
         ? navControllerRef.getCurrentPath()
-        : (window.location.hash || '#/pos');
+        : (window.location.hash || '#/pos')
+    );
+
+    const armBackGuard = (fromUserGesture = false) => {
+      if (isExitingApp) return;
+      const curPath = getActivePath();
+      const state = window.history.state;
+      const sudahGuard = Boolean(state && state.__posBackGuard);
+      const sudahGestureGuard = Boolean(sudahGuard && state.gesture === true);
+
       try {
-        if (!window.history.state || !window.history.state.__posBackGuard) {
-          window.history.pushState({ __posBackGuard: true, path: curPath }, '', curPath);
+        if (fromUserGesture) {
+          if (!hasGestureArmedGuard || !sudahGestureGuard) {
+            window.history.pushState({ __posBackGuard: true, gesture: true, path: curPath }, '', curPath);
+            hasGestureArmedGuard = true;
+            webGuardDepth = Math.min(webGuardDepth + 1, 3);
+          }
+        } else if (!sudahGuard) {
+          window.history.pushState({ __posBackGuard: true, gesture: false, path: curPath }, '', curPath);
+          webGuardDepth = Math.min(webGuardDepth + 1, 3);
         }
       } catch (_) {}
     };
 
-    // Pasang guard sentinel awal saat aplikasi siap
-    armBackGuard();
+    // Pasang guard sentinel awal saat aplikasi siap (untuk browser non-intervention)
+    armBackGuard(false);
+
+    // Perkuat sentinel di dalam gestur pengguna nyata (wajib agar Chrome Android & PWA tidak melompati dialog keluar)
+    const armOnGesture = () => {
+      if (!hasGestureArmedGuard && !isExitingApp) {
+        armBackGuard(true);
+      }
+    };
+    window.addEventListener('pointerdown', armOnGesture, { capture: true, passive: true });
+    window.addEventListener('touchstart', armOnGesture, { capture: true, passive: true });
+    window.addEventListener('keydown', armOnGesture, { capture: true, passive: true });
 
     window.addEventListener('popstate', () => {
       if (isExitingApp) return;
+      hasGestureArmedGuard = false;
+      webGuardDepth = Math.max(0, webGuardDepth - 1);
       // Pasang ulang guard agar tekanan Back berikutnya tetap tertangkap berurutan
-      armBackGuard();
+      armBackGuard(false);
       tanganiTombolKembali();
     });
   }

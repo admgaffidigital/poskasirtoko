@@ -1,6 +1,7 @@
 package com.admgaffidigital.poskasirtoko;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.ActivityNotFoundException;
@@ -14,12 +15,14 @@ import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 
 public class MainActivity extends BridgeActivity {
     private static final String RAWBT_PACKAGE = "ru.a402d.rawbtprinter";
     private static final String RAWBT_PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=" + RAWBT_PACKAGE;
+    private AlertDialog nativeExitDialog;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -53,6 +56,68 @@ public class MainActivity extends BridgeActivity {
                     return super.shouldOverrideUrlLoading(view, url);
                 }
             });
+        }
+
+        // Intersep tombol & gestur Kembali Android secara native (prioritas tertinggi LIFO)
+        // Menjamin setiap tekanan Back menutup lapisan UI berurutan & selalu menampilkan dialog keluar di halaman utama
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                WebView currentWebView = getBridge() != null ? getBridge().getWebView() : null;
+                if (currentWebView != null) {
+                    currentWebView.evaluateJavascript(
+                        "(function(){ if (typeof window.__posHandleNativeBack === 'function') { window.__posHandleNativeBack(); return 'HANDLED'; } return 'UNREADY'; })()",
+                        result -> {
+                            if (result == null || !result.contains("HANDLED")) {
+                                showNativeExitDialog();
+                            }
+                        }
+                    );
+                } else {
+                    showNativeExitDialog();
+                }
+            }
+        });
+    }
+
+    /**
+     * Dialog konfirmasi keluar native Android (fallback jika WebView/JS belum selesai dimuat saat Back ditekan).
+     */
+    private void showNativeExitDialog() {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (nativeExitDialog != null && nativeExitDialog.isShowing()) {
+                nativeExitDialog.dismiss();
+                return;
+            }
+            nativeExitDialog = new AlertDialog.Builder(this)
+                .setTitle("Keluar dari Aplikasi?")
+                .setMessage("Apakah Anda yakin ingin menutup aplikasi POS Kasir Toko?")
+                .setNegativeButton("Batal", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Ya, Tutup Aplikasi", (dialog, which) -> {
+                    dialog.dismiss();
+                    exitAppCleanly();
+                })
+                .setCancelable(true)
+                .create();
+            nativeExitDialog.show();
+        });
+    }
+
+    private void exitAppCleanly() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                finishAndRemoveTask();
+            } else {
+                finishAffinity();
+            }
+        } catch (Exception e) {
+            try {
+                finish();
+            } catch (Exception ignored) {
+            }
         }
     }
 

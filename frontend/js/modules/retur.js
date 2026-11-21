@@ -62,10 +62,6 @@ export async function renderReturModule(container) {
               <input type="search" class="input" id="search-rj" placeholder="Cari no retur RT, no nota INV, nama pelanggan, atau alasan...">
             </div>
           </div>
-
-          <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-rj" title="Muat Ulang" aria-label="Muat Ulang Retur Penjualan">
-            ${ICONS.refresh}
-          </button>
         </div>
 
         <div id="area-tabel-retur-jual" style="margin-top: var(--sp-2);">
@@ -103,10 +99,6 @@ export async function renderReturModule(container) {
                 <input type="search" class="input" id="search-rb" placeholder="Cari no retur RT, no faktur PB, nama supplier, atau alasan...">
               </div>
             </div>
-
-            <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-rb" title="Muat Ulang" aria-label="Muat Ulang Retur Pembelian">
-              ${ICONS.refresh}
-            </button>
           </div>
 
           <div id="area-tabel-retur-beli" style="margin-top: var(--sp-2);">
@@ -176,10 +168,6 @@ export async function renderReturModule(container) {
     timeoutCariRj = setTimeout(triggerMuatRj, 300);
   });
   selStatusRj?.addEventListener('change', triggerMuatRj);
-  $('#btn-refresh-rj', container)?.addEventListener('click', async () => {
-    await muatDataReturJual(container);
-    showToast('Data retur penjualan berhasil diperbarui', 'success', 1800);
-  });
 
   // Filter Event Listeners Beli
   if (isOwnerOrAdmin) {
@@ -194,10 +182,6 @@ export async function renderReturModule(container) {
       timeoutCariRb = setTimeout(triggerMuatRb, 300);
     });
     selStatusRb?.addEventListener('change', triggerMuatRb);
-    $('#btn-refresh-rb', container)?.addEventListener('click', async () => {
-      await muatDataReturBeli(container);
-      showToast('Data retur pembelian berhasil diperbarui', 'success', 1800);
-    });
   }
 
   // Muat data awal sesuai tab aktif

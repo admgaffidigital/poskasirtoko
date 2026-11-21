@@ -29,7 +29,7 @@ import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
 // Core Auth & Native Utilities (dibutuhkan segera saat boot)
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin, tutupModalAuth } from './modules/auth.js';
-import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton } from './utils/native.js';
+import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton, tampilkanDialogKeluarAplikasi } from './utils/native.js';
 
 // Lazy-Loader per Rute (Code Splitting Native ES Modules — memangkas >600 KB JS saat boot awal)
 const ROUTE_MODULE_LOADERS = {
@@ -265,7 +265,7 @@ class App {
     this._isSyncing = true;
 
     const setSpinning = (aktif) => {
-      ['#btn-sync-top', '#btn-sync-sidebar', '#btn-sync-tile', '#btn-sync-sistem'].forEach((sel) => {
+      ['#btn-sync-top', '#btn-sync-tile', '#btn-sync-sistem'].forEach((sel) => {
         const el = $(sel);
         if (el) el.classList.toggle('is-spinning', aktif);
       });
@@ -509,7 +509,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.77'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.78'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -562,7 +562,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.77'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.78'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -623,9 +623,6 @@ class App {
           </nav>
 
           <div class="sidebar-footer">
-            <button type="button" class="btn btn-sm btn-icon btn-sync" id="btn-sync-sidebar" title="Sinkronisasi Data Global (F5)" aria-label="Sinkronisasi Data">
-              ${ICONS.refresh}
-            </button>
             <button type="button" class="btn btn-sm btn-icon" id="btn-theme-sidebar" title="Tema, Warna & Suasana Aplikasi" aria-label="Tema & Warna">
               ${ICONS.palette}
             </button>
@@ -808,7 +805,6 @@ class App {
     };
 
     $('#btn-sync-top')?.addEventListener('click', triggerSyncHandler);
-    $('#btn-sync-sidebar')?.addEventListener('click', triggerSyncHandler);
 
     // Kontrol Buka/Tutup Sidebar (Mode Accurate POS untuk Desktop/Tablet & Drawer untuk Mobile)
     const toggleSidebarHandler = () => {
@@ -981,8 +977,15 @@ class App {
               <button type="button" class="list-item text-danger" id="btn-menu-logout">
                 <div class="list-item-icon" style="background: var(--danger-soft); color: var(--danger-text);">${ICONS.rotateCcw}</div>
                 <div class="grow">
-                  <div class="list-item-title">Keluar (Logout)</div>
-                  <div class="list-item-sub">Akhiri sesi di perangkat ini</div>
+                  <div class="list-item-title">Keluar Akun (Logout)</div>
+                  <div class="list-item-sub">Akhiri sesi login di perangkat ini</div>
+                </div>
+              </button>
+              <button type="button" class="list-item text-danger" id="btn-menu-exit-app">
+                <div class="list-item-icon" style="background: var(--danger-soft); color: var(--danger-text);">${ICONS.logout}</div>
+                <div class="grow">
+                  <div class="list-item-title">Tutup Aplikasi</div>
+                  <div class="list-item-sub">Tutup aplikasi POS dengan dialog konfirmasi</div>
                 </div>
               </button>
             </div>
@@ -1063,6 +1066,11 @@ class App {
       document.getElementById('btn-menu-logout')?.addEventListener('click', () => {
         modalUser.close();
         konfirmasiLogout();
+      });
+
+      document.getElementById('btn-menu-exit-app')?.addEventListener('click', () => {
+        modalUser.close();
+        setTimeout(() => tampilkanDialogKeluarAplikasi(), 90);
       });
     };
 
@@ -1750,7 +1758,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.77'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.78'}</div>
         </div>
       `;
     };

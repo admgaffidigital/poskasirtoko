@@ -97,9 +97,6 @@ export function renderPosModule(container) {
             <button type="button" id="btn-scan-camera" class="btn btn-secondary btn-icon" style="border-radius: var(--radius-full); width: var(--control-h); height: var(--control-h); flex-shrink: 0;" title="Scan Barcode Kamera">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="6" x="7" y="9" rx="1"/></svg>
             </button>
-            <button type="button" id="btn-pos-refresh" class="btn btn-secondary btn-icon" style="border-radius: var(--radius-full); width: var(--control-h); height: var(--control-h); flex-shrink: 0;" title="Muat Ulang Katalog Produk" aria-label="Muat Ulang Katalog Produk">
-              ${ICONS.refresh}
-            </button>
           </div>
 
           <!-- Baris 2: Toggle Tampilan Grid/List & Kategori Filter Chips -->
@@ -328,7 +325,6 @@ export function renderPosModule(container) {
   const elLabelPelNama = container.querySelector('#label-pelanggan-nama');
   const elLabelPelSub = container.querySelector('#label-pelanggan-sub');
   const elBtnCamera = container.querySelector('#btn-scan-camera');
-  const elBtnRefreshPos = container.querySelector('#btn-pos-refresh');
   const elBtnGrid = container.querySelector('#btn-view-grid');
   const elBtnList = container.querySelector('#btn-view-list');
   const elBtnMultiSelect = container.querySelector('#btn-pos-multi-select');
@@ -440,11 +436,6 @@ export function renderPosModule(container) {
       showToast(`${addedCount} barang ditandai berhasil dimasukkan ke keranjang!`, 'success', 2400);
     }
     setPosMultiSelectMode(false);
-  });
-
-  elBtnRefreshPos?.addEventListener('click', async () => {
-    await muatDataKatalog(true);
-    showToast('Katalog produk kasir berhasil diperbarui', 'success', 1800);
   });
 
   // ---------- Kontrol Navigasi Tampilan Mobile POS ----------
@@ -1915,9 +1906,6 @@ export function renderPosModule(container) {
                 <span class="input-icon">${ICONS.search}</span>
                 <input type="search" id="input-cari-member" class="input" placeholder="Ketik nama, no HP, atau kode member..." autocomplete="off" data-autofocus />
               </div>
-              <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-member-pos" title="Segarkan Data Member" aria-label="Segarkan Data Member">
-                ${ICONS.refresh}
-              </button>
             </div>
           </div>
 
@@ -1935,7 +1923,6 @@ export function renderPosModule(container) {
 
     const elInputCari = modal.el.querySelector('#input-cari-member');
     const elListContainer = modal.el.querySelector('#member-list-container');
-    const elBtnRefreshMember = modal.el.querySelector('#btn-refresh-member-pos');
 
     const renderMemberList = (q = '') => {
       if (!elListContainer) return;
@@ -2027,10 +2014,6 @@ export function renderPosModule(container) {
     };
 
     muatDaftarMember(false);
-
-    elBtnRefreshMember?.addEventListener('click', () => {
-      muatDaftarMember(true);
-    });
 
     elInputCari?.addEventListener('input', (e) => {
       renderMemberList(e.target.value);

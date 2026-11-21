@@ -51,10 +51,6 @@ export async function renderOpnameModule(container) {
               <input type="search" class="input" id="search-opname" placeholder="Cari no opname, nama produk, atau alasan...">
             </div>
           </div>
-
-          <button type="button" class="btn btn-secondary btn-icon filter-refresh-btn" id="btn-refresh-opname" title="Muat Ulang" aria-label="Muat Ulang Opname">
-            ${ICONS.refresh}
-          </button>
         </div>
 
         <div id="area-tabel-opname" style="margin-top: var(--sp-2);">
@@ -65,10 +61,6 @@ export async function renderOpnameModule(container) {
   `;
 
   $('#filter-opname-status', container)?.addEventListener('change', () => muatDataOpname(container, canEdit));
-  $('#btn-refresh-opname', container)?.addEventListener('click', async () => {
-    await muatDataOpname(container, canEdit);
-    showToast('Data opname berhasil diperbarui', 'success', 1800);
-  });
 
   let timeoutCari = null;
   $('#search-opname', container)?.addEventListener('input', (e) => {

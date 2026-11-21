@@ -75,7 +75,13 @@ assert.ok(!layCss.includes('transform: translate3d(0, 6px, 0)'), 'halaman-masuk 
 assert.ok(compCss.includes('z-index: calc(var(--z-nav) + 10)'), 'Floating cart harus berada di atas bottom nav');
 assert.ok(appJs.includes('sinkronkanDataGlobal'), 'Aplikasi wajib memiliki fungsi sinkronkanDataGlobal');
 assert.ok(appJs.includes('btn-sync-top'), 'Topbar wajib memiliki tombol btn-sync-top');
-assert.ok(appJs.includes('btn-sync-sidebar'), 'Sidebar wajib memiliki tombol btn-sync-sidebar');
+assert.ok(!appJs.includes('btn-sync-sidebar'), 'Sidebar tidak boleh memiliki tombol sync duplikat (cukup 1 di Topbar)');
+const mainActivityJava = fs.readFileSync('android/app/src/main/java/com/admgaffidigital/poskasirtoko/MainActivity.java', 'utf8');
+const nativeJs = fs.readFileSync('frontend/js/utils/native.js', 'utf8');
+assert.ok(mainActivityJava.includes('OnBackPressedCallback'), 'MainActivity.java wajib mendaftarkan OnBackPressedCallback native');
+assert.ok(mainActivityJava.includes('showNativeExitDialog'), 'MainActivity.java wajib memiliki fallback showNativeExitDialog');
+assert.ok(nativeJs.includes('__posHandleNativeBack'), 'native.js wajib mengekspos window.__posHandleNativeBack');
+assert.ok(nativeJs.includes('tampilkanDialogKeluarAplikasi'), 'native.js wajib memiliki dialog konfirmasi keluar aplikasi');
 
 // Audit Fitur Koneksi Printer Bluetooth (RawBT)
 const printerJs = fs.readFileSync('frontend/js/utils/printer.js', 'utf8');

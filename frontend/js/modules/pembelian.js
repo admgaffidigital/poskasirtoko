@@ -54,9 +54,6 @@ export async function renderPembelianModule(container) {
               <span class="input-icon">${ICONS.search}</span>
               <input type="search" class="input" id="search-riwayat-beli" placeholder="Cari nomor faktur PB, faktur supplier, atau nama supplier...">
             </div>
-            <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-riwayat" title="Muat Ulang">
-              ${ICONS.refresh}
-            </button>
           </div>
           <div id="area-riwayat-beli">
             ${renderSkeleton(4)}
@@ -102,13 +99,6 @@ export async function renderPembelianModule(container) {
   // Inisialisasi Pencarian Riwayat
   $('#search-riwayat-beli', container)?.addEventListener('input', (e) => {
     muatRiwayatPembelian(container, e.target.value.trim());
-  });
-
-  $('#btn-refresh-riwayat', container)?.addEventListener('click', async () => {
-    const area = $('#area-riwayat-beli', container);
-    if (area) area.innerHTML = renderSkeleton(4);
-    await muatRiwayatPembelian(container, $('#search-riwayat-beli', container)?.value.trim() || '');
-    showToast('Riwayat pembelian berhasil diperbarui', 'success', 1800);
   });
 }
 
