@@ -371,192 +371,184 @@ function renderTabDashboard(container, data) {
   const tren = data.tren || [];
   const svgChartHtml = buatSvgTrenChart(tren, isOwner);
 
+  const produkTerlaris = data.produk_terlaris || [];
+  const pelangganTerbaik = data.pelanggan_terbaik || [];
+  const stokKritis = data.stok_kritis || [];
+  const MAX_RINGKAS = 5;
+
   container.innerHTML = `
-    <div class="stack" style="gap: var(--sp-4);">
-      <!-- Kartu Ringkasan Metrik Utama -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-        <div class="card stat">
-          <div class="stat-label">Omset Penjualan Bersih</div>
-          <div class="stat-value" style="color: var(--primary);">${formatRupiah(r.total_penjualan || 0)}</div>
-          <div class="stat-delta">
-            <span class="badge badge-info">${formatAngka(r.total_transaksi || 0)} Transaksi</span>
-            <span style="color: var(--text-muted); font-size: var(--fs-xs); margin-left: 4px;">(${formatAngka(r.total_item_terjual || 0)} item)</span>
-          </div>
-        </div>
-
-        <div class="card stat">
-          <div class="stat-label">Total Pembelian Stok</div>
-          <div class="stat-value" style="color: var(--warning);">${formatRupiah(r.total_pembelian || 0)}</div>
-          <div class="stat-delta">
-            <span class="badge badge-warning">${formatAngka(r.total_faktur_beli || 0)} Faktur Beli</span>
-          </div>
-        </div>
-
-        <div class="card stat">
-          <div class="stat-label">Piutang Pelanggan Aktif</div>
-          <div class="stat-value" style="color: ${r.total_piutang_aktif > 0 ? 'var(--danger)' : 'var(--text-muted)'};">
-            ${formatRupiah(r.total_piutang_aktif || 0)}
-          </div>
-          <div class="stat-delta">
-            <span class="badge ${r.count_piutang_aktif > 0 ? 'badge-danger' : 'badge-success'}">${formatAngka(r.count_piutang_aktif || 0)} Nota Tempo</span>
-          </div>
-        </div>
-
-        <div class="card stat">
-          <div class="stat-label">Hutang Supplier Aktif</div>
-          <div class="stat-value" style="color: ${r.total_hutang_aktif > 0 ? 'var(--danger)' : 'var(--text-muted)'};">
-            ${formatRupiah(r.total_hutang_aktif || 0)}
-          </div>
-          <div class="stat-delta">
-            <span class="badge ${r.count_hutang_aktif > 0 ? 'badge-danger' : 'badge-success'}">${formatAngka(r.count_hutang_aktif || 0)} Tagihan Supplier</span>
-          </div>
-        </div>
-
-        <div class="card stat">
-          <div class="stat-label">Biaya Operasional Toko</div>
-          <div class="stat-value" style="color: var(--danger);">${formatRupiah(r.total_biaya_operasional || 0)}</div>
-          <div class="stat-delta">
-            <span class="badge badge-danger">Beban Operasional</span>
-          </div>
-        </div>
-
+    <div class="stack" style="gap: var(--sp-3);">
+      <!-- Kartu Ringkasan Metrik Utama (Simetris Tanpa Kartu Yatim) -->
+      <div class="dash-kpi-grid">
         ${isOwner ? `
-          <div class="card stat">
-            <div class="stat-label">Nilai Aset Persediaan</div>
-            <div class="stat-value" style="color: var(--success);">${formatRupiah(r.total_nilai_aset_stok || 0)}</div>
-            <div class="stat-delta">
-              <span class="badge badge-success">Modal Berjalan (HPP)</span>
-            </div>
-          </div>
-
-          <div class="card stat">
-            <div class="stat-label">Laba Bersih Riil Toko</div>
-            <div class="stat-value" style="color: ${(r.laba_bersih_riil || 0) >= 0 ? 'var(--primary)' : 'var(--danger)'};">${formatRupiah(r.laba_bersih_riil || 0)}</div>
-            <div class="stat-delta">
-              <span class="badge badge-primary">Margin Bersih ${r.margin_bersih_persen || 0}%</span>
+          <div class="stat-card-pro dash-kpi-hero">
+            <div class="dash-hero-inner">
+              <div>
+                <div class="stat-card-title" style="margin-bottom: 4px;">Laba Bersih Riil Toko</div>
+                <div class="stat-card-value tabular" style="color: ${(r.laba_bersih_riil || 0) >= 0 ? 'var(--primary)' : 'var(--danger)'};">${formatRupiah(r.laba_bersih_riil || 0)}</div>
+              </div>
+              <div class="stack" style="align-items: flex-end; gap: 4px;">
+                <span class="badge badge-primary">Margin Bersih ${r.margin_bersih_persen || 0}%</span>
+                <span class="text-xs text-muted">Omset − HPP − Biaya Operasional</span>
+              </div>
             </div>
           </div>
         ` : ''}
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Omset Penjualan</span>
+            <div class="stat-card-icon icon-amber">${ICONS.shoppingBag}</div>
+          </div>
+          <div class="stat-card-value tabular" style="color: var(--primary);">${formatRupiah(r.total_penjualan || 0)}</div>
+          <div class="stat-card-desc">${formatAngka(r.total_transaksi || 0)} transaksi • ${formatAngka(r.total_item_terjual || 0)} item</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Pembelian Stok</span>
+            <div class="stat-card-icon icon-blue">${ICONS.truck}</div>
+          </div>
+          <div class="stat-card-value tabular" style="color: var(--warning-text);">${formatRupiah(r.total_pembelian || 0)}</div>
+          <div class="stat-card-desc">${formatAngka(r.total_faktur_beli || 0)} faktur beli</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Piutang Aktif</span>
+            <div class="stat-card-icon icon-rose">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value tabular" style="color: ${r.total_piutang_aktif > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatRupiah(r.total_piutang_aktif || 0)}</div>
+          <div class="stat-card-desc">${formatAngka(r.count_piutang_aktif || 0)} nota tempo</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Hutang Supplier</span>
+            <div class="stat-card-icon icon-rose">${ICONS.clipboard}</div>
+          </div>
+          <div class="stat-card-value tabular" style="color: ${r.total_hutang_aktif > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatRupiah(r.total_hutang_aktif || 0)}</div>
+          <div class="stat-card-desc">${formatAngka(r.count_hutang_aktif || 0)} tagihan berjalan</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Biaya Operasional</span>
+            <div class="stat-card-icon icon-rose">${ICONS.arrowUpRight}</div>
+          </div>
+          <div class="stat-card-value tabular" style="color: var(--danger);">${formatRupiah(r.total_biaya_operasional || 0)}</div>
+          <div class="stat-card-desc">Beban kas toko</div>
+        </div>
+
+        ${isOwner ? `
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Nilai Aset Stok</span>
+              <div class="stat-card-icon icon-emerald">${ICONS.box}</div>
+            </div>
+            <div class="stat-card-value tabular" style="color: var(--success-text);">${formatRupiah(r.total_nilai_aset_stok || 0)}</div>
+            <div class="stat-card-desc">Modal berjalan (HPP)</div>
+          </div>
+        ` : `
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Stok Perlu Restok</span>
+              <div class="stat-card-icon icon-amber">${ICONS.alertTriangle}</div>
+            </div>
+            <div class="stat-card-value tabular" style="color: ${stokKritis.length > 0 ? 'var(--danger)' : 'var(--success-text)'};">${formatAngka(stokKritis.length)} Item</div>
+            <div class="stat-card-desc">${stokKritis.length > 0 ? 'Di bawah batas minimum' : 'Semua stok aman'}</div>
+          </div>
+        `}
       </div>
 
       <!-- Grafik Tren Harian -->
       <div class="card">
-        <div class="card-header" style="justify-content: space-between; align-items: center;">
+        <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
           <h3 class="card-title">${ICONS.chart} Tren Harian Penjualan & Pembelian</h3>
           <div class="cluster" style="font-size: var(--fs-xs); gap: var(--sp-3);">
-            <span style="display: flex; align-items: center; gap: 4px;">
+            <span style="display: inline-flex; align-items: center; gap: 5px;">
               <span style="width: 10px; height: 10px; background: var(--primary); display: inline-block; border-radius: 2px;"></span> Penjualan
             </span>
-            <span style="display: flex; align-items: center; gap: 4px;">
+            <span style="display: inline-flex; align-items: center; gap: 5px;">
               <span style="width: 10px; height: 10px; background: var(--warning); display: inline-block; border-radius: 2px;"></span> Pembelian
             </span>
           </div>
         </div>
-        <div class="card-body" style="padding: var(--sp-4);">
+        <div class="card-body" style="padding: var(--sp-3) var(--sp-4);">
           ${svgChartHtml}
         </div>
       </div>
 
-      <!-- Grid 2 Kolom: Produk Terlaris & Pelanggan Terbaik -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <!-- Grid 2 Kolom: Produk Terlaris & Pelanggan Terbaik (Compact Native Ranking List) -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
         <!-- Produk Terlaris -->
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">${ICONS.award} Produk Paling Laris (Top 10)</h3>
+        <div class="card" id="card-dash-terlaris">
+          <div class="card-header" style="justify-content: space-between; align-items: center;">
+            <h3 class="card-title">${ICONS.award} Produk Paling Laris</h3>
+            <span class="badge badge-info badge-sm">Top ${produkTerlaris.length}</span>
           </div>
-          <div class="card-body card-table-body" style="padding: 0;">
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th style="width: 40px;">No</th>
-                    <th>Nama Material</th>
-                    <th style="text-align: right;">Qty Terjual</th>
-                    <th style="text-align: right;">Kontribusi Omset</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(data.produk_terlaris || []).length === 0 ? `
-                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada penjualan di periode ini</td></tr>
-                  ` : (data.produk_terlaris || []).map((p, idx) => `
-                    <tr>
-                      <td data-label="No" style="font-weight: var(--fw-bold); color: var(--text-muted);">
-                        <div class="row-between" style="width: 100%; align-items: center;">
-                          <span>#${idx + 1}</span>
-                          <span class="fw-bold d-none-desktop" style="color: var(--text);">${escapeHtml(p.nama)}</span>
-                        </div>
-                      </td>
-                      <td class="d-none-mobile" data-label="Nama Material">
-                        <div style="font-weight: var(--fw-medium);">${escapeHtml(p.nama)}</div>
-                      </td>
-                      <td data-label="Qty Terjual" style="text-align: right; font-weight: var(--fw-semibold);">
-                        <span>${formatAngka(p.qty_terjual)} <small style="font-size: var(--fs-xs); color: var(--text-muted); font-weight: var(--fw-medium);">${escapeHtml(p.satuan || '')}</small></span>
-                      </td>
-                      <td data-label="Kontribusi Omset" style="text-align: right; font-weight: var(--fw-bold); color: var(--primary);">
-                        ${formatRupiah(p.total_omset)}
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+          <div class="dash-list">
+            ${produkTerlaris.length === 0 ? `
+              <div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan di periode ini</div>
+            ` : produkTerlaris.map((p, idx) => `
+              <div class="dash-row ${idx >= MAX_RINGKAS ? 'is-hidden-extra' : ''}">
+                <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
+                <div class="dash-row-main">
+                  <div class="dash-row-title" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
+                  <div class="dash-row-sub">Terjual <b>${formatAngka(p.qty_terjual)} ${escapeHtml(p.satuan || '')}</b></div>
+                </div>
+                <div class="dash-row-right">
+                  <div class="dash-row-val" style="color: var(--primary);">${formatRupiah(p.total_omset)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${produkTerlaris.length > MAX_RINGKAS ? `
+            <div class="dash-list-footer">
+              <button type="button" class="btn btn-ghost btn-xs btn-toggle-dash-list" data-target="#card-dash-terlaris" data-total="${produkTerlaris.length}">
+                Lihat Semua (${produkTerlaris.length} Produk)
+              </button>
             </div>
-          </div>
+          ` : ''}
         </div>
 
         <!-- Pelanggan Terbaik -->
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">${ICONS.users} Pelanggan Belanja Terbesar (Top 10)</h3>
+        <div class="card" id="card-dash-pelanggan">
+          <div class="card-header" style="justify-content: space-between; align-items: center;">
+            <h3 class="card-title">${ICONS.users} Pelanggan Terbesar</h3>
+            <span class="badge badge-primary badge-sm">Top ${pelangganTerbaik.length}</span>
           </div>
-          <div class="card-body card-table-body" style="padding: 0;">
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th style="width: 40px;">No</th>
-                    <th>Nama Pelanggan</th>
-                    <th>Tipe / Level</th>
-                    <th style="text-align: right;">Transaksi</th>
-                    <th style="text-align: right;">Total Belanja</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(data.pelanggan_terbaik || []).length === 0 ? `
-                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: var(--sp-4);">Belum ada transaksi member di periode ini</td></tr>
-                  ` : (data.pelanggan_terbaik || []).map((m, idx) => `
-                    <tr>
-                      <td data-label="No" style="font-weight: var(--fw-bold); color: var(--text-muted);">
-                        <div class="row-between" style="width: 100%; align-items: center;">
-                          <span>#${idx + 1} — ${escapeHtml(m.nama)}</span>
-                          <span class="badge d-none-desktop ${m.tipe === 'member' ? 'badge-primary' : 'badge-info'}">${escapeHtml(m.level || m.tipe)}</span>
-                        </div>
-                      </td>
-                      <td class="d-none-mobile" data-label="Pelanggan">
-                        <div style="font-weight: var(--fw-medium);">${escapeHtml(m.nama)}</div>
-                        <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(m.kode || '-')}</div>
-                      </td>
-                      <td class="d-none-mobile" data-label="Tipe / Level">
-                        <span class="badge ${m.tipe === 'member' ? 'badge-primary' : 'badge-info'}">
-                          ${escapeHtml(m.level || m.tipe)}
-                        </span>
-                      </td>
-                      <td data-label="Transaksi" style="text-align: right; font-weight: var(--fw-semibold);">
-                        ${formatAngka(m.total_transaksi)}x
-                      </td>
-                      <td data-label="Total Belanja" style="text-align: right; font-weight: var(--fw-bold); color: var(--success);">
-                        ${formatRupiah(m.total_belanja)}
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+          <div class="dash-list">
+            ${pelangganTerbaik.length === 0 ? `
+              <div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada transaksi member di periode ini</div>
+            ` : pelangganTerbaik.map((m, idx) => `
+              <div class="dash-row ${idx >= MAX_RINGKAS ? 'is-hidden-extra' : ''}">
+                <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
+                <div class="dash-row-main">
+                  <div class="dash-row-title" title="${escapeHtml(m.nama)}">${escapeHtml(m.nama)}</div>
+                  <div class="dash-row-sub">
+                    <span class="badge badge-sm ${m.tipe === 'member' ? 'badge-primary' : 'badge-info'}">${escapeHtml(m.level || m.tipe)}</span>
+                    <span>${formatAngka(m.total_transaksi)}x belanja</span>
+                  </div>
+                </div>
+                <div class="dash-row-right">
+                  <div class="dash-row-val" style="color: var(--success-text);">${formatRupiah(m.total_belanja)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${pelangganTerbaik.length > MAX_RINGKAS ? `
+            <div class="dash-list-footer">
+              <button type="button" class="btn btn-ghost btn-xs btn-toggle-dash-list" data-target="#card-dash-pelanggan" data-total="${pelangganTerbaik.length}">
+                Lihat Semua (${pelangganTerbaik.length} Pelanggan)
+              </button>
             </div>
-          </div>
+          ` : ''}
         </div>
       </div>
 
-      <!-- Grid 2 Kolom: Metode Pembayaran & Stok Kritis -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <!-- Grid 2 Kolom: Metode Pembayaran & Stok Kritis (Ringkas + Lihat Semua) -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
         <!-- Breakdown Metode Pembayaran -->
         <div class="card">
           <div class="card-header">
@@ -568,59 +560,62 @@ function renderTabDashboard(container, data) {
         </div>
 
         <!-- Stok Kritis & Kosong -->
-        <div class="card">
-          <div class="card-header" style="justify-content: space-between; align-items: center;">
-            <h3 class="card-title">${ICONS.alertTriangle} Peringatan Stok Menipis / Habis</h3>
-            <a href="#/pembelian" class="btn btn-sm btn-secondary no-print" style="text-decoration: none;">${ICONS.plus}<span>Order Supplier</span></a>
+        <div class="card" id="card-dash-stok-kritis">
+          <div class="card-header" style="justify-content: space-between; align-items: center; gap: var(--sp-2);">
+            <h3 class="card-title">${ICONS.alertTriangle} Stok Menipis / Habis <span class="badge ${stokKritis.length > 0 ? 'badge-danger' : 'badge-success'} badge-sm">${stokKritis.length}</span></h3>
+            <a href="#/pembelian" class="btn btn-xs btn-secondary no-print" style="text-decoration: none; flex-shrink: 0;">${ICONS.plus}<span>Order</span></a>
           </div>
-          <div class="card-body card-table-body" style="padding: 0;">
-            <div class="table-wrap">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Produk Material</th>
-                    <th style="text-align: right;">Stok</th>
-                    <th style="text-align: right;">Batas Min</th>
-                    <th style="text-align: center;">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(data.stok_kritis || []).length === 0 ? `
-                    <tr><td colspan="4" style="text-align: center; color: var(--success); padding: var(--sp-4);">
-                      <span style="display: inline-flex; align-items: center; gap: 6px;">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        <span>Stok semua barang dalam batas aman</span>
-                      </span>
-                    </td></tr>
-                  ` : (data.stok_kritis || []).map((s) => `
-                    <tr>
-                      <td data-label="Produk Material">
-                        <div class="cell-stack" style="align-items: flex-start; text-align: left;">
-                          <div style="font-weight: var(--fw-medium);">${escapeHtml(s.nama)}</div>
-                          <div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(s.sku || '')}</div>
-                        </div>
-                      </td>
-                      <td data-label="Stok Fisik" style="text-align: right; font-weight: var(--fw-bold); color: ${s.stok <= 0 ? 'var(--danger)' : 'var(--warning)'};">
-                        ${formatAngka(s.stok)} ${escapeHtml(s.satuan)}
-                      </td>
-                      <td data-label="Batas Min" style="text-align: right; color: var(--text-muted);">
-                        ${formatAngka(s.stok_min)} ${escapeHtml(s.satuan)}
-                      </td>
-                      <td data-label="Status" style="text-align: center;">
-                        <span class="badge ${s.status === 'habis' ? 'badge-danger' : 'badge-warning'}">
-                          ${s.status === 'habis' ? 'HABIS' : 'KRITIS'}
-                        </span>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+          <div class="dash-list">
+            ${stokKritis.length === 0 ? `
+              <div class="text-xs text-center" style="color: var(--success-text); padding: var(--sp-5); display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Semua stok barang dalam batas aman</span>
+              </div>
+            ` : stokKritis.map((s, idx) => `
+              <div class="dash-row ${idx >= MAX_RINGKAS ? 'is-hidden-extra' : ''}">
+                <div class="dash-row-main">
+                  <div class="dash-row-title" title="${escapeHtml(s.nama)}">${escapeHtml(s.nama)}</div>
+                  <div class="dash-row-sub">
+                    <span class="mono">${escapeHtml(s.sku || '-')}</span>
+                    <span>• Min ${formatAngka(s.stok_min)} ${escapeHtml(s.satuan)}</span>
+                  </div>
+                </div>
+                <div class="dash-row-right">
+                  <div class="dash-row-val" style="color: ${s.stok <= 0 ? 'var(--danger)' : 'var(--warning-text)'};">${formatAngka(s.stok)} ${escapeHtml(s.satuan)}</div>
+                  <span class="badge badge-sm ${s.status === 'habis' ? 'badge-danger' : 'badge-warning'}">${s.status === 'habis' ? 'HABIS' : 'KRITIS'}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${stokKritis.length > MAX_RINGKAS ? `
+            <div class="dash-list-footer">
+              <button type="button" class="btn btn-ghost btn-xs btn-toggle-dash-list" data-target="#card-dash-stok-kritis" data-total="${stokKritis.length}">
+                Lihat Semua (${stokKritis.length} Item)
+              </button>
             </div>
-          </div>
+          ` : ''}
         </div>
       </div>
     </div>
   `;
+
+  // Toggle "Lihat Semua / Ringkas" pada daftar dashboard
+  container.querySelectorAll('.btn-toggle-dash-list').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cardSel = btn.getAttribute('data-target');
+      const total = btn.getAttribute('data-total') || '';
+      const card = container.querySelector(cardSel);
+      if (!card) return;
+      const expanded = btn.getAttribute('data-expanded') === 'true';
+      card.querySelectorAll('.dash-row').forEach((row, idx) => {
+        if (idx >= MAX_RINGKAS) {
+          row.classList.toggle('is-hidden-extra', expanded);
+        }
+      });
+      btn.setAttribute('data-expanded', expanded ? 'false' : 'true');
+      btn.textContent = expanded ? `Lihat Semua (${total})` : 'Tampilkan Ringkas';
+    });
+  });
 }
 
 /** Generator Grafik SVG Tren Harian Murni Ringan */

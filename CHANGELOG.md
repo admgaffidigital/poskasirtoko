@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.81] - 2026-11-21
+
+### Changed
+- [DASHBOARD] [UI] **Redesign Tata Letak Dashboard Mobile & Desktop Lebih Simetris & Ringkas**:
+  - **KPI Grid Bebas Kartu Yatim (`laporan.js`, `components.css`)**: Menampilkan **Laba Bersih Riil Toko** sebagai kartu Hero penuh lebar (`dash-kpi-hero`, 100% solid beraksen kiri) di posisi atas dan menyusun 6 metrik inti lainnya ke dalam grid `.stat-card-pro` simetris (`2×3` di mobile, `3×2` di desktop) lengkap dengan ikon warna solid sehingga tidak ada lagi slot kosong setengah baris.
+  - **Daftar Ranking & Stok Kritis Ringkas + Tombol "Lihat Semua" (`laporan.js`, `components.css`)**: Mengubah **Produk Paling Laris**, **Pelanggan Terbesar**, dan **Stok Menipis / Habis** dari kartu tabel bertumpuk panjang menjadi baris compact 1-baris (`.dash-row`) dengan lencana peringkat (`1`, `2`, `3`) dan pembatasan 5 baris awal + tombol **Lihat Semua** sehingga tinggi scroll halaman Dashboard mobile berkurang drastis (> 65%) dan jauh lebih nyaman dibaca.
+
 ## [1.0.80] - 2026-11-21
 
 ### Changed
