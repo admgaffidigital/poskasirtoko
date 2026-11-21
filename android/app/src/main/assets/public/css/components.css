@@ -109,6 +109,28 @@
   --btn-bg-hover: var(--surface-2);
 }
 
+.btn-outline-primary {
+  --btn-bg: transparent;
+  --btn-text: var(--primary);
+  --btn-border: var(--primary);
+  --btn-bg-hover: var(--primary-soft);
+}
+
+.btn-outline-secondary {
+  --btn-bg: transparent;
+  --btn-text: var(--text);
+  --btn-border: var(--border-strong);
+  --btn-bg-hover: var(--surface-2);
+}
+
+.btn-warning {
+  --btn-bg: var(--warning);
+  --btn-text: #ffffff;
+  --btn-border: var(--warning);
+  --btn-bg-hover: var(--amber-600);
+  box-shadow: var(--shadow-xs);
+}
+
 .btn-success {
   --btn-bg: var(--success);
   --btn-text: #fff;
@@ -186,30 +208,37 @@
   gap: var(--sp-1);
 }
 
-.field-label {
+.field-label,
+.form-label {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   color: var(--text);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
-.field-label .wajib {
+.field-label .wajib,
+.form-label .wajib {
   color: var(--danger-text);
   margin-left: 2px;
   font-weight: var(--fw-bold);
 }
 
 .field-label .field-hint-right,
-.field-label .label-action {
+.field-label .label-action,
+.form-label .field-hint-right,
+.form-label .label-action {
   margin-left: auto;
 }
 
-.field-hint {
+.field-hint,
+.form-hint {
   font-size: var(--fs-xs);
   color: var(--text-muted);
+  margin-top: 3px;
+  line-height: 1.4;
 }
 
 .field-error {
@@ -692,8 +721,24 @@ input[type="password"] {
 }
 
 .stat-card-pro:hover {
-  border-color: var(--border-strong);
+  border-color: var(--primary);
   box-shadow: var(--shadow-sm);
+}
+
+.stat-card-pro.is-compact {
+  padding: var(--sp-2) var(--sp-3);
+  gap: 2px;
+}
+
+.stat-card-pro.is-compact .stat-card-title {
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stat-card-pro.is-compact .stat-card-value {
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-card-header {
@@ -922,12 +967,16 @@ input[type="password"] {
 }
 
 .table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   font-size: 11px;
   font-weight: var(--fw-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: var(--surface-2);
+  border-bottom: 2px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -1871,7 +1920,15 @@ a.list-item:hover {
   text-align: left;
   background: var(--info-soft);
   color: var(--info-text);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--info);
+}
+
+.alert-info {
+  background: var(--info-soft);
+  color: var(--info-text);
+  border-color: var(--border);
+  border-left: 3px solid var(--info);
 }
 
 .alert.alert-block {
@@ -1893,19 +1950,22 @@ a.list-item:hover {
 .alert-success {
   background: var(--success-soft);
   color: var(--success-text);
-  border-color: rgba(34, 197, 94, 0.25);
+  border-color: var(--border);
+  border-left: 3px solid var(--success);
 }
 
 .alert-warning {
   background: var(--warning-soft);
   color: var(--warning-text);
-  border-color: rgba(245, 158, 11, 0.25);
+  border-color: var(--border);
+  border-left: 3px solid var(--warning);
 }
 
 .alert-danger {
   background: var(--danger-soft);
   color: var(--danger-text);
-  border-color: rgba(239, 68, 68, 0.25);
+  border-color: var(--border);
+  border-left: 3px solid var(--danger);
 }
 
 /* Pertahankan inline agar <strong> dalam kalimat tidak mematahkan paragraf */
@@ -3785,7 +3845,8 @@ a.list-item:hover {
 
 .pos-card-price-val {
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
   color: var(--primary);
   letter-spacing: -0.01em;
 }
@@ -5656,6 +5717,48 @@ tr.is-bulk-selected td {
   background: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
+}
+
+/* ---------- POS Live In-Cart Visual Indicator ---------- */
+.pos-product-card.is-in-cart,
+.pos-list-item.is-in-cart {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), var(--shadow-sm);
+}
+
+.pos-in-cart-pill {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-xs);
+  pointer-events: none;
+}
+
+.pos-list-in-cart-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 

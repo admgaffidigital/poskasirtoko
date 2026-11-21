@@ -884,17 +884,17 @@ async function bukaModalDetailPelanggan(pelangganId) {
 
       ${isMember ? `
         <div class="stat-grid-3" style="margin-bottom: var(--sp-2);">
-          <div class="card card-body stat-card" style="padding: var(--sp-2) var(--sp-3);">
-            <span class="text-xs text-muted">LIMIT KREDIT</span>
-            <div class="fw-bold tabular">${formatRupiah(pel.limit_kredit || 0)}</div>
+          <div class="stat-card-pro is-compact">
+            <span class="stat-card-title">LIMIT KREDIT</span>
+            <div class="stat-card-value tabular">${formatRupiah(pel.limit_kredit || 0)}</div>
           </div>
-          <div class="card card-body stat-card" style="padding: var(--sp-2) var(--sp-3);">
-            <span class="text-xs text-muted">PIUTANG BERJALAN</span>
-            <div class="fw-bold tabular ${res.piutang_berjalan > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(res.piutang_berjalan || 0)}</div>
+          <div class="stat-card-pro is-compact">
+            <span class="stat-card-title">PIUTANG BERJALAN</span>
+            <div class="stat-card-value tabular ${res.piutang_berjalan > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(res.piutang_berjalan || 0)}</div>
           </div>
-          <div class="card card-body stat-card" style="padding: var(--sp-2) var(--sp-3);">
-            <span class="text-xs text-muted">SISA LIMIT</span>
-            <div class="fw-bold tabular text-primary">${formatRupiah(res.sisa_limit || 0)}</div>
+          <div class="stat-card-pro is-compact">
+            <span class="stat-card-title">SISA LIMIT</span>
+            <div class="stat-card-value tabular text-primary">${formatRupiah(res.sisa_limit || 0)}</div>
           </div>
         </div>
       ` : ''}

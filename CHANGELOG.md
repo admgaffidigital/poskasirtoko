@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.80] - 2026-11-21
+
+### Changed
+- [UI] [POS-JUAL] [PRODUK] [PELANGGAN] **Penyeragaman Sistem Desain & Polish Visual Menyeluruh (100% Solid Flat)**:
+  - **Melengkapi 5 Class CSS Komponen yang Hilang (`components.css`)**: Mendefinisikan `.btn-outline-primary`, `.btn-outline-secondary`, `.btn-warning`, `.alert-info`, serta menyelaraskan `.form-label` / `.form-hint` dengan `.field-label` / `.field-hint` agar tombol Cepat/Salin, kotak informasi Tempo/Piutang/Retur, dan seluruh label formulir tampil 100% seragam di semua 17 modul.
+  - **Indikator Live In-Cart pada Katalog POS (`pos.js`, `components.css`)**: Kartu & baris produk yang sudah masuk ke keranjang kini otomatis disorot dengan bingkai aksen solid + badge jumlah live (`×Qty`) agar kasir langsung tahu item apa saja yang sudah ditambahkan tanpa harus membuka keranjang.
+  - **Harmonisasi Penuh 6 Warna Aksen & 3 Mode Tema (`app.js`, `pos.js`, `produk.js`, `layout.css`)**: Mengganti seluruh sisa warna hardcoded `rgba(...)` / oranye manual pada Menu Lainnya, sorotan pencarian, dan POS menjadi token CSS solid (`.is-primary`, `.is-info`, `.is-success`, `.is-warning`) sehingga tampilan tajam & konsisten di mode Terang, Hangat, maupun Gelap.
+  - **Hierarki Header, Tabel Sticky, & KPI Card Seragam (`layout.css`, `components.css`, `pelanggan.js`)**: Menambahkan garis pemisah bersih pada `.page-header` desktop, header tabel sticky saat scroll, aksen garis samping tegas pada seluruh `.alert-*`, dan menyeragamkan kartu KPI modal Pelanggan memakai `.stat-card-pro.is-compact`.
+
 ## [1.0.79] - 2026-11-21
 
 ### Fixed

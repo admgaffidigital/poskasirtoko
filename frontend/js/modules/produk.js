@@ -1327,7 +1327,7 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
   function highlightMatch(text, query) {
     if (!query) return escapeHtml(text);
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return escapeHtml(text).replace(regex, '<mark style="background: rgba(234, 88, 12, 0.25); color: inherit; padding: 0 2px; border-radius: 2px;">$1</mark>');
+    return escapeHtml(text).replace(regex, '<mark style="background: var(--primary-soft); color: var(--primary-soft-text); padding: 0 3px; border-radius: 3px; font-weight: var(--fw-semibold);">$1</mark>');
   }
 
   function renderList(query = '') {

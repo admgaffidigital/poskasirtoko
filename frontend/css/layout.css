@@ -643,6 +643,8 @@
   justify-content: space-between;
   gap: var(--sp-3);
   margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-header h2 {
@@ -661,6 +663,8 @@
 @media (max-width: 767px) {
   .page-header {
     margin-bottom: var(--sp-3);
+    padding-bottom: var(--sp-2);
+    border-bottom: 0;
     flex-direction: column;
     align-items: stretch;
     width: 100%;
@@ -1040,6 +1044,30 @@
 .menu-list-item:hover .menu-list-icon {
   background: var(--primary-soft);
   border-color: var(--primary);
+}
+
+.menu-list-icon.is-primary {
+  background: var(--primary-soft);
+  color: var(--primary-soft-text);
+  border-color: var(--border);
+}
+
+.menu-list-icon.is-info {
+  background: var(--info-soft);
+  color: var(--info-text);
+  border-color: var(--border);
+}
+
+.menu-list-icon.is-success {
+  background: var(--success-soft);
+  color: var(--success-text);
+  border-color: var(--border);
+}
+
+.menu-list-icon.is-warning {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  border-color: var(--border);
 }
 
 .menu-list-icon svg {

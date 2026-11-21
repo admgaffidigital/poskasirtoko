@@ -509,7 +509,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.79'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.80'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -562,7 +562,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.79'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.80'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1758,7 +1758,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.79'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.80'}</div>
         </div>
       `;
     };
@@ -2075,7 +2075,7 @@ class App {
           <div class="menu-group-heading">Alat & Aksi Cepat</div>
           <div class="menu-list-card">
             <button type="button" class="menu-list-item" id="btn-sync-tile" data-search="sinkron data perbarui cache produk pelanggan stok offline cloud">
-              <div class="menu-list-icon" style="background: rgba(234, 88, 12, 0.12); color: #ea580c; border-color: rgba(234, 88, 12, 0.25);">
+              <div class="menu-list-icon is-primary">
                 ${ICONS.refresh}
               </div>
               <div class="menu-list-body">
@@ -2086,7 +2086,7 @@ class App {
             </button>
 
             <button type="button" class="menu-list-item" id="btn-printer-tile" data-search="printer bluetooth rawbt struk nota cetak kasir faktur">
-              <div class="menu-list-icon" style="background: rgba(14, 165, 233, 0.12); color: #0284c7; border-color: rgba(14, 165, 233, 0.25);">
+              <div class="menu-list-icon is-info">
                 ${ICONS.printer}
               </div>
               <div class="menu-list-body">
@@ -2097,7 +2097,7 @@ class App {
             </button>
 
             <button type="button" class="menu-list-item" id="btn-theme-tile" data-search="tema warna suasana tampilan gelap terang hangat biru hijau oranye ungu merah">
-              <div class="menu-list-icon" style="background: var(--primary-soft); color: var(--primary); border-color: rgba(var(--primary-rgb, 232, 89, 12), 0.25);">
+              <div class="menu-list-icon is-success">
                 ${ICONS.palette}
               </div>
               <div class="menu-list-body">
@@ -2110,9 +2110,19 @@ class App {
         </div>
     `;
 
+    // Skema aksen ikon solid per grup agar cepat dipindai & harmonis di semua tema
+    const groupIconTone = {
+      'Transaksi': 'is-primary',
+      'Katalog & Stok': 'is-info',
+      'Mitra & Loyalitas': 'is-success',
+      'Keuangan': 'is-warning',
+      'Sistem': ''
+    };
+
     // Render per grup rute
     Object.entries(groupedRoutes).forEach(([groupKey, items]) => {
       const displayTitle = groupTitles[groupKey] || groupKey;
+      const toneClass = groupIconTone[groupKey] || '';
       html += `
         <div class="menu-group-wrap" data-group-wrap="${escapeHtml(groupKey)}">
           <div class="menu-group-heading">${escapeHtml(displayTitle)}</div>
@@ -2124,7 +2134,7 @@ class App {
         const searchKeywords = `${r.title} ${r.shortTitle || ''} ${desc} ${displayTitle}`.toLowerCase();
         html += `
           <a href="${r.path}" class="menu-list-item" data-search="${escapeHtml(searchKeywords)}">
-            <div class="menu-list-icon">${r.icon}</div>
+            <div class="menu-list-icon ${toneClass}">${r.icon}</div>
             <div class="menu-list-body">
               <div class="menu-list-title">${escapeHtml(r.title)}</div>
               <div class="menu-list-desc">${escapeHtml(desc)}</div>

@@ -285,7 +285,7 @@ export function renderPosModule(container) {
           <div class="text-xs text-muted" id="floating-cart-count">0 item</div>
         </div>
       </div>
-      <button type="button" class="btn btn-primary" id="btn-floating-view-cart" style="font-weight: var(--fw-bold); padding: 7px 15px; border-radius: var(--radius-full); box-shadow: 0 2px 8px rgba(230,81,0,0.3);">
+      <button type="button" class="btn btn-primary" id="btn-floating-view-cart" style="font-weight: var(--fw-bold); padding: 7px 15px; border-radius: var(--radius-full); box-shadow: var(--shadow-sm);">
         <span>Bayar / Cek</span>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
@@ -863,6 +863,7 @@ export function renderPosModule(container) {
     html += `</div>`;
     elProductArea.innerHTML = html;
     pasangAksiKlikKatalog();
+    syncInCartBadges();
   }
 
   function renderKatalogList(items) {
@@ -970,6 +971,7 @@ export function renderPosModule(container) {
     html += `</div>`;
     elProductArea.innerHTML = html;
     pasangAksiKlikKatalog();
+    syncInCartBadges();
   }
 
   // Delegasi event tunggal pada elProductArea untuk performa tinggi & hemat memori
@@ -1318,7 +1320,7 @@ export function renderPosModule(container) {
       let badgeSatuanHtml = `<span class="badge badge-sm" style="background: var(--surface-3);">${escapeHtml(it.satuan)}</span>`;
       if (punyaMultiSatuan) {
         badgeSatuanHtml = `
-          <button type="button" class="badge badge-sm btn-ganti-satuan-item" data-idx="${idx}" title="Ganti Satuan Jual (${escapeHtml(it.satuan)})" style="cursor: pointer; background: var(--primary-soft); color: var(--primary-soft-text); border: 1px solid rgba(232, 89, 12, 0.35); display: inline-flex; align-items: center; gap: 3px; font-weight: var(--fw-semibold);">
+          <button type="button" class="badge badge-sm btn-ganti-satuan-item" data-idx="${idx}" title="Ganti Satuan Jual (${escapeHtml(it.satuan)})" style="cursor: pointer; background: var(--primary-soft); color: var(--primary-soft-text); border: 1px solid var(--primary); display: inline-flex; align-items: center; gap: 3px; font-weight: var(--fw-semibold);">
             <span>${escapeHtml(it.satuan)}</span>
             <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
           </button>
@@ -1454,6 +1456,56 @@ export function renderPosModule(container) {
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         bukaModalDiskonItem(idx);
       });
+    });
+
+    syncInCartBadges();
+  }
+
+  /**
+   * Tandai secara visual kartu/baris produk yang sedang berada di keranjang beserta total qty-nya.
+   */
+  function syncInCartBadges() {
+    if (!elProductArea) return;
+    const qtyByProduk = new Map();
+    state.keranjang.forEach((it) => {
+      qtyByProduk.set(it.produk_id, bulatQty((qtyByProduk.get(it.produk_id) || 0) + (Number(it.qty) || 0)));
+    });
+
+    elProductArea.querySelectorAll('.pos-product-card[data-id]').forEach((card) => {
+      const id = card.getAttribute('data-id');
+      const qty = qtyByProduk.get(id) || 0;
+      card.classList.toggle('is-in-cart', qty > 0);
+      const visual = card.querySelector('.pos-card-visual');
+      if (!visual) return;
+      let pill = visual.querySelector('.pos-in-cart-pill');
+      if (qty > 0) {
+        if (!pill) {
+          pill = document.createElement('span');
+          pill.className = 'pos-in-cart-pill';
+          visual.appendChild(pill);
+        }
+        pill.textContent = `×${formatQty(qty)}`;
+      } else if (pill) {
+        pill.remove();
+      }
+    });
+
+    elProductArea.querySelectorAll('.pos-list-item[data-id]').forEach((row) => {
+      const id = row.getAttribute('data-id');
+      const qty = qtyByProduk.get(id) || 0;
+      row.classList.toggle('is-in-cart', qty > 0);
+      const rightArea = row.querySelector('.pos-list-right') || row;
+      let pill = row.querySelector('.pos-list-in-cart-pill');
+      if (qty > 0) {
+        if (!pill) {
+          pill = document.createElement('span');
+          pill.className = 'pos-list-in-cart-pill';
+          rightArea.prepend(pill);
+        }
+        pill.textContent = `×${formatQty(qty)}`;
+      } else if (pill) {
+        pill.remove();
+      }
     });
   }
 
@@ -2613,7 +2665,7 @@ export function renderPosModule(container) {
           </div>
 
           <!-- Highlight Total Uang Fisik di Laci -->
-          <div style="background: var(--primary-soft); border: 1px solid rgba(232, 89, 12, 0.4); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
+          <div style="background: var(--primary-soft); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
             <div class="text-xs fw-semibold" style="color: var(--primary-soft-text); text-transform: uppercase; letter-spacing: 0.5px;">
               Total Uang Fisik Harus Ada di Laci
             </div>
@@ -2651,7 +2703,7 @@ export function renderPosModule(container) {
                 <span class="fw-bold mono text-danger">-${formatRupiah(totalBiayaKasir)}</span>
               </div>
               ${Array.isArray(reportData.rincian_biaya_kasir) && reportData.rincian_biaya_kasir.length > 0 ? `
-                <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs);">
+                <div style="background: var(--danger-soft); border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs);">
                   ${reportData.rincian_biaya_kasir.map(rb => `
                     <div class="row" style="justify-content: space-between; padding: 2px 0;">
                       <span class="text-muted">• ${escapeHtml(rb.kategori)}${rb.keterangan ? ` (${escapeHtml(rb.keterangan)})` : ''}</span>
