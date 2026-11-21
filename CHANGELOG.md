@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.76] - 2026-11-21
+
+### Added
+- [UI] [PRODUK] [POS-JUAL] [POS-BELI] [PRICETAG] [PELANGGAN] **Sistem "Tandai & Pilih" (Multi-Select + Floating Bulk Action Bar Solid) di Seluruh Modul Utama**:
+  - **Manajemen Produk (`frontend/js/modules/produk.js`, `pricetag.js`)**: Tombol **Pilih** + dukungan *long-press* (tahan kartu 0,45 detik di HP) dengan 5 aksi massal pada bar solid melayang: **Cetak Price Tag Massal** (langsung tercentang otomatis di `#/pricetag`), **Pindah Kategori Massal**, **Aktif/Nonaktifkan Massal**, **Bagikan / Kirim Daftar WA**, dan **Hapus Massal**.
+  - **POS Kasir (`frontend/js/modules/pos.js`)**: Tombol **Pilih** untuk menandai banyak barang sekaligus di tampilan Grid/List lalu memasukkannya bersamaan dalam 1 ketukan (**Masukkan X ke Keranjang**).
+  - **Modal Pilih Produk (`frontend/js/utils/produk-picker.js`, `pembelian.js`)**: Mode **Tandai Banyak** di katalog pemilih produk untuk langsung menambahkan banyak item ke faktur **POS Pembelian** tanpa buka-tutup modal berulang.
+  - **Kategori & Pelanggan (`frontend/js/modules/kategori.js`, `pelanggan.js`)**: Mode **Pilih** + bar aksi solid untuk **Hapus Massal Kategori**, **Ubah Level Member Massal**, **Salin Daftar Kontak WA**, dan **Hapus Massal Pelanggan**.
+  - **Integrasi Tombol Kembali (`frontend/js/utils/native.js`, `components.css`)**: Menekan tombol Back saat mode **Tandai & Pilih** aktif otomatis membatalkan mode pilih terlebih dahulu secara rapi; seluruh bar & penanda memakai warna solid 100% tanpa gradasi/blur.
+
 ## [1.0.75] - 2026-11-21
 
 ### Fixed

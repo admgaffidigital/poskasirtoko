@@ -13,8 +13,25 @@ let kategoriCache = [];
 const stateKategori = {
   cari: '',
   filterTipe: 'semua', // 'semua' | 'induk' | 'sub'
-  collapsedParents: new Set()
+  collapsedParents: new Set(),
+  selectMode: false,
+  selectedIds: new Set()
 };
+
+function syncKatBulkBar(container) {
+  const bar = container.querySelector('#kat-bulk-bar');
+  const btnToggle = container.querySelector('#btn-toggle-select-kat');
+  if (btnToggle) {
+    btnToggle.className = `btn btn-sm ${stateKategori.selectMode ? 'btn-primary' : 'btn-secondary'}`;
+    btnToggle.innerHTML = `${ICONS.check}<span>${stateKategori.selectMode ? 'Selesai Pilih' : 'Pilih'}</span>`;
+  }
+  if (!bar) return;
+  const cnt = stateKategori.selectedIds.size;
+  const elCnt = bar.querySelector('#kat-bulk-count');
+  if (elCnt) elCnt.textContent = String(cnt);
+  bar.style.display = stateKategori.selectMode ? 'flex' : 'none';
+  bar.querySelectorAll('[data-needs-sel]').forEach((b) => { b.disabled = cnt === 0; });
+}
 
 function highlightText(text, keyword) {
   if (!keyword || !text) return escapeHtml(text || '');
@@ -33,6 +50,8 @@ function highlightText(text, keyword) {
 export async function renderKategoriModule(container) {
   const user = store.get('user');
   const canEdit = user && (user.role === 'owner' || user.role === 'admin');
+  stateKategori.selectMode = false;
+  stateKategori.selectedIds.clear();
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-3);">
@@ -43,6 +62,12 @@ export async function renderKategoriModule(container) {
           <p class="d-none-mobile">Pengelompokan barang dan bahan bangunan untuk mempermudah pencarian kasir</p>
         </div>
         <div class="row" style="gap: var(--sp-2);">
+          ${canEdit ? `
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-select-kat" title="Mode Tandai & Pilih Banyak Kategori" style="gap: 5px;">
+              ${ICONS.check}
+              <span>Pilih</span>
+            </button>
+          ` : ''}
           <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-kategori" title="Muat Ulang Kategori" aria-label="Muat Ulang Kategori">
             ${ICONS.refresh}
           </button>
@@ -122,6 +147,19 @@ export async function renderKategoriModule(container) {
         </div>
       </div>
     </div>
+
+    <!-- Floating Bulk Action Bar Kategori (Solid) -->
+    <div class="bulk-action-bar no-print" id="kat-bulk-bar" style="display: none;">
+      <div class="bulk-action-info">
+        <span class="bulk-action-count" id="kat-bulk-count">0</span>
+        <span>kategori dipilih</span>
+      </div>
+      <div class="bulk-action-btns">
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-kat-all">Pilih Semua</button>
+        <button type="button" class="btn btn-xs btn-danger" id="btn-bulk-kat-hapus" data-needs-sel disabled>Hapus Massal</button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-kat-cancel">Batal</button>
+      </div>
+    </div>
   `;
 
   // Bind Event Filter Segmented
@@ -181,13 +219,92 @@ export async function renderKategoriModule(container) {
     showToast('Data kategori berhasil diperbarui', 'success', 1800);
   });
 
+  const keluarSelectKat = () => {
+    if (!stateKategori.selectMode) return false;
+    stateKategori.selectMode = false;
+    stateKategori.selectedIds.clear();
+    syncKatBulkBar(container);
+    renderTabelKategori(container, canEdit);
+    return true;
+  };
+  window.__posCancelSelectMode = keluarSelectKat;
+
   if (canEdit) {
+    container.querySelector('#btn-toggle-select-kat')?.addEventListener('click', () => {
+      stateKategori.selectMode = !stateKategori.selectMode;
+      if (!stateKategori.selectMode) stateKategori.selectedIds.clear();
+      syncKatBulkBar(container);
+      renderTabelKategori(container, canEdit);
+    });
+
+    container.querySelector('#btn-bulk-kat-cancel')?.addEventListener('click', keluarSelectKat);
+
+    container.querySelector('#btn-bulk-kat-all')?.addEventListener('click', () => {
+      const semuaTerpilih = kategoriCache.length > 0 && kategoriCache.every((k) => stateKategori.selectedIds.has(k.id));
+      if (semuaTerpilih) {
+        stateKategori.selectedIds.clear();
+      } else {
+        kategoriCache.forEach((k) => stateKategori.selectedIds.add(k.id));
+      }
+      syncKatBulkBar(container);
+      renderTabelKategori(container, canEdit);
+    });
+
+    container.querySelector('#btn-bulk-kat-hapus')?.addEventListener('click', async () => {
+      const ids = Array.from(stateKategori.selectedIds);
+      if (!ids.length) return;
+      const setuju = await showConfirm({
+        title: `Hapus ${ids.length} Kategori Terpilih?`,
+        message: `Kategori yang masih dipakai oleh produk aktif akan otomatis dilewati demi keamanan data.`,
+        confirmText: `Ya, Hapus ${ids.length} Kategori`,
+        danger: true
+      });
+      if (!setuju) return;
+
+      // Hapus sub-kategori terlebih dahulu agar kategori induk yang kosong juga bersih
+      const sortedIds = ids.sort((a, b) => {
+        const ka = kategoriCache.find((k) => k.id === a);
+        const kb = kategoriCache.find((k) => k.id === b);
+        return (kb?.parent_id ? 1 : 0) - (ka?.parent_id ? 1 : 0);
+      });
+
+      let sukses = 0;
+      let gagal = 0;
+      for (const id of sortedIds) {
+        try {
+          await apiCall('kategori.delete', { id });
+          sukses++;
+        } catch (_) {
+          gagal++;
+        }
+      }
+      showToast(
+        gagal > 0
+          ? `${sukses} kategori dihapus, ${gagal} dilewati (masih dipakai produk aktif).`
+          : `${sukses} kategori berhasil dihapus.`,
+        sukses > 0 ? 'success' : 'warning',
+        3200
+      );
+      stateKategori.selectMode = false;
+      stateKategori.selectedIds.clear();
+      syncKatBulkBar(container);
+      await muatKategori(container, canEdit);
+    });
+
     container.querySelector('#btn-tambah-kategori')?.addEventListener('click', () => {
       bukaModalFormKategori(container, null, kategoriCache);
     });
   }
 
   await muatKategori(container, canEdit);
+
+  return () => {
+    stateKategori.selectMode = false;
+    stateKategori.selectedIds.clear();
+    if (window.__posCancelSelectMode === keluarSelectKat) {
+      window.__posCancelSelectMode = null;
+    }
+  };
 }
 
 async function muatKategori(container, canEdit) {
@@ -371,6 +488,7 @@ function renderTabelKategori(container, canEdit) {
       <table class="table table-kategori">
         <thead>
           <tr>
+            ${stateKategori.selectMode ? '<th style="width: 38px; text-align: center;">Pilih</th>' : ''}
             <th>Nama Kategori</th>
             <th>Tipe & Hirarki</th>
             <th style="width: 80px; text-align: right;">Urutan</th>
@@ -388,8 +506,14 @@ function renderTabelKategori(container, canEdit) {
 
     // Jika filterTipe bukan 'sub', tampilkan baris Kategori Utama
     if (filterTipe !== 'sub') {
+      const isPChecked = stateKategori.selectMode && stateKategori.selectedIds.has(p.id);
       html += `
-        <tr class="kat-row-parent" style="border-top: 1px solid var(--border);">
+        <tr class="kat-row-parent kat-selectable-row ${isPChecked ? 'is-bulk-selected' : ''}" data-kat-id="${escapeHtml(p.id)}" style="border-top: 1px solid var(--border);">
+          ${stateKategori.selectMode ? `
+            <td data-label="Pilih" style="width: 38px; text-align: center;">
+              <input type="checkbox" class="bulk-checkbox cb-kat-select" data-id="${escapeHtml(p.id)}" ${isPChecked ? 'checked' : ''} aria-label="Pilih ${escapeHtml(p.nama)}">
+            </td>
+          ` : ''}
           <td data-label="Kategori">
             <div class="kat-title-row">
               ${hasSubs ? `
@@ -444,8 +568,14 @@ function renderTabelKategori(container, canEdit) {
     // Render Sub Kategori di bawah Parent (jika tidak dilipat)
     if (!isCollapsed && filterTipe !== 'induk') {
       subs.forEach((c) => {
+        const isCChecked = stateKategori.selectMode && stateKategori.selectedIds.has(c.id);
         html += `
-          <tr class="kat-row-sub" style="background-color: var(--surface-2); border-left: 3px solid var(--primary-soft);">
+          <tr class="kat-row-sub kat-selectable-row ${isCChecked ? 'is-bulk-selected' : ''}" data-kat-id="${escapeHtml(c.id)}" style="background-color: var(--surface-2); border-left: 3px solid var(--primary-soft);">
+            ${stateKategori.selectMode ? `
+              <td data-label="Pilih" style="width: 38px; text-align: center;">
+                <input type="checkbox" class="bulk-checkbox cb-kat-select" data-id="${escapeHtml(c.id)}" ${isCChecked ? 'checked' : ''} aria-label="Pilih ${escapeHtml(c.nama)}">
+              </td>
+            ` : ''}
             <td data-label="Kategori">
               <div class="kat-title-row kat-sub-indent">
                 <span class="kat-sub-arrow">↳</span>
@@ -486,8 +616,14 @@ function renderTabelKategori(container, canEdit) {
 
   // Render orphan sub categories jika ada
   filteredOrphans.forEach((o) => {
+    const isOChecked = stateKategori.selectMode && stateKategori.selectedIds.has(o.id);
     html += `
-      <tr class="kat-row-orphan" style="background-color: var(--warning-soft); border-left: 3px solid var(--warning);">
+      <tr class="kat-row-orphan kat-selectable-row ${isOChecked ? 'is-bulk-selected' : ''}" data-kat-id="${escapeHtml(o.id)}" style="background-color: var(--warning-soft); border-left: 3px solid var(--warning);">
+        ${stateKategori.selectMode ? `
+          <td data-label="Pilih" style="width: 38px; text-align: center;">
+            <input type="checkbox" class="bulk-checkbox cb-kat-select" data-id="${escapeHtml(o.id)}" ${isOChecked ? 'checked' : ''} aria-label="Pilih ${escapeHtml(o.nama)}">
+          </td>
+        ` : ''}
         <td data-label="Kategori">
           <div class="kat-title-row kat-sub-indent">
             <div class="prd-table-avatar" style="width: 28px; height: 28px; flex-shrink: 0;">${ICONS.alertTriangle}</div>
@@ -525,6 +661,46 @@ function renderTabelKategori(container, canEdit) {
   `;
 
   area.innerHTML = html;
+
+  // Bind interaksi Mode Tandai & Pilih Kategori
+  if (stateKategori.selectMode) {
+    area.querySelectorAll('.cb-kat-select').forEach((cb) => {
+      cb.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const id = cb.getAttribute('data-id');
+        const tr = cb.closest('tr');
+        if (cb.checked) {
+          stateKategori.selectedIds.add(id);
+          tr?.classList.add('is-bulk-selected');
+        } else {
+          stateKategori.selectedIds.delete(id);
+          tr?.classList.remove('is-bulk-selected');
+        }
+        syncKatBulkBar(container);
+      });
+    });
+
+    area.querySelectorAll('.kat-selectable-row').forEach((tr) => {
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('button, a, input, .badge-toggle-sub')) return;
+        const id = tr.getAttribute('data-kat-id');
+        if (!id) return;
+        const cb = tr.querySelector('.cb-kat-select');
+        if (stateKategori.selectedIds.has(id)) {
+          stateKategori.selectedIds.delete(id);
+          tr.classList.remove('is-bulk-selected');
+          if (cb) cb.checked = false;
+        } else {
+          stateKategori.selectedIds.add(id);
+          tr.classList.add('is-bulk-selected');
+          if (cb) cb.checked = true;
+        }
+        syncKatBulkBar(container);
+      });
+    });
+  }
+  syncKatBulkBar(container);
 
   // Pasang handler toggle collapse/expand per parent
   const handleToggleParent = (parentId) => {

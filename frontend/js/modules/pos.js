@@ -56,7 +56,9 @@ export function renderPosModule(container) {
     pageSize: 30,
     totalProduk: 0,
     hasMore: false,
-    isLoadingMore: false
+    isLoadingMore: false,
+    multiSelectMode: false,
+    multiSelectedIds: new Set()
   };
 
   const isOwnerAtauAdmin = state.user.role === 'owner' || state.user.role === 'admin';
@@ -110,6 +112,12 @@ export function renderPosModule(container) {
                 ${ICONS.list}
               </button>
             </div>
+
+            <!-- Toggle Mode Tandai & Pilih Banyak ke Keranjang -->
+            <button type="button" id="btn-pos-multi-select" class="btn btn-secondary btn-sm" style="border-radius: var(--radius-full); flex-shrink: 0; gap: 5px; padding: 0 11px; height: 34px; min-height: 34px;" title="Tandai & Pilih Banyak Barang Sekaligus ke Keranjang">
+              ${ICONS.check}
+              <span>Pilih</span>
+            </button>
 
             <!-- Kategori Filter Chips Bar -->
             <div class="pos-category-chips" id="pos-category-bar">
@@ -254,6 +262,21 @@ export function renderPosModule(container) {
       </div>
     </div>
 
+    <!-- Floating Multi-Select Bar POS Kasir (Solid) -->
+    <div class="bulk-action-bar no-print" id="pos-multi-bar" style="display: none;">
+      <div class="bulk-action-info">
+        <span class="bulk-action-count" id="pos-multi-count">0</span>
+        <span>barang ditandai</span>
+      </div>
+      <div class="bulk-action-btns">
+        <button type="button" class="btn btn-sm btn-bulk-ghost" id="btn-pos-multi-cancel">Batal</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-pos-multi-add" disabled>
+          ${ICONS.cart}
+          <span>Masukkan ke Keranjang</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Floating Bottom Cart Bar (Hanya di Mobile saat katalog aktif & keranjang ada isinya) -->
     <div class="pos-mobile-floating-cart no-print" id="pos-floating-cart" style="display: none;">
       <div class="row" style="align-items: center; gap: var(--sp-3);">
@@ -308,6 +331,116 @@ export function renderPosModule(container) {
   const elBtnRefreshPos = container.querySelector('#btn-pos-refresh');
   const elBtnGrid = container.querySelector('#btn-view-grid');
   const elBtnList = container.querySelector('#btn-view-list');
+  const elBtnMultiSelect = container.querySelector('#btn-pos-multi-select');
+  const elPosMultiBar = container.querySelector('#pos-multi-bar');
+  const elPosMultiCount = container.querySelector('#pos-multi-count');
+  const elBtnPosMultiCancel = container.querySelector('#btn-pos-multi-cancel');
+  const elBtnPosMultiAdd = container.querySelector('#btn-pos-multi-add');
+
+  const syncPosMultiBar = () => {
+    if (elBtnMultiSelect) {
+      elBtnMultiSelect.className = `btn btn-sm ${state.multiSelectMode ? 'btn-primary' : 'btn-secondary'}`;
+    }
+    const cnt = state.multiSelectedIds.size;
+    if (elPosMultiCount) elPosMultiCount.textContent = String(cnt);
+    if (elBtnPosMultiAdd) {
+      elBtnPosMultiAdd.disabled = cnt === 0;
+      elBtnPosMultiAdd.innerHTML = `${ICONS.cart}<span>${cnt > 0 ? `Masukkan ${cnt} ke Keranjang` : 'Masukkan ke Keranjang'}</span>`;
+    }
+    if (elPosMultiBar) {
+      elPosMultiBar.style.display = state.multiSelectMode ? 'flex' : 'none';
+    }
+    perbaruiFloatingCart();
+  };
+
+  const setPosMultiSelectMode = (aktif) => {
+    state.multiSelectMode = Boolean(aktif);
+    if (!state.multiSelectMode) {
+      state.multiSelectedIds.clear();
+    }
+    syncPosMultiBar();
+    renderKatalog();
+  };
+
+  window.__posCancelSelectMode = () => {
+    if (state.multiSelectMode) {
+      setPosMultiSelectMode(false);
+      return true;
+    }
+    return false;
+  };
+
+  elBtnMultiSelect?.addEventListener('click', () => {
+    haptic.light();
+    setPosMultiSelectMode(!state.multiSelectMode);
+  });
+
+  elBtnPosMultiCancel?.addEventListener('click', () => {
+    haptic.light();
+    setPosMultiSelectMode(false);
+  });
+
+  elBtnPosMultiAdd?.addEventListener('click', () => {
+    if (state.multiSelectedIds.size === 0) return;
+    let addedCount = 0;
+    state.multiSelectedIds.forEach((id) => {
+      const p = state.katalog.find((x) => x.id === id);
+      if (!p) return;
+      const punyaVarian = p.punya_varian && Array.isArray(p.varian) && p.varian.length > 0;
+      if (punyaVarian) {
+        const v = p.varian.find((x) => x.aktif !== false) || p.varian[0];
+        if (!v) return;
+        const hargaV = Number(v.harga_ritel || p.harga_ritel || 0);
+        tambahItemKeKeranjang({
+          produk_id: p.id,
+          varian_id: v.id || '',
+          nama: `${p.nama} - ${v.nama_varian}`,
+          satuan: p.satuan_dasar,
+          faktor: 1,
+          qty: 1,
+          qty_dibawa: 1,
+          tipe_harga: 'ritel',
+          harga_asli: hargaV,
+          harga: hargaV,
+          hpp: Number(v.hpp || p.hpp || 0),
+          diskon_tipe: '',
+          diskon_nilai: 0,
+          diskon: 0,
+          subtotal: hargaV,
+          _pr: p,
+          _var: v
+        });
+      } else {
+        tambahItemKeKeranjang({
+          produk_id: p.id,
+          varian_id: '',
+          nama: p.nama,
+          satuan: p.satuan_dasar,
+          faktor: 1,
+          qty: 1,
+          qty_dibawa: 1,
+          tipe_harga: 'ritel',
+          harga_asli: p.harga_ritel,
+          harga: p.harga_ritel,
+          hpp: p.hpp || 0,
+          diskon_tipe: '',
+          diskon_nilai: 0,
+          diskon: 0,
+          subtotal: p.harga_ritel,
+          _pr: p,
+          _var: null
+        });
+      }
+      addedCount++;
+    });
+
+    if (addedCount > 0) {
+      bunyikanBeep();
+      haptic.success();
+      showToast(`${addedCount} barang ditandai berhasil dimasukkan ke keranjang!`, 'success', 2400);
+    }
+    setPosMultiSelectMode(false);
+  });
 
   elBtnRefreshPos?.addEventListener('click', async () => {
     await muatDataKatalog(true);
@@ -338,7 +471,7 @@ export function renderPosModule(container) {
       elMobileCartBadge.style.display = count > 0 ? 'inline-flex' : 'none';
     }
     if (!elFloatingCart) return;
-    if (isMobile && state.mobileView === 'catalog' && count > 0) {
+    if (isMobile && state.mobileView === 'catalog' && count > 0 && !state.multiSelectMode) {
       elFloatingCart.style.display = 'flex';
     } else {
       elFloatingCart.style.display = 'none';
@@ -657,10 +790,12 @@ export function renderPosModule(container) {
 
       const rawKode = p.sku || p.barcode || '';
       const skuLabel = formatSkuLabel(rawKode);
+      const isMultiSelected = state.multiSelectMode && state.multiSelectedIds.has(p.id);
 
       html += `
-        <div class="pos-product-card" data-id="${p.id}" tabindex="0">
+        <div class="pos-product-card ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
           <div class="pos-card-visual">
+            ${state.multiSelectMode ? `<div class="pos-multi-check-badge">${ICONS.check}</div>` : ''}
             ${p.foto_url ? `
               <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
               <div class="pos-card-icon-wrap" style="display: none;">
@@ -771,9 +906,11 @@ export function renderPosModule(container) {
 
       const rawKode = p.sku || p.barcode || '';
       const skuLabel = formatSkuLabel(rawKode);
+      const isMultiSelected = state.multiSelectMode && state.multiSelectedIds.has(p.id);
 
       html += `
-        <div class="pos-list-item" data-id="${p.id}" tabindex="0">
+        <div class="pos-list-item ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
+          ${state.multiSelectMode ? `<div class="pos-list-multi-check">${ICONS.check}</div>` : ''}
           <div class="pos-list-avatar">
             ${p.foto_url ? `
               <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
@@ -858,6 +995,18 @@ export function renderPosModule(container) {
       const el = e.target.closest('.pos-product-card, .pos-product-row, .pos-list-item');
       if (!el) return;
       const id = el.getAttribute('data-id');
+      if (state.multiSelectMode) {
+        if (state.multiSelectedIds.has(id)) {
+          state.multiSelectedIds.delete(id);
+          el.classList.remove('is-multi-selected');
+        } else {
+          state.multiSelectedIds.add(id);
+          el.classList.add('is-multi-selected');
+        }
+        haptic.light();
+        syncPosMultiBar();
+        return;
+      }
       const p = state.katalog.find((x) => x.id === id);
       if (p) pilihProduk(p);
     });
@@ -2933,6 +3082,7 @@ export function renderPosModule(container) {
     clearTimeout(searchDebounceTimer);
     window.removeEventListener('keydown', handleKeyShortcuts);
     window.removeEventListener('resize', handleResize);
+    if (window.__posCancelSelectMode) window.__posCancelSelectMode = null;
     lepasScannerFisik();
   };
 }

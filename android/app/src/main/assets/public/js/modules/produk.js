@@ -69,11 +69,39 @@ let filterState = {
 };
 
 let cacheDaftarProduk = [];
+let cacheDaftarKategoriPrd = [];
+let produkSelectMode = false;
+const produkSelectedIds = new Set();
+
+function syncProdukBulkBar(container, canEdit) {
+  const bar = $('#produk-bulk-bar', container);
+  const btnToggle = $('#btn-toggle-select-produk', container);
+  if (btnToggle) {
+    btnToggle.className = `btn btn-sm ${produkSelectMode ? 'btn-primary' : 'btn-secondary'}`;
+    btnToggle.innerHTML = `${ICONS.check}<span>${produkSelectMode ? 'Selesai Pilih' : 'Pilih'}</span>`;
+  }
+  if (!bar) return;
+  const cnt = produkSelectedIds.size;
+  const elCnt = $('#produk-bulk-count', bar);
+  if (elCnt) elCnt.textContent = String(cnt);
+  bar.style.display = produkSelectMode ? 'flex' : 'none';
+  bar.querySelectorAll('[data-needs-sel]').forEach((b) => {
+    b.disabled = cnt === 0;
+  });
+  const btnDel = $('#btn-bulk-prd-hapus', bar);
+  if (btnDel) btnDel.style.display = canEdit ? 'inline-flex' : 'none';
+  const btnKat = $('#btn-bulk-prd-kat', bar);
+  if (btnKat) btnKat.style.display = canEdit ? 'inline-flex' : 'none';
+  const btnStat = $('#btn-bulk-prd-status', bar);
+  if (btnStat) btnStat.style.display = canEdit ? 'inline-flex' : 'none';
+}
 
 export async function renderProdukModule(container) {
   const user = store.get('user');
   const canEdit = user && (user.role === 'owner' || user.role === 'admin');
   const isKasir = user && user.role === 'kasir';
+  produkSelectMode = false;
+  produkSelectedIds.clear();
 
   container.innerHTML = `
     <div class="stack">
@@ -109,6 +137,11 @@ export async function renderProdukModule(container) {
             <button type="button" data-view="table" aria-pressed="${filterState.view === 'table'}" title="Tampilan Tabel / Kartu">${ICONS.list}</button>
             <button type="button" data-view="grid" aria-pressed="${filterState.view === 'grid'}" title="Tampilan Grid">${ICONS.grid}</button>
           </div>
+
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-select-produk" title="Mode Tandai & Pilih Banyak Produk" style="gap: 5px; height: var(--control-h); flex-shrink: 0;">
+            ${ICONS.check}
+            <span>Pilih</span>
+          </button>
 
           <button type="button" class="btn btn-secondary btn-icon" id="btn-refresh-produk" title="Muat Ulang Data Produk" aria-label="Muat Ulang Data Produk">
             ${ICONS.refresh}
@@ -185,14 +218,44 @@ export async function renderProdukModule(container) {
       <!-- Paginasi & Kontrol Muat Produk -->
       <div id="area-paginasi-produk" class="stack-sm" style="width: 100%; margin-top: var(--sp-3);"></div>
     </div>
+
+    <!-- Floating Bulk Action Bar Produk (Solid) -->
+    <div class="bulk-action-bar no-print" id="produk-bulk-bar" style="display: none;">
+      <div class="bulk-action-info">
+        <span class="bulk-action-count" id="produk-bulk-count">0</span>
+        <span>produk dipilih</span>
+      </div>
+      <div class="bulk-action-btns">
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-all">Pilih Semua</button>
+        <button type="button" class="btn btn-xs btn-primary" id="btn-bulk-prd-ptag" data-needs-sel disabled>
+          ${ICONS.printer}
+          <span>Price Tag</span>
+        </button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-kat" data-needs-sel disabled>
+          ${ICONS.tag}
+          <span>Kategori</span>
+        </button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-status" data-needs-sel disabled>
+          <span>Status</span>
+        </button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-wa" data-needs-sel disabled>
+          <span>Daftar WA</span>
+        </button>
+        <button type="button" class="btn btn-xs btn-danger" id="btn-bulk-prd-hapus" data-needs-sel disabled>
+          <span>Hapus</span>
+        </button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-cancel">Batal</button>
+      </div>
+    </div>
   `;
 
   // Muat opsi kategori ke dropdown filter secara paralel (non-blocking terhadap muatProduk)
   const muatFilterKategoriPromise = apiCall('kategori.list', {})
     .then((katRes) => {
+      cacheDaftarKategoriPrd = katRes.items || [];
       const selKat = $('#filter-produk-kategori', container);
       if (selKat) {
-        selKat.innerHTML = susunOpsiKategoriHtml(katRes.items || [], filterState.kategori_id, 'Semua Kategori');
+        selKat.innerHTML = susunOpsiKategoriHtml(cacheDaftarKategoriPrd, filterState.kategori_id, 'Semua Kategori');
       }
     })
     .catch(() => { });
@@ -312,6 +375,220 @@ export async function renderProdukModule(container) {
     });
   });
 
+  const keluarSelectModePrd = () => {
+    if (!produkSelectMode) return false;
+    produkSelectMode = false;
+    produkSelectedIds.clear();
+    syncProdukBulkBar(container, canEdit);
+    muatProduk(container, canEdit, isKasir, false);
+    return true;
+  };
+
+  window.__posCancelSelectMode = keluarSelectModePrd;
+
+  $('#btn-toggle-select-produk', container)?.addEventListener('click', () => {
+    produkSelectMode = !produkSelectMode;
+    if (!produkSelectMode) produkSelectedIds.clear();
+    syncProdukBulkBar(container, canEdit);
+    muatProduk(container, canEdit, isKasir, false);
+  });
+
+  $('#btn-bulk-prd-cancel', container)?.addEventListener('click', () => {
+    keluarSelectModePrd();
+  });
+
+  $('#btn-bulk-prd-all', container)?.addEventListener('click', () => {
+    const allSelected = cacheDaftarProduk.length > 0 && cacheDaftarProduk.every((p) => produkSelectedIds.has(p.id));
+    if (allSelected) {
+      cacheDaftarProduk.forEach((p) => produkSelectedIds.delete(p.id));
+    } else {
+      cacheDaftarProduk.forEach((p) => produkSelectedIds.add(p.id));
+    }
+    syncProdukBulkBar(container, canEdit);
+    muatProduk(container, canEdit, isKasir, false);
+  });
+
+  // 1. Cetak Price Tag Massal
+  $('#btn-bulk-prd-ptag', container)?.addEventListener('click', () => {
+    if (!produkSelectedIds.size) return;
+    try {
+      sessionStorage.setItem('pos_pricetag_preselect', JSON.stringify(Array.from(produkSelectedIds)));
+    } catch (_) {}
+    produkSelectMode = false;
+    produkSelectedIds.clear();
+    window.location.hash = '#/pricetag';
+  });
+
+  // 2. Pindah Kategori Massal
+  $('#btn-bulk-prd-kat', container)?.addEventListener('click', () => {
+    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    if (!terpilih.length) return;
+    const modalKat = showModal({
+      title: `Pindah Kategori (${terpilih.length} Produk)`,
+      size: 'sm',
+      body: `
+        <div class="stack">
+          <div class="text-sm text-muted">Pilih kategori tujuan untuk <strong>${terpilih.length}</strong> produk yang ditandai:</div>
+          <div class="field">
+            <label class="field-label" for="sel-bulk-kategori-target">Kategori Tujuan</label>
+            <select class="select" id="sel-bulk-kategori-target">
+              ${susunOpsiKategoriHtml(cacheDaftarKategoriPrd, '', '-- Tanpa Kategori --')}
+            </select>
+          </div>
+        </div>
+      `,
+      footer: `
+        <button type="button" class="btn btn-secondary btn-sm btn-cancel">Batal</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-konfirm-bulk-kat">Simpan Kategori</button>
+      `
+    });
+
+    modalKat.el.querySelector('#btn-konfirm-bulk-kat')?.addEventListener('click', async () => {
+      const targetKatId = modalKat.el.querySelector('#sel-bulk-kategori-target')?.value || '';
+      const btn = modalKat.el.querySelector('#btn-konfirm-bulk-kat');
+      if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+      let sukses = 0;
+      for (const p of terpilih) {
+        try {
+          await apiCall('produk.update', {
+            id: p.id,
+            nama: p.nama,
+            sku: p.sku || '',
+            barcode: p.barcode || '',
+            kategori_id: targetKatId,
+            satuan_dasar: p.satuan_dasar || 'PCS',
+            hpp: Number(p.hpp || 0),
+            harga_ritel: Number(p.harga_ritel || 0),
+            harga_grosir: Number(p.harga_grosir || p.harga_ritel || 0),
+            min_grosir_qty: Number(p.min_grosir_qty || 1),
+            stok_min: Number(p.stok_min || 0),
+            punya_varian: Boolean(p.punya_varian),
+            foto_url: p.foto_url || '',
+            aktif: p.aktif !== false
+          });
+          sukses++;
+        } catch (_) {}
+      }
+      modalKat.close();
+      showToast(`${sukses} dari ${terpilih.length} produk berhasil dipindahkan kategorinya.`, 'success');
+      keluarSelectModePrd();
+    });
+  });
+
+  // 3. Ubah Status Aktif / Nonaktif Massal
+  $('#btn-bulk-prd-status', container)?.addEventListener('click', () => {
+    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    if (!terpilih.length) return;
+    const modalSt = showModal({
+      title: `Ubah Status (${terpilih.length} Produk)`,
+      size: 'sm',
+      body: `
+        <div class="stack">
+          <div class="text-sm text-muted">Pilih status keaktifan baru untuk <strong>${terpilih.length}</strong> produk terpilih:</div>
+          <div class="row" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-primary grow" id="btn-bulk-set-aktif">Aktifkan Semua</button>
+            <button type="button" class="btn btn-secondary grow" id="btn-bulk-set-nonaktif">Nonaktifkan Semua</button>
+          </div>
+        </div>
+      `
+    });
+
+    const terapkanStatus = async (statusAktif) => {
+      modalSt.close();
+      showToast(`Memperbarui status ${terpilih.length} produk...`, 'info', 2000);
+      let sukses = 0;
+      for (const p of terpilih) {
+        try {
+          await apiCall('produk.update', {
+            id: p.id,
+            nama: p.nama,
+            sku: p.sku || '',
+            barcode: p.barcode || '',
+            kategori_id: p.kategori_id || '',
+            satuan_dasar: p.satuan_dasar || 'PCS',
+            hpp: Number(p.hpp || 0),
+            harga_ritel: Number(p.harga_ritel || 0),
+            harga_grosir: Number(p.harga_grosir || p.harga_ritel || 0),
+            min_grosir_qty: Number(p.min_grosir_qty || 1),
+            stok_min: Number(p.stok_min || 0),
+            punya_varian: Boolean(p.punya_varian),
+            foto_url: p.foto_url || '',
+            aktif: statusAktif
+          });
+          sukses++;
+        } catch (_) {}
+      }
+      showToast(`${sukses} produk berhasil di-${statusAktif ? 'aktifkan' : 'nonaktifkan'}.`, 'success');
+      keluarSelectModePrd();
+    };
+
+    modalSt.el.querySelector('#btn-bulk-set-aktif')?.addEventListener('click', () => terapkanStatus(true));
+    modalSt.el.querySelector('#btn-bulk-set-nonaktif')?.addEventListener('click', () => terapkanStatus(false));
+  });
+
+  // 4. Salin / Kirim Daftar Produk Terpilih ke WhatsApp (Untuk Pembeli / Restok Supplier)
+  $('#btn-bulk-prd-wa', container)?.addEventListener('click', () => {
+    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    if (!terpilih.length) return;
+    const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Toko';
+    const lines = [
+      `*DAFTAR PRODUK - ${namaToko}*`,
+      `Total: ${terpilih.length} item`,
+      '--------------------------------',
+      ...terpilih.map((p, i) => `${i + 1}. ${p.nama}${p.sku ? ` (${p.sku})` : ''} — ${formatRupiah(p.harga_ritel)}/${p.satuan_dasar} | Stok: ${formatQty(p.stok)}`)
+    ];
+    const teks = lines.join('\n');
+
+    const modalWa = showModal({
+      title: `Bagikan Daftar (${terpilih.length} Produk)`,
+      size: 'sm',
+      body: `
+        <div class="stack">
+          <div class="text-xs text-muted">Siap disalin atau langsung dikirim ke WhatsApp pembeli / supplier:</div>
+          <textarea class="input" id="txt-bulk-wa-prd" rows="8" style="font-family: var(--font-mono); font-size: 12px;">${escapeHtml(teks)}</textarea>
+        </div>
+      `,
+      footer: `
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-bulk-wa">Salin Teks</button>
+        <a class="btn btn-primary btn-sm" id="btn-open-bulk-wa" href="https://wa.me/?text=${encodeURIComponent(teks)}" target="_blank" rel="noopener">Kirim WhatsApp</a>
+      `
+    });
+
+    modalWa.el.querySelector('#btn-copy-bulk-wa')?.addEventListener('click', async () => {
+      const val = modalWa.el.querySelector('#txt-bulk-wa-prd')?.value || teks;
+      try {
+        await navigator.clipboard.writeText(val);
+        showToast('Daftar produk berhasil disalin ke clipboard!', 'success');
+      } catch (_) {
+        showToast('Salin teks langsung dari kotak di atas.', 'info');
+      }
+    });
+  });
+
+  // 5. Hapus Massal Produk
+  $('#btn-bulk-prd-hapus', container)?.addEventListener('click', async () => {
+    const terpilih = cacheDaftarProduk.filter((p) => produkSelectedIds.has(p.id));
+    if (!terpilih.length) return;
+    const setuju = await showConfirm({
+      title: `Hapus ${terpilih.length} Produk Terpilih?`,
+      message: `Anda akan menghapus ${terpilih.length} produk sekaligus. Data stok & riwayat transaksi tetap aman dalam arsip sistem.`,
+      confirmText: `Ya, Hapus ${terpilih.length} Produk`,
+      danger: true
+    });
+    if (!setuju) return;
+
+    showToast(`Menghapus ${terpilih.length} produk...`, 'info', 2000);
+    let sukses = 0;
+    for (const p of terpilih) {
+      try {
+        await apiCall('produk.delete', { id: p.id });
+        sukses++;
+      } catch (_) {}
+    }
+    showToast(`${sukses} dari ${terpilih.length} produk berhasil dihapus.`, 'success');
+    keluarSelectModePrd();
+  });
+
   if (canEdit) {
     $('#btn-panduan-varian-header', container)?.addEventListener('click', () => {
       bukaModalPanduanVarianSatuan();
@@ -323,6 +600,14 @@ export async function renderProdukModule(container) {
 
   perbaruiTampilanFilter(container);
   await Promise.all([muatProduk(container, canEdit, isKasir), muatFilterKategoriPromise]);
+
+  return () => {
+    produkSelectMode = false;
+    produkSelectedIds.clear();
+    if (window.__posCancelSelectMode === keluarSelectModePrd) {
+      window.__posCancelSelectMode = null;
+    }
+  };
 }
 
 function perbaruiTampilanFilter(c) {
@@ -453,6 +738,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             <table class="table table-produk">
               <thead>
                 <tr>
+                  ${produkSelectMode ? '<th style="width: 38px; text-align: center;">Pilih</th>' : ''}
                   <th style="min-width: 150px;">Nama Produk</th>
                   <th style="width: 120px; min-width: 110px; white-space: nowrap;">SKU / Barcode</th>
                   <th style="width: 65px; min-width: 60px; text-align: center;">Satuan</th>
@@ -468,8 +754,14 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
 
       items.forEach((p) => {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
+        const isChecked = produkSelectMode && produkSelectedIds.has(p.id);
         html += `
-          <tr>
+          <tr class="prd-selectable-item ${isChecked ? 'is-bulk-selected' : ''}" data-prd-id="${escapeHtml(p.id)}">
+            ${produkSelectMode ? `
+              <td data-label="Pilih" style="width: 38px; text-align: center;">
+                <input type="checkbox" class="bulk-checkbox cb-prd-select" data-id="${escapeHtml(p.id)}" ${isChecked ? 'checked' : ''} aria-label="Pilih ${escapeHtml(p.nama)}">
+              </td>
+            ` : ''}
             <td data-label="Produk">
               <div class="prd-table-head" style="display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%; flex-wrap: nowrap;">
                 <div class="prd-table-avatar" style="flex-shrink: 0;">
@@ -540,8 +832,17 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       let html = '<div class="card-grid">';
       items.forEach((p) => {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
+        const isChecked = produkSelectMode && produkSelectedIds.has(p.id);
         html += `
-          <div class="card stack-sm" style="padding: var(--sp-4);">
+          <div class="card stack-sm prd-selectable-item ${isChecked ? 'is-bulk-selected' : ''}" data-prd-id="${escapeHtml(p.id)}" style="padding: var(--sp-4); position: relative;">
+            ${produkSelectMode ? `
+              <div class="row-between items-center" style="margin-bottom: var(--sp-1);">
+                <label class="row items-center text-xs fw-semibold" style="gap: 6px; cursor: pointer;">
+                  <input type="checkbox" class="bulk-checkbox cb-prd-select" data-id="${escapeHtml(p.id)}" ${isChecked ? 'checked' : ''}>
+                  <span>${isChecked ? 'Ditandai' : 'Tandai'}</span>
+                </label>
+              </div>
+            ` : ''}
             ${p.foto_url ? `
               <div style="aspect-ratio: 1 / 1; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); margin-bottom: var(--sp-2); border: 1px solid var(--border); position: relative;">
                 <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy" decoding="async" onerror="this.parentElement.style.display='none';">
@@ -594,6 +895,67 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
       html += '</div>';
       area.innerHTML = html;
     }
+
+    // Pasang interaksi Mode Tandai & Pilih (Checkbox + Klik Baris/Kartu + Long-Press HP)
+    const toggleItemSelectPrd = (id, rowEl) => {
+      if (!id) return;
+      if (produkSelectedIds.has(id)) {
+        produkSelectedIds.delete(id);
+        rowEl?.classList.remove('is-bulk-selected');
+      } else {
+        produkSelectedIds.add(id);
+        rowEl?.classList.add('is-bulk-selected');
+      }
+      const cb = rowEl?.querySelector('.cb-prd-select');
+      if (cb) cb.checked = produkSelectedIds.has(id);
+      syncProdukBulkBar(container, canEdit);
+    };
+
+    if (produkSelectMode) {
+      area.querySelectorAll('.cb-prd-select').forEach((cb) => {
+        cb.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const id = cb.getAttribute('data-id');
+          const rowEl = cb.closest('.prd-selectable-item');
+          if (cb.checked) {
+            produkSelectedIds.add(id);
+            rowEl?.classList.add('is-bulk-selected');
+          } else {
+            produkSelectedIds.delete(id);
+            rowEl?.classList.remove('is-bulk-selected');
+          }
+          syncProdukBulkBar(container, canEdit);
+        });
+      });
+
+      area.querySelectorAll('.prd-selectable-item').forEach((el) => {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('button, a, input, label')) return;
+          toggleItemSelectPrd(el.getAttribute('data-prd-id'), el);
+        });
+      });
+    } else {
+      // Long-press (450ms) pada layar sentuh langsung mengaktifkan mode Tandai & Pilih
+      area.querySelectorAll('.prd-selectable-item').forEach((el) => {
+        let lpTimer = null;
+        el.addEventListener('touchstart', (e) => {
+          if (e.target.closest('button, a, input')) return;
+          lpTimer = setTimeout(() => {
+            const id = el.getAttribute('data-prd-id');
+            produkSelectMode = true;
+            if (id) produkSelectedIds.add(id);
+            syncProdukBulkBar(container, canEdit);
+            muatProduk(container, canEdit, isKasir, false);
+          }, 450);
+        }, { passive: true });
+        const clearLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+        el.addEventListener('touchend', clearLp, { passive: true });
+        el.addEventListener('touchmove', clearLp, { passive: true });
+        el.addEventListener('touchcancel', clearLp, { passive: true });
+      });
+    }
+    syncProdukBulkBar(container, canEdit);
 
     // Pasang tombol aksi Ubah, Duplikat, Edit Cepat & Hapus
     if (canEdit) {

@@ -276,8 +276,26 @@ export async function renderPriceTagModule(container) {
 
   // Muat daftar produk dari backend
   try {
-    const resP = await apiCall('produk.list', { limit: 200, aktif_saja: true });
+    const resP = await apiCall('produk.list', { limit: 250, aktif_saja: true });
     semuaProduk = resP.items || [];
+
+    // Terima produk bertanda yang dikirim dari halaman Manajemen Produk (Mode Tandai & Pilih)
+    try {
+      const preRaw = sessionStorage.getItem('pos_pricetag_preselect');
+      if (preRaw) {
+        sessionStorage.removeItem('pos_pricetag_preselect');
+        const preIds = JSON.parse(preRaw);
+        if (Array.isArray(preIds) && preIds.length > 0) {
+          const validIds = new Set(semuaProduk.map((p) => p.id));
+          preIds.forEach((id) => {
+            if (validIds.has(id)) terpilihIds.add(id);
+          });
+          if (terpilihIds.size > 0) {
+            showToast(`${terpilihIds.size} produk terpilih dari Katalog siap dicetak Price Tag.`, 'success', 2600);
+          }
+        }
+      }
+    } catch (_) {}
 
     const renderDaftarChecklist = (list) => {
       if (list.length === 0) {
@@ -323,6 +341,9 @@ export async function renderPriceTagModule(container) {
     };
 
     renderDaftarChecklist(semuaProduk);
+    if (terpilihIds.size > 0) {
+      updatePreview();
+    }
 
     // Filter Pencarian
     const inputSearch = $('#search-ptag-produk', container);
@@ -340,12 +361,18 @@ export async function renderPriceTagModule(container) {
     $('#btn-pilih-semua-ptag', container)?.addEventListener('click', () => {
       semuaProduk.forEach((p) => terpilihIds.add(p.id));
       renderDaftarChecklist(semuaProduk);
+    if (terpilihIds.size > 0) {
+      updatePreview();
+    }
       updatePreview();
     });
 
     $('#btn-batal-semua-ptag', container)?.addEventListener('click', () => {
       terpilihIds.clear();
       renderDaftarChecklist(semuaProduk);
+    if (terpilihIds.size > 0) {
+      updatePreview();
+    }
       updatePreview();
     });
 

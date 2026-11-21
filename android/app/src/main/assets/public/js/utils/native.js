@@ -295,6 +295,15 @@ export function tanganiTombolKembali() {
     return;
   }
 
+  // 3.5. Jika mode "Tandai & Pilih" (Multi-Select) sedang aktif -> keluar dari mode pilih dulu
+  if (typeof window !== 'undefined' && typeof window.__posCancelSelectMode === 'function') {
+    const cancelled = window.__posCancelSelectMode();
+    if (cancelled) {
+      haptic.light();
+      return;
+    }
+  }
+
   // 4. Tutup dropdown yang sedang terbuka di halaman aktif
   if (tutupDropdownHalamanAktif()) {
     haptic.light();

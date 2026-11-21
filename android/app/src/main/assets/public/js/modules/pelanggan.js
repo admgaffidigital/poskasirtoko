@@ -10,10 +10,33 @@ import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, parseRupiah, formatTanggal } from '../utils/format.js';
 import { bukaModalPilihanCetakPenjualan } from '../utils/printer.js';
 
+let pelangganCache = [];
+let pelangganSelectMode = false;
+const pelangganSelectedIds = new Set();
+
+function syncPelBulkBar(container, isOwnerOrAdmin) {
+  const bar = $('#pel-bulk-bar', container);
+  const btnToggle = $('#btn-toggle-select-pel', container);
+  if (btnToggle) {
+    btnToggle.className = `btn btn-sm ${pelangganSelectMode ? 'btn-primary' : 'btn-secondary'}`;
+    btnToggle.innerHTML = `${ICONS.check}<span>${pelangganSelectMode ? 'Selesai Pilih' : 'Pilih'}</span>`;
+  }
+  if (!bar) return;
+  const cnt = pelangganSelectedIds.size;
+  const elCnt = $('#pel-bulk-count', bar);
+  if (elCnt) elCnt.textContent = String(cnt);
+  bar.style.display = pelangganSelectMode ? 'flex' : 'none';
+  bar.querySelectorAll('[data-needs-sel]').forEach((b) => { b.disabled = cnt === 0; });
+  const btnDel = $('#btn-bulk-pel-hapus', bar);
+  if (btnDel) btnDel.style.display = isOwnerOrAdmin ? 'inline-flex' : 'none';
+}
+
 export async function renderPelangganModule(container) {
   const user = store.get('user');
   const canEdit = Boolean(user);
   const isOwnerOrAdmin = user && (user.role === 'owner' || user.role === 'admin');
+  pelangganSelectMode = false;
+  pelangganSelectedIds.clear();
 
   container.innerHTML = `
     <div class="stack">
@@ -23,7 +46,11 @@ export async function renderPelangganModule(container) {
           <p>Manajemen mitra pembeli, loyalitas poin member, limit kredit tempo, dan riwayat transaksi</p>
         </div>
         ${canEdit ? `
-          <div>
+          <div class="row" style="gap: var(--sp-2); align-items: center;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-select-pel" title="Mode Tandai & Pilih Banyak Pelanggan" style="gap: 5px;">
+              ${ICONS.check}
+              <span>Pilih</span>
+            </button>
             <button type="button" class="btn btn-primary" id="btn-tambah-pelanggan">
               ${ICONS.plus}
               <span>Tambah Pelanggan / Member</span>
@@ -111,6 +138,21 @@ export async function renderPelangganModule(container) {
         </div>
       </div>
     </div>
+
+    <!-- Floating Bulk Action Bar Pelanggan (Solid) -->
+    <div class="bulk-action-bar no-print" id="pel-bulk-bar" style="display: none;">
+      <div class="bulk-action-info">
+        <span class="bulk-action-count" id="pel-bulk-count">0</span>
+        <span>pelanggan dipilih</span>
+      </div>
+      <div class="bulk-action-btns">
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-pel-all">Pilih Semua</button>
+        <button type="button" class="btn btn-xs btn-primary" id="btn-bulk-pel-level" data-needs-sel disabled>Ubah Level</button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-pel-wa" data-needs-sel disabled>Salin Kontak WA</button>
+        <button type="button" class="btn btn-xs btn-danger" id="btn-bulk-pel-hapus" data-needs-sel disabled>Hapus</button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-pel-cancel">Batal</button>
+      </div>
+    </div>
   `;
 
   // Event Listeners Filter
@@ -132,13 +174,165 @@ export async function renderPelangganModule(container) {
     showToast('Data pelanggan berhasil diperbarui', 'success', 1800);
   });
 
+  const keluarSelectPel = () => {
+    if (!pelangganSelectMode) return false;
+    pelangganSelectMode = false;
+    pelangganSelectedIds.clear();
+    syncPelBulkBar(container, isOwnerOrAdmin);
+    muatDataPelanggan(container);
+    return true;
+  };
+  window.__posCancelSelectMode = keluarSelectPel;
+
   if (canEdit) {
+    $('#btn-toggle-select-pel', container)?.addEventListener('click', () => {
+      pelangganSelectMode = !pelangganSelectMode;
+      if (!pelangganSelectMode) pelangganSelectedIds.clear();
+      syncPelBulkBar(container, isOwnerOrAdmin);
+      muatDataPelanggan(container);
+    });
+
+    $('#btn-bulk-pel-cancel', container)?.addEventListener('click', keluarSelectPel);
+
+    $('#btn-bulk-pel-all', container)?.addEventListener('click', () => {
+      const semuaTerpilih = pelangganCache.length > 0 && pelangganCache.every((p) => pelangganSelectedIds.has(p.id));
+      if (semuaTerpilih) {
+        pelangganSelectedIds.clear();
+      } else {
+        pelangganCache.forEach((p) => pelangganSelectedIds.add(p.id));
+      }
+      syncPelBulkBar(container, isOwnerOrAdmin);
+      muatDataPelanggan(container);
+    });
+
+    // Ubah Level Member Massal
+    $('#btn-bulk-pel-level', container)?.addEventListener('click', () => {
+      const terpilih = pelangganCache.filter((p) => pelangganSelectedIds.has(p.id));
+      if (!terpilih.length) return;
+      const modalLvl = showModal({
+        title: `Ubah Level (${terpilih.length} Pelanggan)`,
+        size: 'sm',
+        body: `
+          <div class="stack">
+            <div class="text-sm text-muted">Atur level member untuk <strong>${terpilih.length}</strong> pelanggan terpilih (otomatis menjadi Member):</div>
+            <div class="field">
+              <label class="field-label" for="sel-bulk-pel-level">Level Member Baru</label>
+              <select class="select" id="sel-bulk-pel-level">
+                <option value="Reguler">Reguler</option>
+                <option value="Silver">Silver</option>
+                <option value="Gold">Gold</option>
+                <option value="Platinum">Platinum</option>
+              </select>
+            </div>
+          </div>
+        `,
+        footer: `
+          <button type="button" class="btn btn-secondary btn-sm btn-cancel">Batal</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-konfirm-bulk-pel-lvl">Simpan Level</button>
+        `
+      });
+
+      modalLvl.el.querySelector('#btn-konfirm-bulk-pel-lvl')?.addEventListener('click', async () => {
+        const levelBaru = modalLvl.el.querySelector('#sel-bulk-pel-level')?.value || 'Reguler';
+        const btn = modalLvl.el.querySelector('#btn-konfirm-bulk-pel-lvl');
+        if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+        let sukses = 0;
+        for (const it of terpilih) {
+          try {
+            await apiCall('pelanggan.update', {
+              id: it.id,
+              nama: it.nama,
+              hp: it.hp || '',
+              alamat: it.alamat || '',
+              tipe: 'member',
+              level: levelBaru,
+              limit_kredit: Number(it.limit_kredit || 0),
+              tempo_hari: Number(it.tempo_hari || 30),
+              aktif: it.aktif !== false
+            });
+            sukses++;
+          } catch (_) {}
+        }
+        modalLvl.close();
+        showToast(`${sukses} pelanggan berhasil diperbarui ke level ${levelBaru}.`, 'success');
+        keluarSelectPel();
+      });
+    });
+
+    // Salin Daftar Kontak WA Pelanggan Terpilih
+    $('#btn-bulk-pel-wa', container)?.addEventListener('click', () => {
+      const terpilih = pelangganCache.filter((p) => pelangganSelectedIds.has(p.id));
+      if (!terpilih.length) return;
+      const lines = terpilih.map((p, i) => `${i + 1}. ${p.nama} (${p.hp || 'Tanpa HP'})${p.tipe === 'member' ? ` - ${p.level || 'Member'}` : ''}`);
+      const teks = lines.join('\n');
+      const modalWa = showModal({
+        title: `Daftar Kontak (${terpilih.length} Pelanggan)`,
+        size: 'sm',
+        body: `
+          <div class="stack">
+            <div class="text-xs text-muted">Daftar kontak pelanggan/member yang Anda tandai:</div>
+            <textarea class="input" id="txt-bulk-pel-wa" rows="8" style="font-family: var(--font-mono); font-size: 12px;">${escapeHtml(teks)}</textarea>
+          </div>
+        `,
+        footer: `
+          <button type="button" class="btn btn-secondary btn-sm btn-cancel">Tutup</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-copy-pel-wa">Salin Daftar</button>
+        `
+      });
+      modalWa.el.querySelector('#btn-copy-pel-wa')?.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(modalWa.el.querySelector('#txt-bulk-pel-wa')?.value || teks);
+          showToast('Daftar kontak berhasil disalin!', 'success');
+        } catch (_) {
+          showToast('Salin teks langsung dari kotak di atas.', 'info');
+        }
+      });
+    });
+
+    // Hapus Massal Pelanggan (Owner/Admin)
+    $('#btn-bulk-pel-hapus', container)?.addEventListener('click', async () => {
+      const terpilih = pelangganCache.filter((p) => pelangganSelectedIds.has(p.id));
+      if (!terpilih.length) return;
+      const setuju = await showConfirm({
+        title: `Hapus ${terpilih.length} Pelanggan Terpilih?`,
+        message: 'Pelanggan yang masih memiliki saldo piutang aktif akan dilewati otomatis demi keamanan data.',
+        confirmText: `Ya, Hapus ${terpilih.length} Pelanggan`,
+        danger: true
+      });
+      if (!setuju) return;
+
+      let sukses = 0;
+      let gagal = 0;
+      for (const it of terpilih) {
+        try {
+          await apiCall('pelanggan.delete', { id: it.id });
+          sukses++;
+        } catch (_) {
+          gagal++;
+        }
+      }
+      showToast(
+        gagal > 0 ? `${sukses} pelanggan dihapus, ${gagal} dilewati (masih ada piutang aktif).` : `${sukses} pelanggan berhasil dihapus.`,
+        sukses > 0 ? 'success' : 'warning',
+        3200
+      );
+      keluarSelectPel();
+    });
+
     $('#btn-tambah-pelanggan', container)?.addEventListener('click', () => {
       bukaModalFormPelanggan(container, null, triggerMuat);
     });
   }
 
   await muatDataPelanggan(container);
+
+  return () => {
+    pelangganSelectMode = false;
+    pelangganSelectedIds.clear();
+    if (window.__posCancelSelectMode === keluarSelectPel) {
+      window.__posCancelSelectMode = null;
+    }
+  };
 }
 
 /* ========================================================================== */
@@ -165,6 +359,7 @@ async function muatDataPelanggan(container) {
     });
 
     const items = res.items || [];
+    pelangganCache = items;
 
     // Hitung ringkasan statistik
     let totalMember = 0;
@@ -200,6 +395,7 @@ async function muatDataPelanggan(container) {
         <table class="table table-pelanggan">
           <thead>
             <tr>
+              ${pelangganSelectMode ? '<th style="width: 38px; text-align: center;">Pilih</th>' : ''}
               <th style="min-width: 150px;">Kode & Nama</th>
               <th style="min-width: 130px;">Kontak & Alamat</th>
               <th style="min-width: 90px;">Tipe & Level</th>
@@ -213,6 +409,7 @@ async function muatDataPelanggan(container) {
           <tbody>
             ${items.map((it) => {
               const isMember = it.tipe === 'member';
+              const isChecked = pelangganSelectMode && pelangganSelectedIds.has(it.id);
               let badgeTipe = '<span class="badge badge-info">Umum</span>';
               if (isMember) {
                 let badgeColor = 'badge-primary';
@@ -228,7 +425,12 @@ async function muatDataPelanggan(container) {
               const piutangAktif = Number(it.piutang_berjalan) || 0;
 
               return `
-                <tr data-id="${escapeHtml(it.id)}">
+                <tr class="pel-selectable-row ${isChecked ? 'is-bulk-selected' : ''}" data-id="${escapeHtml(it.id)}">
+                  ${pelangganSelectMode ? `
+                    <td data-label="Pilih" style="width: 38px; text-align: center;">
+                      <input type="checkbox" class="bulk-checkbox cb-pel-select" data-id="${escapeHtml(it.id)}" ${isChecked ? 'checked' : ''} aria-label="Pilih ${escapeHtml(it.nama)}">
+                    </td>
+                  ` : ''}
                   <td data-label="Pelanggan">
                     <div class="row" style="align-items: center; gap: var(--sp-2);">
                       <div class="prd-table-avatar" style="width: 36px; height: 36px;">
@@ -292,6 +494,46 @@ async function muatDataPelanggan(container) {
         </table>
       </div>
     `;
+
+    // Pasang Event Listeners Mode Tandai & Pilih Pelanggan
+    if (pelangganSelectMode) {
+      area.querySelectorAll('.cb-pel-select').forEach((cb) => {
+        cb.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const id = cb.getAttribute('data-id');
+          const tr = cb.closest('tr');
+          if (cb.checked) {
+            pelangganSelectedIds.add(id);
+            tr?.classList.add('is-bulk-selected');
+          } else {
+            pelangganSelectedIds.delete(id);
+            tr?.classList.remove('is-bulk-selected');
+          }
+          syncPelBulkBar(container, isOwnerOrAdmin);
+        });
+      });
+
+      area.querySelectorAll('.pel-selectable-row').forEach((tr) => {
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', (e) => {
+          if (e.target.closest('button, a, input')) return;
+          const id = tr.getAttribute('data-id');
+          if (!id) return;
+          const cb = tr.querySelector('.cb-pel-select');
+          if (pelangganSelectedIds.has(id)) {
+            pelangganSelectedIds.delete(id);
+            tr.classList.remove('is-bulk-selected');
+            if (cb) cb.checked = false;
+          } else {
+            pelangganSelectedIds.add(id);
+            tr.classList.add('is-bulk-selected');
+            if (cb) cb.checked = true;
+          }
+          syncPelBulkBar(container, isOwnerOrAdmin);
+        });
+      });
+    }
+    syncPelBulkBar(container, isOwnerOrAdmin);
 
     // Pasang Event Listeners
     area.querySelectorAll('.btn-detail-pel').forEach((btn) => {

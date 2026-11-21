@@ -319,12 +319,13 @@ async function initFormInputBeli(container) {
   const dropdown = $('#beli-dropdown-produk', container);
   let timeoutCari = null;
 
-  // Buka Katalog Produk Lengkap (Modal / Bottom Sheet lega)
+  // Buka Katalog Produk Lengkap (Modal / Bottom Sheet lega + Mode Tandai Banyak)
   $('#btn-katalog-beli', container)?.addEventListener('click', () => {
     if (dropdown) dropdown.style.display = 'none';
     bukaModalPilihProduk({
       title: 'Pilih Produk untuk Pembelian',
       mode: 'beli',
+      multiSelect: true,
       initialQuery: inputCari?.value?.trim() || '',
       onSelect: (chosen) => {
         if (inputCari) inputCari.value = chosen.nama;
@@ -335,6 +336,28 @@ async function initFormInputBeli(container) {
           satuan_dasar: chosen.satuan_dasar || 'Pcs',
           hpp: chosen.hpp || 0
         });
+      },
+      onSelectMultiple: (listChosen) => {
+        if (!Array.isArray(listChosen) || !listChosen.length) return;
+        listChosen.forEach((chosen) => {
+          const itemBaru = {
+            produk_id: chosen.id,
+            varian_id: chosen.varian_id || '',
+            nama: chosen.nama,
+            satuan: chosen.satuan_dasar || 'Pcs',
+            satuan_dasar: chosen.satuan_dasar || 'Pcs',
+            faktor: 1,
+            qty: 1,
+            qty_dasar: 1,
+            harga_beli: Number(chosen.hpp || 0),
+            diskon_persen: 0
+          };
+          hitungUlangItemBeli(itemBaru);
+          keranjangBeli.push(itemBaru);
+        });
+        renderTabelKeranjangBeli(container);
+        renderRingkasanBeli(container);
+        showToast(`${listChosen.length} produk langsung ditambahkan ke daftar faktur pembelian!`, 'success', 2600);
       }
     });
   });
