@@ -96,7 +96,8 @@ export function tampilkanModalLogin(onSuccess) {
   modalLoginRef = showModal({
     title: 'Login Pengguna',
     body: formHtml,
-    closeOnOverlay: false
+    closeOnOverlay: false,
+    closable: false
   });
 
   const form = $('#form-login', modalLoginRef.el);
@@ -159,10 +160,15 @@ export function tampilkanModalLogin(onSuccess) {
  */
 export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = null) {
   if (modalGantiPinRef) return;
+  const isWajib = Boolean(store.get('user')?.wajib_ganti_pin);
 
   const modal = showModal({
-    title: 'Wajib Ganti PIN',
-    closeOnOverlay: false,
+    title: isWajib ? 'Wajib Ganti PIN' : 'Ganti PIN Keamanan',
+    closeOnOverlay: !isWajib,
+    closable: !isWajib,
+    onClose: () => {
+      modalGantiPinRef = null;
+    },
     body: `
       <form id="form-ganti-pin" class="stack">
         <div class="alert alert-warning">
@@ -204,7 +210,7 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
   modalGantiPinRef = modal;
 
   const btnClose = modal.el.querySelector('.btn-close-modal');
-  if (btnClose) btnClose.style.display = 'none';
+  if (btnClose && isWajib) btnClose.style.display = 'none';
 
   modal.el.querySelector('#btn-batal-ganti-pin')?.addEventListener('click', () => {
     store.clearUserSession();

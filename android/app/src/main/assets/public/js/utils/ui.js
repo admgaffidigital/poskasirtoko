@@ -142,10 +142,14 @@ export function showModal({
   size = 'md',
   width = null,
   closeOnOverlay = true,
+  closable = true,
+  modalId = '',
   onClose = null
 }) {
   const overlay = document.createElement('div');
   overlay.className = `overlay ${isSheet ? 'is-sheet' : 'is-modal'}`;
+  overlay.dataset.closable = closable ? 'true' : 'false';
+  if (modalId) overlay.dataset.modalId = modalId;
 
   let resolvedSize = size;
   if (width && size === 'md') {
@@ -209,6 +213,7 @@ export function showModal({
 
   const modalRef = { close: baseClose, el: overlay };
   const triggerClose = () => modalRef.close();
+  overlay._closeModal = triggerClose;
 
   dialog.querySelectorAll('.btn-close-modal, .btn-batal-modal, .btn-cancel').forEach((btn) => {
     btn.addEventListener('click', triggerClose);
@@ -313,6 +318,7 @@ export function showModal({
         return;
       }
 
+      if (!closable) return;
       triggerClose();
     }
   };
@@ -325,6 +331,56 @@ export function showModal({
   }, 100);
 
   return modalRef;
+}
+
+/**
+ * Tutup lapisan overlay (modal / dialog / dropdown di dalam modal) paling atas secara berurutan (LIFO).
+ * @returns {'closed_dropdown'|'closed_modal'|'mandatory'|'none'}
+ */
+export function closeTopOverlay() {
+  const activeOverlays = document.querySelectorAll('.overlay:not(.keluar)');
+  if (!activeOverlays.length) return 'none';
+
+  const topOverlay = activeOverlays[activeOverlays.length - 1];
+
+  // Tutup dropdown terbuka di dalam modal paling atas terlebih dahulu
+  const openCatPicker = topOverlay.querySelector('.cat-picker.is-open');
+  if (openCatPicker) {
+    openCatPicker.classList.remove('is-open');
+    const panel = openCatPicker.querySelector('.cat-picker-panel');
+    if (panel) panel.hidden = true;
+    return 'closed_dropdown';
+  }
+
+  const openAutocomplete = Array.from(topOverlay.querySelectorAll('.autocomplete-dropdown')).find(
+    (el) => el.style.display === 'block'
+  );
+  if (openAutocomplete) {
+    openAutocomplete.style.display = 'none';
+    return 'closed_dropdown';
+  }
+
+  // Jangan tutup paksa modal wajib (mis. layar Login / Wajib Ganti PIN)
+  if (topOverlay.dataset.closable === 'false') {
+    return 'mandatory';
+  }
+
+  if (typeof topOverlay._closeModal === 'function') {
+    topOverlay._closeModal();
+    return 'closed_modal';
+  }
+
+  const btnClose = topOverlay.querySelector('.btn-close-modal, .btn-batal-dialog, .btn-modal-tutup, .btn-cancel, .btn-batal-void');
+  if (btnClose && btnClose.offsetParent !== null) {
+    btnClose.click();
+    return 'closed_modal';
+  }
+
+  topOverlay.classList.add('keluar');
+  setTimeout(() => {
+    if (topOverlay.parentElement) topOverlay.remove();
+  }, 200);
+  return 'closed_modal';
 }
 
 /**

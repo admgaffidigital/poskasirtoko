@@ -16,6 +16,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.75] - 2026-11-21
+
+### Fixed
+- [UI] [APK] [PWA] **Perbaikan Total Navigasi Tombol Kembali (Berurutan LIFO, Bebas Lompat-Lompat & Dialog Konfirmasi Keluar) (`frontend/js/utils/native.js`, `frontend/js/utils/ui.js`, `frontend/js/app.js`, `frontend/js/modules/auth.js`, `android/app/src/main/java/com/admgaffidigital/poskasirtoko/MainActivity.java`)**:
+  - **Penutupan Modal & Overlay Berurutan (LIFO)**: Memperbaiki bug di `native.js` yang sebelumnya mengambil modal terbawah (`querySelector`) alih-alih modal teratas; menambahkan `closeTopOverlay()` dan `overlay._closeModal` di `ui.js` sehingga dropdown internal, modal bertumpuk, dan bottom-sheet tertutup satu per satu dari lapisan paling atas dengan rapi.
+  - **Perlindungan Modal Wajib**: Modal Login dan Wajib Ganti PIN ditandai `closable: false` sehingga tombol Kembali tidak membobol layar login, melainkan langsung menawarkan dialog konfirmasi keluar aplikasi.
+  - **Deteksi Drawer & Keranjang POS Mobile Akurat**: Memperbaiki pengecekan tab keranjang POS mobile dari kelas usang `.mobile-show-cart` ke atribut aktual `data-mobile-view="cart"`, serta menambahkan penutupan Sidebar Drawer Mobile (`#sidebar.is-mobile-open`) sebelum keluar halaman.
+  - **Stack Navigasi Deterministik Bebas Lompat-Lompat (`_navStack`)**: Mengganti `window.history.back()` mentah dengan stack navigasi terdeduplikasi di `app.js` + intersepsi klik tautan `#/...` berbasis `replaceState` (mis. `#/pelanggan` → `#/lainnya` → `#/pos`), sehingga tombol Kembali tidak lagi memutar ulang riwayat lama yang berulang-ulang.
+  - **Dukungan Penuh APK Android + PWA/Mobile Web**: Menambahkan *History Sentinel Guard* (`popstate`) pada PWA/Chrome Mobile agar perilaku tombol/gestur Kembali sama rapinya dengan APK Android.
+
+### Added
+- [UI] [APK] **Dialog Konfirmasi Tutup Aplikasi (`frontend/js/utils/native.js`, `MainActivity.java`)**:
+  - Mengganti toast "tekan 2x" dengan **Dialog Konfirmasi Keluar Aplikasi** profesional saat tombol Kembali ditekan di halaman utama (`#/pos`), lengkap dengan peringatan otomatis jika masih ada barang di keranjang belanja.
+  - Menambahkan native bridge `window.AndroidApp.exitApp()` (`finishAndRemoveTask()`) di `MainActivity.java` agar penutupan aplikasi Android berlangsung bersih di semua versi Android.
+
 ## [1.0.74] - 2026-11-21
 
 ### Changed

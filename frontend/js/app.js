@@ -96,12 +96,13 @@ class App {
     this.currentRoute = null;
     this._activeCleanup = null;
     this._renderSeq = 0;
+    this._navStack = ['#/pos'];
+    this._isPoppingNav = false;
   }
 
   init() {
     initTheme();
     syncStatusBarWithTheme();
-    setupHardwareBackButton();
     this.renderShell();
     // Pulihkan status sidebar collapsed pilihan user dari localStorage (Mode Accurate POS)
     try {
@@ -112,6 +113,7 @@ class App {
     this.updateBrandUI();
     this.bindGlobalEvents();
     this.initRouter();
+    setupHardwareBackButton(this.getBackNavController());
     this.registerServiceWorker();
     hideNativeSplashScreen();
     window.bukaKoneksiPrinter = bukaKoneksiPrinterLazy;
@@ -506,7 +508,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.74'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.75'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -559,7 +561,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.74'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.75'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1043,7 +1045,7 @@ class App {
         if (typeof window.bukaModalShiftKasirGlobal === 'function') {
           window.bukaModalShiftKasirGlobal();
         } else {
-          window.location.hash = '#/pos';
+          this.goTo('#/pos');
           setTimeout(() => {
             if (typeof window.bukaModalShiftKasirGlobal === 'function') {
               window.bukaModalShiftKasirGlobal();
@@ -1265,7 +1267,7 @@ class App {
       ikon: r.icon,
       hint: r.path.replace('#/', '/'),
       aksi: () => {
-        window.location.hash = r.path;
+        this.goTo(r.path);
       }
     }));
 
@@ -1417,11 +1419,63 @@ class App {
     renderDaftar();
   }
 
+  getBackNavController() {
+    return {
+      getCurrentPath: () => (this.currentRoute && this.currentRoute.path) || '#/pos',
+      canGoBack: () => {
+        if (this._navStack.length > 1) return true;
+        return Boolean(this.currentRoute && this.currentRoute.path !== '#/pos');
+      },
+      goBack: () => {
+        if (this._navStack.length > 1) {
+          this._navStack.pop();
+        }
+        const prevPath = this._navStack[this._navStack.length - 1] || '#/pos';
+        this._isPoppingNav = true;
+        try {
+          window.history.replaceState(window.history.state, '', prevPath);
+        } catch (_) {}
+        this.navigate(prevPath);
+        this._isPoppingNav = false;
+      },
+      goToRoot: () => {
+        this._navStack = ['#/pos'];
+        this._isPoppingNav = true;
+        try {
+          window.history.replaceState(window.history.state, '', '#/pos');
+        } catch (_) {}
+        this.navigate('#/pos');
+        this._isPoppingNav = false;
+      }
+    };
+  }
+
+  goTo(targetHash) {
+    const rute = cariRute(targetHash);
+    if (!rute) return;
+    try {
+      window.history.replaceState(window.history.state, '', rute.path);
+    } catch (_) {}
+    this.navigate(rute.path);
+  }
+
   initRouter() {
     const handleRoute = () => {
       const hash = window.location.hash || '#/pos';
       this.navigate(hash);
     };
+
+    // Intersep klik tautan internal (#/...) agar memakai replaceState + stack navigasi rapi
+    // (mencegah riwayat browser menumpuk & lompat-lompat saat tombol Kembali ditekan)
+    document.addEventListener('click', (e) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = e.target && typeof e.target.closest === 'function' ? e.target.closest('a[href^="#/"]') : null;
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+      e.preventDefault();
+      this.goTo(href);
+    });
 
     window.addEventListener('hashchange', handleRoute);
     handleRoute();
@@ -1429,6 +1483,24 @@ class App {
 
   navigate(hash) {
     const rute = cariRute(hash);
+
+    // Kelola stack navigasi deterministik & bebas loop (ala aplikasi native profesional)
+    if (!this._isPoppingNav) {
+      const BOTTOM_TABS = new Set(['#/pos', '#/dashboard', '#/produk', '#/pembelian', '#/lainnya']);
+      if (rute.path === '#/pos') {
+        this._navStack = ['#/pos'];
+      } else if (BOTTOM_TABS.has(rute.path)) {
+        this._navStack = ['#/pos', rute.path];
+      } else {
+        const existingIdx = this._navStack.indexOf(rute.path);
+        if (existingIdx !== -1) {
+          this._navStack = this._navStack.slice(0, existingIdx + 1);
+        } else {
+          this._navStack.push(rute.path);
+        }
+      }
+    }
+
     this.currentRoute = rute;
     $('#btn-scroll-top')?.classList.remove('is-visible');
     $('.topbar')?.classList.remove('is-scrolled');
@@ -1468,7 +1540,7 @@ class App {
     // Periksa apakah peran user diizinkan mengakses rute ini
     if (rute.roles && user && !rute.roles.includes(user.role)) {
       showToast(`Akses ke halaman "${rute.title}" dibatasi untuk peran: ${rute.roles.join(', ')}.`, 'warning', 4000);
-      window.location.hash = '#/pos';
+      this.goTo('#/pos');
       return;
     }
 
@@ -1677,7 +1749,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.74'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.75'}</div>
         </div>
       `;
     };

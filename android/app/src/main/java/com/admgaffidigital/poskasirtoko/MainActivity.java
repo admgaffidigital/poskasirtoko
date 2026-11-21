@@ -27,8 +27,9 @@ public class MainActivity extends BridgeActivity {
 
         WebView webView = getBridge().getWebView();
         if (webView != null) {
-            // Daftarkan native bridge agar JS dapat berkomunikasi langsung dengan RawBT & Bluetooth Android
+            // Daftarkan native bridge agar JS dapat berkomunikasi langsung dengan RawBT, Bluetooth & Lifecycle Android
             webView.addJavascriptInterface(new RawBTBridge(this), "AndroidRawBT");
+            webView.addJavascriptInterface(new AppLifecycleBridge(this), "AndroidApp");
 
             // Tangani URI intent:, rawbt:, market:, whatsapp:, tel:, mailto: secara native di WebView
             webView.setWebViewClient(new BridgeWebViewClient(getBridge()) {
@@ -250,6 +251,35 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 return "ERROR:" + e.getMessage();
             }
+        }
+    }
+
+    /**
+     * Bridge native (`window.AndroidApp`) untuk penutupan aplikasi yang bersih setelah konfirmasi pengguna.
+     */
+    private static class AppLifecycleBridge {
+        private final Activity activity;
+
+        AppLifecycleBridge(Activity activity) {
+            this.activity = activity;
+        }
+
+        @JavascriptInterface
+        public void exitApp() {
+            activity.runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        activity.finishAndRemoveTask();
+                    } else {
+                        activity.finishAffinity();
+                    }
+                } catch (Exception e) {
+                    try {
+                        activity.finish();
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
         }
     }
 }
