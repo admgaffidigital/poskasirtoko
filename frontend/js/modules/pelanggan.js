@@ -538,7 +538,7 @@ async function muatDataPelanggan(container) {
     // Pasang Event Listeners
     area.querySelectorAll('.btn-detail-pel').forEach((btn) => {
       btn.addEventListener('click', () => {
-        bukaModalDetailPelanggan(btn.getAttribute('data-id'));
+        bukaModalDetailPelanggan(btn.getAttribute('data-id'), container);
       });
     });
 
@@ -841,7 +841,7 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
 /* MODAL DETAIL & RIWAYAT PELANGGAN                                           */
 /* ========================================================================== */
 
-async function bukaModalDetailPelanggan(pelangganId) {
+async function bukaModalDetailPelanggan(pelangganId, container = null) {
   const modalBody = document.createElement('div');
   modalBody.className = 'stack';
   modalBody.innerHTML = renderSkeleton(4);
@@ -1098,18 +1098,18 @@ async function bukaModalDetailPelanggan(pelangganId) {
     `;
 
     $('#btn-terima-titipan', modalBody)?.addEventListener('click', () => {
-      bukaModalTerimaTitipan(container, pel, () => {
+      bukaModalTerimaTitipan(pel, () => {
         modalInstance.close();
-        muatDataPelanggan(container);
-        bukaModalDetailPelanggan(container, pel.id);
+        if (container) muatDataPelanggan(container);
+        bukaModalDetailPelanggan(pel.id, container);
       });
     });
 
     $('#btn-tarik-titipan', modalBody)?.addEventListener('click', () => {
-      bukaModalTarikTitipan(container, pel, () => {
+      bukaModalTarikTitipan(pel, () => {
         modalInstance.close();
-        muatDataPelanggan(container);
-        bukaModalDetailPelanggan(container, pel.id);
+        if (container) muatDataPelanggan(container);
+        bukaModalDetailPelanggan(pel.id, container);
       });
     });
 
@@ -1183,7 +1183,7 @@ function bukaBuktiTitipanWA(pel, dataBukti, jenis) {
   window.open(url, '_blank');
 }
 
-function bukaModalTerimaTitipan(container, pel, onSuccess) {
+function bukaModalTerimaTitipan(pel, onSuccess) {
   const saldoSaatIni = Number(pel.saldo_deposit) || 0;
   const modalBody = document.createElement('div');
   modalBody.innerHTML = `
@@ -1296,7 +1296,7 @@ function bukaModalTerimaTitipan(container, pel, onSuccess) {
   });
 }
 
-function bukaModalTarikTitipan(container, pel, onSuccess) {
+function bukaModalTarikTitipan(pel, onSuccess) {
   const saldoSaatIni = Number(pel.saldo_deposit) || 0;
   if (saldoSaatIni <= 0) {
     showToast('Saldo titipan pelanggan saat ini Rp 0.', 'info');

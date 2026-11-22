@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.100] - 2026-11-22
+
+### Fixed
+- [PELANGGAN] **Perbaikan `ReferenceError: container is not defined` pada Tombol Terima/Kembalikan Saldo Titipan (`pelanggan.js`)**:
+  - Memperbarui tanda tangan `bukaModalDetailPelanggan(pelangganId, container = null)` serta penerusan argumen `container` dari daftar pelanggan dan pemanggilan `bukaModalTerimaTitipan(pel, onSuccess)` / `bukaModalTarikTitipan(pel, onSuccess)` sehingga tombol **Terima Titipan** dan **Kembalikan Saldo** bekerja mulus dan otomatis menyegarkan tabel & detail pelanggan.
+
 ## [1.0.99] - 2026-11-22
 
 ### Fixed
