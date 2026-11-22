@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.94] - 2026-11-22
+
+### Changed
+- [DASHBOARD] [UI] **Penyeragaman 100% Kartu Statistik `.stat-card-pro` & Skeleton Shimmer di Seluruh Sub-Tab Laporan (`laporan.js`)**:
+  - Mengubah seluruh 17 kartu ringkasan lama `.card.stat` pada Tab **Penjualan**, **Pembelian**, **Arus Kas**, dan **Valuasi Stok** menjadi `.stat-card-pro` modern lengkap dengan ikon sudut berwarna (`icon-emerald`, `icon-amber`, `icon-blue`, `icon-rose`, `icon-purple`) dan deskripsi ringkas agar 100% seragam dengan Tab Ringkasan Eksekutif, Pelanggan, Biaya, dan Hutang-Piutang.
+  - Mengganti indikator loading spinner polos pada perpindahan tab/periode di `laporan.js` menjadi animasi *skeleton shimmer* (4 kartu statistik + 5 baris tabel) yang mulus.
+
 ## [1.0.93] - 2026-11-22
 
 ### Security

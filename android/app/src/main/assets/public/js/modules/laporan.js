@@ -6,7 +6,7 @@
 
 import { kirimRequest } from '../api.js';
 import { store } from '../state.js';
-import { $, $$, escapeHtml } from '../utils/dom.js';
+import { $, $$, escapeHtml, renderSkeleton } from '../utils/dom.js';
 import { formatRupiah, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal } from '../utils/ui.js';
 import { haptic } from '../utils/native.js';
@@ -277,9 +277,19 @@ async function muatDataTabAktif(container) {
   if (!target) return;
 
   target.innerHTML = `
-    <div class="card" style="padding: var(--sp-8); text-align: center;">
-      <div class="spinner" style="margin: 0 auto var(--sp-3);"></div>
-      <p style="color: var(--text-muted); font-size: var(--fs-sm);">Memuat data laporan...</p>
+    <div class="stack" style="gap: var(--sp-4);">
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+        ${Array.from({ length: 4 }).map(() => `
+          <div class="stat-card-pro">
+            <div class="skeleton" style="height: 14px; width: 55%; border-radius: 4px;"></div>
+            <div class="skeleton" style="height: 28px; width: 75%; margin-top: 10px; border-radius: 6px;"></div>
+            <div class="skeleton" style="height: 12px; width: 45%; margin-top: 8px; border-radius: 4px;"></div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="card card-body">
+        ${renderSkeleton(5)}
+      </div>
     </div>
   `;
 
@@ -765,27 +775,42 @@ function renderTabPenjualan(container, data) {
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Penjualan -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-        <div class="card stat">
-          <div class="stat-label">Total Omset Penjualan</div>
-          <div class="stat-value" style="color: var(--primary);">${formatRupiah(r.total_omset || 0)}</div>
-          <div class="stat-delta" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Omset Penjualan</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.shoppingBag}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--primary);">${formatRupiah(r.total_omset || 0)}</div>
+          <div class="stat-card-desc" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="badge badge-primary">${formatAngka(r.total_transaksi || 0)} Transaksi Aktif</span>
             ${(r.total_void || 0) > 0 ? `<span class="badge badge-danger">${formatAngka(r.total_void)} Batal</span>` : ''}
           </div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Total Diskon Diberikan</div>
-          <div class="stat-value" style="color: var(--warning);">${formatRupiah(r.total_diskon || 0)}</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Diskon Diberikan</span>
+            <div class="stat-card-icon icon-amber">${ICONS.tag}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--warning);">${formatRupiah(r.total_diskon || 0)}</div>
+          <div class="stat-card-desc">Potongan item &amp; nota aktif</div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Total Pajak / PPN</div>
-          <div class="stat-value" style="color: var(--info);">${formatRupiah(r.total_pajak || 0)}</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Pajak / PPN</span>
+            <div class="stat-card-icon icon-blue">${ICONS.clipboard}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--info);">${formatRupiah(r.total_pajak || 0)}</div>
+          <div class="stat-card-desc">Akumulasi PPN periode terpilih</div>
         </div>
         ${isOwner ? `
-          <div class="card stat">
-            <div class="stat-label">Total Laba Penjualan</div>
-            <div class="stat-value" style="color: var(--success);">${formatRupiah(r.total_laba || 0)}</div>
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Total Laba Penjualan</span>
+              <div class="stat-card-icon icon-emerald">${ICONS.award}</div>
+            </div>
+            <div class="stat-card-value" style="color: var(--success);">${formatRupiah(r.total_laba || 0)}</div>
+            <div class="stat-card-desc">Laba kotor transaksi aktif</div>
           </div>
         ` : ''}
       </div>
@@ -1209,21 +1234,32 @@ function renderTabPembelian(container, data) {
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Pembelian -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-        <div class="card stat">
-          <div class="stat-label">Total Pembelian Barang</div>
-          <div class="stat-value" style="color: var(--warning);">${formatRupiah(r.total_pembelian || 0)}</div>
-          <div class="stat-delta"><span class="badge badge-warning">${formatAngka(r.total_faktur || 0)} Faktur Masuk</span></div>
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Pembelian Barang</span>
+            <div class="stat-card-icon icon-amber">${ICONS.truck}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--warning);">${formatRupiah(r.total_pembelian || 0)}</div>
+          <div class="stat-card-desc"><span class="badge badge-warning">${formatAngka(r.total_faktur || 0)} Faktur Masuk</span></div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Total Telah Dibayar</div>
-          <div class="stat-value" style="color: var(--success);">${formatRupiah(r.total_terbayar || 0)}</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Telah Dibayar</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.check}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--success);">${formatRupiah(r.total_terbayar || 0)}</div>
+          <div class="stat-card-desc">Pembayaran lunas &amp; cicilan supplier</div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Total Sisa Hutang Faktur</div>
-          <div class="stat-value" style="color: ${r.total_sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Sisa Hutang Faktur</span>
+            <div class="stat-card-icon icon-rose">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value" style="color: ${r.total_sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};">
             ${formatRupiah(r.total_sisa_hutang || 0)}
           </div>
+          <div class="stat-card-desc">${r.total_sisa_hutang > 0 ? 'Tagihan tempo belum lunas' : 'Seluruh faktur periode ini lunas'}</div>
         </div>
       </div>
 
@@ -1334,30 +1370,48 @@ function renderTabArusKas(container, data) {
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Arus Kas -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-        <div class="card stat">
-          <div class="stat-label">Total Arus Kas Masuk</div>
-          <div class="stat-value" style="color: var(--success);">${formatRupiah(r.total_kas_masuk || 0)}</div>
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Arus Kas Masuk</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.arrowDownLeft}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--success);">${formatRupiah(r.total_kas_masuk || 0)}</div>
+          <div class="stat-card-desc">Penjualan bersih &amp; pelunasan piutang</div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Total Arus Kas Keluar</div>
-          <div class="stat-value" style="color: var(--danger);">${formatRupiah(r.total_kas_keluar || 0)}</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Arus Kas Keluar</span>
+            <div class="stat-card-icon icon-rose">${ICONS.arrowUpRight}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--danger);">${formatRupiah(r.total_kas_keluar || 0)}</div>
+          <div class="stat-card-desc">Pembelian, hutang, refund &amp; biaya</div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Arus Kas Bersih (Net Flow)</div>
-          <div class="stat-value" style="color: ${r.arus_kas_bersih >= 0 ? 'var(--primary)' : 'var(--danger)'};">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Arus Kas Bersih (Net Flow)</span>
+            <div class="stat-card-icon icon-blue">${ICONS.chart}</div>
+          </div>
+          <div class="stat-card-value" style="color: ${r.arus_kas_bersih >= 0 ? 'var(--primary)' : 'var(--danger)'};">
             ${formatRupiah(r.arus_kas_bersih || 0)}
           </div>
+          <div class="stat-card-desc">Selisih kas masuk dikurangi kas keluar</div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Kas Fisik Kasir (Tunai)</div>
-          <div class="stat-value" style="color: var(--text-main);">${formatRupiah(r.saldo_tunai_kasir || 0)}</div>
-          <div class="stat-delta"><span class="badge badge-info">Tunai di Laci Kasir</span></div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Kas Fisik Kasir (Tunai)</span>
+            <div class="stat-card-icon icon-amber">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--text-main);">${formatRupiah(r.saldo_tunai_kasir || 0)}</div>
+          <div class="stat-card-desc"><span class="badge badge-info">Tunai di Laci Kasir</span></div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Bank & QRIS (Non-Tunai)</div>
-          <div class="stat-value" style="color: var(--text-main);">${formatRupiah(r.saldo_bank_non_tunai || 0)}</div>
-          <div class="stat-delta"><span class="badge badge-info">Rekening Toko</span></div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Bank &amp; QRIS (Non-Tunai)</span>
+            <div class="stat-card-icon icon-purple">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--text-main);">${formatRupiah(r.saldo_bank_non_tunai || 0)}</div>
+          <div class="stat-card-desc"><span class="badge badge-info">Rekening Toko</span></div>
         </div>
       </div>
 
@@ -1638,29 +1692,47 @@ function renderTabStokValuasi(container, data) {
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Valuasi Stok -->
       <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-        <div class="card stat">
-          <div class="stat-label">Total Jenis Item Aktif</div>
-          <div class="stat-value" style="color: var(--primary);">${formatAngka(r.total_item || 0)}</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Jenis Item Aktif</span>
+            <div class="stat-card-icon icon-blue">${ICONS.box}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--primary);">${formatAngka(r.total_item || 0)}</div>
+          <div class="stat-card-desc">Produk &amp; varian terdaftar aktif</div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Total Kuantitas Fisik</div>
-          <div class="stat-value" style="color: var(--info);">${formatAngka(r.total_unit_stok || 0)} Unit</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Kuantitas Fisik</span>
+            <div class="stat-card-icon icon-purple">${ICONS.package}</div>
+          </div>
+          <div class="stat-card-value" style="color: var(--info);">${formatAngka(r.total_unit_stok || 0)} Unit</div>
+          <div class="stat-card-desc">Akumulasi seluruh satuan dasar</div>
         </div>
         ${isOwner ? `
-          <div class="card stat">
-            <div class="stat-label">Estimasi Nilai Modal Aset</div>
-            <div class="stat-value" style="color: var(--success);">${formatRupiah(r.total_nilai_aset || 0)}</div>
-            <div class="stat-delta"><span class="badge badge-success">Valuasi HPP Berjalan</span></div>
+          <div class="stat-card-pro">
+            <div class="stat-card-header">
+              <span class="stat-card-title">Estimasi Nilai Modal Aset</span>
+              <div class="stat-card-icon icon-emerald">${ICONS.award}</div>
+            </div>
+            <div class="stat-card-value" style="color: var(--success);">${formatRupiah(r.total_nilai_aset || 0)}</div>
+            <div class="stat-card-desc"><span class="badge badge-success">Valuasi HPP Berjalan</span></div>
           </div>
         ` : ''}
-        <div class="card stat">
-          <div class="stat-label">Stok Kosong / Habis</div>
-          <div class="stat-value" style="color: ${r.total_habis > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatAngka(r.total_habis || 0)}</div>
-          <div class="stat-delta"><span class="badge ${r.total_habis > 0 ? 'badge-danger' : 'badge-success'}">${r.total_habis > 0 ? 'Perlu Restock' : 'Aman'}</span></div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Stok Kosong / Habis</span>
+            <div class="stat-card-icon icon-rose">${ICONS.alertTriangle}</div>
+          </div>
+          <div class="stat-card-value" style="color: ${r.total_habis > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatAngka(r.total_habis || 0)}</div>
+          <div class="stat-card-desc"><span class="badge ${r.total_habis > 0 ? 'badge-danger' : 'badge-success'}">${r.total_habis > 0 ? 'Perlu Restock' : 'Aman'}</span></div>
         </div>
-        <div class="card stat">
-          <div class="stat-label">Stok Menipis (Kritis)</div>
-          <div class="stat-value" style="color: ${r.total_kritis > 0 ? 'var(--warning)' : 'var(--text-muted)'};">${formatAngka(r.total_kritis || 0)}</div>
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Stok Menipis (Kritis)</span>
+            <div class="stat-card-icon icon-amber">${ICONS.alertTriangle}</div>
+          </div>
+          <div class="stat-card-value" style="color: ${r.total_kritis > 0 ? 'var(--warning)' : 'var(--text-muted)'};">${formatAngka(r.total_kritis || 0)}</div>
+          <div class="stat-card-desc">Stok di bawah batas minimum</div>
         </div>
       </div>
 
