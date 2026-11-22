@@ -1359,6 +1359,96 @@ async function runAudit() {
       `Laba Rugi (${lr.ringkasan.laba_bersih_riil}) & Dashboard (${dash.ringkasan.laba_bersih_riil}) wajib sinkron termasuk ongkir`);
   });
 
+  // =========================================================================
+  // 19. LANDED COST PEMBELIAN: ONGKIR + BIAYA BONGKAR -> HPP FINAL ANTI-BONCOS
+  // =========================================================================
+  await test('19. Landed Cost Pembelian: Konversi Ongkir & Biaya Bongkar ke HPP Final (Masuk Hutang vs Tunai Terpisah & Rata Qty)', () => {
+    const envLc = setupMockEnv();
+    envLc.setupDatabase();
+    const ownerRow = envLc.bacaSemua_('Users').find(u => u.username === 'owner');
+
+    const supRes = envLc.aksiSupplierCreate_({
+      user: ownerRow,
+      payload: { nama: 'PT Distributor Semen Nusantara', kontak: 'Pak Budi', hp: '081222333444' }
+    });
+    const supId = (supRes.supplier || supRes).id;
+
+    const semenRes = envLc.aksiProdukCreate_({
+      user: ownerRow,
+      payload: { nama: 'Semen 50kg Landed', satuan_dasar: 'SAK', hpp: 0, harga_ritel: 55000, stok: 0, stok_min: 5 }
+    });
+    const semen = semenRes.produk || semenRes;
+
+    // 19a. 100 SAK @ Rp 45.000 = Rp 4.500.000 + Ongkir Rp 200.000 + Bongkar Rp 100.000 (Masuk Tagihan Supplier, tempo penuh)
+    const pb1 = envLc.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: {
+        supplier_id: supId,
+        ongkir: 200000,
+        biaya_bongkar: 100000,
+        biaya_masuk_hutang: true,
+        metode_alokasi_biaya: 'proporsional',
+        bayar: 0,
+        jatuh_tempo: '2026-12-22',
+        items: [{ produk_id: semen.id, qty: 100, harga_beli: 45000, satuan: 'SAK', faktor: 1 }]
+      }
+    });
+    const semenAfter1 = envLc.cariById_('Produk', semen.id);
+    const ht1 = envLc.bacaSemua_('Hutang').find(h => h.pembelian_id === pb1.id && !h.deleted);
+    assert(pb1.total === 4800000 && ht1 && ht1.sisa === 4800000, `Tagihan & hutang masuk ongkir+bongkar wajib Rp 4.800.000, aktual: ${pb1.total}`);
+    assert(semenAfter1.hpp === 48000, `HPP final semen wajib naik ke Rp 48.000/sak, aktual: ${semenAfter1.hpp}`);
+
+    // 19b. 50 SAK @ Rp 45.000 = Rp 2.250.000 (Tempo supplier) + Ongkir 100rb + Bongkar 50rb (Bayar tunai terpisah ke kuli/ekspedisi)
+    const pb2 = envLc.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: {
+        supplier_id: supId,
+        ongkir: 100000,
+        biaya_bongkar: 50000,
+        biaya_masuk_hutang: false,
+        metode_alokasi_biaya: 'proporsional',
+        bayar: 0,
+        jatuh_tempo: '2026-12-22',
+        items: [{ produk_id: semen.id, qty: 50, harga_beli: 45000, satuan: 'SAK', faktor: 1 }]
+      }
+    });
+    const semenAfter2 = envLc.cariById_('Produk', semen.id);
+    const ht2 = envLc.bacaSemua_('Hutang').find(h => h.pembelian_id === pb2.id && !h.deleted);
+    const arusKas = envLc.aksiLaporanArusKas_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(pb2.total === 2250000 && ht2 && ht2.sisa === 2250000,
+      `Hutang supplier pada ongkir/bongkar bayar terpisah wajib murni barang Rp 2.250.000, aktual: ${pb2.total}`);
+    assert(semenAfter2.hpp === 48000,
+      `HPP moving average semen tetap akurat Rp 48.000 meski ongkir/bongkar dibayar terpisah, aktual: ${semenAfter2.hpp}`);
+    assert(arusKas.rincian_keluar.pembelian_tunai === 150000,
+      `Arus kas keluar pembelian tunai wajib mencatat Rp 150.000 ongkir/bongkar terpisah, aktual: ${arusKas.rincian_keluar.pembelian_tunai}`);
+
+    // 19c. Metode Alokasi Rata per Qty (2 barang harga beda, total qty 20, bongkar Rp 20.000 -> masing-masing +Rp 1.000/unit)
+    const pA = (envLc.aksiProdukCreate_({ user: ownerRow, payload: { nama: 'Besi 12mm', satuan_dasar: 'BTG', hpp: 0, harga_ritel: 120000, stok: 0, stok_min: 0 } })).produk || null;
+    const pARow = pA || envLc.bacaSemua_('Produk').find(x => x.nama === 'Besi 12mm');
+    const pB = (envLc.aksiProdukCreate_({ user: ownerRow, payload: { nama: 'Kawat Bendrat', satuan_dasar: 'KG', hpp: 0, harga_ritel: 25000, stok: 0, stok_min: 0 } })).produk || null;
+    const pBRow = pB || envLc.bacaSemua_('Produk').find(x => x.nama === 'Kawat Bendrat');
+
+    envLc.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: {
+        supplier_id: supId,
+        ongkir: 0,
+        biaya_bongkar: 20000,
+        biaya_masuk_hutang: true,
+        metode_alokasi_biaya: 'qty',
+        bayar: 1120000,
+        items: [
+          { produk_id: pARow.id, qty: 10, harga_beli: 100000, satuan: 'BTG', faktor: 1 },
+          { produk_id: pBRow.id, qty: 10, harga_beli: 10000, satuan: 'KG', faktor: 1 }
+        ]
+      }
+    });
+    const hppA = envLc.cariById_('Produk', pARow.id).hpp;
+    const hppB = envLc.cariById_('Produk', pBRow.id).hpp;
+    assert(hppA === 101000 && hppB === 11000,
+      `Alokasi rata per qty wajib menaikkan masing-masing +Rp 1.000/unit (A=101rb, B=11rb), aktual: A=${hppA}, B=${hppB}`);
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

@@ -239,7 +239,41 @@ function renderFormInputBeli() {
         <div class="field">
           <label class="field-label" for="beli-diskon-faktur">Diskon Faktur (Rp)</label>
           <input type="text" class="input tabular" id="beli-diskon-faktur" value="0">
-          <div class="field-hint">Dialokasikan proporsional ke HPP setiap barang.</div>
+          <div class="field-hint">Dialokasikan proporsional mengurangi HPP setiap barang.</div>
+        </div>
+
+        <!-- Landed Cost: Ongkos Kirim & Biaya Bongkar (Otomatis Dikonversi ke HPP Final) -->
+        <div class="beli-inputs-grid" style="margin-top: 2px;">
+          <div class="field">
+            <label class="field-label" for="beli-ongkir">Ongkos Kirim (Rp)</label>
+            <input type="text" class="input tabular" id="beli-ongkir" value="0" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label class="field-label" for="beli-bongkar">Biaya Bongkar (Rp)</label>
+            <input type="text" class="input tabular" id="beli-bongkar" value="0" inputmode="numeric">
+          </div>
+        </div>
+
+        <div id="panel-opsi-biaya-beli" class="stack" style="display: none; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-2) var(--sp-3);">
+          <div class="field" style="margin: 0;">
+            <label class="field-label text-xs" for="beli-metode-alokasi">Konversi Ongkir &amp; Bongkar ke HPP</label>
+            <select class="select input-sm" id="beli-metode-alokasi">
+              <option value="proporsional" selected>Proporsional Nilai Belanja (Disarankan)</option>
+              <option value="qty">Rata per Qty Satuan Dasar</option>
+            </select>
+          </div>
+          <label style="display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-xs); cursor: pointer; user-select: none;">
+            <input type="checkbox" id="beli-biaya-masuk-hutang" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0;">
+            <span>
+              <strong style="color: var(--text);">Masuk Tagihan / Hutang Supplier</strong>
+              <span id="hint-biaya-masuk-hutang" class="text-muted" style="display: block; margin-top: 2px;">Ongkir &amp; bongkar ikut menambah Total Tagihan Supplier dan menaikkan HPP barang.</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="row-between text-sm" id="row-beli-biaya-tambahan" style="display: none;">
+          <span class="text-muted" id="lbl-beli-biaya-tambahan">Ongkir &amp; Bongkar (Masuk HPP)</span>
+          <span class="tabular fw-semibold text-primary" id="beli-ringkasan-biaya-tambahan">+ Rp 0</span>
         </div>
 
         <hr style="border: 0; border-top: 1px solid var(--clr-border); margin: var(--sp-1) 0;">
@@ -576,6 +610,42 @@ async function initFormInputBeli(container) {
     updateStatusBayarUI(container);
   });
 
+  // Listener perubahan Diskon Faktur, Ongkir, Biaya Bongkar & Metode Alokasi HPP
+  const onBiayaFakturChange = (e) => {
+    if (e && e.target && e.target.tagName === 'INPUT' && e.target.type === 'text') {
+      e.target.value = formatRupiah(parseRupiah(e.target.value), false);
+    }
+    renderRingkasanBeli(container);
+    renderTabelKeranjangBeli(container);
+  };
+
+  $('#beli-diskon-faktur', container)?.addEventListener('input', () => {
+    renderRingkasanBeli(container);
+    renderTabelKeranjangBeli(container);
+  });
+  $('#beli-diskon-faktur', container)?.addEventListener('blur', onBiayaFakturChange);
+
+  $('#beli-ongkir', container)?.addEventListener('input', () => {
+    renderRingkasanBeli(container);
+    renderTabelKeranjangBeli(container);
+  });
+  $('#beli-ongkir', container)?.addEventListener('blur', onBiayaFakturChange);
+
+  $('#beli-bongkar', container)?.addEventListener('input', () => {
+    renderRingkasanBeli(container);
+    renderTabelKeranjangBeli(container);
+  });
+  $('#beli-bongkar', container)?.addEventListener('blur', onBiayaFakturChange);
+
+  $('#beli-metode-alokasi', container)?.addEventListener('change', () => {
+    renderRingkasanBeli(container);
+    renderTabelKeranjangBeli(container);
+  });
+
+  $('#beli-biaya-masuk-hutang', container)?.addEventListener('change', () => {
+    renderRingkasanBeli(container);
+  });
+
   // Tombol Simpan
   $('#btn-simpan-pembelian', container)?.addEventListener('click', () => {
     simpanPembelian(container);
@@ -607,10 +677,17 @@ async function pilihProdukUntukBeli(container, item) {
   try {
     const res = await apiCall('produk.list', { q: item.id });
     const prod = (res.items || []).find((p) => p.id === item.id);
-    if (prod && prod.satuan_konversi && prod.satuan_konversi.length) {
-      prod.satuan_konversi.forEach((sk) => {
-        opts += `<option value="${escapeHtml(sk.satuan)}" data-faktor="${sk.faktor}">1 ${escapeHtml(sk.satuan)} = ${sk.faktor} ${escapeHtml(item.satuan_dasar)}</option>`;
-      });
+    if (prod) {
+      item.harga_ritel = Number(prod.harga_ritel || item.harga_ritel || 0);
+      if (item.varian_id && Array.isArray(prod.varian)) {
+        const vr = prod.varian.find((v) => v.id === item.varian_id);
+        if (vr && Number(vr.harga_ritel) > 0) item.harga_ritel = Number(vr.harga_ritel);
+      }
+      if (prod.satuan_konversi && prod.satuan_konversi.length) {
+        prod.satuan_konversi.forEach((sk) => {
+          opts += `<option value="${escapeHtml(sk.satuan)}" data-faktor="${sk.faktor}">1 ${escapeHtml(sk.satuan)} = ${sk.faktor} ${escapeHtml(item.satuan_dasar)}</option>`;
+        });
+      }
     }
   } catch (err) {
     console.warn('Gagal ambil satuan konversi:', err);
@@ -696,6 +773,7 @@ function tambahItemKeKeranjangBeli(container) {
     qty: qty,
     qty_dasar: qtyDasar,
     harga_beli: hargaBeli,
+    harga_ritel: Number(itemPilihan.harga_ritel || 0),
     diskon_persen: diskonPersen
   };
   hitungUlangItemBeli(itemBaru);
@@ -722,6 +800,40 @@ function tambahItemKeKeranjangBeli(container) {
   $('#beli-cari-produk', container).focus();
 }
 
+function hitungParameterBiayaBeli(container) {
+  const diskon = parseRupiah($('#beli-diskon-faktur', container)?.value || 0);
+  const ongkir = parseRupiah($('#beli-ongkir', container)?.value || 0);
+  const bongkar = parseRupiah($('#beli-bongkar', container)?.value || 0);
+  const totalBiayaTambahan = ongkir + bongkar;
+  const biayaMasukHutang = $('#beli-biaya-masuk-hutang', container)?.checked !== false;
+  const metodeAlokasi = $('#beli-metode-alokasi', container)?.value === 'qty' ? 'qty' : 'proporsional';
+  return { diskon, ongkir, bongkar, totalBiayaTambahan, biayaMasukHutang, metodeAlokasi };
+}
+
+function hitungEstimasiHppItem(container, it) {
+  const { diskon, totalBiayaTambahan, metodeAlokasi } = hitungParameterBiayaBeli(container);
+  const subtotalBersih = keranjangBeli.reduce((s, x) => s + (Number(x.subtotal) || 0), 0);
+  const totalQtyDasar = keranjangBeli.reduce((s, x) => s + (Number(x.qty_dasar) || 0), 0);
+
+  const diskonFakturItem = (subtotalBersih > 0 && diskon > 0)
+    ? Math.round(diskon * (it.subtotal / subtotalBersih))
+    : 0;
+  let biayaItem = 0;
+  if (totalBiayaTambahan > 0) {
+    if (metodeAlokasi === 'qty' && totalQtyDasar > 0) {
+      biayaItem = Math.round(totalBiayaTambahan * (it.qty_dasar / totalQtyDasar));
+    } else if (subtotalBersih > 0) {
+      biayaItem = Math.round(totalBiayaTambahan * (it.subtotal / subtotalBersih));
+    } else if (keranjangBeli.length > 0) {
+      biayaItem = Math.round(totalBiayaTambahan / keranjangBeli.length);
+    }
+  }
+  const itemNet = Math.max(0, it.subtotal - diskonFakturItem + biayaItem);
+  const hppFinalDasar = it.qty_dasar > 0 ? Math.round(itemNet / it.qty_dasar) : 0;
+  const tambahPerDasar = it.qty_dasar > 0 ? Math.round(biayaItem / it.qty_dasar) : 0;
+  return { hppFinalDasar, tambahPerDasar, biayaItem };
+}
+
 function renderTabelKeranjangBeli(container) {
   const tbody = $('#tbody-keranjang-beli', container);
   if (!tbody) return;
@@ -737,14 +849,27 @@ function renderTabelKeranjangBeli(container) {
     return;
   }
 
+  const { diskon: diskonFakturAktif, totalBiayaTambahan } = hitungParameterBiayaBeli(container);
+
   let html = '';
   keranjangBeli.forEach((it, idx) => {
+    const { hppFinalDasar, tambahPerDasar } = hitungEstimasiHppItem(container, it);
+    const tampilkanHpp = totalBiayaTambahan > 0 || diskonFakturAktif > 0 || it.diskon_rp > 0 || it.faktor > 1;
+    const rawanBoncos = Number(it.harga_ritel) > 0 && hppFinalDasar > Number(it.harga_ritel);
+
     html += `
       <tr>
         <td data-label="Barang">
           <div class="cell-stack">
             <div class="fw-semibold">${escapeHtml(it.nama)}</div>
             ${it.faktor > 1 ? `<div class="text-xs text-muted">1 ${escapeHtml(it.satuan)} = ${it.faktor} ${escapeHtml(it.satuan_dasar)}</div>` : ''}
+            ${tampilkanHpp ? `
+              <div class="text-xs" style="margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+                <span class="badge badge-info badge-xs">HPP Final: ${formatRupiah(hppFinalDasar)}/${escapeHtml(it.satuan_dasar)}</span>
+                ${tambahPerDasar > 0 ? `<span class="text-muted">(+${formatRupiah(tambahPerDasar)} ongkir/bongkar)</span>` : ''}
+                ${rawanBoncos ? `<span class="badge badge-danger badge-xs">HPP &gt; Harga Jual (${formatRupiah(it.harga_ritel)})!</span>` : ''}
+              </div>
+            ` : ''}
           </div>
         </td>
         <td data-label="Satuan"><span class="badge">${escapeHtml(it.satuan)}</span></td>
@@ -804,15 +929,37 @@ function renderTabelKeranjangBeli(container) {
 
 function hitungTotalBeli(container) {
   const subtotal = keranjangBeli.reduce((sum, it) => sum + it.subtotal, 0); // sudah setelah diskon item
-  const diskon = parseRupiah($('#beli-diskon-faktur', container)?.value || 0);
-  return Math.max(0, subtotal - diskon);
+  const { diskon, totalBiayaTambahan, biayaMasukHutang } = hitungParameterBiayaBeli(container);
+  const totalBarangNet = Math.max(0, subtotal - diskon);
+  return biayaMasukHutang ? (totalBarangNet + totalBiayaTambahan) : totalBarangNet;
 }
 
 function renderRingkasanBeli(container) {
   const subtotal = keranjangBeli.reduce((sum, it) => sum + it.subtotal_kotor, 0);
   const diskonItem = keranjangBeli.reduce((sum, it) => sum + it.diskon_rp, 0);
-  const diskon = parseRupiah($('#beli-diskon-faktur', container)?.value || 0);
-  const total = Math.max(0, subtotal - diskonItem - diskon);
+  const { diskon, totalBiayaTambahan, biayaMasukHutang } = hitungParameterBiayaBeli(container);
+  const totalBarangNet = Math.max(0, subtotal - diskonItem - diskon);
+  const total = biayaMasukHutang ? (totalBarangNet + totalBiayaTambahan) : totalBarangNet;
+
+  const panelOpsiBiaya = $('#panel-opsi-biaya-beli', container);
+  if (panelOpsiBiaya) {
+    panelOpsiBiaya.style.display = totalBiayaTambahan > 0 ? 'flex' : 'none';
+  }
+  const hintMasukHutang = $('#hint-biaya-masuk-hutang', container);
+  if (hintMasukHutang) {
+    hintMasukHutang.textContent = biayaMasukHutang
+      ? 'Ongkir & bongkar ikut menambah Total Tagihan Supplier dan menaikkan HPP barang.'
+      : 'Dibayar tunai terpisah ke kuli/ekspedisi — Hutang Supplier murni barang, HPP barang tetap naik otomatis.';
+  }
+
+  const rowBiayaTambahan = $('#row-beli-biaya-tambahan', container);
+  if (rowBiayaTambahan) {
+    rowBiayaTambahan.style.display = totalBiayaTambahan > 0 ? '' : 'none';
+    const lblBiaya = $('#lbl-beli-biaya-tambahan', container);
+    const valBiaya = $('#beli-ringkasan-biaya-tambahan', container);
+    if (lblBiaya) lblBiaya.textContent = biayaMasukHutang ? 'Ongkir & Bongkar (Masuk Tagihan & HPP)' : 'Ongkir & Bongkar (Tunai Terpisah → HPP)';
+    if (valBiaya) valBiaya.textContent = `+ ${formatRupiah(totalBiayaTambahan)}`;
+  }
 
   const rowDiskonItem = $('#row-beli-diskon-item', container);
   if (rowDiskonItem) {
@@ -879,7 +1026,7 @@ async function simpanPembelian(container) {
 
   const noFakturSupplier = $('#beli-no-faktur-sup', container)?.value.trim() || '';
   const tanggal = $('#beli-tanggal', container)?.value || '';
-  const diskon = parseRupiah($('#beli-diskon-faktur', container)?.value || 0);
+  const { diskon, ongkir, bongkar, biayaMasukHutang, metodeAlokasi } = hitungParameterBiayaBeli(container);
   const bayar = parseRupiah($('#beli-nominal-bayar', container)?.value || 0);
   const jatuhTempo = $('#beli-jatuh-tempo', container)?.value || '';
   const catatan = $('#beli-catatan', container)?.value.trim() || '';
@@ -900,6 +1047,10 @@ async function simpanPembelian(container) {
       no_faktur_supplier: noFakturSupplier,
       tanggal: tanggal,
       diskon: diskon,
+      ongkir: ongkir,
+      biaya_bongkar: bongkar,
+      biaya_masuk_hutang: biayaMasukHutang,
+      metode_alokasi_biaya: metodeAlokasi,
       bayar: bayar,
       jatuh_tempo: jatuhTempo,
       catatan: catatan,
@@ -931,6 +1082,10 @@ async function simpanPembelian(container) {
     renderTabelKeranjangBeli(container);
     $('#beli-no-faktur-sup', container).value = '';
     $('#beli-diskon-faktur', container).value = '0';
+    if ($('#beli-ongkir', container)) $('#beli-ongkir', container).value = '0';
+    if ($('#beli-bongkar', container)) $('#beli-bongkar', container).value = '0';
+    if ($('#beli-biaya-masuk-hutang', container)) $('#beli-biaya-masuk-hutang', container).checked = true;
+    if ($('#beli-metode-alokasi', container)) $('#beli-metode-alokasi', container).value = 'proporsional';
     $('#beli-nominal-bayar', container).value = '0';
     $('#beli-catatan', container).value = '';
     renderRingkasanBeli(container);
@@ -1171,6 +1326,16 @@ async function bukaModalDetailPembelian(pembelianId) {
               <span class="text-muted">Diskon Faktur:</span>
               <span class="tabular text-danger">- ${formatRupiah(pb.diskon || 0)}</span>
             </div>
+            ${Number(pb.ongkir) > 0 ? `
+            <div class="row-between text-sm">
+              <span class="text-muted">Ongkos Kirim${pb.biaya_masuk_hutang === false ? ' (Tunai Terpisah → HPP)' : ''}:</span>
+              <span class="tabular text-primary">+ ${formatRupiah(pb.ongkir)}</span>
+            </div>` : ''}
+            ${Number(pb.biaya_bongkar) > 0 ? `
+            <div class="row-between text-sm">
+              <span class="text-muted">Biaya Bongkar${pb.biaya_masuk_hutang === false ? ' (Tunai Terpisah → HPP)' : ''}:</span>
+              <span class="tabular text-primary">+ ${formatRupiah(pb.biaya_bongkar)}</span>
+            </div>` : ''}
             <div class="row-between fw-bold text-base" style="padding-top: 4px; border-top: 1px solid var(--border);">
               <span>Total Tagihan:</span>
               <span class="tabular text-primary">${formatRupiah(pb.total)}</span>

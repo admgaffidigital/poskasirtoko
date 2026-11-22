@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.96] - 2026-11-22
+
+### Added
+- [POS-BELI] [BACKEND] [CETAK] [HUTANG-PIUTANG] **Fitur Landed Cost Pembelian: Konversi Ongkos Kirim & Biaya Bongkar ke HPP Final (`kode.gs`, `pembelian.js`, `printer.js`, `test_debug_final.js`)**:
+  - **Input Ongkos Kirim & Biaya Bongkar di POS Pembelian (`pembelian.js`)**: Menambahkan kolom **Ongkos Kirim (Rp)** dan **Biaya Bongkar (Rp)** pada Ringkasan Pembelian lengkap dengan pilihan metode pembagian ke HPP (**Proporsional Nilai Belanja** atau **Rata per Qty Satuan Dasar**) serta centang **Masuk Tagihan / Hutang Supplier** vs **Bayar Tunai Terpisah ke Kuli/Ekspedisi**.
+  - **Preview HPP Final Real-Time & Peringatan Anti-Boncos (`pembelian.js`)**: Setiap baris keranjang pembelian menampilkan badge estimasi `HPP Final / Satuan Dasar` + porsi kenaikan dari ongkir/bongkar, serta peringatan merah otomatis apabila HPP baru melebihi Harga Jual Ritel produk saat ini.
+  - **Kalkulasi HPP Moving Average & Akuntansi Anti-Dobel (`kode.gs`)**: Menambahkan kolom `ongkir`, `biaya_bongkar`, `biaya_masuk_hutang`, dan `metode_alokasi_biaya` pada skema `Pembelian` (auto-migrasi otomatis via `pastikanKolomSkema_`). Bila dibayar tunai terpisah, Hutang Supplier tetap murni senilai barang, Arus Kas keluar tunai tercatat otomatis, dan HPP produk tetap naik akurat.
+  - **Struk, WhatsApp, Detail Faktur & Uji Otomatis (`printer.js`, `pembelian.js`, `tests/test_debug_final.js`)**: Menampilkan rincian Ongkos Kirim & Biaya Bongkar di cetak faktur, pesan WA, dan modal rincian faktur pembelian, serta menambahkan **Test #19** yang menguji seluruh skenario Landed Cost (**19/19 LULUS**).
+
 ## [1.0.95] - 2026-11-22
 
 ### Added

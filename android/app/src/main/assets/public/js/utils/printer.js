@@ -1080,6 +1080,12 @@ export function susunTeksStrukPembelian(data, ukuran = '58') {
   if (Number(pb.diskon) > 0) {
     baris.push(formatDuaKolom('Diskon Faktur', '-' + formatRupiah(pb.diskon), lebar));
   }
+  if (Number(pb.ongkir) > 0) {
+    baris.push(formatDuaKolom(pb.biaya_masuk_hutang === false ? 'Ongkir (Terpisah)' : 'Ongkos Kirim', formatRupiah(pb.ongkir), lebar));
+  }
+  if (Number(pb.biaya_bongkar) > 0) {
+    baris.push(formatDuaKolom(pb.biaya_masuk_hutang === false ? 'Bongkar (Terpisah)' : 'Biaya Bongkar', formatRupiah(pb.biaya_bongkar), lebar));
+  }
 
   baris.push(buatGaris(lebar, '='));
   baris.push(formatDuaKolom('TOTAL TAGIHAN', formatRupiah(pb.total), lebar));
@@ -1363,6 +1369,8 @@ export function buatTautanWhatsAppPembelian(dataPembelian, nomorHp = '') {
   pesan += `--------------------------------\n`;
   if (Number(pb.diskon_item) > 0) pesan += `Diskon Supplier: -${formatRupiah(pb.diskon_item)}\n`;
   if (Number(pb.diskon) > 0) pesan += `Diskon Faktur  : -${formatRupiah(pb.diskon)}\n`;
+  if (Number(pb.ongkir) > 0) pesan += `Ongkos Kirim   : ${formatRupiah(pb.ongkir)}${pb.biaya_masuk_hutang === false ? ' (Bayar Terpisah → HPP)' : ''}\n`;
+  if (Number(pb.biaya_bongkar) > 0) pesan += `Biaya Bongkar  : ${formatRupiah(pb.biaya_bongkar)}${pb.biaya_masuk_hutang === false ? ' (Bayar Terpisah → HPP)' : ''}\n`;
   pesan += `*TOTAL TAGIHAN : ${formatRupiah(pb.total)}*\n`;
   pesan += `Dibayar       : ${formatRupiah(pb.bayar || 0)}\n`;
   pesan += `Status Bayar  : ${String(pb.status_bayar || 'lunas').toUpperCase()}\n`;

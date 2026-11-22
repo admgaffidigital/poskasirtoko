@@ -123,7 +123,8 @@ const SKEMA = {
   Penjualan_Bayar: [['penjualan_id', 's'], ['metode', 's'], ['jumlah', 'n'], ['referensi', 's']],
   Pembelian: [['no_faktur', 's'], ['no_faktur_supplier', 's'], ['tanggal', 'd'], ['supplier_id', 's'],
     ['subtotal', 'n'], ['diskon', 'n'], ['total', 'n'], ['bayar', 'n'], ['status_bayar', 's'], ['jatuh_tempo', 'd'],
-    ['catatan', 's'], ['status', 's'], ['diskon_item', 'n']],
+    ['catatan', 's'], ['status', 's'], ['diskon_item', 'n'], ['ongkir', 'n'], ['biaya_bongkar', 'n'],
+    ['biaya_masuk_hutang', 'b'], ['metode_alokasi_biaya', 's']],
   Pembelian_Item: [['pembelian_id', 's'], ['produk_id', 's'], ['varian_id', 's'], ['nama', 's'], ['satuan', 's'],
     ['faktor', 'n'], ['qty', 'n'], ['qty_dasar', 'n'], ['harga_beli', 'n'], ['subtotal', 'n'],
     ['diskon_persen', 'n'], ['diskon_item', 'n']],
@@ -3608,6 +3609,11 @@ function aksiPembelianCreate_(ctx) {
   const noFakturSupplier = V_.teks(payload.no_faktur_supplier, 'No Faktur Supplier', { maks: 100 });
   const catatan = V_.teks(payload.catatan, 'Catatan Pembelian', { maks: 500 });
   const diskonFaktur = V_.rupiah(payload.diskon, 'Diskon Faktur', { bawaan: 0 });
+  const ongkirBeli = V_.rupiah(payload.ongkir, 'Ongkos Kirim Pembelian', { bawaan: 0, min: 0 });
+  const biayaBongkar = V_.rupiah(payload.biaya_bongkar, 'Biaya Bongkar Pembelian', { bawaan: 0, min: 0 });
+  const totalBiayaTambahan = ongkirBeli + biayaBongkar;
+  const biayaMasukHutang = payload.biaya_masuk_hutang !== false;
+  const metodeAlokasi = String(payload.metode_alokasi_biaya || 'proporsional').trim().toLowerCase() === 'qty' ? 'qty' : 'proporsional';
   const nominalBayar = V_.rupiah(payload.bayar, 'Nominal Bayar', { bawaan: 0 });
   const tanggalBeli = payload.tanggal ? String(payload.tanggal).trim() : sekarang_();
   const jatuhTempo = payload.jatuh_tempo ? String(payload.jatuh_tempo).trim() : '';
@@ -3665,7 +3671,9 @@ function aksiPembelianCreate_(ctx) {
   if (diskonFaktur > subtotalBersih) {
     gagal_(KODE.VALIDATION, 'Diskon faktur tidak boleh melebihi subtotal setelah diskon item.');
   }
-  const grandTotal = Math.max(0, subtotalBersih - diskonFaktur);
+  const totalBarangNet = Math.max(0, subtotalBersih - diskonFaktur);
+  // Jika biaya kirim/bongkar ditagihkan di nota supplier -> masuk grandTotal/Hutang; jika dibayar tunai terpisah -> grandTotal murni barang, tapi tetap masuk HPP
+  const grandTotal = biayaMasukHutang ? (totalBarangNet + totalBiayaTambahan) : totalBarangNet;
   const bayarEfektif = Math.min(nominalBayar, grandTotal);
   const statusBayar = bayarEfektif >= grandTotal ? 'lunas' : (bayarEfektif > 0 ? 'sebagian' : 'hutang');
   const sisaHutang = Math.max(0, grandTotal - bayarEfektif);
@@ -3682,6 +3690,10 @@ function aksiPembelianCreate_(ctx) {
     subtotal: subtotalKotor,
     diskon_item: totalDiskonItem,
     diskon: diskonFaktur,
+    ongkir: ongkirBeli,
+    biaya_bongkar: biayaBongkar,
+    biaya_masuk_hutang: biayaMasukHutang,
+    metode_alokasi_biaya: metodeAlokasi,
     total: grandTotal,
     bayar: bayarEfektif,
     status_bayar: statusBayar,
@@ -3692,19 +3704,31 @@ function aksiPembelianCreate_(ctx) {
 
   const pembelianBaru = resBeli[0];
 
-  // 2. Simpan Item Pembelian & Proses Efek Stok + HPP Moving Average
+  // 2. Simpan Item Pembelian & Proses Efek Stok + HPP Moving Average (termasuk Landed Cost Ongkir & Bongkar)
   const rowsItemBeli = [];
   const rowsKartuStok = [];
   const perbaruiProdukList = [];
   const perbaruiVarianList = [];
+  const totalQtyDasarFaktur = itemsDiproses.reduce(function (acc, it) { return acc + (Number(it.qty_dasar) || 0); }, 0);
+  const ketLanded = totalBiayaTambahan > 0 ? ' [+Ongkir/Bongkar]' : '';
 
   itemsDiproses.forEach(function (item) {
-    // Alokasi diskon proporsional untuk harga beli efektif (Aturan Bisnis #10)
-    let diskonItem = 0;
+    // Alokasi diskon proporsional + alokasi Landed Cost (ongkir & biaya bongkar) ke HPP efektif
+    let diskonItemFaktur = 0;
     if (subtotalBersih > 0 && diskonFaktur > 0) {
-      diskonItem = Math.round(diskonFaktur * (item.subtotal / subtotalBersih));
+      diskonItemFaktur = Math.round(diskonFaktur * (item.subtotal / subtotalBersih));
     }
-    const itemNet = Math.max(0, item.subtotal - diskonItem);
+    let biayaTambahanItem = 0;
+    if (totalBiayaTambahan > 0) {
+      if (metodeAlokasi === 'qty' && totalQtyDasarFaktur > 0) {
+        biayaTambahanItem = Math.round(totalBiayaTambahan * (item.qty_dasar / totalQtyDasarFaktur));
+      } else if (subtotalBersih > 0) {
+        biayaTambahanItem = Math.round(totalBiayaTambahan * (item.subtotal / subtotalBersih));
+      } else {
+        biayaTambahanItem = Math.round(totalBiayaTambahan / itemsDiproses.length);
+      }
+    }
+    const itemNet = Math.max(0, item.subtotal - diskonItemFaktur + biayaTambahanItem);
     const hargaBeliEfektif = itemNet / item.qty;
     const hargaBeliDasarEfektif = hargaBeliEfektif / item.faktor;
 
@@ -3756,7 +3780,7 @@ function aksiPembelianCreate_(ctx) {
         hpp: hppBaruVarian,
         ref_id: noFaktur,
         user_id: ctx.user.id,
-        keterangan: 'Pembelian ' + noFaktur + ' (' + supplier.nama + ')'
+        keterangan: 'Pembelian ' + noFaktur + ' (' + supplier.nama + ')' + ketLanded
       });
     } else {
       const stokLama = Number(item.produk.stok || 0);
@@ -3781,7 +3805,7 @@ function aksiPembelianCreate_(ctx) {
         hpp: hppBaru,
         ref_id: noFaktur,
         user_id: ctx.user.id,
-        keterangan: 'Pembelian ' + noFaktur + ' (' + supplier.nama + ')'
+        keterangan: 'Pembelian ' + noFaktur + ' (' + supplier.nama + ')' + ketLanded
       });
     }
   });
@@ -3816,10 +3840,26 @@ function aksiPembelianCreate_(ctx) {
     }], ctx.user.id);
   }
 
+  // 4b. Jika ongkir/bongkar dibayar tunai terpisah (bukan ke supplier), catat arus kas keluar pembelian agar kas tetap sinkron
+  if (!biayaMasukHutang && totalBiayaTambahan > 0) {
+    tambahBaris_('Pembayaran', [{
+      tipe: 'hutang',
+      ref_id: pembelianBaru.id,
+      jumlah: totalBiayaTambahan,
+      metode: 'tunai',
+      tanggal: sekarang_(),
+      catatan: 'Ongkir/bongkar tunai terpisah faktur ' + noFaktur
+    }], ctx.user.id);
+  }
+
   // 5. Catat Log Audit
   catatAudit_(ctx.user.id, 'pembelian_create', 'PEMBELIAN', noFaktur, {
     supplier: supplier.nama,
     total: grandTotal,
+    ongkir: ongkirBeli,
+    biaya_bongkar: biayaBongkar,
+    biaya_masuk_hutang: biayaMasukHutang,
+    metode_alokasi_biaya: metodeAlokasi,
     item_count: itemsDiproses.length,
     status_bayar: statusBayar
   });
