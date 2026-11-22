@@ -1171,6 +1171,11 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
               <span>PPN / Pajak:</span><span>+ ${formatRupiah(j.pajak)}</span>
             </div>
           ` : ''}
+          ${Number(j.ongkir) > 0 ? `
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-sm); color: var(--primary);">
+              <span>Ongkos Kirim:</span><span>+ ${formatRupiah(j.ongkir)}</span>
+            </div>
+          ` : ''}
           <div class="cluster" style="justify-content: space-between; font-weight: var(--fw-bold); font-size: var(--fs-base); margin-top: 4px;">
             <span>TOTAL TRANSAKSI:</span><span style="color: var(--primary);">${formatRupiah(j.total)}</span>
           </div>
@@ -1533,6 +1538,12 @@ function renderTabLabaRugi(container, data) {
               <span>Potongan Diskon Penjualan:</span>
               <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_diskon || 0)}</span>
             </div>
+            ${Number(r.total_ongkir || 0) > 0 ? `
+              <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--info);">
+                <span>Pendapatan Jasa Kirim (Ongkir):</span>
+                <span style="font-weight: var(--fw-semibold);">+ ${formatRupiah(r.total_ongkir || 0)}</span>
+              </div>
+            ` : ''}
             <div class="cluster" style="justify-content: space-between; font-size: var(--fs-lg); font-weight: var(--fw-bold); border-top: 1px solid var(--border); padding-top: var(--sp-2);">
               <span>Penjualan Bersih (Net Sales):</span>
               <span style="color: var(--primary);">${formatRupiah(r.omset_bersih || 0)}</span>

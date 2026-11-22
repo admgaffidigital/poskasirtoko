@@ -116,7 +116,7 @@ const SKEMA = {
     ['diskon_tipe', 's'], ['diskon_nilai', 'n'], ['diskon', 'n'], ['pajak', 'n'], ['pembulatan', 'n'], ['total', 'n'],
     ['bayar', 'n'], ['kembalian', 'n'], ['metode_bayar', 's'], ['status_bayar', 's'], ['pengiriman', 's'],
     ['alamat_kirim', 's'], ['status_antar', 's'], ['catatan', 's'], ['status', 's'], ['void_alasan', 's'],
-    ['void_oleh', 's'], ['void_at', 'd'], ['poin_didapat', 'n']],
+    ['void_oleh', 's'], ['void_at', 'd'], ['poin_didapat', 'n'], ['ongkir', 'n']],
   Penjualan_Item: [['penjualan_id', 's'], ['produk_id', 's'], ['varian_id', 's'], ['nama', 's'], ['satuan', 's'],
     ['faktor', 'n'], ['qty', 'n'], ['qty_dasar', 'n'], ['qty_dibawa', 'n'], ['tipe_harga', 's'], ['harga_asli', 'n'],
     ['harga', 'n'], ['hpp', 'n'], ['diskon_tipe', 's'], ['diskon_nilai', 'n'], ['diskon', 'n'], ['subtotal', 'n']],
@@ -657,6 +657,24 @@ function cariById_(namaSheet, id, opsi) {
  * Mengisi id, created_at, updated_at, created_by, deleted otomatis.
  * @return {Object[]} objek yang tersimpan (dengan id).
  */
+/**
+ * Pastikan seluruh kolom dalam skema terbaru sudah ada di header baris 1 sheet lama
+ * (migrasi otomatis tanpa perlu jalankan setupDatabase manual).
+ */
+function pastikanKolomSkema_(sh, namaSheet) {
+  const daftarNama = Object.keys(tipeKolom_(namaSheet));
+  const header = petaHeader_(sh);
+  const kurang = daftarNama.filter(function (nama) { return header[nama] === undefined; });
+  if (!kurang.length) return header;
+  const mulaiKol = sh.getLastColumn() + 1;
+  const maksKol = sh.getMaxColumns();
+  if (mulaiKol + kurang.length - 1 > maksKol) {
+    sh.insertColumnsAfter(maksKol, mulaiKol + kurang.length - 1 - maksKol);
+  }
+  sh.getRange(1, mulaiKol, 1, kurang.length).setValues([kurang]);
+  return petaHeader_(sh);
+}
+
 function tambahBaris_(namaSheet, daftar, userId) {
   if (_CACHE_BACA_REQ) {
     delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
@@ -665,7 +683,7 @@ function tambahBaris_(namaSheet, daftar, userId) {
   hapusCacheSheetMaster_(namaSheet);
   if (!daftar || !daftar.length) return [];
   const sh = sheet_(namaSheet);
-  const header = petaHeader_(sh);
+  const header = pastikanKolomSkema_(sh, namaSheet);
   const lebar = sh.getLastColumn();
   const tipe = tipeKolom_(namaSheet);
   const waktu = sekarang_();
@@ -2413,7 +2431,13 @@ function aksiPenjualanCreate_(ctx) {
     pajakNilai = Math.round(totalSetelahSemuaDiskon * (persenPajak / 100));
   }
 
-  // Pembulatan
+  // Biaya Ongkos Kirim (hanya berlaku bila opsi pengiriman === 'dikirim', fleksibel manual Rp 0+)
+  const pengirimanAwal = payload.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
+  const ongkirNilai = pengirimanAwal === 'dikirim'
+    ? V_.rupiah(payload.ongkir, 'Biaya Ongkos Kirim', { bawaan: 0, min: 0 })
+    : 0;
+
+  // Pembulatan (dihitung pada total barang + pajak agar ongkir manual tetap utuh)
   let pembulatanNilai = 0;
   if (pengaturan.pembulatan_aktif) {
     const kelipatan = Number(pengaturan.pembulatan_kelipatan) || 100;
@@ -2424,7 +2448,8 @@ function aksiPenjualanCreate_(ctx) {
     }
   }
 
-  const grandTotal = Math.round(totalSetelahSemuaDiskon + pajakNilai + pembulatanNilai);
+  const totalBarangNet = Math.round(totalSetelahSemuaDiskon + pajakNilai + pembulatanNilai);
+  const grandTotal = Math.round(totalBarangNet + ongkirNilai);
 
   // Validasi Pelanggan & Pembayaran
   const pelangganId = payload.pelanggan_id ? String(payload.pelanggan_id).trim() : '';
@@ -2533,13 +2558,14 @@ function aksiPenjualanCreate_(ctx) {
   const noNota = nomorBerikut_('INV');
   const waktuTransaksi = sekarang_();
 
-  // Hitung Loyalty Points (Aturan Bisnis #7: hanya dari transaksi tunai/non-tempo lunas saat final)
+  // Hitung Loyalty Points (Aturan Bisnis #7: hanya dari belanja BARANG lunas saat final, ongkir tidak mendapat poin)
   let poinDidapat = 0;
-  const bayarLunasSaatIni = grandTotal - totalTempo;
+  const bayarLunasSaatIni = Math.max(0, grandTotal - totalTempo);
+  const bayarBarangSaatIni = Math.min(totalBarangNet, bayarLunasSaatIni);
   const nominalPerPoin = Number(pengaturan.poin_per_rupiah) || 0;
-  if (pelanggan && String(pelanggan.tipe || '').toLowerCase() === 'member' && bayarLunasSaatIni > 0 && nominalPerPoin > 0) {
+  if (pelanggan && String(pelanggan.tipe || '').toLowerCase() === 'member' && bayarBarangSaatIni > 0 && nominalPerPoin > 0) {
     const pengali = hitungPengaliPoin_(pelanggan.level, pengaturan);
-    poinDidapat = Math.floor((bayarLunasSaatIni / nominalPerPoin) * pengali);
+    poinDidapat = Math.floor((bayarBarangSaatIni / nominalPerPoin) * pengali);
   }
 
   // 1. Simpan Header Penjualan
@@ -2554,6 +2580,7 @@ function aksiPenjualanCreate_(ctx) {
     diskon: totalDiskonItem + diskonTransaksiNilai,
     pajak: pajakNilai,
     pembulatan: pembulatanNilai,
+    ongkir: ongkirNilai,
     total: grandTotal,
     bayar: bayarTercatat,
     kembalian: kembalian,
@@ -2667,11 +2694,11 @@ function aksiPenjualanCreate_(ctx) {
     }], ctx.user.id);
   }
 
-  // 6. Update Poin & Total Belanja Member (Aturan Bisnis #7 & #16)
+  // 6. Update Poin & Total Belanja Member (khusus nilai barang lunas, tidak termasuk ongkir)
   let pelangganRespon = pelanggan;
   if (pelanggan && String(pelanggan.tipe || '').toLowerCase() === 'member') {
     const totalBelanjaLama = Number(pelanggan.total_belanja || 0);
-    const totalBelanjaBaru = totalBelanjaLama + bayarLunasSaatIni;
+    const totalBelanjaBaru = totalBelanjaLama + bayarBarangSaatIni;
     const poinLama = Number(pelanggan.poin || 0);
     const poinBaru = poinLama + poinDidapat;
 
@@ -2789,7 +2816,8 @@ function aksiPenjualanPendingSave_(ctx) {
     diskon: diskonNilai,
     pajak: 0,
     pembulatan: 0,
-    total: totalEstimasi,
+    ongkir: payload.pengiriman === 'dikirim' ? Math.max(0, Number(payload.ongkir) || 0) : 0,
+    total: totalEstimasi + (payload.pengiriman === 'dikirim' ? Math.max(0, Number(payload.ongkir) || 0) : 0),
     bayar: 0,
     kembalian: 0,
     metode_bayar: 'tunai',
@@ -3256,10 +3284,13 @@ function aksiPenjualanVoid_(ctx) {
       const poinLama = Number(pel.poin || 0);
       const poinBaru = Math.max(0, poinLama - poinKembali);
       const belanjaLama = Number(pel.total_belanja || 0);
+      const ongkirNota = Math.max(0, Number(penjualan.ongkir || 0));
+      const totalBarangNota = Math.max(0, Number(penjualan.total || 0) - ongkirNota);
       const porsiTempoAwal = piutangTerkait ? Number(piutangTerkait.total || 0) : 0;
-      const porsiSudahMasukBelanja = piutangTerkait
+      const porsiLunasAwal = piutangTerkait
         ? Math.max(0, Number(penjualan.total || 0) - porsiTempoAwal)
         : (String(penjualan.status_bayar || '') === 'belum_lunas' ? 0 : Number(penjualan.total || 0));
+      const porsiSudahMasukBelanja = Math.min(totalBarangNota, porsiLunasAwal);
       const belanjaBaru = Math.max(0, belanjaLama - porsiSudahMasukBelanja);
 
       if (poinKembali > 0 || porsiSudahMasukBelanja > 0) {
@@ -4426,7 +4457,15 @@ function aksiPiutangBayar_(ctx) {
     if (pel && String(pel.tipe || '').toLowerCase() === 'member') {
       const pengaturan = ambilPengaturan_();
       const nominalPerPoin = Number(pengaturan.poin_per_rupiah) || 0;
-      const nominalLunasEfektif = terbayarBaru;
+      const pjAsalPoin = piutang.penjualan_id ? cariById_('Penjualan', piutang.penjualan_id) : null;
+      const ongkirNota = pjAsalPoin ? Math.max(0, Number(pjAsalPoin.ongkir || 0)) : 0;
+      const totalNota = pjAsalPoin ? Math.max(0, Number(pjAsalPoin.total || 0)) : Number(piutang.total || 0);
+      const totalBarangNota = Math.max(0, totalNota - ongkirNota);
+      // Porsi barang yang sudah mendapat poin di awal (DP saat checkout) tidak dihitung ulang
+      const bayarLunasAwal = Math.max(0, totalNota - Number(piutang.total || 0));
+      const porsiBarangAwal = Math.min(totalBarangNota, bayarLunasAwal);
+      const sisaBarangBelumPoin = Math.max(0, totalBarangNota - porsiBarangAwal);
+      const nominalLunasEfektif = Math.min(terbayarBaru, sisaBarangBelumPoin);
       if (nominalPerPoin > 0 && nominalLunasEfektif > 0) {
         const pengali = hitungPengaliPoin_(pel.level, pengaturan);
         poinDiberikan = Math.floor((nominalLunasEfektif / nominalPerPoin) * pengali);
@@ -6430,6 +6469,7 @@ function aksiLaporanLabaRugi_(ctx) {
   let omsetKotor = 0;
   let totalDiskon = 0;
   let totalPajak = 0;
+  let totalOngkir = 0;
   let omsetBersih = 0;
 
   penjualanFinal.forEach(function (j) {
@@ -6437,6 +6477,7 @@ function aksiLaporanLabaRugi_(ctx) {
     omsetKotor += (Number(j.subtotal) || 0);
     totalDiskon += (Number(j.diskon) || 0);
     totalPajak += (Number(j.pajak) || 0);
+    totalOngkir += (Number(j.ongkir) || 0);
     omsetBersih += (Number(j.total) || 0);
   });
 
@@ -6541,6 +6582,7 @@ function aksiLaporanLabaRugi_(ctx) {
       omset_kotor: omsetKotor,
       total_diskon: totalDiskon,
       total_pajak: totalPajak,
+      total_ongkir: totalOngkir,
       omset_bersih: omsetBersih,
       total_hpp: totalHpp,
       laba_kotor_sebelum_retur: labaKotorKotor,

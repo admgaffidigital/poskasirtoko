@@ -1270,6 +1270,95 @@ async function runAudit() {
     assert(nestedLockRes === 'LOCK_OK', 'denganKunci_ mendukung pemanggilan bersarang (re-entrant safe)');
   });
 
+  // =========================================================================
+  // 18. JASA ONGKOS KIRIM (MANUAL, POIN KHUSUS BARANG, TEMPO & LABA RUGI)
+  // =========================================================================
+  await test('18. Jasa Ongkos Kirim: Manual Fleksibel, Poin Khusus Barang (Tanpa Ongkir), Tempo Lunas, & Laba Rugi', () => {
+    const envOng = setupMockEnv();
+    envOng.setupDatabase();
+    const ownerRow = envOng.bacaSemua_('Users').find(u => u.username === 'owner');
+
+    const prRes = envOng.aksiProdukCreate_({
+      user: ownerRow,
+      payload: {
+        nama: 'Semen 50kg Ongkir Test',
+        satuan_dasar: 'SAK',
+        hpp: 50000,
+        harga_ritel: 60000,
+        stok: 100,
+        stok_min: 5
+      }
+    });
+    const pr = prRes.produk || prRes;
+
+    const pelRes = envOng.aksiPelangganCreate_({
+      user: ownerRow,
+      payload: { nama: 'Pak Mandor Ongkir', hp: '081333444555', tipe: 'member', limit_kredit: 5000000, tempo_hari: 30 }
+    });
+    const pelId = (pelRes.pelanggan || pelRes).id;
+
+    // 18a. Ambil di Toko tapi kirim ongkir 50.000 -> backend wajib nolkan ongkir
+    const ambilRes = envOng.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        pengiriman: 'ambil',
+        ongkir: 50000,
+        items: [{ produk_id: pr.id, qty: 1, harga: 60000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 60000 }]
+      }
+    });
+    assert(Number(ambilRes.penjualan.ongkir) === 0 && ambilRes.penjualan.total === 60000, 'Opsi ambil di toko wajib memaksa ongkir = 0');
+
+    // 18b. Dikirim Toko: Barang 2 SAK = Rp 120.000 + Ongkir Rp 75.000 = Rp 195.000 (Tunai)
+    // Poin (10.000/poin Reguler 1x) wajib 12 poin (dari 120.000 barang), BUKAN 19 poin!
+    const kirimTunai = envOng.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        pengiriman: 'dikirim',
+        alamat_kirim: 'Jl. Proyek Selatan No. 9',
+        ongkir: 75000,
+        items: [{ produk_id: pr.id, qty: 2, harga: 60000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 200000 }]
+      }
+    });
+    assert(kirimTunai.penjualan.ongkir === 75000 && kirimTunai.penjualan.total === 195000 && kirimTunai.penjualan.kembalian === 5000,
+      'Total tagihan dikirim = barang (120rb) + ongkir (75rb) = 195rb');
+    assert(kirimTunai.penjualan.poin_didapat === 12,
+      `Poin transaksi tunai + ongkir wajib 12 (khusus barang 120rb), aktual: ${kirimTunai.penjualan.poin_didapat}`);
+
+    // 18c. Dikirim Toko Tempo Penuh: Barang 1 SAK (60.000) + Ongkir (40.000) = 100.000 -> saat lunas poin wajib 6 (bukan 10!)
+    const kirimTempo = envOng.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        pengiriman: 'dikirim',
+        alamat_kirim: 'Desa Sebelah 12km',
+        ongkir: 40000,
+        items: [{ produk_id: pr.id, qty: 1, harga: 60000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 100000 }]
+      }
+    });
+    assert(kirimTempo.penjualan.poin_didapat === 0, 'Transaksi tempo belum lunas mendapat 0 poin awal');
+    const ptTempo = envOng.bacaSemua_('Piutang').find(x => x.penjualan_id === kirimTempo.penjualan.id && !x.deleted);
+    const lunasTempo = envOng.aksiPiutangBayar_({ user: ownerRow, payload: { id: ptTempo.id, jumlah: 100000, metode: 'transfer' } });
+    assert(lunasTempo.poin_didapat === 6,
+      `Pelunasan piutang tempo + ongkir wajib memberi 6 poin (khusus barang 60rb), aktual: ${lunasTempo.poin_didapat}`);
+
+    // Total belanja member = 60rb + 120rb + 60rb = 240rb (0% ongkir!)
+    const pelAfter = envOng.cariById_('Pelanggan', pelId);
+    assert(pelAfter.total_belanja === 240000 && pelAfter.poin === 24,
+      `Akumulasi total_belanja member (${pelAfter.total_belanja}) & poin (${pelAfter.poin}) wajib 100% bebas ongkir`);
+
+    // 18d. Laba Rugi mencatat total_ongkir = 75rb + 40rb = 115rb & sinkron dengan Dashboard
+    const lr = envOng.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    const dash = envOng.aksiLaporanDashboard_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lr.ringkasan.total_ongkir === 115000, `Laba Rugi total_ongkir harus Rp 115.000, aktual: ${lr.ringkasan.total_ongkir}`);
+    assert(lr.ringkasan.laba_bersih_riil === dash.ringkasan.laba_bersih_riil,
+      `Laba Rugi (${lr.ringkasan.laba_bersih_riil}) & Dashboard (${dash.ringkasan.laba_bersih_riil}) wajib sinkron termasuk ongkir`);
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

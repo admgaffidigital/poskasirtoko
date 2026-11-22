@@ -150,6 +150,10 @@ export function susunTeksStruk(data, ukuran = '58') {
     baris.push(formatDuaKolom('PPN', formatRupiah(pj.pajak), lebar));
   }
 
+  if (Number(pj.ongkir) > 0) {
+    baris.push(formatDuaKolom('Ongkos Kirim', formatRupiah(pj.ongkir), lebar));
+  }
+
   if (pj.pembulatan !== 0) {
     baris.push(formatDuaKolom('Pembulatan', formatRupiah(pj.pembulatan), lebar));
   }
@@ -844,6 +848,7 @@ export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
 
   pesan += `--------------------------------\n`;
   if (pj.diskon > 0) pesan += `Diskon: -${formatRupiah(pj.diskon)}\n`;
+  if (Number(pj.ongkir) > 0) pesan += `Ongkos Kirim: ${formatRupiah(pj.ongkir)}\n`;
   pesan += `*TOTAL : ${formatRupiah(pj.total)}*\n`;
   pesan += `Metode : ${String(pj.metode_bayar || 'tunai').toUpperCase()}\n`;
   pesan += `Status : ${String(pj.status_bayar || 'lunas').toUpperCase()}\n\n`;

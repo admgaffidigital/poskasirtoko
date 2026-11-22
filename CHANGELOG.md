@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.95] - 2026-11-22
+
+### Added
+- [POS-JUAL] [BACKEND] [CETAK] [DASHBOARD] **Fitur Jasa Ongkos Kirim Fleksibel untuk Pesanan Dikirim (`kode.gs`, `pos.js`, `printer.js`, `laporan.js`, `test_debug_final.js`)**:
+  - **Checkout POS (`pos.js`)**: Saat kasir memilih **Dikirim Toko**, otomatis tampil input **Biaya Ongkos Kirim (Rp)** yang bisa diisi manual bebas sesuai jarak/armada beserta tombol preset cepat (`Gratis`, `20rb`, `50rb`, `100rb`, `150rb`). Total tagihan, uang pas, kembalian, kombinasi bayar, dan pratinjau poin member diperbarui secara *real-time*; opsi **Ambil di Toko** otomatis menolkan ongkir. Mendukung simpan/muat ulang transaksi tahan (*pending*).
+  - **Aturan Poin Member Khusus Belanja Barang (`kode.gs`)**: Menambahkan kolom `ongkir` pada skema `Penjualan` (dengan auto-migrasi kolom `pastikanKolomSkema_` tanpa perlu jalankan `setupDatabase` manual). Poin loyalitas & akumulasi `total_belanja` member pada transaksi tunai, kombinasi DP, pelunasan piutang tempo, maupun pembatalan (void) **hanya dihitung dari nilai belanja barang** (ongkir tidak dihitung poin).
+  - **Struk & Laporan (`printer.js`, `laporan.js`, `kode.gs`)**: Menampilkan baris `Ongkos Kirim` secara rapi pada struk Thermal/RawBT/Browser, struk WhatsApp, modal Detail Nota Penjualan, serta baris `Pendapatan Jasa Kirim (Ongkir)` di Laporan Laba Rugi (sinkron penuh dengan Arus Kas & Dashboard).
+  - **Pengujian Otomatis (`tests/test_debug_final.js`)**: Menambahkan **Test #18** yang menguji seluruh skenario ongkir (manual, ambil di toko = 0, poin khusus barang untuk tunai & tempo lunas, akumulasi `total_belanja`, dan sinkronisasi Laba Rugi/Dashboard).
+
 ## [1.0.94] - 2026-11-22
 
 ### Changed

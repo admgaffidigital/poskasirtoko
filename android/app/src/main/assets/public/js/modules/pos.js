@@ -47,6 +47,7 @@ export function renderPosModule(container) {
     diskonTransaksi: { tipe: '', nilai: 0 },
     pengiriman: 'ambil', // 'ambil' | 'dikirim'
     alamatKirim: '',
+    ongkir: 0,
     catatan: '',
     pendingCount: 0,
     pengaturan: store.get('pengaturan') || {},
@@ -2103,7 +2104,10 @@ export function renderPosModule(container) {
     }
 
     const totals = hitungDanTampilkanTotal();
-    const grandTotal = totals.grandTotal;
+    const totalBarangNet = totals.grandTotal;
+    const getOngkirAktif = () => (state.pengiriman === 'dikirim' ? Math.max(0, Number(state.ongkir) || 0) : 0);
+    const getGrandTotalAktif = () => totalBarangNet + getOngkirAktif();
+    let grandTotal = getGrandTotalAktif();
     const isMember = state.pelanggan && state.pelanggan.tipe === 'member';
 
     const modal = showModal({
@@ -2116,7 +2120,10 @@ export function renderPosModule(container) {
             <div class="card" style="background: var(--surface-2);">
               <div class="card-body" style="padding: var(--sp-3);">
                 <div class="text-xs text-muted">TOTAL TAGIHAN</div>
-                <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary);">${formatRupiah(grandTotal)}</div>
+                <div class="fw-bold mono" id="checkout-grand-total" style="font-size: var(--fs-xl); color: var(--primary);">${formatRupiah(grandTotal)}</div>
+                <div id="checkout-ongkir-rincian" class="text-xs text-muted" style="margin-top: 2px; display: ${getOngkirAktif() > 0 ? 'block' : 'none'};">
+                  Belanja Barang: <b>${formatRupiah(totalBarangNet)}</b> + Ongkir: <b class="text-primary">${formatRupiah(getOngkirAktif())}</b>
+                </div>
                 <div class="text-xs text-muted" style="margin-top: 4px;">
                   Pelanggan: <b>${escapeHtml(state.pelanggan ? state.pelanggan.nama : 'Pelanggan Umum')}</b>
                   ${isMember ? `(Poin: <b>${Number(state.pelanggan.poin || 0).toLocaleString('id-ID')}</b> • Sisa Limit: <span class="text-success">${formatRupiah(state.pelanggan.sisa_limit || 0)}</span>)` : ''}
@@ -2140,10 +2147,24 @@ export function renderPosModule(container) {
               </div>
             </div>
 
-            <!-- Alamat Kirim & Catatan (Muncul jika opsi 'dikirim') -->
-            <div id="box-detail-kirim" style="display: ${state.pengiriman === 'dikirim' ? 'block' : 'none'};">
-              <label class="form-label">Alamat Pengiriman:</label>
-              <textarea id="checkout-alamat" class="textarea" rows="2" placeholder="Alamat lengkap tujuan pengiriman...">${escapeHtml(state.alamatKirim || (state.pelanggan?.alamat || ''))}</textarea>
+            <!-- Biaya Ongkir & Alamat Kirim (Muncul jika opsi 'dikirim') -->
+            <div id="box-detail-kirim" class="stack" style="display: ${state.pengiriman === 'dikirim' ? 'flex' : 'none'}; gap: var(--sp-2); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <div>
+                <label class="form-label fw-bold" for="checkout-ongkir">Biaya Ongkos Kirim (Rp):</label>
+                <input type="number" id="checkout-ongkir" class="input fw-bold mono" value="${getOngkirAktif()}" min="0" step="5000" placeholder="0 (Gratis Ongkir)" />
+                <div class="row" style="gap: 4px; margin-top: 6px; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-xs btn-outline-secondary btn-preset-ongkir" data-val="0">Gratis</button>
+                  <button type="button" class="btn btn-xs btn-secondary btn-preset-ongkir" data-val="20000">20rb</button>
+                  <button type="button" class="btn btn-xs btn-secondary btn-preset-ongkir" data-val="50000">50rb</button>
+                  <button type="button" class="btn btn-xs btn-secondary btn-preset-ongkir" data-val="100000">100rb</button>
+                  <button type="button" class="btn btn-xs btn-secondary btn-preset-ongkir" data-val="150000">150rb</button>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 4px;">Isi bebas sesuai jarak/armada (tidak dihitung poin member).</div>
+              </div>
+              <div>
+                <label class="form-label" for="checkout-alamat">Alamat Pengiriman:</label>
+                <textarea id="checkout-alamat" class="textarea" rows="2" placeholder="Alamat lengkap tujuan pengiriman...">${escapeHtml(state.alamatKirim || (state.pelanggan?.alamat || ''))}</textarea>
+              </div>
             </div>
 
             <div>
@@ -2176,7 +2197,7 @@ export function renderPosModule(container) {
 
                 <!-- Tombol Cepat Uang Pas -->
                 <div class="row" style="gap: 4px; margin-top: var(--sp-2); flex-wrap: wrap;" id="quick-cash-btns">
-                  <button type="button" class="btn btn-ghost btn-sm btn-quick-cash" data-val="${grandTotal}">Uang Pas</button>
+                  <button type="button" class="btn btn-ghost btn-sm btn-quick-cash" id="btn-quick-cash-pas" data-val="${grandTotal}">Uang Pas</button>
                   <button type="button" class="btn btn-ghost btn-sm btn-quick-cash" data-val="50000">50.000</button>
                   <button type="button" class="btn btn-ghost btn-sm btn-quick-cash" data-val="100000">100.000</button>
                   <button type="button" class="btn btn-ghost btn-sm btn-quick-cash" data-val="200000">200.000</button>
@@ -2246,8 +2267,13 @@ export function renderPosModule(container) {
     const labelKembalian = modal.el.querySelector('#label-kembalian');
     const boxKirim = modal.el.querySelector('#box-detail-kirim');
     const elPoinPreview = modal.el.querySelector('#checkout-poin-preview');
+    const elGrandTotal = modal.el.querySelector('#checkout-grand-total');
+    const elOngkirRincian = modal.el.querySelector('#checkout-ongkir-rincian');
+    const inputOngkir = modal.el.querySelector('#checkout-ongkir');
+    const btnQuickPas = modal.el.querySelector('#btn-quick-cash-pas');
+    const elKombSisa = modal.el.querySelector('#komb-sisa-label');
 
-    // Hitung pratinjau estimasi poin member sesuai metode bayar & aturan poin toko
+    // Hitung pratinjau estimasi poin member (KHUSUS belanja barang, ongkir tidak mendapat poin)
     const hitungPengaliLokal = (levelNama) => {
       const k = String(levelNama || 'Reguler').trim().toLowerCase();
       const mapAlias = { perak: 'silver', silver: 'silver', emas: 'gold', gold: 'gold', platinum: 'platinum', reguler: 'reguler' };
@@ -2265,57 +2291,118 @@ export function renderPosModule(container) {
       const perRupiah = Number(state.pengaturan?.poin_per_rupiah) || 10000;
       const pengali = hitungPengaliLokal(state.pelanggan?.level);
       const calcPoin = (nominal) => (perRupiah > 0 && nominal > 0) ? Math.floor((nominal / perRupiah) * pengali) : 0;
+      const ongkirAktif = getOngkirAktif();
+      const catatanOngkir = ongkirAktif > 0 ? ' <span class="text-muted">(khusus belanja barang, ongkir tidak dihitung poin)</span>' : '';
 
       if (activeMetode === 'tempo') {
-        const estLunas = calcPoin(grandTotal);
+        const estLunas = calcPoin(totalBarangNet);
         elPoinPreview.innerHTML = estLunas > 0
-          ? `Poin Tempo: <b>+${estLunas.toLocaleString('id-ID')} Poin</b> akan masuk otomatis saat piutang <b>Lunas</b>.`
-          : `Aturan poin: 1 poin tiap <b>${formatRupiah(perRupiah)}</b> belanja lunas.`;
+          ? `Poin Tempo: <b>+${estLunas.toLocaleString('id-ID')} Poin</b> akan masuk otomatis saat piutang <b>Lunas</b>.${catatanOngkir}`
+          : `Aturan poin: 1 poin tiap <b>${formatRupiah(perRupiah)}</b> belanja barang lunas.`;
         return;
       }
 
       if (activeMetode === 'kombinasi') {
         const nTempo = parseRupiah(modal.el.querySelector('#komb-tempo')?.value || 0);
         const lunasSekarang = Math.max(0, grandTotal - nTempo);
-        const pSekarang = calcPoin(lunasSekarang);
-        const pNanti = calcPoin(Math.min(grandTotal, nTempo));
+        const barangLunasSekarang = Math.min(totalBarangNet, lunasSekarang);
+        const barangSisaTempo = Math.max(0, totalBarangNet - barangLunasSekarang);
+        const pSekarang = calcPoin(barangLunasSekarang);
+        const pNanti = calcPoin(barangSisaTempo);
         if (nTempo > 0) {
-          elPoinPreview.innerHTML = `Estimasi Poin: <b>+${pSekarang.toLocaleString('id-ID')} Poin</b> langsung masuk (DP lunas), dan <b>+${pNanti.toLocaleString('id-ID')} Poin</b> masuk saat piutang lunas.`;
+          elPoinPreview.innerHTML = `Estimasi Poin: <b>+${pSekarang.toLocaleString('id-ID')} Poin</b> langsung masuk (DP), dan <b>+${pNanti.toLocaleString('id-ID')} Poin</b> masuk saat piutang lunas.${catatanOngkir}`;
         } else {
           elPoinPreview.innerHTML = pSekarang > 0
-            ? `Estimasi Poin Didapat: <b class="text-success">+${pSekarang.toLocaleString('id-ID')} Poin</b> (${pengali}x level ${escapeHtml(state.pelanggan?.level || 'Reguler')}).`
-            : `Belanja di bawah ${formatRupiah(perRupiah)} (belum mendapat poin).`;
+            ? `Estimasi Poin Didapat: <b class="text-success">+${pSekarang.toLocaleString('id-ID')} Poin</b> (${pengali}x level ${escapeHtml(state.pelanggan?.level || 'Reguler')}).${catatanOngkir}`
+            : `Belanja barang di bawah ${formatRupiah(perRupiah)} (belum mendapat poin).`;
         }
         return;
       }
 
-      const est = calcPoin(grandTotal);
+      const est = calcPoin(totalBarangNet);
       elPoinPreview.innerHTML = est > 0
-        ? `Estimasi Poin Didapat: <b class="text-success">+${est.toLocaleString('id-ID')} Poin</b> (${pengali}x level ${escapeHtml(state.pelanggan?.level || 'Reguler')}).`
-        : `Belanja di bawah ${formatRupiah(perRupiah)} (minimal ${formatRupiah(perRupiah)} untuk 1 poin).`;
+        ? `Estimasi Poin Didapat: <b class="text-success">+${est.toLocaleString('id-ID')} Poin</b> (${pengali}x level ${escapeHtml(state.pelanggan?.level || 'Reguler')}).${catatanOngkir}`
+        : `Belanja barang di bawah ${formatRupiah(perRupiah)} (minimal ${formatRupiah(perRupiah)} untuk 1 poin).`;
     };
+
+    const updateKembalian = () => {
+      const uangMasuk = parseRupiah(inputTunai?.value || 0);
+      const k = Math.max(0, uangMasuk - grandTotal);
+      if (labelKembalian) labelKembalian.textContent = formatRupiah(k);
+    };
+
+    const updateKombSisa = () => {
+      if (!elKombSisa) return;
+      const nTunai = parseRupiah(modal.el.querySelector('#komb-tunai')?.value || 0);
+      const nTrf = parseRupiah(modal.el.querySelector('#komb-transfer')?.value || 0);
+      const nTempo = parseRupiah(modal.el.querySelector('#komb-tempo')?.value || 0);
+      const sisa = Math.max(0, grandTotal - (nTunai + nTrf + nTempo));
+      elKombSisa.textContent = sisa > 0 ? `Sisa Kurang: ${formatRupiah(sisa)}` : `Terpenuhi (Kembalian: ${formatRupiah(Math.max(0, (nTunai + nTrf + nTempo) - grandTotal))})`;
+    };
+
+    const perbaruiTotalCheckout = (syncInputTunai = true) => {
+      const oldGrand = grandTotal;
+      const ongkirNow = getOngkirAktif();
+      grandTotal = getGrandTotalAktif();
+      if (elGrandTotal) elGrandTotal.textContent = formatRupiah(grandTotal);
+      if (elOngkirRincian) {
+        elOngkirRincian.style.display = ongkirNow > 0 ? 'block' : 'none';
+        elOngkirRincian.innerHTML = `Belanja Barang: <b>${formatRupiah(totalBarangNet)}</b> + Ongkir: <b class="text-primary">${formatRupiah(ongkirNow)}</b>`;
+      }
+      if (btnQuickPas) btnQuickPas.setAttribute('data-val', String(grandTotal));
+      if (inputTunai) {
+        inputTunai.min = String(grandTotal);
+        if (syncInputTunai && parseRupiah(inputTunai.value) === oldGrand) {
+          inputTunai.value = String(grandTotal);
+        }
+      }
+      updateKembalian();
+      updateKombSisa();
+      perbaruiPreviewPoin();
+    };
+
     perbaruiPreviewPoin();
+    updateKombSisa();
 
-    modal.el.querySelector('#komb-tempo')?.addEventListener('input', perbaruiPreviewPoin);
-    modal.el.querySelector('#komb-tunai')?.addEventListener('input', perbaruiPreviewPoin);
-    modal.el.querySelector('#komb-transfer')?.addEventListener('input', perbaruiPreviewPoin);
+    const onKombInput = () => {
+      updateKombSisa();
+      perbaruiPreviewPoin();
+    };
+    modal.el.querySelector('#komb-tempo')?.addEventListener('input', onKombInput);
+    modal.el.querySelector('#komb-tunai')?.addEventListener('input', onKombInput);
+    modal.el.querySelector('#komb-transfer')?.addEventListener('input', onKombInput);
 
-    // Pengiriman toggle
+    // Pengiriman toggle (Ambil di Toko otomatis nolkan ongkir)
     modal.el.querySelectorAll('.btn-opt-kirim').forEach((b) => {
       b.addEventListener('click', () => {
         modal.el.querySelectorAll('.btn-opt-kirim').forEach((x) => x.className = 'btn btn-sm btn-secondary btn-opt-kirim');
         b.className = 'btn btn-sm btn-primary btn-opt-kirim';
         state.pengiriman = b.getAttribute('data-kirim');
-        boxKirim.style.display = state.pengiriman === 'dikirim' ? 'block' : 'none';
+        if (state.pengiriman === 'dikirim') {
+          boxKirim.style.display = 'flex';
+        } else {
+          boxKirim.style.display = 'none';
+          state.ongkir = 0;
+          if (inputOngkir) inputOngkir.value = '0';
+        }
+        perbaruiTotalCheckout(true);
       });
     });
 
-    // Hitung kembalian tunai
-    const updateKembalian = () => {
-      const uangMasuk = parseRupiah(inputTunai.value);
-      const k = Math.max(0, uangMasuk - grandTotal);
-      labelKembalian.textContent = formatRupiah(k);
-    };
+    // Input manual ongkir + tombol preset cepat
+    inputOngkir?.addEventListener('input', () => {
+      state.ongkir = Math.max(0, parseRupiah(inputOngkir.value));
+      perbaruiTotalCheckout(true);
+    });
+
+    modal.el.querySelectorAll('.btn-preset-ongkir').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = Math.max(0, Number(btn.getAttribute('data-val') || 0));
+        state.ongkir = val;
+        if (inputOngkir) inputOngkir.value = String(val);
+        perbaruiTotalCheckout(true);
+      });
+    });
 
     inputTunai?.addEventListener('input', updateKembalian);
 
@@ -2420,6 +2507,7 @@ export function renderPosModule(container) {
           pelanggan_id: state.pelanggan ? state.pelanggan.id : '',
           pengiriman: state.pengiriman,
           alamat_kirim: alamatKirimVal,
+          ongkir: getOngkirAktif(),
           catatan: catatanVal,
           items: payloadItems,
           diskon_tipe: state.diskonTransaksi.tipe,
@@ -2475,9 +2563,13 @@ export function renderPosModule(container) {
         // Tampilkan modal struk sukses
         bukaModalStrukSukses(res.data);
 
-        // Reset keranjang
+        // Reset keranjang & opsi pengiriman
         state.keranjang = [];
         state.diskonTransaksi = { tipe: '', nilai: 0 };
+        state.pengiriman = 'ambil';
+        state.alamatKirim = '';
+        state.ongkir = 0;
+        state.catatan = '';
         renderKeranjang();
         if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
 
@@ -2521,6 +2613,8 @@ export function renderPosModule(container) {
       const payload = {
         pelanggan_id: state.pelanggan ? state.pelanggan.id : '',
         pengiriman: state.pengiriman,
+        alamat_kirim: state.alamatKirim || '',
+        ongkir: state.pengiriman === 'dikirim' ? (Number(state.ongkir) || 0) : 0,
         catatan: state.catatan,
         items: state.keranjang.map((it) => ({
           produk_id: it.produk_id,
@@ -3002,6 +3096,12 @@ export function renderPosModule(container) {
             _var: null
           };
         });
+
+        // Pulihkan opsi pengiriman & ongkir jika tersimpan di draft
+        state.pengiriman = draft.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
+        state.alamatKirim = draft.alamat_kirim || '';
+        state.ongkir = state.pengiriman === 'dikirim' ? (Number(draft.ongkir) || 0) : 0;
+        state.catatan = draft.catatan || '';
 
         // Hapus draft yang sudah dimuat dari list pending backend
         await api.post('penjualan.pending.delete', { id: draft.id });
