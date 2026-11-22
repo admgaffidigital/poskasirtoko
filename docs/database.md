@@ -1,8 +1,8 @@
 # 🗄️ Dokumentasi Struktur Database Spreadsheet
 
-Database POS Kasir Toko Bangunan menggunakan **Google Spreadsheet** dengan arsitektur 1 sheet per entitas. Seluruh definisi teknis skema terpusat di konstanta `SKEMA` pada `backend/kode.gs`.
+Database POS Kasir Toko Bangunan menggunakan **Google Spreadsheet** dengan arsitektur 1 sheet per entitas. Seluruh definisi teknis skema terpusat di konstanta `SKEMA` pada `backend/src/00_konfig_skema_router.gs` (tergabung otomatis ke `backend/kode.gs`).
 
-> **Versi Skema:** 1 · **Jumlah Sheet:** 26 · **Zona Waktu:** `Asia/Jakarta` (WIB)
+> **Versi Skema:** 1 · **Jumlah Sheet:** 28 · **Zona Waktu:** `Asia/Jakarta` (WIB) · **Migrasi:** Otomatis (*zero-migration* kolom & sheet baru)
 
 ---
 
@@ -22,7 +22,7 @@ Setiap sheet memiliki format kolom yang seragam:
 
 ---
 
-## 2. Rincian 26 Sheet & Tipe Kolom
+## 2. Rincian 28 Sheet & Tipe Kolom
 
 Keterangan tipe data:
 - `s` = Teks (String)
@@ -110,8 +110,9 @@ Data pelanggan toko dan member royalti.
 - `limit_kredit` (n): Batas piutang tempo maksimal (Rupiah)
 - `tempo_hari` (n): Batas waktu jatuh tempo (hari, cth: 30)
 - `poin` (n): Saldo poin aktif saat ini
-- `total_belanja` (n): Akumulasi belanja bersih seumur hidup
+- `total_belanja` (n): Akumulasi belanja barang lunas seumur hidup (di luar ongkir)
 - `aktif` (b): Status aktif
+- `saldo_deposit` (n): Saldo titipan / deposit aktif pelanggan di toko (Rupiah)
 
 ### 8. `Supplier`
 Pemasok material & barang.
@@ -137,7 +138,7 @@ Header transaksi penjualan kasir.
 - `total` (n): Total akhir yang wajib dibayar
 - `bayar` (n): Total uang yang diserahkan/dibayar
 - `kembalian` (n): Kembalian (jika ada tunai)
-- `metode_bayar` (s): `tunai` | `transfer` | `qris` | `tempo` | `kombinasi`
+- `metode_bayar` (s): `tunai` | `transfer` | `qris` | `deposit` | `tempo` | `kombinasi`
 - `status_bayar` (s): `lunas` | `sebagian` | `tempo`
 - `pengiriman` (s): `ambil_sendiri` | `dikirim`
 - `alamat_kirim` (s): Alamat tujuan antar
@@ -147,7 +148,8 @@ Header transaksi penjualan kasir.
 - `void_alasan` (s): Alasan pembatalan (wajib jika void)
 - `void_oleh` (s): Relasi ke `Users.id` yang menyetujui void
 - `void_at` (d): Waktu pembatalan
-- `poin_didapat` (n): Jumlah poin yang didapat dari nota ini
+- `poin_didapat` (n): Jumlah poin yang didapat dari nota ini (khusus belanja barang lunas)
+- `ongkir` (n): Biaya jasa ongkos kirim manual untuk pesanan dikirim (tidak dihitung poin)
 
 ### 10. `Penjualan_Item`
 Item barang pada transaksi penjualan.
@@ -172,7 +174,7 @@ Item barang pada transaksi penjualan.
 ### 11. `Penjualan_Bayar`
 Rincian metode pembayaran (terutama pembayaran kombinasi).
 - `penjualan_id` (s): Relasi ke `Penjualan.id`
-- `metode` (s): `tunai` | `transfer` | `qris` | `tempo`
+- `metode` (s): `tunai` | `transfer` | `qris` | `deposit` | `tempo`
 - `jumlah` (n): Nominal dibayar
 - `referensi` (s): Nomor referensi transfer / approval QRIS
 
@@ -190,6 +192,11 @@ Header faktur pembelian dari supplier.
 - `jatuh_tempo` (d): Tanggal jatuh tempo hutang
 - `catatan` (s): Catatan pembelian
 - `status` (s): `draft` | `selesai` | `batal`
+- `diskon_item` (n): Total diskon persen supplier per item
+- `ongkir` (n): Ongkos kirim pembelian (Landed Cost → HPP final)
+- `biaya_bongkar` (n): Biaya bongkar/kuli pembelian (Landed Cost → HPP final)
+- `biaya_masuk_hutang` (b): TRUE bila ongkir+bongkar masuk tagihan/hutang supplier, FALSE bila dibayar tunai terpisah
+- `metode_alokasi_biaya` (s): `proporsional` | `qty` (metode konversi ongkir+bongkar ke HPP item)
 
 ### 13. `Pembelian_Item`
 Item barang yang dibeli dari supplier.
@@ -203,6 +210,8 @@ Item barang yang dibeli dari supplier.
 - `qty_dasar` (n): `qty × faktor`
 - `harga_beli` (n): Harga beli per satuan beli
 - `subtotal` (n): Subtotal item pembelian
+- `diskon_persen` (n): Diskon supplier per item (%)
+- `diskon_item` (n): Nominal diskon supplier per item (Rupiah)
 
 ### 14. `Piutang`
 Catatan piutang pelanggan atas penjualan tempo.
@@ -241,7 +250,18 @@ Audit mutasi poin pelanggan.
 - `ref_id` (s): ID referensi transaksi terkait
 - `saldo` (n): Saldo akhir poin setelah mutasi
 
-### 18. `Hadiah`
+### 18. `Deposit_Log`
+Audit mutasi saldo titipan / deposit pelanggan.
+- `no_bukti` (s): Nomor bukti mutasi `DEP-YYYYMMDD-0001`
+- `pelanggan_id` (s): Relasi ke `Pelanggan.id`
+- `jenis` (s): `masuk` | `pakai` | `tarik` | `void` | `retur`
+- `metode` (s): `tunai` | `transfer` | `qris` | `deposit`
+- `jumlah` (n): Perubahan nominal saldo (+/- Rupiah)
+- `saldo` (n): Saldo akhir titipan pelanggan setelah mutasi
+- `ref_id` (s): Referensi bukti/no nota/no retur terkait
+- `catatan` (s): Catatan transaksi titipan
+
+### 19. `Hadiah`
 Katalog hadiah penukaran poin membership.
 - `nama` (s): Nama hadiah (cth: "Kaos Toko", "Kipas Angin", "Potongan Belanja")
 - `deskripsi` (s): Keterangan hadiah
@@ -249,7 +269,7 @@ Katalog hadiah penukaran poin membership.
 - `stok` (n): Ketersediaan stok fisik hadiah
 - `aktif` (b): Status aktif di katalog
 
-### 19. `Penukaran_Hadiah`
+### 20. `Penukaran_Hadiah`
 Riwayat klaim penukaran hadiah oleh member.
 - `no_tukar` (s): Nomor bukti penukaran `TK-YYYYMMDD-0001`
 - `pelanggan_id` (s): Relasi ke `Pelanggan.id`
@@ -258,7 +278,7 @@ Riwayat klaim penukaran hadiah oleh member.
 - `poin` (n): Total poin yang dipotong
 - `catatan` (s): Catatan serah terima
 
-### 20. `Kartu_Stok`
+### 21. `Kartu_Stok`
 Buku besar mutasi seluruh pergerakan barang (wajib tercatat).
 - `produk_id` (s): Relasi ke `Produk.id`
 - `varian_id` (s): Relasi ke `Varian.id`
@@ -270,7 +290,7 @@ Buku besar mutasi seluruh pergerakan barang (wajib tercatat).
 - `user_id` (s): Petugas yang memicu mutasi
 - `keterangan` (s): Catatan penjelasan mutasi
 
-### 21. `Opname`
+### 22. `Opname`
 Pemeriksaan fisik stok gudang vs sistem.
 - `no_opname` (s): Nomor dokumen `OP-YYYYMMDD-0001`
 - `tanggal` (d): Waktu opname
@@ -284,7 +304,7 @@ Pemeriksaan fisik stok gudang vs sistem.
 - `disetujui_oleh` (s): Relasi ke `Users.id` (Owner/Admin)
 - `disetujui_at` (d): Waktu persetujuan penyesuaian stok
 
-### 22. `Retur`
+### 23. `Retur`
 Header dokumen retur penjualan atau pembelian.
 - `no_retur` (s): Nomor retur `RT-YYYYMMDD-0001`
 - `tipe` (s): `jual` (pelanggan meretur) | `beli` (toko meretur ke supplier)
@@ -292,13 +312,13 @@ Header dokumen retur penjualan atau pembelian.
 - `pihak_id` (s): Relasi ke `Pelanggan.id` atau `Supplier.id`
 - `tanggal` (d): Waktu retur
 - `total` (n): Total nilai retur
-- `metode_refund` (s): `kas` | `potong_piutang` | `potong_hutang`
+- `metode_refund` (s): `kas` | `potong_piutang` | `potong_hutang` | `deposit`
 - `alasan` (s): Alasan retur
 - `status` (s): `diajukan` | `disetujui` | `ditolak`
 - `disetujui_oleh` (s): Relasi ke `Users.id`
 - `disetujui_at` (d): Waktu persetujuan
 
-### 23. `Retur_Item`
+### 24. `Retur_Item`
 Item barang yang diretur.
 - `retur_id` (s): Relasi ke `Retur.id`
 - `ref_item_id` (s): Relasi ke `Penjualan_Item.id` atau `Pembelian_Item.id`
@@ -313,21 +333,35 @@ Item barang yang diretur.
 - `hpp` (n): Snapshot HPP asal
 - `subtotal` (n): Subtotal nominal retur
 
-### 24. `Pengaturan`
+### 25. `Biaya`
+Catatan pengeluaran biaya operasional toko & kas keluar kasir (*petty cash*).
+- `no_transaksi` (s): Nomor bukti pengeluaran `EXP-YYYYMMDD-0001`
+- `tanggal` (d): Tanggal pengeluaran
+- `kategori` (s): Kategori biaya operasional
+- `nominal` (n): Nominal pengeluaran (Rupiah)
+- `keterangan` (s): Rincian keperluan
+- `sumber_dana` (s): `kas_kasir` | `kas_toko` | `bank`
+- `shift_id` (s): Referensi shift (opsional)
+- `user_id` (s): Relasi ke `Users.id`
+- `user_nama` (s): Snapshot nama petugas pencatat
+- `bukti_url` (s): URL foto nota bukti pengeluaran (opsional)
+- `status` (s): `aktif` | `batal`
+
+### 26. `Pengaturan`
 Konfigurasi operasional toko (key-value JSON).
 - `key` (s): Kunci pengaturan (cth: `toko_nama`, `poin_per_rupiah`)
 - `value` (j): Nilai pengaturan tersimpan dalam format teks JSON
 
-### 25. `Log_Audit`
+### 27. `Log_Audit`
 Pencatatan jejak audit aksi sensitif sistem.
 - `user_id` (s): Pengguna yang melakukan aksi
-- `aksi` (s): Nama tindakan (misal: `void_penjualan`, `ganti_harga`, `reset_pin`)
-- `modul` (s): Modul sistem (cth: `POS`, `PRODUK`, `USER`)
+- `aksi` (s): Nama tindakan (misal: `void_penjualan`, `ganti_harga`, `reset_pin`, `deposit_tambah`)
+- `modul` (s): Modul sistem (cth: `POS`, `PRODUK`, `USER`, `DEPOSIT`)
 - `ref_id` (s): ID entitas terkait
 - `detail_json` (j): Payload detail perubahan sebelum/sesudah
 
-### 26. `Counter`
+### 28. `Counter`
 Penghitung sekuensial nomor urut harian untuk mencegah nomor nota ganda/loncat.
-- `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`)
+- `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`, `DEP-20261122`, `EXP-20261122`)
 - `nilai` (n): Nomor urut terakhir hari tersebut
 

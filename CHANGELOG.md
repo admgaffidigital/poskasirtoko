@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.104] - 2026-11-22
+
+### Changed
+- [DOCS] [APK] [DEPLOY] **Pembersihan Total Proyek, Clean Build Gradle & Sinkronisasi Dokumentasi (`README.md`, `docs/database.md`)**:
+  - Menghapus folder kosong sisa `scratch/` dan menjalankan `gradlew clean` pada proyek Android sebelum membangun ulang APK bersih versi `v1.0.104`.
+  - Memperbarui [README.md](file:///c:/POS%20KASIR%20TOKO/README.md) dan [docs/database.md](file:///c:/POS%20KASIR%20TOKO/docs/database.md) agar selaras 100% dengan arsitektur terbaru (**28 sheet**, kolom `saldo_deposit`, `ongkir`, `biaya_bongkar`, `biaya_masuk_hutang`, `metode_alokasi_biaya`, tabel `Deposit_Log` & `Biaya`, serta arsitektur modular 10 file `backend/src/*.gs` + `clasp`).
+  - Optimasi ulang repositori Git (`git gc --prune=now`) dan verifikasi menyeluruh **0 sampah, 0 masalah, 20/20 uji audit lulus**.
+
 ## [1.0.103] - 2026-11-22
 
 ### Added
