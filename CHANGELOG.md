@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.97] - 2026-11-22
+
+### Fixed
+- [POS-BELI] [UI] **Perapihan Grid 2-Kolom Penuh Input Ongkos Kirim & Biaya Bongkar (`pembelian.js`)**:
+  - Mengganti wrapper `.beli-inputs-grid` (grid 5 kolom khusus bar item kiri) pada kolom `Ongkos Kirim (Rp)` & `Biaya Bongkar (Rp)` di panel **Ringkasan Pembelian** menjadi grid 2 kolom proporsional penuh (`repeat(2, minmax(0, 1fr))` + `align-items: end`, label 1 baris sejajar) sehingga kedua kotak input tampil lebar penuh dan rapi di desktop maupun mobile.
+
 ## [1.0.96] - 2026-11-22
 
 ### Added

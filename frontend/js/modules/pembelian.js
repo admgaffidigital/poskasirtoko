@@ -243,14 +243,14 @@ function renderFormInputBeli() {
         </div>
 
         <!-- Landed Cost: Ongkos Kirim & Biaya Bongkar (Otomatis Dikonversi ke HPP Final) -->
-        <div class="beli-inputs-grid" style="margin-top: 2px;">
-          <div class="field">
-            <label class="field-label" for="beli-ongkir">Ongkos Kirim (Rp)</label>
-            <input type="text" class="input tabular" id="beli-ongkir" value="0" inputmode="numeric">
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); align-items: end; margin-top: 2px;">
+          <div class="field" style="min-width: 0;">
+            <label class="field-label text-xs" for="beli-ongkir" style="white-space: nowrap;">Ongkos Kirim (Rp)</label>
+            <input type="text" class="input tabular w-full" id="beli-ongkir" value="0" inputmode="numeric">
           </div>
-          <div class="field">
-            <label class="field-label" for="beli-bongkar">Biaya Bongkar (Rp)</label>
-            <input type="text" class="input tabular" id="beli-bongkar" value="0" inputmode="numeric">
+          <div class="field" style="min-width: 0;">
+            <label class="field-label text-xs" for="beli-bongkar" style="white-space: nowrap;">Biaya Bongkar (Rp)</label>
+            <input type="text" class="input tabular w-full" id="beli-bongkar" value="0" inputmode="numeric">
           </div>
         </div>
 
