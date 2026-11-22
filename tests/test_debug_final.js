@@ -1059,6 +1059,151 @@ async function runAudit() {
     assert.ok(lapSetelahVoid.data.ringkasan.total_void >= 1, 'ringkasan.total_void wajib menghitung nota dibatalkan secara terpisah');
   });
 
+  // =========================================================================
+  // 17. AKURASI AKUNTANSI: ARUS KAS KEMBALIAN, LABA RETUR+HPP, GUARD QTY RETUR,
+  //     SINKRONISASI STATUS POTONG PIUTANG/HUTANG, & SHIFT KASIR KOMPREHENSIF
+  // =========================================================================
+  await test('17. Akurasi Akuntansi: Arus Kas Bebas Kembalian, Laba Retur+HPP, Guard Qty Retur, Potong Piutang, & Shift Kasir', () => {
+    const envAcc = setupMockEnv();
+    envAcc.setupDatabase();
+    const ownerRow = envAcc.bacaSemua_('Users').find(u => u.username === 'owner');
+
+    // Buat produk HPP Rp 8.000, Harga Jual Rp 10.000, Stok 50
+    const prRes = envAcc.aksiProdukCreate_({
+      user: ownerRow,
+      payload: {
+        nama: 'Paku Beton Audit Akuntansi',
+        satuan_dasar: 'PCS',
+        hpp: 8000,
+        harga_ritel: 10000,
+        stok: 50,
+        stok_min: 5
+      }
+    });
+    const pr = prRes.produk || prRes;
+
+    // 17a. Penjualan tunai 6 PCS = Rp 60.000, bayar tunai Rp 100.000 (kembalian Rp 40.000)
+    const jualTunai = envAcc.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        items: [{ produk_id: pr.id, qty: 6, harga: 10000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 100000 }]
+      }
+    });
+    assert(jualTunai.penjualan.total === 60000 && jualTunai.penjualan.kembalian === 40000, 'Penjualan tunai Rp 60.000 dgn kembalian Rp 40.000');
+
+    const arusKas1 = envAcc.aksiLaporanArusKas_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(arusKas1.rincian_masuk.penjualan_tunai === 60000, `Arus kas masuk tunai harus bersih Rp 60.000 (bukan Rp 100.000), aktual: ${arusKas1.rincian_masuk.penjualan_tunai}`);
+
+    const dash1 = envAcc.aksiLaporanDashboard_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(dash1.metode_bayar.tunai.total === 60000, `Dashboard komposisi tunai harus bersih Rp 60.000, aktual: ${dash1.metode_bayar.tunai.total}`);
+
+    // 17b. Retur melebihi qty asal harus DITOLAK
+    let gagalReturBerlebih = false;
+    try {
+      envAcc.aksiReturCreate_({
+        user: ownerRow,
+        payload: {
+          tipe: 'jual',
+          ref_id: jualTunai.penjualan.id,
+          alasan: 'Uji retur melebihi qty',
+          metode_refund: 'kas',
+          items: [{ produk_id: pr.id, qty: 7, harga: 10000, hpp: 8000, nama: pr.nama }]
+        }
+      });
+    } catch (e) {
+      gagalReturBerlebih = String(e.message || '').includes('melebihi sisa qty');
+    }
+    assert(gagalReturBerlebih, 'Retur melebihi qty transaksi asal wajib ditolak backend');
+
+    // 17c. Retur sebagian 2 PCS (Omset Rp 20.000, HPP kembali Rp 16.000, dampak laba Rp 4.000) via refund kas
+    envAcc.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual',
+        ref_id: jualTunai.penjualan.id,
+        alasan: 'Kelebihan beli 2 pcs',
+        metode_refund: 'kas',
+        items: [{ produk_id: pr.id, qty: 2, harga: 10000, hpp: 8000, nama: pr.nama }]
+      }
+    });
+
+    // Cek retur kedua melebihi sisa (6 - 2 = 4, coba retur 5 -> harus ditolak!)
+    let gagalReturDobel = false;
+    try {
+      envAcc.aksiReturCreate_({
+        user: ownerRow,
+        payload: {
+          tipe: 'jual',
+          ref_id: jualTunai.penjualan.id,
+          alasan: 'Uji retur dobel melebihi sisa',
+          metode_refund: 'kas',
+          items: [{ produk_id: pr.id, qty: 5, harga: 10000, hpp: 8000, nama: pr.nama }]
+        }
+      });
+    } catch (e) {
+      gagalReturDobel = String(e.message || '').includes('melebihi sisa qty');
+    }
+    assert(gagalReturDobel, 'Retur kedua yang melebihi akumulasi sisa nota wajib ditolak');
+
+    // Verifikasi Laba Kotor Bersih di Laba Rugi & Dashboard 100% SINKRON:
+    // Jual 6 PCS: omset 60.000, HPP 48.000 -> Laba awal 12.000. Retur 2 PCS: omset -20.000, HPP +16.000 -> dampak laba -4.000 -> Laba bersih = 8.000!
+    const lr = envAcc.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    const dash2 = envAcc.aksiLaporanDashboard_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lr.ringkasan.total_retur_penjualan === 20000 && lr.ringkasan.total_retur_hpp === 16000, 'Laba Rugi mencatat omset retur & HPP retur secara akurat');
+    assert(lr.ringkasan.laba_kotor_bersih === 8000, `Laba kotor bersih setelah retur 2 pcs harus Rp 8.000 (bukan rugi palsu), aktual: ${lr.ringkasan.laba_kotor_bersih}`);
+    assert(dash2.ringkasan.laba_kotor === lr.ringkasan.laba_kotor_bersih && dash2.ringkasan.laba_bersih_riil === lr.ringkasan.laba_bersih_riil,
+      `Dashboard (${dash2.ringkasan.laba_bersih_riil}) dan Laba Rugi (${lr.ringkasan.laba_bersih_riil}) wajib 100% sinkron`);
+
+    // 17d. Retur potong_piutang melunasi piutang -> Penjualan.status_bayar wajib ikut 'lunas'
+    const pelRes = envAcc.aksiPelangganCreate_({
+      user: ownerRow,
+      payload: { nama: 'Kontraktor Audit', hp: '081999888777', tipe: 'member', limit_kredit: 5000000, tempo_hari: 30 }
+    });
+    const pelId = (pelRes.pelanggan || pelRes).id;
+
+    const jualTempo = envAcc.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        items: [{ produk_id: pr.id, qty: 3, harga: 10000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 30000 }]
+      }
+    });
+    envAcc.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual',
+        ref_id: jualTempo.penjualan.id,
+        alasan: 'Batal pakai, potong piutang penuh',
+        metode_refund: 'potong_piutang',
+        items: [{ produk_id: pr.id, qty: 3, harga: 10000, hpp: 8000, nama: pr.nama }]
+      }
+    });
+    const pjTempoAfter = envAcc.cariById_('Penjualan', jualTempo.penjualan.id);
+    assert(pjTempoAfter.status_bayar === 'lunas', `Status bayar Penjualan tempo yang habis dipotong retur wajib sinkron jadi 'lunas', aktual: ${pjTempoAfter.status_bayar}`);
+
+    // 17e. Shift Kasir menghitung modal + tunai bersih + piutang tunai - refund tunai
+    // Buat penjualan tempo lain Rp 20.000 lalu bayar piutang tunai Rp 15.000 hari ini
+    const jualTempo2 = envAcc.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        items: [{ produk_id: pr.id, qty: 2, harga: 10000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 20000 }]
+      }
+    });
+    const pt2 = envAcc.bacaSemua_('Piutang').find(x => x.penjualan_id === jualTempo2.penjualan.id && !x.deleted);
+    envAcc.aksiPiutangBayar_({ user: ownerRow, payload: { id: pt2.id, jumlah: 15000, metode: 'tunai' } });
+
+    const shift = envAcc.aksiPenjualanShiftKasir_({ user: ownerRow, payload: { modal_awal: 100000 } });
+    // Laci = Modal 100.000 + Tunai bersih 60.000 + Piutang tunai 15.000 - Refund tunai 20.000 = 155.000
+    assert(shift.total_tunai === 60000, `Shift total_tunai harus Rp 60.000, aktual: ${shift.total_tunai}`);
+    assert(shift.total_piutang_tunai === 15000, `Shift total_piutang_tunai harus Rp 15.000, aktual: ${shift.total_piutang_tunai}`);
+    assert(shift.total_refund_tunai === 20000, `Shift total_refund_tunai harus Rp 20.000, aktual: ${shift.total_refund_tunai}`);
+    assert(shift.total_laci === 155000, `Shift total_laci harus Rp 155.000, aktual: ${shift.total_laci}`);
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

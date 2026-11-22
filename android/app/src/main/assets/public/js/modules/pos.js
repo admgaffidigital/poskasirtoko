@@ -2559,7 +2559,8 @@ export function renderPosModule(container) {
   // ---------- Ringkasan Kas & Shift Kasir (X-Report / Fitur #5) ----------
   async function bukaModalShiftKasir() {
     const user = store.get('user') || state.user || {};
-    const todayStr = formatTanggal(new Date()).substring(0, 10);
+    const nowDt = new Date();
+    const todayStr = `${nowDt.getFullYear()}-${String(nowDt.getMonth() + 1).padStart(2, '0')}-${String(nowDt.getDate()).padStart(2, '0')}`;
     const storageKey = `pos_modal_awal_${todayStr}_${user.id || 'kasir'}`;
     let modalAwal = Number(localStorage.getItem(storageKey) || 0);
 
@@ -2598,8 +2599,8 @@ export function renderPosModule(container) {
         modal_awal: modalAwal
       });
 
-      if (res && res.ok && res.data) {
-        reportData = res.data;
+      if (res && typeof res === 'object') {
+        reportData = (res.data && typeof res.data === 'object') ? res.data : res;
       }
     } catch (err) {
       console.warn('Gagal panggil penjualan.shiftKasir, fallback client-side:', err);
@@ -2617,13 +2618,31 @@ export function renderPosModule(container) {
         total_transfer: 0,
         total_tempo: 0,
         total_diskon: 0,
+        total_piutang_tunai: 0,
+        total_refund_tunai: 0,
+        total_biaya_kasir: 0,
         total_laci: modalAwal
       };
     }
 
+    const hitungRumusLaci = (modalVal) => {
+      const tunai = Number(reportData.total_tunai || 0);
+      const piutangTunai = Number(reportData.total_piutang_tunai || 0);
+      const biayaKasir = Number(reportData.total_biaya_kasir || 0);
+      const refundTunai = Number(reportData.total_refund_tunai || 0);
+      const total = Math.max(0, modalVal + tunai + piutangTunai - biayaKasir - refundTunai);
+      const bagian = [`Modal: ${formatRupiah(modalVal)}`, `+ Tunai: ${formatRupiah(tunai)}`];
+      if (piutangTunai > 0) bagian.push(`+ Piutang Tunai: ${formatRupiah(piutangTunai)}`);
+      if (biayaKasir > 0) bagian.push(`- Kas Keluar: ${formatRupiah(biayaKasir)}`);
+      if (refundTunai > 0) bagian.push(`- Refund Retur: ${formatRupiah(refundTunai)}`);
+      return { total, teks: `(${bagian.join(' ')})` };
+    };
+
     const renderShiftBody = () => {
       const totalBiayaKasir = Number(reportData.total_biaya_kasir || 0);
-      const totalLaci = Math.max(0, modalAwal + Number(reportData.total_tunai || 0) - totalBiayaKasir);
+      const totalPiutangTunai = Number(reportData.total_piutang_tunai || 0);
+      const totalRefundTunai = Number(reportData.total_refund_tunai || 0);
+      const { total: totalLaci, teks: teksRumusLaci } = hitungRumusLaci(modalAwal);
       reportData.modal_awal = modalAwal;
       reportData.total_laci = totalLaci;
 
@@ -2673,7 +2692,7 @@ export function renderPosModule(container) {
               ${formatRupiah(totalLaci)}
             </div>
             <div class="text-xs text-muted" id="display-rumus-laci">
-              (Modal: ${formatRupiah(modalAwal)} + Tunai: ${formatRupiah(reportData.total_tunai || 0)}${totalBiayaKasir > 0 ? ` - Kas Keluar: ${formatRupiah(totalBiayaKasir)}` : ''})
+              ${teksRumusLaci}
             </div>
           </div>
 
@@ -2684,9 +2703,15 @@ export function renderPosModule(container) {
               <span class="fw-bold">${reportData.total_transaksi || 0} Penjualan</span>
             </div>
             <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-muted">Penerimaan Tunai:</span>
+              <span class="text-muted">Penerimaan Tunai Penjualan:</span>
               <span class="fw-bold mono text-success">${formatRupiah(reportData.total_tunai || 0)}</span>
             </div>
+            ${totalPiutangTunai > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-success fw-semibold">(+) Pelunasan Piutang Tunai:</span>
+                <span class="fw-bold mono text-success">+${formatRupiah(totalPiutangTunai)}</span>
+              </div>
+            ` : ''}
             <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
               <span class="text-muted">Non-Tunai (Transfer / QRIS):</span>
               <span class="fw-bold mono text-info">${formatRupiah(reportData.total_transfer || 0)}</span>
@@ -2695,6 +2720,12 @@ export function renderPosModule(container) {
               <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
                 <span class="text-muted">Piutang Pelanggan (Tempo):</span>
                 <span class="fw-bold mono text-warning">${formatRupiah(reportData.total_tempo || 0)}</span>
+              </div>
+            ` : ''}
+            ${totalRefundTunai > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-danger fw-semibold">(-) Refund Retur Tunai:</span>
+                <span class="fw-bold mono text-danger">-${formatRupiah(totalRefundTunai)}</span>
               </div>
             ` : ''}
             ${totalBiayaKasir > 0 ? `
@@ -2731,13 +2762,13 @@ export function renderPosModule(container) {
       inputModal?.addEventListener('input', () => {
         modalAwal = Math.max(0, parseRupiah(inputModal.value));
         localStorage.setItem(storageKey, String(modalAwal));
-        const laciBaru = Math.max(0, modalAwal + Number(reportData.total_tunai || 0) - totalBiayaKasir);
+        const { total: laciBaru, teks: teksBaru } = hitungRumusLaci(modalAwal);
         reportData.modal_awal = modalAwal;
         reportData.total_laci = laciBaru;
         const displayLaci = elContainer.querySelector('#display-total-laci');
         if (displayLaci) displayLaci.textContent = formatRupiah(laciBaru);
         const displayRumus = elContainer.querySelector('#display-rumus-laci');
-        if (displayRumus) displayRumus.textContent = `(Modal: ${formatRupiah(modalAwal)} + Tunai: ${formatRupiah(reportData.total_tunai || 0)}${totalBiayaKasir > 0 ? ` - Kas Keluar: ${formatRupiah(totalBiayaKasir)}` : ''})`;
+        if (displayRumus) displayRumus.textContent = teksBaru;
       });
 
       elContainer.querySelectorAll('.btn-preset-modal').forEach((btn) => {

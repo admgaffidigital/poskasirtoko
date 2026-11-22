@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.91] - 2026-11-22
+
+### Fixed
+- [BACKEND] [DASHBOARD] [POS-JUAL] [RETUR] [HUTANG-PIUTANG] **Perbaikan 6 Celah Akuntansi & Logika Transaksi Menyeluruh (`kode.gs`, `pos.js`, `laporan.js`, `test_debug_final.js`)**:
+  - **Arus Kas & Komposisi Tunai Bebas Kembalian (`kode.gs`)**: `aksiPenjualanCreate_` kini mencatat nominal tunai bersih pada `Penjualan_Bayar` (setelah dikurangi kembalian), dan helper `agregasiBayarBersih_` menormalisasi data historis pada `aksiLaporanArusKas_` & `aksiLaporanDashboard_` agar kas masuk tunai 100% riil tanpa menggelembung sebesar uang kembalian.
+  - **Sinkronisasi Laba Rugi & Dashboard Saat Ada Retur (`kode.gs`, `laporan.js`)**: Menambahkan helper `hitungEfekReturPenjualan_` yang menghitung `total_retur_hpp` (HPP barang retur kembali ke stok) sehingga Laba Kotor Bersih memotong selisih margin (`omset retur - HPP kembali`), bukan rugi palsu 100% harga jual, dan angka `Laba Bersih Riil` di Dashboard Ringkasan Eksekutif kini 100% identik dengan Tab Laba Rugi & Margin.
+  - **Validasi Batas Qty Retur Anti-Dobel (`kode.gs`)**: `aksiReturCreate_` kini memvalidasi setiap item retur terhadap qty transaksi asal dikurangi akumulasi retur aktif sebelumnya agar tidak bisa diretur melebihi qty beli.
+  - **Sinkronisasi Status Nota/Faktur Asal Saat Retur `potong_piutang` / `potong_hutang` + Guard Pembelian (`kode.gs`)**: Saat retur melunasi piutang/hutang, `Penjualan.status_bayar` / `Pembelian.status_bayar` ikut diperbarui ke `lunas`/`sebagian`; `aksiPembelianCreate_` membatasi nominal bayar tercatat maksimal sebesar `grandTotal`.
+  - **Fix Tutup Shift Kasir (`kode.gs`, `pos.js`)**: Memperbaiki bug unwrap response `apiCall` dan format tanggal `YYYY-MM-DD` di `bukaModalShiftKasir()` (`pos.js`), serta menyempurnakan `aksiPenjualanShiftKasir_` agar akurat menghitung penjualan tunai bersih (termasuk kombinasi), pelunasan piutang tunai (`+`), kas keluar kasir (`-`), dan refund retur tunai (`-`).
+  - **Pengujian Otomatis (`tests/test_debug_final.js`)**: Menambahkan **Test #17** yang menguji seluruh skenario akuntansi di atas secara menyeluruh (**17/17 LULUS**).
+
 ## [1.0.90] - 2026-11-22
 
 ### Changed

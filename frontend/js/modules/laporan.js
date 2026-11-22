@@ -1497,6 +1497,12 @@ function renderTabLabaRugi(container, data) {
               <span>Pengurang: Retur Penjualan Disetujui:</span>
               <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_retur_penjualan || 0)}</span>
             </div>
+            ${Number(r.total_retur_hpp || 0) > 0 ? `
+              <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--success);">
+                <span>Penambah: HPP Barang Retur Kembali ke Stok:</span>
+                <span style="font-weight: var(--fw-semibold);">+ ${formatRupiah(r.total_retur_hpp || 0)}</span>
+              </div>
+            ` : ''}
 
             <div class="cluster" style="justify-content: space-between; font-size: var(--fs-lg); font-weight: var(--fw-bold); background: var(--bg-surface-variant); padding: var(--sp-3); border-radius: var(--radius-md); margin-top: var(--sp-2);">
               <span>Laba Kotor Bersih Produk:</span>
