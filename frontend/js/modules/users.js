@@ -94,8 +94,8 @@ async function muatUsers(container) {
       html += `
         <tr>
           <td data-label="Username">
-            <div class="row" style="align-items: center; gap: var(--sp-2);">
-              <div class="prd-table-avatar" style="width: 36px; height: 36px;">
+            <div class="row" style="align-items: center; gap: var(--sp-2); flex-wrap: nowrap;">
+              <div class="prd-table-avatar" style="width: 36px; height: 36px; flex-shrink: 0;">
                 ${ICONS.userCheck || ICONS.users}
               </div>
               <div class="grow" style="min-width: 0;">
@@ -126,7 +126,7 @@ async function muatUsers(container) {
           <td style="text-align: right; min-width: 175px; width: 175px; white-space: nowrap;" data-label="Aksi">
             <div class="table-actions">
               <button type="button" class="btn btn-secondary btn-sm btn-edit-user" data-id="${u.id}" title="Ubah Pengguna">
-                ${ICONS.settings}
+                ${ICONS.edit}
                 <span>Ubah</span>
               </button>
               <button type="button" class="btn btn-secondary btn-sm text-warning btn-reset-pin-user" data-id="${u.id}" data-user="${escapeHtml(u.username)}" title="Reset PIN Pengguna">

@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.90] - 2026-11-22
+
+### Changed
+- [UI] [USER] [PELANGGAN] [HUTANG-PIUTANG] **Perawatan Menyeluruh (Hygiene & Konsistensi Sistem Tema)**:
+  - **Eliminasi 100% Warna Oranye Hardcoded (`components.css`, `layout.css`, `app.js`, `utils/ui.js`)**: Mengganti 10 sisa `rgba(232/234, 88/89, 12, ...)` pada `.highlight-text`, `.pos-list-item:hover`, `.cmd-palette-item`, `@keyframes splash-pulse`, banner instalasi/update `app.js`, dan ikon dialog `showConfirm` menjadi token dinamis `rgba(var(--primary-rgb), ...)` / `var(--primary-soft)` agar seluruh 6 tema warna aksen 100% murni tanpa kebocoran warna oranye.
+  - **Manajemen Pengguna (`users.js`)**: Menambahkan `flex-wrap: nowrap` & `flex-shrink: 0` pada baris avatar username dan menyeragamkan ikon tombol `Ubah` menjadi `ICONS.edit`.
+  - **Label Status & Metode Bayar Bersih (`pelanggan.js`, `hutang-piutang.js`)**: Memformat label mentah `belum_lunas` / `bayar_sebagian` / `qris` / `tunai` pada modal riwayat transaksi pelanggan serta riwayat bayar hutang/piutang menjadi bahasa Indonesia rapi (`Belum Lunas`, `Cicilan`, `Lunas`, `Dibatalkan`, `QRIS`, `Tunai`, `Transfer`, `Tempo`).
+
 ## [1.0.89] - 2026-11-21
 
 ### Fixed

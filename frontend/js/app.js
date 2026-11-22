@@ -429,7 +429,7 @@ class App {
         <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--primary);">
           <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
             <div class="row" style="gap: var(--sp-3); align-items: center;">
-              <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(232, 89, 12, 0.3);">
+              <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);">
                 ${ICONS.store}
               </div>
               <div>
@@ -474,7 +474,7 @@ class App {
         <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: var(--primary-soft); border: 1px solid var(--primary); border-left: 4px solid var(--primary);">
           <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
             <div class="row" style="gap: var(--sp-3); align-items: center;">
-              <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(232, 89, 12, 0.35);">
+              <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-xl); display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.35);">
                 ${ICONS.store}
               </div>
               <div>
@@ -486,7 +486,7 @@ class App {
               </div>
             </div>
             <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-              <button type="button" class="btn btn-primary btn-sm" id="btn-inapp-update-restart" style="border-radius: var(--radius-full); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(232, 89, 12, 0.35);">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-inapp-update-restart" style="border-radius: var(--radius-full); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.35);">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
                 <span>Perbarui & Restart Aplikasi</span>
               </button>
@@ -509,7 +509,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.89'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.90'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -562,7 +562,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.89'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.90'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1758,7 +1758,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.89'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.90'}</div>
         </div>
       `;
     };

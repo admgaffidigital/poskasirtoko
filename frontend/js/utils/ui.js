@@ -437,7 +437,7 @@ export function showConfirm(titleOrOptions, messageOrOptions, extraOptions = {})
         </svg>
       </div>
     ` : `
-      <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(234, 88, 12, 0.14); color: var(--primary, #ea580c); display: grid; place-items: center; flex-shrink: 0;">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; flex-shrink: 0;">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>

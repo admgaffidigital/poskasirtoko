@@ -917,7 +917,15 @@ async function bukaModalDetailPelanggan(pelangganId) {
                 </tr>
               </thead>
               <tbody>
-                ${riwayatJual.map((pj) => `
+                ${riwayatJual.map((pj) => {
+                  const metodeMap = { tunai: 'Tunai', qris: 'QRIS', transfer: 'Transfer', tempo: 'Tempo', campuran: 'Campuran' };
+                  const statusMap = { lunas: 'Lunas', belum_lunas: 'Belum Lunas', bayar_sebagian: 'Cicilan', sebagian: 'Cicilan', void: 'Dibatalkan', pending: 'Ditahan' };
+                  const mKey = String(pj.metode_bayar || '').toLowerCase();
+                  const sKey = String(pj.status_bayar || '').toLowerCase();
+                  const metodeLabel = metodeMap[mKey] || (pj.metode_bayar || '-');
+                  const statusLabel = statusMap[sKey] || (pj.status_bayar || '-');
+                  const statusCls = sKey === 'lunas' ? 'badge-success' : (sKey === 'void' ? 'badge-secondary' : (sKey === 'belum_lunas' ? 'badge-danger' : 'badge-warning'));
+                  return `
                   <tr>
                     <td data-label="No Nota & Tgl">
                       <div class="row-between" style="width: 100%; align-items: center; gap: 8px;">
@@ -926,8 +934,8 @@ async function bukaModalDetailPelanggan(pelangganId) {
                       </div>
                     </td>
                     <td class="num fw-bold" data-label="Total Belanja">${formatRupiah(pj.total)}</td>
-                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(pj.metode_bayar)}</span></td>
-                    <td data-label="Status"><span class="badge ${pj.status_bayar === 'lunas' ? 'badge-success' : 'badge-warning'}">${escapeHtml(pj.status_bayar)}</span></td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(metodeLabel)}</span></td>
+                    <td data-label="Status"><span class="badge ${statusCls}">${escapeHtml(statusLabel)}</span></td>
                     <td class="no-print" style="text-align: right;" data-label="Aksi">
                       <div class="table-actions">
                         <button type="button" class="btn btn-sm btn-primary btn-cetak-riwayat-pelanggan" data-id="${escapeHtml(pj.id)}" title="Cetak Struk Transaksi">
@@ -937,7 +945,8 @@ async function bukaModalDetailPelanggan(pelangganId) {
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                `;
+                }).join('')}
               </tbody>
             </table>
           </div>

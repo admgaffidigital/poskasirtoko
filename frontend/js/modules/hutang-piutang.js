@@ -924,7 +924,7 @@ async function bukaModalDetailPiutang(piutangId) {
                 ${riwayat.map((rw) => `
                   <tr>
                     <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.tanggal || rw.created_at, true)}</td>
-                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(String(rw.metode || '-').toLowerCase() === 'qris' ? 'QRIS' : String(rw.metode || '-').replace(/^\w/, (c) => c.toUpperCase()))}</span></td>
                     <td class="text-xs" data-label="Petugas">${escapeHtml(rw.nama_petugas || '-')}</td>
                     <td class="num fw-bold text-success" data-label="Nominal">${formatRupiah(rw.jumlah)}</td>
                     <td class="text-xs text-muted" data-label="Catatan">${escapeHtml(rw.catatan || '-')}</td>
@@ -1032,7 +1032,7 @@ async function bukaModalDetailHutang(hutangId) {
                 ${riwayat.map((rw) => `
                   <tr>
                     <td class="text-xs" data-label="Tanggal">${formatTanggal(rw.tanggal || rw.created_at, true)}</td>
-                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(rw.metode)}</span></td>
+                    <td data-label="Metode"><span class="badge badge-info">${escapeHtml(String(rw.metode || '-').toLowerCase() === 'qris' ? 'QRIS' : String(rw.metode || '-').replace(/^\w/, (c) => c.toUpperCase()))}</span></td>
                     <td class="text-xs" data-label="Petugas">${escapeHtml(rw.nama_petugas || '-')}</td>
                     <td class="num fw-bold text-success" data-label="Nominal">${formatRupiah(rw.jumlah)}</td>
                     <td class="text-xs text-muted" data-label="Catatan">${escapeHtml(rw.catatan || '-')}</td>
