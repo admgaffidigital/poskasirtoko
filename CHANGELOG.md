@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.93] - 2026-11-22
+
+### Security
+- [BACKEND] [AUTH] [RETUR] [BIAYA] **Penguatan Concurrency Lock (Re-Entrant) & RBAC Kasir (`kode.gs`, `test_debug_final.js`)**:
+  - **Re-Entrant Script Lock (`denganKunci_`)**: Menambahkan `_LOCK_DEPTH_REQ` agar pemanggilan `denganKunci_` bersarang pada `member.tukarPoin`, `biaya.create`, dan `biaya.delete` (yang sudah dibungkus kunci di `doPost`) tidak pernah melepas lock terlalu dini maupun memicu bentrok lock di Google Apps Script.
+  - **Penguatan RBAC Kasir (`aksiReturCreate_`, `aksiBiayaCreate_`)**: Menolak role `kasir` membuat retur pembelian ke supplier (`tipe === 'beli'`) dan mengunci `sumber_dana` pengeluaran oleh `kasir` hanya ke `kas_kasir` (petty cash laci, tidak dapat menyentuh `kas_toko` atau `bank`).
+
 ## [1.0.92] - 2026-11-22
 
 ### Fixed

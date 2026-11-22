@@ -326,12 +326,14 @@ const RUTE = {
 var _CACHE_BACA_REQ = {};
 var _SS_REQ = null;
 var _SHEET_MAP_REQ = {};
+var _LOCK_DEPTH_REQ = 0;
 
 /** Entry point Web App (semua aksi). */
 function doPost(e) {
   _CACHE_BACA_REQ = {};
   _SS_REQ = null;
   _SHEET_MAP_REQ = {};
+  _LOCK_DEPTH_REQ = 0;
   let action = '';
   try {
     const req = parseRequest_(e);
@@ -764,17 +766,27 @@ function paginasi_(items, payload, kolomCari) { // eslint-disable-line no-unused
 /* 7. LOCK, CACHE, COUNTER, AUDIT, PENGATURAN                                 */
 /* ========================================================================== */
 
-/** Jalankan fn di dalam script lock. Lock selalu dilepas di finally. */
+/** Jalankan fn di dalam script lock (re-entrant safe). Lock hanya dilepas pada lapisan terluar. */
 function denganKunci_(fn) {
+  if (_LOCK_DEPTH_REQ > 0) {
+    _LOCK_DEPTH_REQ++;
+    try {
+      return fn();
+    } finally {
+      _LOCK_DEPTH_REQ--;
+    }
+  }
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(APP.LOCK_TIMEOUT_MS)) {
     gagal_(KODE.CONFLICT, 'Server sedang sibuk memproses transaksi lain. Silakan coba lagi.');
   }
+  _LOCK_DEPTH_REQ = 1;
   try {
     const hasil = fn();
     SpreadsheetApp.flush();
     return hasil;
   } finally {
+    _LOCK_DEPTH_REQ = 0;
     lock.releaseLock();
   }
 }
@@ -4825,6 +4837,9 @@ function aksiReturCreate_(ctx) {
   if (tipe !== 'jual' && tipe !== 'beli') {
     gagal_(KODE.VALIDATION, 'Tipe retur harus "jual" atau "beli".');
   }
+  if (tipe === 'beli' && ctx.user.role === ROLE.KASIR) {
+    gagal_(KODE.FORBIDDEN, 'Retur pembelian ke supplier hanya dapat dibuat oleh Owner atau Admin.');
+  }
 
   const refId = String(p.ref_id || '').trim();
   if (!refId) gagal_(KODE.VALIDATION, 'ID transaksi asal (ref_id) wajib diberikan.');
@@ -6931,6 +6946,10 @@ function aksiBiayaCreate_(ctx) {
   let sumberDana = String(p.sumber_dana || 'kas_toko').trim().toLowerCase();
   if (sumberDana !== 'kas_kasir' && sumberDana !== 'bank' && sumberDana !== 'kas_toko') {
     sumberDana = 'kas_toko';
+  }
+  // Kasir hanya boleh mencatat kas keluar dari laci kasir (petty cash), bukan brankas toko atau rekening bank
+  if (ctx.user.role === ROLE.KASIR) {
+    sumberDana = 'kas_kasir';
   }
 
   const shiftId = p.shift_id ? String(p.shift_id).trim() : '';

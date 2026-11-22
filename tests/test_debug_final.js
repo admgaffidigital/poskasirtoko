@@ -1244,6 +1244,30 @@ async function runAudit() {
     const ksOp = envAcc.bacaSemua_('Kartu_Stok').find(k => k.ref_id === opDraft.no_opname);
     assert(ksOp && Number(ksOp.qty) === -1 && Number(ksOp.saldo) === stokAwalOp - 2,
       `Opname approve wajib mencatat selisih aktual (-1), aktual: qty=${ksOp?.qty}, saldo=${ksOp?.saldo}`);
+
+    // 17h. Keamanan RBAC Kasir (blokir retur beli supplier & kunci biaya kasir ke kas_kasir) + re-entrant lock
+    const kasirCtx = { id: 'kasir-audit', username: 'kasiraudit', nama: 'Kasir Audit', role: 'kasir' };
+    let kasirTolakReturBeli = false;
+    try {
+      envAcc.aksiReturCreate_({
+        user: kasirCtx,
+        payload: { tipe: 'beli', ref_id: 'fake-pb', alasan: 'Coba retur beli', items: [{ produk_id: pr.id, qty: 1, harga: 8000 }] }
+      });
+    } catch (e) {
+      kasirTolakReturBeli = String(e.message || '').includes('Owner atau Admin');
+    }
+    assert(kasirTolakReturBeli, 'Kasir wajib ditolak membuat retur pembelian ke supplier');
+
+    const biayaKasir = envAcc.aksiBiayaCreate_({
+      user: kasirCtx,
+      payload: { kategori: 'Parkir', nominal: 5000, keterangan: 'Uji RBAC sumber dana', sumber_dana: 'bank' }
+    });
+    assert(biayaKasir.item && biayaKasir.item.sumber_dana === 'kas_kasir',
+      `Biaya oleh Kasir wajib dikunci ke sumber_dana kas_kasir, aktual: ${biayaKasir.item?.sumber_dana}`);
+
+    // Uji nested denganKunci_ (re-entrant safe tanpa premature unlock)
+    const nestedLockRes = envAcc.denganKunci_(() => envAcc.denganKunci_(() => 'LOCK_OK'));
+    assert(nestedLockRes === 'LOCK_OK', 'denganKunci_ mendukung pemanggilan bersarang (re-entrant safe)');
   });
 
   console.log('\n=============================================');
