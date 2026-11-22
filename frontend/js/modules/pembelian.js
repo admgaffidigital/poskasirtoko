@@ -895,7 +895,7 @@ function renderTabelKeranjangBeli(container) {
         <td style="text-align: center;" data-label="Aksi">
           <div class="table-actions">
             <button type="button" class="btn btn-outline-danger btn-sm btn-hapus-item-beli" data-index="${idx}" title="Hapus">
-              ${ICONS.trash || ICONS.x}
+              ${ICONS.trash}
               <span class="d-none-desktop">Hapus Barang</span>
             </button>
           </div>

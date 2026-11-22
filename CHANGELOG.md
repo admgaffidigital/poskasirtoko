@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.99] - 2026-11-22
+
+### Fixed
+- [API] [BACKEND] [POS-JUAL] [RETUR] [DASHBOARD] **Debugging Total & Finalisasi Stabilitas Sistem (`api.js`, `kode.gs`, `pos.js`, `laporan.js`, `retur.js`, `pembelian.js`)**:
+  - **Sinkronisasi Cache & Invalidasi Mutasi (`api.js`)**: Memperbaiki seluruh kunci `CACHE_CONFIG` & `PERSISTABLE_ACTIONS` agar cocok 100% dengan rute backend (`kartuStok.list`, `penjualan.shiftKasir`, `deposit.riwayat`, `laporan.dashboard`, `laporan.arusKas`, `laporan.labaRugi`) serta menambahkan pola invalidasi `deposit.` dan `kartuStok.` pada `MUTATION_PATTERNS` sehingga perubahan saldo titipan langsung segar di POS Kasir & Laporan tanpa menunggu kedaluwarsa cache.
+  - **Filter Nota Void & Pending (`kode.gs`, `retur.js`)**: Memperbaiki filter `aksiPenjualanList_` dan pengecekan nota retur (`retur.js`) yang sebelumnya memeriksa properti `pj.void` (tidak ada di skema) menjadi memeriksa `pj.status !== 'void' && pj.status !== 'pending'` sehingga nota batal/pending tidak lagi bocor di daftar riwayat penjualan maupun form retur.
+  - **Normalisasi Saldo Deposit pada Cetak Ulang Struk (`kode.gs`)**: `aksiPenjualanDetail_` kini selalu mengembalikan angka `saldo_deposit` yang bersih pada objek pelanggan agar cetak ulang nota tetap menampilkan Sisa Saldo Titipan secara akurat.
+  - **Dashboard & Detail Penjualan (`laporan.js`)**: Menampilkan **Saldo Titipan (Deposit)** pada grafik Komposisi Metode Pembayaran Dashboard, menambahkan filter `Saldo Titipan` & `Kombinasi` di Tab Penjualan, memperbaiki tampilan alasan pembatalan (`j.void_alasan || j.alasan_void`), serta memformat label metode bayar di modal Detail Nota Penjualan.
+  - **Pemulihan Draft Tahan / Pending Cart (`pos.js`)**: Memuat ulang transaksi ditahan kini ikut memulihkan **Pelanggan terpilih** dan **Diskon Global Transaksi** secara utuh (selain keranjang, pengiriman, ongkir, dan catatan).
+  - **Kebersihan Ikon Aksi (`pembelian.js`)**: Membersihkan fallback ikon hapus menjadi `${ICONS.trash}` konsisten di seluruh aplikasi.
+
 ## [1.0.98] - 2026-11-22
 
 ### Added

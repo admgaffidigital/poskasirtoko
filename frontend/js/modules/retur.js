@@ -490,7 +490,7 @@ function bukaModalFormReturJual(container) {
 
       try {
         const resDetail = await apiCall('penjualan.detail', { no_nota: noNota });
-        if (resDetail && resDetail.penjualan && !resDetail.penjualan.void) {
+        if (resDetail && resDetail.penjualan && resDetail.penjualan.status !== 'void' && resDetail.penjualan.status !== 'pending' && !resDetail.penjualan.void) {
           pj = resDetail.penjualan;
           items = resDetail.items || [];
           pel = resDetail.pelanggan || {};
@@ -498,7 +498,7 @@ function bukaModalFormReturJual(container) {
       } catch (errDet) {
         // Fallback cari lewat penjualan.list
         const resList = await apiCall('penjualan.list', { cari: noNota, limit: 1 });
-        const notaDitemukan = (resList.items || []).find((x) => (x.no_nota === noNota || x.id === noNota) && !x.void);
+        const notaDitemukan = (resList.items || []).find((x) => (x.no_nota === noNota || x.id === noNota) && x.status !== 'void' && x.status !== 'pending' && !x.void);
         if (notaDitemukan) {
           const resDetail = await apiCall('penjualan.detail', { id: notaDitemukan.id });
           pj = resDetail.penjualan || notaDitemukan;

@@ -2987,9 +2987,12 @@ function aksiPenjualanList_(ctx) {
     return copy;
   });
 
+  // Jangan tampilkan draft pending di daftar penjualan final
+  data = data.filter(function (pj) { return pj.status !== 'pending'; });
+
   // Filter void (default hanya non-void kecuali diminta)
   if (!p.include_void) {
-    data = data.filter(function (pj) { return !pj.void; });
+    data = data.filter(function (pj) { return pj.status !== 'void' && !pj.void; });
   }
 
   // Filter pelanggan
@@ -3066,7 +3069,8 @@ function aksiPenjualanDetail_(ctx) {
     return byr.penjualan_id === penjualan.id && !byr.deleted;
   });
 
-  const pelanggan = penjualan.pelanggan_id ? cariById_('Pelanggan', penjualan.pelanggan_id) : null;
+  const pelangganRaw = penjualan.pelanggan_id ? cariById_('Pelanggan', penjualan.pelanggan_id) : null;
+  const pelanggan = pelangganRaw ? Object.assign({}, pelangganRaw, { saldo_deposit: Number(pelangganRaw.saldo_deposit) || 0 }) : null;
   const kasir = penjualan.kasir_id ? cariById_('Users', penjualan.kasir_id) : null;
   const peng = ambilPengaturan_();
 

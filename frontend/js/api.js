@@ -32,22 +32,20 @@ const CACHE_CONFIG = {
   'kategori.list': 180000,         // 3 menit
   'pengaturan.get': 300000,        // 5 menit
   'produk.list': 90000,            // 1.5 menit (katalog instan per filter & paginasi)
-  'produk.detail': 90000,          // 1.5 menit
   'pelanggan.list': 300000,        // 5 menit (instan 0ms di POS Kasir, Pelanggan, & Loyalti)
   'pelanggan.detail': 60000,       // 1 menit
   'supplier.list': 90000,          // 1.5 menit
   'hadiah.list': 90000,            // 1.5 menit
   'user.list': 60000,              // 1 menit
   'auth.me': 45000,                // 45 detik
-  'sistem.status': 45000,          // 45 detik
-  'stok.kartu': 60000,             // 1 menit
+  'kartuStok.list': 60000,         // 1 menit
   'opname.list': 60000,            // 1 menit
   'pembelian.list': 60000,         // 1 menit
   'pembelian.detail': 60000,       // 1 menit
   'penjualan.list': 60000,         // 1 menit
   'penjualan.detail': 60000,       // 1 menit
   'penjualan.pending.list': 45000, // 45 detik
-  'penjualan.shift': 45000,        // 45 detik
+  'penjualan.shiftKasir': 45000,   // 45 detik
   'piutang.list': 60000,           // 1 menit
   'piutang.detail': 60000,         // 1 menit
   'hutang.list': 60000,            // 1 menit
@@ -55,12 +53,13 @@ const CACHE_CONFIG = {
   'retur.list': 60000,             // 1 menit
   'retur.detail': 60000,           // 1 menit
   'biaya.list': 60000,             // 1 menit
+  'deposit.riwayat': 60000,        // 1 menit
   'member.riwayatPoin': 60000,     // 1 menit
-  'laporan.ringkasan': 60000,      // 1 menit
+  'laporan.dashboard': 60000,      // 1 menit
   'laporan.penjualan': 60000,      // 1 menit
   'laporan.pembelian': 60000,      // 1 menit
-  'laporan.kas': 60000,            // 1 menit
-  'laporan.laba_rugi': 60000,      // 1 menit
+  'laporan.arusKas': 60000,        // 1 menit
+  'laporan.labaRugi': 60000,       // 1 menit
   'laporan.stokValuasi': 60000     // 1 menit
 };
 
@@ -73,25 +72,26 @@ const PERSISTABLE_ACTIONS = new Set([
   'supplier.list',
   'hadiah.list',
   'penjualan.pending.list',
-  'laporan.ringkasan'
+  'laporan.dashboard'
 ]);
 
 // Pola mutasi data yang otomatis mengosongkan cache terkait secara instan
 const MUTATION_PATTERNS = [
   { trigger: 'kategori.', targets: ['kategori.', 'produk.', 'laporan.'] },
-  { trigger: 'produk.', targets: ['produk.', 'stok.', 'laporan.'] },
-  { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'piutang.', 'stok.', 'laporan.', 'member.'] },
-  { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'stok.', 'laporan.'] },
-  { trigger: 'opname.', targets: ['produk.', 'opname.', 'stok.', 'laporan.'] },
-  { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'stok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'member.'] },
+  { trigger: 'produk.', targets: ['produk.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
+  { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'opname.', targets: ['produk.', 'opname.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'kartuStok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'member.', 'deposit.'] },
   { trigger: 'piutang.', targets: ['piutang.', 'pelanggan.', 'penjualan.', 'laporan.', 'member.'] },
   { trigger: 'hutang.', targets: ['hutang.', 'supplier.', 'pembelian.', 'laporan.'] },
-  { trigger: 'pelanggan.', targets: ['pelanggan.', 'piutang.', 'laporan.'] },
+  { trigger: 'pelanggan.', targets: ['pelanggan.', 'piutang.', 'deposit.', 'laporan.'] },
+  { trigger: 'deposit.', targets: ['pelanggan.', 'deposit.', 'penjualan.', 'laporan.'] },
   { trigger: 'supplier.', targets: ['supplier.', 'hutang.', 'laporan.'] },
   { trigger: 'hadiah.', targets: ['hadiah.', 'pelanggan.', 'member.'] },
   { trigger: 'member.', targets: ['pelanggan.', 'hadiah.', 'member.'] },
-  { trigger: 'biaya.', targets: ['biaya.', 'laporan.'] },
-  { trigger: 'stok.', targets: ['stok.', 'produk.', 'laporan.'] },
+  { trigger: 'biaya.', targets: ['biaya.', 'penjualan.', 'laporan.'] },
+  { trigger: 'kartuStok.', targets: ['kartuStok.', 'produk.', 'laporan.'] },
   { trigger: 'sistem.', targets: [''] },
   { trigger: 'pengaturan.', targets: ['pengaturan.'] },
   { trigger: 'user.', targets: ['user.', 'auth.'] },

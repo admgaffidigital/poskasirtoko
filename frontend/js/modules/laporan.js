@@ -716,6 +716,7 @@ function buatKomposisiMetodeBayar(metodeMap, totalOmset) {
     { key: 'tunai', nama: 'Tunai (Kas Kasir)', warna: 'var(--success)' },
     { key: 'transfer', nama: 'Transfer Bank', warna: 'var(--primary)' },
     { key: 'qris', nama: 'QRIS', warna: 'var(--info)' },
+    { key: 'deposit', nama: 'Saldo Titipan (Deposit)', warna: 'var(--warning)' },
     { key: 'tempo', nama: 'Tempo / Kredit', warna: 'var(--danger)' }
   ];
 
@@ -755,8 +756,9 @@ function formatLabelMetodeBayar(m) {
   if (s === 'tunai') return 'Tunai';
   if (s === 'transfer') return 'Transfer';
   if (s === 'qris') return 'QRIS';
+  if (s === 'deposit') return 'Saldo Titipan';
   if (s === 'tempo') return 'Tempo';
-  if (s === 'kombinasi') return 'Kombinasi';
+  if (s === 'kombinasi' || s === 'campuran') return 'Kombinasi';
   return m || '-';
 }
 
@@ -831,7 +833,9 @@ function renderTabPenjualan(container, data) {
               <option value="tunai" ${stateLaporan.filterPenjualan.metode_bayar === 'tunai' ? 'selected' : ''}>Tunai</option>
               <option value="transfer" ${stateLaporan.filterPenjualan.metode_bayar === 'transfer' ? 'selected' : ''}>Transfer</option>
               <option value="qris" ${stateLaporan.filterPenjualan.metode_bayar === 'qris' ? 'selected' : ''}>QRIS</option>
+              <option value="deposit" ${stateLaporan.filterPenjualan.metode_bayar === 'deposit' ? 'selected' : ''}>Saldo Titipan</option>
               <option value="tempo" ${stateLaporan.filterPenjualan.metode_bayar === 'tempo' ? 'selected' : ''}>Tempo</option>
+              <option value="kombinasi" ${stateLaporan.filterPenjualan.metode_bayar === 'kombinasi' ? 'selected' : ''}>Kombinasi</option>
             </select>
           </div>
         </div>
@@ -1103,7 +1107,7 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
             <span style="flex-shrink: 0; margin-top: 2px;">${ICONS.alertTriangle}</span>
             <div style="font-size: var(--fs-sm);">
               <strong>TRANSAKSI INI TELAH DIBATALKAN (VOID)</strong>
-              ${j.alasan_void ? `<div style="margin-top: 2px;"><strong>Alasan:</strong> ${escapeHtml(j.alasan_void)}</div>` : ''}
+              ${(j.void_alasan || j.alasan_void) ? `<div style="margin-top: 2px;"><strong>Alasan:</strong> ${escapeHtml(j.void_alasan || j.alasan_void)}</div>` : ''}
               ${j.void_at ? `<div style="font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px;">Waktu Batal: ${formatTanggal(j.void_at)}</div>` : ''}
             </div>
           </div>
@@ -1126,7 +1130,7 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
         <div style="font-size: var(--fs-sm); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-2);">
           <div>Kasir: <strong>${escapeHtml(d.kasir?.nama || d.kasir?.username || j.kasir_id || '-')}</strong></div>
           <div>Pelanggan: <strong>${escapeHtml(d.pelanggan?.nama || j.pelanggan_id || 'Pelanggan Umum')}</strong></div>
-          <div>Metode Bayar: <strong>${escapeHtml(j.metode_bayar || 'tunai').toUpperCase()}</strong></div>
+          <div>Metode Bayar: <strong>${escapeHtml(formatLabelMetodeBayar(j.metode_bayar || 'tunai'))}</strong></div>
         </div>
 
         <div class="table-wrap">

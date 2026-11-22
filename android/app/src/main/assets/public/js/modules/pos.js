@@ -3229,7 +3229,23 @@ export function renderPosModule(container) {
           };
         });
 
-        // Pulihkan opsi pengiriman & ongkir jika tersimpan di draft
+        // Pulihkan pelanggan, diskon transaksi, opsi pengiriman & ongkir jika tersimpan di draft
+        if (draft.pelanggan_id) {
+          const pelCocok = (state.daftarPelanggan || []).find((pl) => pl.id === draft.pelanggan_id) || null;
+          if (pelCocok) {
+            state.pelanggan = pelCocok;
+          } else {
+            try {
+              const resPel = await api.post('pelanggan.detail', { id: draft.pelanggan_id });
+              if (resPel.ok && resPel.data?.pelanggan) state.pelanggan = resPel.data.pelanggan;
+            } catch (_) { }
+          }
+          perbaruiTampilanPelanggan();
+        }
+        state.diskonTransaksi = {
+          tipe: draft.diskon_tipe || '',
+          nilai: Number(draft.diskon_nilai) || 0
+        };
         state.pengiriman = draft.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
         state.alamatKirim = draft.alamat_kirim || '';
         state.ongkir = state.pengiriman === 'dikirim' ? (Number(draft.ongkir) || 0) : 0;
