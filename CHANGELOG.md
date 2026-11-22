@@ -16,6 +16,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.98] - 2026-11-22
+
+### Added
+- [PELANGGAN] [POS-JUAL] [BACKEND] [CETAK] [RETUR] [DASHBOARD] **Fitur Saldo Titipan / Deposit Pelanggan End-to-End (`kode.gs`, `pelanggan.js`, `pos.js`, `printer.js`, `laporan.js`, `retur.js`, `test_debug_final.js`)**:
+  - **Terima & Kembalikan Saldo Titipan (`pelanggan.js`, `kode.gs`)**: Menambahkan kolom `saldo_deposit` pada `Pelanggan` dan tabel baru `Deposit_Log` dengan **auto-migrasi sheet & kolom otomatis** (zero-migration tanpa perlu menjalankan `setupDatabase()` manual). Semua role dapat menerima titipan (`deposit.tambah` via Tunai/Transfer/QRIS lengkap dengan kirim bukti WhatsApp), sedangkan pengembalian sisa saldo (`deposit.tarik`) khusus **Owner & Admin**. Dilengkapi kartu statistik **Total Saldo Titipan**, kolom tabel, riwayat mutasi lengkap, serta proteksi hapus pelanggan jika saldo titipan > 0.
+  - **Pembayaran Saldo Titipan di POS (`pos.js`, `kode.gs`, `printer.js`)**: Pelanggan terdaftar (Member maupun Umum) dapat dipilih di POS lengkap dengan badge saldo titipan. Checkout mendukung bayar penuh via **Saldo Titipan** maupun **Kombinasi** (jika saldo kurang dari tagihan, tombol otomatis mengisi penuh saldo titipan dan menghitung sisa kurang ke tunai/transfer/tempo). Struk Thermal/RawBT/Browser & WhatsApp otomatis mencetak `Bayar (SALDO TITIPAN)` dan `Sisa Saldo Titipan`.
+  - **Akuntansi Anti Double-Counting, Poin, Void & Retur (`kode.gs`, `laporan.js`, `retur.js`)**:
+    - Terima titipan masuk **Arus Kas Masuk** (`deposit_masuk_tunai`/`deposit_masuk_bank`) & **Shift Kasir** (jika tunai), TIDAK masuk omset/laba/poin sebelum dibelanjakan.
+    - Pemakaian saldo di POS tercatat sebagai omset lunas & berhak mendapat **Poin Member** (khusus barang, di luar ongkir), namun **tidak dihitung ulang di Arus Kas** (bebas double-counting).
+    - **Void Nota** berbayar deposit otomatis mengembalikan saldo ke pelanggan; **Retur Penjualan** kini mendukung opsi refund langsung ke **Saldo Titipan (Deposit Pelanggan)**.
+  - **Pengujian Otomatis (`tests/test_debug_final.js`)**: Menambahkan **Test #20** mencakup seluruh siklus deposit (top-up, belanja penuh & kombinasi, anti double-counting arus kas, poin, void, retur, RBAC penarikan, dan guard hapus pelanggan — **20/20 LULUS**).
+
 ## [1.0.97] - 2026-11-22
 
 ### Fixed

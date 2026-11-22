@@ -1451,6 +1451,18 @@ function renderTabArusKas(container, data) {
                     <td>Pelunasan Piutang (Transfer / QRIS)</td>
                     <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">${formatRupiah((masuk.piutang_transfer || 0) + (masuk.piutang_qris || 0))}</td>
                   </tr>
+                  ${(masuk.deposit_masuk_tunai || 0) > 0 ? `
+                    <tr>
+                      <td>Titipan / Deposit Pelanggan (Tunai)</td>
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">${formatRupiah(masuk.deposit_masuk_tunai)}</td>
+                    </tr>
+                  ` : ''}
+                  ${(masuk.deposit_masuk_bank || 0) > 0 ? `
+                    <tr>
+                      <td>Titipan / Deposit Pelanggan (Transfer / QRIS)</td>
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">${formatRupiah(masuk.deposit_masuk_bank)}</td>
+                    </tr>
+                  ` : ''}
                   <tr style="background: var(--bg-surface-variant); font-weight: var(--fw-bold);">
                     <td>TOTAL KAS MASUK</td>
                     <td style="text-align: right; color: var(--success);">${formatRupiah(r.total_kas_masuk || 0)}</td>
@@ -1498,6 +1510,18 @@ function renderTabArusKas(container, data) {
                     <td>Biaya Operasional Toko (Transfer Bank)</td>
                     <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--danger);">${formatRupiah(keluar.biaya_operasional_bank || 0)}</td>
                   </tr>
+                  ${(keluar.deposit_tarik_tunai || 0) > 0 ? `
+                    <tr>
+                      <td>Pengembalian Saldo Titipan Pelanggan (Tunai)</td>
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--danger);">${formatRupiah(keluar.deposit_tarik_tunai)}</td>
+                    </tr>
+                  ` : ''}
+                  ${(keluar.deposit_tarik_bank || 0) > 0 ? `
+                    <tr>
+                      <td>Pengembalian Saldo Titipan Pelanggan (Transfer)</td>
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--danger);">${formatRupiah(keluar.deposit_tarik_bank)}</td>
+                    </tr>
+                  ` : ''}
                   <tr style="background: var(--bg-surface-variant); font-weight: var(--fw-bold);">
                     <td>TOTAL KAS KELUAR</td>
                     <td style="text-align: right; color: var(--danger);">${formatRupiah(r.total_kas_keluar || 0)}</td>

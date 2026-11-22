@@ -163,13 +163,21 @@ export function susunTeksStruk(data, ukuran = '58') {
   baris.push(buatGaris(lebar, '-'));
 
   // Rincian Metode Bayar
+  let pakaiDeposit = String(pj.metode_bayar || '').toLowerCase() === 'deposit';
   pembayaran.forEach((byr) => {
-    const labelMetode = String(byr.metode || 'tunai').toUpperCase();
+    const mLow = String(byr.metode || 'tunai').toLowerCase();
+    if (mLow === 'deposit') pakaiDeposit = true;
+    const labelMetode = mLow === 'deposit' ? 'SALDO TITIPAN' : mLow.toUpperCase();
     baris.push(formatDuaKolom(`Bayar (${labelMetode})`, formatRupiah(byr.jumlah), lebar));
   });
 
   if (pj.kembalian > 0) {
     baris.push(formatDuaKolom('Kembalian', formatRupiah(pj.kembalian), lebar));
+  }
+
+  // Sisa Saldo Titipan / Deposit jika transaksi menggunakan saldo deposit
+  if (pakaiDeposit && pelanggan && pelanggan.saldo_deposit !== undefined) {
+    baris.push(formatDuaKolom('Sisa Saldo Titipan', formatRupiah(pelanggan.saldo_deposit), lebar));
   }
 
   // Poin yang didapat jika ada
@@ -849,10 +857,17 @@ export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
   pesan += `--------------------------------\n`;
   if (pj.diskon > 0) pesan += `Diskon: -${formatRupiah(pj.diskon)}\n`;
   if (Number(pj.ongkir) > 0) pesan += `Ongkos Kirim: ${formatRupiah(pj.ongkir)}\n`;
+  const metodeBayarWa = String(pj.metode_bayar || 'tunai').toLowerCase();
+  const pembayaranList = Array.isArray(dataStruk.pembayaran) ? dataStruk.pembayaran : [];
+  const pakaiDepositWa = metodeBayarWa === 'deposit' || pembayaranList.some((b) => String(b.metode || '').toLowerCase() === 'deposit');
+  const pelWa = dataStruk.pelanggan || null;
   pesan += `*TOTAL : ${formatRupiah(pj.total)}*\n`;
-  pesan += `Metode : ${String(pj.metode_bayar || 'tunai').toUpperCase()}\n`;
-  pesan += `Status : ${String(pj.status_bayar || 'lunas').toUpperCase()}\n\n`;
-  pesan += `${toko.nota_footer || 'Terima kasih atas kunjungan Anda.'}`;
+  pesan += `Metode : ${metodeBayarWa === 'deposit' ? 'SALDO TITIPAN' : metodeBayarWa.toUpperCase()}\n`;
+  pesan += `Status : ${String(pj.status_bayar || 'lunas').toUpperCase()}\n`;
+  if (pakaiDepositWa && pelWa && pelWa.saldo_deposit !== undefined) {
+    pesan += `Sisa Saldo Titipan : ${formatRupiah(pelWa.saldo_deposit)}\n`;
+  }
+  pesan += `\n${toko.nota_footer || 'Terima kasih atas kunjungan Anda.'}`;
 
   // Bersihkan format nomor HP (ganti 08... jadi 628...)
   let hpBersih = String(nomorHp || '').replace(/[^0-9]/g, '');
@@ -1415,8 +1430,12 @@ export function susunTeksXReport(data, ukuran = '58') {
   const totalTransfer = Number(data.total_transfer || 0);
   const totalTempo = Number(data.total_tempo || 0);
   const totalPenjualan = Number(data.total_penjualan || 0);
+  const totalPiutangTunai = Number(data.total_piutang_tunai || 0);
+  const totalDepositTunai = Number(data.total_deposit_tunai || 0);
+  const totalTarikDepositTunai = Number(data.total_tarik_deposit_tunai || 0);
+  const totalRefundTunai = Number(data.total_refund_tunai || 0);
   const totalBiayaKasir = Number(data.total_biaya_kasir || 0);
-  const totalLaci = Number(data.total_laci !== undefined ? data.total_laci : Math.max(0, modalAwal + totalTunai - totalBiayaKasir));
+  const totalLaci = Number(data.total_laci !== undefined ? data.total_laci : Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai));
 
   const baris = [];
 
@@ -1445,9 +1464,21 @@ export function susunTeksXReport(data, ukuran = '58') {
   baris.push(buatGaris(lebar, '.'));
 
   baris.push(formatDuaKolom('Penerimaan Tunai', formatRupiah(totalTunai), lebar));
+  if (totalPiutangTunai > 0) {
+    baris.push(formatDuaKolom('(+) Piutang Tunai', '+' + formatRupiah(totalPiutangTunai), lebar));
+  }
+  if (totalDepositTunai > 0) {
+    baris.push(formatDuaKolom('(+) Titipan Tunai', '+' + formatRupiah(totalDepositTunai), lebar));
+  }
   baris.push(formatDuaKolom('Non-Tunai (QRIS/Bank)', formatRupiah(totalTransfer), lebar));
   if (totalTempo > 0) {
     baris.push(formatDuaKolom('Piutang (Tempo Bon)', formatRupiah(totalTempo), lebar));
+  }
+  if (totalTarikDepositTunai > 0) {
+    baris.push(formatDuaKolom('(-) Tarik Titipan', '-' + formatRupiah(totalTarikDepositTunai), lebar));
+  }
+  if (totalRefundTunai > 0) {
+    baris.push(formatDuaKolom('(-) Refund Retur', '-' + formatRupiah(totalRefundTunai), lebar));
   }
   if (totalBiayaKasir > 0) {
     baris.push(buatGaris(lebar, '.'));

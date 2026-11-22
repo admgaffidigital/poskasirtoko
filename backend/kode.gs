@@ -110,7 +110,8 @@ const SKEMA = {
   Satuan_Konversi: [['produk_id', 's'], ['satuan', 's'], ['faktor', 'n'], ['barcode', 's'], ['harga_ritel', 'n'],
     ['harga_grosir', 'n']],
   Pelanggan: [['kode', 's'], ['nama', 's'], ['hp', 's'], ['alamat', 's'], ['tipe', 's'], ['level', 's'],
-    ['limit_kredit', 'n'], ['tempo_hari', 'n'], ['poin', 'n'], ['total_belanja', 'n'], ['aktif', 'b']],
+    ['limit_kredit', 'n'], ['tempo_hari', 'n'], ['poin', 'n'], ['total_belanja', 'n'], ['aktif', 'b'],
+    ['saldo_deposit', 'n']],
   Supplier: [['nama', 's'], ['kontak', 's'], ['hp', 's'], ['alamat', 's'], ['catatan', 's'], ['aktif', 'b']],
   Penjualan: [['no_nota', 's'], ['tanggal', 'd'], ['kasir_id', 's'], ['pelanggan_id', 's'], ['subtotal', 'n'],
     ['diskon_tipe', 's'], ['diskon_nilai', 'n'], ['diskon', 'n'], ['pajak', 'n'], ['pembulatan', 'n'], ['total', 'n'],
@@ -134,6 +135,8 @@ const SKEMA = {
     ['jatuh_tempo', 'd'], ['status', 's']],
   Pembayaran: [['tipe', 's'], ['ref_id', 's'], ['jumlah', 'n'], ['metode', 's'], ['tanggal', 'd'], ['catatan', 's']],
   Poin_Log: [['pelanggan_id', 's'], ['jumlah', 'n'], ['jenis', 's'], ['ref_id', 's'], ['saldo', 'n']],
+  Deposit_Log: [['no_bukti', 's'], ['pelanggan_id', 's'], ['jenis', 's'], ['metode', 's'], ['jumlah', 'n'],
+    ['saldo', 'n'], ['ref_id', 's'], ['catatan', 's']],
   Hadiah: [['nama', 's'], ['deskripsi', 's'], ['poin_dibutuhkan', 'n'], ['stok', 'n'], ['aktif', 'b']],
   Penukaran_Hadiah: [['no_tukar', 's'], ['pelanggan_id', 's'], ['hadiah_id', 's'], ['qty', 'n'], ['poin', 'n'],
     ['catatan', 's']],
@@ -300,6 +303,11 @@ const RUTE = {
   'pelanggan.create': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPelangganCreate_ },
   'pelanggan.update': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPelangganUpdate_ },
   'pelanggan.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiPelangganDelete_ },
+
+  // Saldo Titipan / Deposit Pelanggan
+  'deposit.tambah': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiDepositTambah_ },
+  'deposit.tarik': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiDepositTarik_ },
+  'deposit.riwayat': { publik: false, roles: SEMUA_ROLE, handler: aksiDepositRiwayat_ },
 
   // Katalog Hadiah & Loyalitas Poin (Fase 5)
   'hadiah.list': { publik: false, roles: SEMUA_ROLE, handler: aksiHadiahList_ },
@@ -489,12 +497,16 @@ function ss_() {
   return ss;
 }
 
-/** Ambil sheet sesuai SKEMA; lempar error ramah bila belum dibuat. */
+/** Ambil sheet sesuai SKEMA; otomatis buat sheet & header baru jika belum ada (zero-migration). */
 function sheet_(namaSheet) {
   if (!SKEMA[namaSheet]) gagal_(KODE.SERVER, 'Sheet tidak dikenal: ' + namaSheet);
   if (_SHEET_MAP_REQ && _SHEET_MAP_REQ[namaSheet]) return _SHEET_MAP_REQ[namaSheet];
-  const sh = ss_().getSheetByName(namaSheet);
-  if (!sh) gagal_(KODE.SERVER, 'Sheet "' + namaSheet + '" belum ada. Jalankan setupDatabase().');
+  let sh = ss_().getSheetByName(namaSheet);
+  if (!sh) {
+    sh = ss_().insertSheet(namaSheet);
+    const cols = kolomSheet_(namaSheet).map(function (k) { return k[0]; });
+    sh.getRange(1, 1, 1, cols.length).setValues([cols]);
+  }
   if (_SHEET_MAP_REQ) _SHEET_MAP_REQ[namaSheet] = sh;
   return sh;
 }
@@ -724,7 +736,7 @@ function pastikanBaris_(sh, barisDibutuhkan) {
 function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-unused-vars
   if (!perubahan || !perubahan.length) return [];
   const sh = sheet_(namaSheet);
-  const header = petaHeader_(sh);
+  const header = pastikanKolomSkema_(sh, namaSheet);
   const lebar = sh.getLastColumn();
   const tipe = tipeKolom_(namaSheet);
   const semua = bacaSemua_(namaSheet, { termasukTerhapus: true });
@@ -871,7 +883,7 @@ function cacheHapus_(key) {
  * WAJIB dipanggil di dalam denganKunci_ agar tidak ada nomor ganda.
  */
 function nomorBerikut_(prefix) {
-  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP'];
+  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP', 'DEP'];
   if (valid.indexOf(prefix) === -1) gagal_(KODE.SERVER, 'Prefix nomor tidak dikenal: ' + prefix);
   const key = prefix + '-' + Utilities.formatDate(new Date(), APP.TZ, 'yyyyMMdd');
   const baris = bacaSemua_('Counter').filter(function (c) { return c.key === key; })[0];
@@ -2228,6 +2240,7 @@ function aksiPelangganList_(ctx) {
     const limitKredit = Number(pel.limit_kredit) || 0;
     copy.piutang_berjalan = hutangAktif;
     copy.sisa_limit = Math.max(0, limitKredit - hutangAktif);
+    copy.saldo_deposit = Number(pel.saldo_deposit) || 0;
     return copy;
   });
 
@@ -2468,11 +2481,12 @@ function aksiPenjualanCreate_(ctx) {
   let totalTunai = 0;
   let totalNonTunai = 0;
   let totalTempo = 0;
+  let totalDeposit = 0;
   const daftarBayarValid = [];
 
   for (let b = 0; b < rawBayar.length; b++) {
     const byr = rawBayar[b];
-    const metode = V_.pilihan(byr.metode, 'Metode pembayaran ke-' + (b + 1), ['tunai', 'transfer', 'qris', 'tempo']);
+    const metode = V_.pilihan(byr.metode, 'Metode pembayaran ke-' + (b + 1), ['tunai', 'transfer', 'qris', 'tempo', 'deposit']);
     const jumlah = V_.rupiah(byr.jumlah, 'Nominal ' + metode);
     if (jumlah <= 0) continue;
 
@@ -2481,6 +2495,7 @@ function aksiPenjualanCreate_(ctx) {
     } else {
       totalNonTunai += jumlah;
       if (metode === 'tempo') totalTempo += jumlah;
+      if (metode === 'deposit') totalDeposit += jumlah;
     }
 
     daftarBayarValid.push({
@@ -2492,6 +2507,17 @@ function aksiPenjualanCreate_(ctx) {
 
   if (daftarBayarValid.length === 0) {
     gagal_(KODE.VALIDATION, 'Jumlah pembayaran yang dimasukkan harus lebih dari 0.');
+  }
+
+  // Validasi Saldo Titipan / Deposit Pelanggan
+  if (totalDeposit > 0) {
+    if (!pelanggan) {
+      gagal_(KODE.VALIDATION, 'Pembayaran menggunakan Saldo Titipan/Deposit hanya untuk pelanggan terdaftar.');
+    }
+    const saldoDepositSaatIni = Number(pelanggan.saldo_deposit || 0);
+    if (totalDeposit > saldoDepositSaatIni) {
+      gagal_(KODE.VALIDATION, 'Saldo titipan/deposit tidak mencukupi. Saldo saat ini: ' + formatRupiah_(saldoDepositSaatIni) + ', digunakan: ' + formatRupiah_(totalDeposit) + '.');
+    }
   }
 
   // Aturan Bisnis #3: Tempo HANYA untuk member terdaftar; Pembeli umum harus non-tempo & lunas
@@ -2695,40 +2721,70 @@ function aksiPenjualanCreate_(ctx) {
     }], ctx.user.id);
   }
 
-  // 6. Update Poin & Total Belanja Member (khusus nilai barang lunas, tidak termasuk ongkir)
-  let pelangganRespon = pelanggan;
-  if (pelanggan && String(pelanggan.tipe || '').toLowerCase() === 'member') {
-    const totalBelanjaLama = Number(pelanggan.total_belanja || 0);
-    const totalBelanjaBaru = totalBelanjaLama + bayarBarangSaatIni;
-    const poinLama = Number(pelanggan.poin || 0);
-    const poinBaru = poinLama + poinDidapat;
+  // 6. Update Poin, Total Belanja Member & Pemotongan Saldo Titipan/Deposit Pelanggan
+  let pelangganRespon = pelanggan ? Object.assign({}, pelanggan, { saldo_deposit: Number(pelanggan.saldo_deposit || 0) }) : null;
+  if (pelanggan) {
+    const isMemberPel = String(pelanggan.tipe || '').toLowerCase() === 'member';
+    const dataUpdatePel = {};
+    let saldoDepositBaru = Number(pelanggan.saldo_deposit || 0);
 
-    // Evaluasi kenaikan level member secara aman (tidak pernah menurunkan level yang sudah tinggi)
-    const levelBaru = evaluasiLevelMember_(pelanggan.level, totalBelanjaBaru, pengaturan);
+    if (totalDeposit > 0) {
+      saldoDepositBaru = Math.max(0, saldoDepositBaru - totalDeposit);
+      dataUpdatePel.saldo_deposit = saldoDepositBaru;
+    }
 
-    ubahBaris_('Pelanggan', [{
-      id: pelanggan.id,
-      data: {
+    if (isMemberPel) {
+      const totalBelanjaLama = Number(pelanggan.total_belanja || 0);
+      const totalBelanjaBaru = totalBelanjaLama + bayarBarangSaatIni;
+      const poinLama = Number(pelanggan.poin || 0);
+      const poinBaru = poinLama + poinDidapat;
+
+      // Evaluasi kenaikan level member secara aman (tidak pernah menurunkan level yang sudah tinggi)
+      const levelBaru = evaluasiLevelMember_(pelanggan.level, totalBelanjaBaru, pengaturan);
+
+      dataUpdatePel.total_belanja = totalBelanjaBaru;
+      dataUpdatePel.poin = poinBaru;
+      dataUpdatePel.level = levelBaru;
+
+      pelangganRespon = Object.assign({}, pelangganRespon, {
         total_belanja: totalBelanjaBaru,
         poin: poinBaru,
-        level: levelBaru
+        level: levelBaru,
+        saldo_deposit: saldoDepositBaru
+      });
+
+      if (poinDidapat > 0) {
+        tambahBaris_('Poin_Log', [{
+          pelanggan_id: pelanggan.id,
+          jumlah: poinDidapat,
+          jenis: 'dapat',
+          ref_id: noNota,
+          saldo: poinBaru
+        }], ctx.user.id);
       }
-    }], ctx.user.id);
+    } else if (totalDeposit > 0) {
+      pelangganRespon = Object.assign({}, pelangganRespon, {
+        saldo_deposit: saldoDepositBaru
+      });
+    }
 
-    // Pastikan objek pelanggan di respons transaksi & struk membawa saldo poin & level terbaru
-    pelangganRespon = Object.assign({}, pelanggan, {
-      total_belanja: totalBelanjaBaru,
-      poin: poinBaru,
-      level: levelBaru
-    });
+    if (Object.keys(dataUpdatePel).length > 0) {
+      ubahBaris_('Pelanggan', [{
+        id: pelanggan.id,
+        data: dataUpdatePel
+      }], ctx.user.id);
+    }
 
-    if (poinDidapat > 0) {
-      tambahBaris_('Poin_Log', [{
+    if (totalDeposit > 0) {
+      tambahBaris_('Deposit_Log', [{
+        no_bukti: nomorBerikut_('DEP'),
         pelanggan_id: pelanggan.id,
-        jumlah: poinDidapat,
-        jenis: 'dapat',
+        jenis: 'pakai',
+        metode: 'deposit',
+        jumlah: -totalDeposit,
+        saldo: saldoDepositBaru,
         ref_id: noNota,
-        saldo: poinBaru
+        catatan: 'Pembayaran nota ' + noNota
       }], ctx.user.id);
     }
   }
@@ -3157,7 +3213,25 @@ function aksiPenjualanShiftKasir_(ctx) {
     }
   });
 
-  const totalLaci = Math.max(0, modalAwal + totalTunai + totalPiutangTunai - totalBiayaKasir - totalRefundTunai);
+  // Terima Titipan / Tarik Titipan Pelanggan Tunai Hari Ini (masuk/keluar laci kasir)
+  let totalDepositTunai = 0;
+  let totalTarikDepositTunai = 0;
+  bacaSemua_('Deposit_Log').forEach(function (dl) {
+    if (dl.deleted) return;
+    const tgl = String(dl.created_at || '').substring(0, 10);
+    if (tgl !== targetTgl) return;
+    if (targetKasirId && dl.created_by !== targetKasirId) return;
+    const m = String(dl.metode || '').toLowerCase();
+    if (m !== 'tunai') return;
+    const jml = Number(dl.jumlah) || 0;
+    if (dl.jenis === 'masuk' && jml > 0) {
+      totalDepositTunai += jml;
+    } else if (dl.jenis === 'tarik' && jml !== 0) {
+      totalTarikDepositTunai += Math.abs(jml);
+    }
+  });
+
+  const totalLaci = Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai);
 
   return {
     tanggal: targetTgl,
@@ -3173,6 +3247,8 @@ function aksiPenjualanShiftKasir_(ctx) {
     total_tempo: totalTempo,
     total_diskon: totalDiskon,
     total_piutang_tunai: totalPiutangTunai,
+    total_deposit_tunai: totalDepositTunai,
+    total_tarik_deposit_tunai: totalTarikDepositTunai,
     total_refund_tunai: totalRefundTunai,
     total_biaya_kasir: totalBiayaKasir,
     rincian_biaya_kasir: rincianBiayaKasir,
@@ -3277,30 +3353,52 @@ function aksiPenjualanVoid_(ctx) {
     }], ctx.user.id);
   });
 
-  // 2. Batalkan Poin & Kurangi Total Belanja Member (hanya sebesar bagian yang memang sudah dibayar/masuk total_belanja)
+  // 2. Batalkan Poin, Kurangi Total Belanja Member & Kembalikan Saldo Titipan (Deposit) jika dipakai pada nota ini
   if (penjualan.pelanggan_id) {
     const pel = cariById_('Pelanggan', penjualan.pelanggan_id);
-    if (pel && String(pel.tipe || '').toLowerCase() === 'member') {
-      const poinKembali = Number(penjualan.poin_didapat || 0);
-      const poinLama = Number(pel.poin || 0);
-      const poinBaru = Math.max(0, poinLama - poinKembali);
-      const belanjaLama = Number(pel.total_belanja || 0);
-      const ongkirNota = Math.max(0, Number(penjualan.ongkir || 0));
-      const totalBarangNota = Math.max(0, Number(penjualan.total || 0) - ongkirNota);
-      const porsiTempoAwal = piutangTerkait ? Number(piutangTerkait.total || 0) : 0;
-      const porsiLunasAwal = piutangTerkait
-        ? Math.max(0, Number(penjualan.total || 0) - porsiTempoAwal)
-        : (String(penjualan.status_bayar || '') === 'belum_lunas' ? 0 : Number(penjualan.total || 0));
-      const porsiSudahMasukBelanja = Math.min(totalBarangNota, porsiLunasAwal);
-      const belanjaBaru = Math.max(0, belanjaLama - porsiSudahMasukBelanja);
+    if (pel) {
+      const dataBalikPel = {};
 
-      if (poinKembali > 0 || porsiSudahMasukBelanja > 0) {
+      // Cek apakah nota ini dibayar menggunakan saldo deposit
+      let totalDepositKembali = 0;
+      bacaSemua_('Penjualan_Bayar').forEach(function (byr) {
+        if (!byr.deleted && byr.penjualan_id === penjualan.id && String(byr.metode || '').toLowerCase() === 'deposit') {
+          totalDepositKembali += (Number(byr.jumlah) || 0);
+        }
+      });
+
+      let saldoDepositBaru = Number(pel.saldo_deposit || 0);
+      if (totalDepositKembali > 0) {
+        saldoDepositBaru += totalDepositKembali;
+        dataBalikPel.saldo_deposit = saldoDepositBaru;
+      }
+
+      let poinKembali = 0;
+      let poinBaru = Number(pel.poin || 0);
+      if (String(pel.tipe || '').toLowerCase() === 'member') {
+        poinKembali = Number(penjualan.poin_didapat || 0);
+        const poinLama = Number(pel.poin || 0);
+        poinBaru = Math.max(0, poinLama - poinKembali);
+        const belanjaLama = Number(pel.total_belanja || 0);
+        const ongkirNota = Math.max(0, Number(penjualan.ongkir || 0));
+        const totalBarangNota = Math.max(0, Number(penjualan.total || 0) - ongkirNota);
+        const porsiTempoAwal = piutangTerkait ? Number(piutangTerkait.total || 0) : 0;
+        const porsiLunasAwal = piutangTerkait
+          ? Math.max(0, Number(penjualan.total || 0) - porsiTempoAwal)
+          : (String(penjualan.status_bayar || '') === 'belum_lunas' ? 0 : Number(penjualan.total || 0));
+        const porsiSudahMasukBelanja = Math.min(totalBarangNota, porsiLunasAwal);
+        const belanjaBaru = Math.max(0, belanjaLama - porsiSudahMasukBelanja);
+
+        if (poinKembali > 0 || porsiSudahMasukBelanja > 0) {
+          dataBalikPel.poin = poinBaru;
+          dataBalikPel.total_belanja = belanjaBaru;
+        }
+      }
+
+      if (Object.keys(dataBalikPel).length > 0) {
         ubahBaris_('Pelanggan', [{
           id: pel.id,
-          data: {
-            poin: poinBaru,
-            total_belanja: belanjaBaru
-          }
+          data: dataBalikPel
         }], ctx.user.id);
       }
 
@@ -3311,6 +3409,19 @@ function aksiPenjualanVoid_(ctx) {
           jenis: 'void',
           ref_id: penjualan.no_nota,
           saldo: poinBaru
+        }], ctx.user.id);
+      }
+
+      if (totalDepositKembali > 0) {
+        tambahBaris_('Deposit_Log', [{
+          no_bukti: nomorBerikut_('DEP'),
+          pelanggan_id: pel.id,
+          jenis: 'void',
+          metode: 'deposit',
+          jumlah: totalDepositKembali,
+          saldo: saldoDepositBaru,
+          ref_id: penjualan.no_nota,
+          catatan: 'Pengembalian saldo titipan dari void ' + penjualan.no_nota
         }], ctx.user.id);
       }
     }
@@ -4943,7 +5054,13 @@ function aksiReturCreate_(ctx) {
       gagal_(KODE.CONFLICT, 'Hanya penjualan berstatus "final" yang dapat diretur.');
     }
     pihakId = transaksiAsal.pelanggan_id || '';
+    if (metodeRefund === 'deposit' && !pihakId) {
+      gagal_(KODE.VALIDATION, 'Pengembalian ke Saldo Titipan (Deposit) hanya berlaku untuk transaksi pelanggan terdaftar.');
+    }
   } else {
+    if (metodeRefund === 'deposit') {
+      gagal_(KODE.VALIDATION, 'Metode refund Saldo Titipan tidak berlaku untuk retur pembelian.');
+    }
     transaksiAsal = cariById_('Pembelian', refId);
     if (!transaksiAsal || transaksiAsal.deleted) {
       gagal_(KODE.NOT_FOUND, 'Faktur pembelian asal tidak ditemukan.');
@@ -5367,6 +5484,30 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
         }
       }
     }
+
+    // Refund: kembalikan ke Saldo Titipan / Deposit Pelanggan
+    if (retur.metode_refund === 'deposit' && retur.pihak_id) {
+      const pelDep = cariById_('Pelanggan', retur.pihak_id);
+      if (pelDep && !pelDep.deleted) {
+        const nilaiRetur = Number(retur.total) || 0;
+        const saldoBaru = (Number(pelDep.saldo_deposit) || 0) + nilaiRetur;
+        ubahBaris_('Pelanggan', [{
+          id: pelDep.id,
+          data: { saldo_deposit: saldoBaru }
+        }], ctx.user.id);
+
+        tambahBaris_('Deposit_Log', [{
+          no_bukti: nomorBerikut_('DEP'),
+          pelanggan_id: pelDep.id,
+          jenis: 'retur',
+          metode: 'deposit',
+          jumlah: nilaiRetur,
+          saldo: saldoBaru,
+          ref_id: retur.no_retur,
+          catatan: 'Pengembalian dana retur ' + retur.no_retur
+        }], ctx.user.id);
+      }
+    }
   } else {
     // Retur Beli: potong hutang jika metode_refund === 'potong_hutang' & sinkronkan status_bayar di Pembelian asal
     if (retur.metode_refund === 'potong_hutang') {
@@ -5479,14 +5620,26 @@ function aksiPelangganDetail_(ctx) {
       return copy;
     });
 
+  // Riwayat Mutasi Saldo Titipan / Deposit (20 terakhir)
+  const semuaDeposit = bacaSemua_('Deposit_Log');
+  const riwayatDeposit = semuaDeposit
+    .filter(function (dl) { return dl.pelanggan_id === pel.id && !dl.deleted; })
+    .sort(function (a, b) { return String(b.created_at || '').localeCompare(String(a.created_at || '')); })
+    .slice(0, 20);
+
+  const pelCopy = Object.assign({}, pel, {
+    saldo_deposit: Number(pel.saldo_deposit) || 0
+  });
+
   return {
-    pelanggan: pel,
+    pelanggan: pelCopy,
     piutang_berjalan: piutangBerjalan,
     sisa_limit: sisaLimit,
     daftar_piutang: daftarPiutang,
     riwayat_penjualan: riwayatPenjualan,
     riwayat_poin: riwayatPoin,
-    riwayat_penukaran: riwayatPenukaran
+    riwayat_penukaran: riwayatPenukaran,
+    riwayat_deposit: riwayatDeposit
   };
 }
 
@@ -5640,6 +5793,12 @@ function aksiPelangganDelete_(ctx) {
     gagal_(KODE.CONFLICT, 'Pelanggan ' + pel.nama + ' tidak dapat dihapus karena masih memiliki saldo piutang aktif sebesar Rp ' + totalSisa.toLocaleString('id-ID') + '. Selesaikan piutang terlebih dahulu.');
   }
 
+  // Cek saldo titipan / deposit aktif
+  const saldoDepositAktif = Number(pel.saldo_deposit) || 0;
+  if (saldoDepositAktif > 0) {
+    gagal_(KODE.CONFLICT, 'Pelanggan ' + pel.nama + ' tidak dapat dihapus karena masih memiliki Saldo Titipan sebesar ' + formatRupiah_(saldoDepositAktif) + '. Kembalikan saldo terlebih dahulu.');
+  }
+
   hapusLunak_('Pelanggan', pel.id, ctx.user.id);
 
   catatAudit_(ctx.user.id, 'pelanggan_delete', 'PELANGGAN', pel.id, { nama: pel.nama, kode: pel.kode });
@@ -5647,6 +5806,145 @@ function aksiPelangganDelete_(ctx) {
   return {
     pesan: 'Pelanggan ' + pel.nama + ' berhasil dihapus.',
     id: pel.id
+  };
+}
+
+/**
+ * deposit.tambah — Terima titipan uang / top-up saldo deposit pelanggan (Semua Role).
+ * Masuk arus kas (tunai/transfer/qris) & shift kasir (jika tunai), TIDAK masuk omset/laba/poin.
+ */
+function aksiDepositTambah_(ctx) {
+  const p = ctx.payload || {};
+  const pelangganId = V_.teks(p.pelanggan_id, 'ID Pelanggan', { wajib: true });
+  const jumlah = V_.rupiah(p.jumlah, 'Nominal Titipan', { wajib: true, min: 1 });
+  const metode = V_.pilihan(p.metode || 'tunai', 'Metode Penerimaan', ['tunai', 'transfer', 'qris']);
+  const catatan = V_.teks(p.catatan, 'Catatan Titipan', { maks: 250 });
+
+  const pel = cariById_('Pelanggan', pelangganId);
+  if (!pel || pel.deleted) gagal_(KODE.NOT_FOUND, 'Data pelanggan tidak ditemukan.');
+  if (pel.aktif === false) gagal_(KODE.VALIDATION, 'Pelanggan berstatus nonaktif tidak dapat menerima titipan.');
+
+  const saldoLama = Number(pel.saldo_deposit) || 0;
+  const saldoBaru = saldoLama + jumlah;
+  const noBukti = nomorBerikut_('DEP');
+
+  ubahBaris_('Pelanggan', [{
+    id: pel.id,
+    data: { saldo_deposit: saldoBaru }
+  }], ctx.user.id);
+
+  const logBaru = tambahBaris_('Deposit_Log', [{
+    no_bukti: noBukti,
+    pelanggan_id: pel.id,
+    jenis: 'masuk',
+    metode: metode,
+    jumlah: jumlah,
+    saldo: saldoBaru,
+    ref_id: noBukti,
+    catatan: catatan || ('Titipan saldo via ' + metode.toUpperCase())
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'deposit_tambah', 'DEPOSIT', noBukti, {
+    pelanggan_id: pel.id,
+    pelanggan_nama: pel.nama,
+    jumlah: jumlah,
+    metode: metode,
+    saldo_akhir: saldoBaru
+  });
+
+  return {
+    pesan: 'Titipan sebesar ' + formatRupiah_(jumlah) + ' untuk ' + pel.nama + ' berhasil dicatat.',
+    no_bukti: noBukti,
+    saldo_deposit: saldoBaru,
+    pelanggan: Object.assign({}, pel, { saldo_deposit: saldoBaru }),
+    log: logBaru
+  };
+}
+
+/**
+ * deposit.tarik — Pengembalian / pencairan sisa saldo titipan pelanggan (Owner & Admin).
+ * Masuk arus kas keluar (tunai/transfer) & mengurangi laci shift kasir (jika tunai).
+ */
+function aksiDepositTarik_(ctx) {
+  const p = ctx.payload || {};
+  const pelangganId = V_.teks(p.pelanggan_id, 'ID Pelanggan', { wajib: true });
+  const jumlah = V_.rupiah(p.jumlah, 'Nominal Penarikan', { wajib: true, min: 1 });
+  const metode = V_.pilihan(p.metode || 'tunai', 'Metode Pengembalian', ['tunai', 'transfer']);
+  const catatan = V_.teks(p.catatan, 'Catatan Pengembalian', { maks: 250 });
+
+  const pel = cariById_('Pelanggan', pelangganId);
+  if (!pel || pel.deleted) gagal_(KODE.NOT_FOUND, 'Data pelanggan tidak ditemukan.');
+
+  const saldoLama = Number(pel.saldo_deposit) || 0;
+  if (jumlah > saldoLama) {
+    gagal_(KODE.VALIDATION, 'Nominal pengembalian melebihi saldo titipan saat ini (' + formatRupiah_(saldoLama) + ').');
+  }
+
+  const saldoBaru = Math.max(0, saldoLama - jumlah);
+  const noBukti = nomorBerikut_('DEP');
+
+  ubahBaris_('Pelanggan', [{
+    id: pel.id,
+    data: { saldo_deposit: saldoBaru }
+  }], ctx.user.id);
+
+  const logBaru = tambahBaris_('Deposit_Log', [{
+    no_bukti: noBukti,
+    pelanggan_id: pel.id,
+    jenis: 'tarik',
+    metode: metode,
+    jumlah: -jumlah,
+    saldo: saldoBaru,
+    ref_id: noBukti,
+    catatan: catatan || ('Pengembalian saldo titipan via ' + metode.toUpperCase())
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'deposit_tarik', 'DEPOSIT', noBukti, {
+    pelanggan_id: pel.id,
+    pelanggan_nama: pel.nama,
+    jumlah: jumlah,
+    metode: metode,
+    saldo_akhir: saldoBaru
+  });
+
+  return {
+    pesan: 'Pengembalian saldo titipan sebesar ' + formatRupiah_(jumlah) + ' untuk ' + pel.nama + ' berhasil dicatat.',
+    no_bukti: noBukti,
+    saldo_deposit: saldoBaru,
+    pelanggan: Object.assign({}, pel, { saldo_deposit: saldoBaru }),
+    log: logBaru
+  };
+}
+
+/** deposit.riwayat — Daftar mutasi saldo titipan pelanggan (filter opsional pelanggan_id). */
+function aksiDepositRiwayat_(ctx) {
+  const p = ctx.payload || {};
+  const pelId = p.pelanggan_id ? String(p.pelanggan_id).trim() : '';
+  const limit = Math.min(Math.max(parseInt(p.limit, 10) || 50, 1), 200);
+
+  const semuaPel = bacaSemua_('Pelanggan');
+  const pelPeta = {};
+  semuaPel.forEach(function (pel) { pelPeta[pel.id] = pel.nama; });
+
+  let rows = bacaSemua_('Deposit_Log').filter(function (dl) {
+    if (dl.deleted) return false;
+    if (pelId && dl.pelanggan_id !== pelId) return false;
+    return true;
+  });
+
+  rows.sort(function (a, b) {
+    return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+  });
+
+  const items = rows.slice(0, limit).map(function (dl) {
+    const copy = Object.assign({}, dl);
+    copy.pelanggan_nama = pelPeta[dl.pelanggan_id] || 'Pelanggan';
+    return copy;
+  });
+
+  return {
+    items: items,
+    total: rows.length
   };
 }
 
@@ -5979,7 +6277,8 @@ function agregasiBayarBersih_(penjualanFinal, semuaJualBayar) {
     tunai: { total: 0, count: 0 },
     transfer: { total: 0, count: 0 },
     qris: { total: 0, count: 0 },
-    tempo: { total: 0, count: 0 }
+    tempo: { total: 0, count: 0 },
+    deposit: { total: 0, count: 0 }
   };
 
   Object.keys(byrByNota).forEach(function (pjId) {
@@ -6731,12 +7030,37 @@ function aksiLaporanArusKas_(ctx) {
     }
   });
 
-  const totalMasukTunai = masukJualTunai + masukPiutangTunai;
-  const totalMasukBank = masukJualTransfer + masukPiutangTransfer + masukJualQris + masukPiutangQris;
+  // 5. Mutasi Saldo Titipan / Deposit Pelanggan (HANYA terima titipan & pengembalian saldo yang menyentuh uang fisik/bank;
+  // pemakaian saldo di POS tidak dihitung lagi agar tidak terjadi double-counting arus kas)
+  const semuaDepositLog = bacaSemua_('Deposit_Log');
+  let masukDepositTunai = 0;
+  let masukDepositBank = 0;
+  let keluarDepositTunai = 0;
+  let keluarDepositBank = 0;
+
+  semuaDepositLog.forEach(function (dl) {
+    if (dl.deleted) return;
+    const tgl = String(dl.created_at || '').substring(0, 10);
+    if (tgl < rentang.dari || tgl > rentang.sampai) return;
+    const m = String(dl.metode || 'tunai').toLowerCase();
+    const jml = Math.abs(Number(dl.jumlah) || 0);
+    if (jml <= 0) return;
+
+    if (dl.jenis === 'masuk') {
+      if (m === 'tunai') masukDepositTunai += jml;
+      else masukDepositBank += jml;
+    } else if (dl.jenis === 'tarik') {
+      if (m === 'tunai') keluarDepositTunai += jml;
+      else keluarDepositBank += jml;
+    }
+  });
+
+  const totalMasukTunai = masukJualTunai + masukPiutangTunai + masukDepositTunai;
+  const totalMasukBank = masukJualTransfer + masukPiutangTransfer + masukJualQris + masukPiutangQris + masukDepositBank;
   const totalKasMasuk = totalMasukTunai + totalMasukBank;
 
-  const totalKeluarTunai = keluarBeliTunai + keluarHutangTunai + keluarRefundRetur + keluarBiayaTunai;
-  const totalKeluarBank = keluarBeliTransfer + keluarHutangTransfer + keluarBiayaBank;
+  const totalKeluarTunai = keluarBeliTunai + keluarHutangTunai + keluarRefundRetur + keluarBiayaTunai + keluarDepositTunai;
+  const totalKeluarBank = keluarBeliTransfer + keluarHutangTransfer + keluarBiayaBank + keluarDepositBank;
   const totalKasKeluar = totalKeluarTunai + totalKeluarBank;
 
   const arusKasBersih = totalKasMasuk - totalKasKeluar;
@@ -6759,6 +7083,8 @@ function aksiLaporanArusKas_(ctx) {
       piutang_tunai: masukPiutangTunai,
       piutang_transfer: masukPiutangTransfer,
       piutang_qris: masukPiutangQris,
+      deposit_masuk_tunai: masukDepositTunai,
+      deposit_masuk_bank: masukDepositBank,
       subtotal_tunai: totalMasukTunai,
       subtotal_bank: totalMasukBank
     },
@@ -6770,6 +7096,8 @@ function aksiLaporanArusKas_(ctx) {
       refund_retur_tunai: keluarRefundRetur,
       biaya_operasional_tunai: keluarBiayaTunai,
       biaya_operasional_bank: keluarBiayaBank,
+      deposit_tarik_tunai: keluarDepositTunai,
+      deposit_tarik_bank: keluarDepositBank,
       subtotal_tunai: totalKeluarTunai,
       subtotal_bank: totalKeluarBank
     }

@@ -1979,7 +1979,7 @@ export function renderPosModule(container) {
 
     const renderMemberList = (q = '') => {
       if (!elListContainer) return;
-      let filtered = daftarPelanggan.filter((pel) => pel.tipe === 'member' && pel.aktif !== false);
+      let filtered = daftarPelanggan.filter((pel) => pel.aktif !== false);
       const qLow = q.trim().toLowerCase();
       if (qLow) {
         filtered = filtered.filter((pel) =>
@@ -1989,27 +1989,41 @@ export function renderPosModule(container) {
         );
       }
 
+      // Prioritaskan yang punya Saldo Titipan atau berstatus Member
+      filtered.sort((a, b) => {
+        const depA = Number(a.saldo_deposit) > 0 ? 1 : 0;
+        const depB = Number(b.saldo_deposit) > 0 ? 1 : 0;
+        if (depA !== depB) return depB - depA;
+        const memA = a.tipe === 'member' ? 1 : 0;
+        const memB = b.tipe === 'member' ? 1 : 0;
+        if (memA !== memB) return memB - memA;
+        return String(a.nama || '').localeCompare(String(b.nama || ''));
+      });
+
       if (filtered.length === 0) {
-        elListContainer.innerHTML = `<div class="text-xs text-muted text-center p-3">Member tidak ditemukan</div>`;
+        elListContainer.innerHTML = `<div class="text-xs text-muted text-center p-3">Pelanggan tidak ditemukan</div>`;
         return;
       }
 
       let h = '';
       filtered.forEach((pel) => {
         const isSelected = state.pelanggan && state.pelanggan.id === pel.id;
+        const isMem = pel.tipe === 'member';
+        const dep = Number(pel.saldo_deposit) || 0;
         h += `
           <button type="button" class="list-item btn-select-pel ${isSelected ? 'active' : ''}" data-id="${pel.id}">
             <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary);">
-              ${ICONS.award}
+              ${isMem ? ICONS.award : ICONS.users}
             </div>
             <div class="grow" style="text-align: left;">
-              <div class="row" style="justify-content: space-between;">
+              <div class="row" style="justify-content: space-between; gap: 6px;">
                 <span class="fw-bold">${escapeHtml(pel.nama)}</span>
-                <span class="badge badge-primary text-xs">${escapeHtml(pel.level || 'Reguler')}</span>
+                <span class="badge ${isMem ? 'badge-primary' : 'badge-info'} text-xs">${isMem ? escapeHtml(pel.level || 'Reguler') : 'Umum'}</span>
               </div>
               <div class="text-xs text-muted mono">${escapeHtml(pel.kode || '')} • ${escapeHtml(pel.hp || '-')}</div>
               <div class="text-xs text-muted" style="margin-top: 2px;">
-                Poin: <b>${pel.poin || 0}</b> | Sisa Limit: <b class="text-success">${formatRupiah(pel.sisa_limit ?? pel.limit_kredit ?? 0)}</b>
+                ${isMem ? `Poin: <b>${pel.poin || 0}</b> | Limit: <b class="text-success">${formatRupiah(pel.sisa_limit ?? pel.limit_kredit ?? 0)}</b>` : 'Pelanggan Terdaftar'}
+                ${dep > 0 ? ` • <b class="text-success">Titipan: ${formatRupiah(dep)}</b>` : ''}
               </div>
             </div>
           </button>
@@ -2084,13 +2098,20 @@ export function renderPosModule(container) {
   function perbaruiTampilanPelanggan() {
     if (state.pelanggan) {
       elLabelPelNama.textContent = state.pelanggan.nama;
-      const poinSaatIni = Number(state.pelanggan.poin || 0).toLocaleString('id-ID');
-      elLabelPelSub.textContent = `Member ${state.pelanggan.level || 'Reguler'} • ${poinSaatIni} Poin • Limit: ${formatRupiah(state.pelanggan.sisa_limit || state.pelanggan.limit_kredit || 0)}`;
+      const isMem = state.pelanggan.tipe === 'member';
+      const dep = Number(state.pelanggan.saldo_deposit || 0);
+      const depInfo = dep > 0 ? ` • Titipan: ${formatRupiah(dep)}` : '';
+      if (isMem) {
+        const poinSaatIni = Number(state.pelanggan.poin || 0).toLocaleString('id-ID');
+        elLabelPelSub.textContent = `Member ${state.pelanggan.level || 'Reguler'} • ${poinSaatIni} Poin • Limit: ${formatRupiah(state.pelanggan.sisa_limit || state.pelanggan.limit_kredit || 0)}${depInfo}`;
+      } else {
+        elLabelPelSub.textContent = `Pelanggan Terdaftar${depInfo}`;
+      }
       elBtnCustomer.textContent = 'Ganti';
     } else {
       elLabelPelNama.textContent = 'Pelanggan Umum';
       elLabelPelSub.textContent = '(Tunai / Non-Tempo)';
-      elBtnCustomer.textContent = 'Pilih Member';
+      elBtnCustomer.textContent = 'Pilih Pelanggan';
     }
   }
 
@@ -2109,6 +2130,7 @@ export function renderPosModule(container) {
     const getGrandTotalAktif = () => totalBarangNet + getOngkirAktif();
     let grandTotal = getGrandTotalAktif();
     const isMember = state.pelanggan && state.pelanggan.tipe === 'member';
+    const saldoDeposit = state.pelanggan ? Math.max(0, Number(state.pelanggan.saldo_deposit) || 0) : 0;
 
     const modal = showModal({
       title: 'Pembayaran & Pengiriman',
@@ -2127,6 +2149,7 @@ export function renderPosModule(container) {
                 <div class="text-xs text-muted" style="margin-top: 4px;">
                   Pelanggan: <b>${escapeHtml(state.pelanggan ? state.pelanggan.nama : 'Pelanggan Umum')}</b>
                   ${isMember ? `(Poin: <b>${Number(state.pelanggan.poin || 0).toLocaleString('id-ID')}</b> • Sisa Limit: <span class="text-success">${formatRupiah(state.pelanggan.sisa_limit || 0)}</span>)` : ''}
+                  ${saldoDeposit > 0 ? `<div style="margin-top: 3px;">Saldo Titipan Tersedia: <b class="text-success mono">${formatRupiah(saldoDeposit)}</b></div>` : ''}
                 </div>
                 ${isMember ? `<div id="checkout-poin-preview" class="text-xs" style="margin-top: 6px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--surface-3); color: var(--text);"></div>` : ''}
               </div>
@@ -2181,6 +2204,9 @@ export function renderPosModule(container) {
                 <button type="button" class="btn btn-sm btn-primary btn-tab-bayar" data-metode="tunai">Tunai</button>
                 <button type="button" class="btn btn-sm btn-secondary btn-tab-bayar" data-metode="qris">QRIS</button>
                 <button type="button" class="btn btn-sm btn-secondary btn-tab-bayar" data-metode="transfer">Transfer</button>
+                <button type="button" class="btn btn-sm btn-secondary btn-tab-bayar ${saldoDeposit <= 0 ? 'disabled' : ''}" data-metode="deposit" ${saldoDeposit <= 0 ? 'disabled title="Pelanggan belum memiliki saldo titipan"' : ''}>
+                  Saldo Titipan
+                </button>
                 <button type="button" class="btn btn-sm btn-secondary btn-tab-bayar ${!isMember ? 'disabled' : ''}" data-metode="tempo" ${!isMember ? 'disabled title="Tempo hanya untuk Member"' : ''}>
                   Tempo / Kredit
                 </button>
@@ -2218,6 +2244,30 @@ export function renderPosModule(container) {
                 <input type="text" id="input-ref-bayar" class="input" placeholder="Contoh: REF-12345678" />
               </div>
 
+              <!-- Section Saldo Titipan / Deposit -->
+              <div id="sec-deposit" style="display: none;">
+                <div class="card" style="background: var(--surface-3); padding: var(--sp-3);">
+                  <div class="stack" style="gap: 6px;">
+                    <div class="row" style="justify-content: space-between;">
+                      <span class="text-xs text-muted">Saldo Titipan Saat Ini:</span>
+                      <span class="fw-bold mono text-success">${formatRupiah(saldoDeposit)}</span>
+                    </div>
+                    <div class="row" style="justify-content: space-between;">
+                      <span class="text-xs text-muted">Dipotong untuk Nota Ini:</span>
+                      <span class="fw-bold mono text-danger" id="dep-potong-label">-${formatRupiah(grandTotal)}</span>
+                    </div>
+                    <div class="divider" style="margin: 2px 0;"></div>
+                    <div class="row" style="justify-content: space-between; align-items: baseline;">
+                      <span class="text-sm fw-semibold">Sisa Saldo Setelah Bayar:</span>
+                      <span class="fw-bold mono text-primary" id="dep-sisa-label" style="font-size: var(--fs-base);">${formatRupiah(Math.max(0, saldoDeposit - grandTotal))}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 6px;">
+                  Transaksi dihitung <b>Lunas</b>, sisa saldo titipan akan tercetak otomatis di struk pelanggan.
+                </div>
+              </div>
+
               <!-- Section Tempo -->
               <div id="sec-tempo" style="display: none;">
                 <div class="alert alert-info text-xs" style="margin-bottom: var(--sp-2);">
@@ -2229,6 +2279,12 @@ export function renderPosModule(container) {
               <!-- Section Kombinasi -->
               <div id="sec-kombinasi" style="display: none;">
                 <div class="stack" style="gap: var(--sp-2);">
+                  ${saldoDeposit > 0 ? `
+                    <div class="row" style="gap: var(--sp-2); align-items: center;">
+                      <span class="text-xs text-success fw-semibold" style="width: 70px;">Titipan:</span>
+                      <input type="number" id="komb-deposit" class="input mono" value="0" min="0" max="${saldoDeposit}" style="flex: 1;" placeholder="Maks ${formatRupiah(saldoDeposit)}" />
+                    </div>
+                  ` : ''}
                   <div class="row" style="gap: var(--sp-2); align-items: center;">
                     <span class="text-xs" style="width: 70px;">Tunai:</span>
                     <input type="number" id="komb-tunai" class="input mono" value="0" min="0" style="flex: 1;" />
@@ -2261,10 +2317,13 @@ export function renderPosModule(container) {
     let activeMetode = 'tunai';
     const elTunaiSec = modal.el.querySelector('#sec-tunai');
     const elTrfSec = modal.el.querySelector('#sec-transfer-qris');
+    const elDepositSec = modal.el.querySelector('#sec-deposit');
     const elTempoSec = modal.el.querySelector('#sec-tempo');
     const elKombSec = modal.el.querySelector('#sec-kombinasi');
     const inputTunai = modal.el.querySelector('#input-tunai-terima');
     const labelKembalian = modal.el.querySelector('#label-kembalian');
+    const elDepPotong = modal.el.querySelector('#dep-potong-label');
+    const elDepSisa = modal.el.querySelector('#dep-sisa-label');
     const boxKirim = modal.el.querySelector('#box-detail-kirim');
     const elPoinPreview = modal.el.querySelector('#checkout-poin-preview');
     const elGrandTotal = modal.el.querySelector('#checkout-grand-total');
@@ -2333,11 +2392,22 @@ export function renderPosModule(container) {
 
     const updateKombSisa = () => {
       if (!elKombSisa) return;
+      const nDep = parseRupiah(modal.el.querySelector('#komb-deposit')?.value || 0);
       const nTunai = parseRupiah(modal.el.querySelector('#komb-tunai')?.value || 0);
       const nTrf = parseRupiah(modal.el.querySelector('#komb-transfer')?.value || 0);
       const nTempo = parseRupiah(modal.el.querySelector('#komb-tempo')?.value || 0);
-      const sisa = Math.max(0, grandTotal - (nTunai + nTrf + nTempo));
-      elKombSisa.textContent = sisa > 0 ? `Sisa Kurang: ${formatRupiah(sisa)}` : `Terpenuhi (Kembalian: ${formatRupiah(Math.max(0, (nTunai + nTrf + nTempo) - grandTotal))})`;
+      const totBayar = nDep + nTunai + nTrf + nTempo;
+      const sisa = Math.max(0, grandTotal - totBayar);
+      elKombSisa.textContent = sisa > 0 ? `Sisa Kurang: ${formatRupiah(sisa)}` : `Terpenuhi (Kembalian: ${formatRupiah(Math.max(0, totBayar - grandTotal))})`;
+    };
+
+    const updateDepositPreview = () => {
+      if (elDepPotong) elDepPotong.textContent = `-${formatRupiah(grandTotal)}`;
+      if (elDepSisa) {
+        const sisaDep = saldoDeposit - grandTotal;
+        elDepSisa.textContent = sisaDep >= 0 ? formatRupiah(sisaDep) : `Kurang ${formatRupiah(Math.abs(sisaDep))}`;
+        elDepSisa.className = `fw-bold mono ${sisaDep >= 0 ? 'text-primary' : 'text-danger'}`;
+      }
     };
 
     const perbaruiTotalCheckout = (syncInputTunai = true) => {
@@ -2358,16 +2428,19 @@ export function renderPosModule(container) {
       }
       updateKembalian();
       updateKombSisa();
+      updateDepositPreview();
       perbaruiPreviewPoin();
     };
 
     perbaruiPreviewPoin();
     updateKombSisa();
+    updateDepositPreview();
 
     const onKombInput = () => {
       updateKombSisa();
       perbaruiPreviewPoin();
     };
+    modal.el.querySelector('#komb-deposit')?.addEventListener('input', onKombInput);
     modal.el.querySelector('#komb-tempo')?.addEventListener('input', onKombInput);
     modal.el.querySelector('#komb-tunai')?.addEventListener('input', onKombInput);
     modal.el.querySelector('#komb-transfer')?.addEventListener('input', onKombInput);
@@ -2415,18 +2488,38 @@ export function renderPosModule(container) {
     });
 
     // Tab Metode Bayar
+    const aktifkanTabMetode = (targetMetode) => {
+      activeMetode = targetMetode;
+      modal.el.querySelectorAll('.btn-tab-bayar').forEach((x) => {
+        const isTarget = x.getAttribute('data-metode') === targetMetode;
+        x.className = `btn btn-sm ${isTarget ? 'btn-primary' : 'btn-secondary'} btn-tab-bayar` + (x.hasAttribute('disabled') ? ' disabled' : '');
+      });
+      elTunaiSec.style.display = activeMetode === 'tunai' ? 'block' : 'none';
+      elTrfSec.style.display = (activeMetode === 'transfer' || activeMetode === 'qris') ? 'block' : 'none';
+      if (elDepositSec) elDepositSec.style.display = activeMetode === 'deposit' ? 'block' : 'none';
+      elTempoSec.style.display = activeMetode === 'tempo' ? 'block' : 'none';
+      elKombSec.style.display = activeMetode === 'kombinasi' ? 'block' : 'none';
+      updateDepositPreview();
+      perbaruiPreviewPoin();
+    };
+
     modal.el.querySelectorAll('.btn-tab-bayar').forEach((btn) => {
       btn.addEventListener('click', () => {
         if (btn.classList.contains('disabled')) return;
-        modal.el.querySelectorAll('.btn-tab-bayar').forEach((x) => x.className = 'btn btn-sm btn-secondary btn-tab-bayar' + (x.hasAttribute('disabled') ? ' disabled' : ''));
-        btn.className = 'btn btn-sm btn-primary btn-tab-bayar';
-        activeMetode = btn.getAttribute('data-metode');
-
-        elTunaiSec.style.display = activeMetode === 'tunai' ? 'block' : 'none';
-        elTrfSec.style.display = (activeMetode === 'transfer' || activeMetode === 'qris') ? 'block' : 'none';
-        elTempoSec.style.display = activeMetode === 'tempo' ? 'block' : 'none';
-        elKombSec.style.display = activeMetode === 'kombinasi' ? 'block' : 'none';
-        perbaruiPreviewPoin();
+        const m = btn.getAttribute('data-metode');
+        if (m === 'deposit' && saldoDeposit > 0 && saldoDeposit < grandTotal) {
+          // Saldo titipan tidak cukup untuk bayar penuh → otomatis alihkan ke Kombinasi terisi rapi
+          const inpKombDep = modal.el.querySelector('#komb-deposit');
+          const inpKombTunai = modal.el.querySelector('#komb-tunai');
+          const sisaKurang = Math.max(0, grandTotal - saldoDeposit);
+          if (inpKombDep) inpKombDep.value = String(saldoDeposit);
+          if (inpKombTunai) inpKombTunai.value = String(sisaKurang);
+          aktifkanTabMetode('kombinasi');
+          updateKombSisa();
+          showToast(`Saldo titipan ${formatRupiah(saldoDeposit)} dipasang otomatis. Silakan lunasi sisa ${formatRupiah(sisaKurang)}.`, 'info', 3500);
+          return;
+        }
+        aktifkanTabMetode(m);
       });
     });
 
@@ -2453,6 +2546,14 @@ export function renderPosModule(container) {
         } else if (activeMetode === 'qris' || activeMetode === 'transfer') {
           const ref = modal.el.querySelector('#input-ref-bayar').value.trim();
           daftarBayar.push({ metode: activeMetode, jumlah: grandTotal, referensi: ref });
+        } else if (activeMetode === 'deposit') {
+          if (saldoDeposit < grandTotal) {
+            showToast(`Saldo titipan (${formatRupiah(saldoDeposit)}) kurang dari total tagihan. Gunakan metode Kombinasi.`, 'warning', 3500);
+            btnProses.disabled = false;
+            btnProses.textContent = 'Konfirmasi & Simpan Transaksi';
+            return;
+          }
+          daftarBayar.push({ metode: 'deposit', jumlah: grandTotal });
         } else if (activeMetode === 'tempo') {
           if (!isMember) {
             showToast('Tempo hanya diizinkan untuk Member terdaftar.', 'warning');
@@ -2461,10 +2562,20 @@ export function renderPosModule(container) {
           }
           daftarBayar.push({ metode: 'tempo', jumlah: grandTotal });
         } else if (activeMetode === 'kombinasi') {
+          const nDep = parseRupiah(modal.el.querySelector('#komb-deposit')?.value || 0);
           const nTunai = parseRupiah(modal.el.querySelector('#komb-tunai').value);
           const nTrf = parseRupiah(modal.el.querySelector('#komb-transfer').value);
           const nTempo = parseRupiah(modal.el.querySelector('#komb-tempo').value);
 
+          if (nDep > 0) {
+            if (nDep > saldoDeposit) {
+              showToast(`Pemakaian saldo titipan (${formatRupiah(nDep)}) melebihi saldo tersedia (${formatRupiah(saldoDeposit)}).`, 'warning');
+              btnProses.disabled = false;
+              btnProses.textContent = 'Konfirmasi & Simpan Transaksi';
+              return;
+            }
+            daftarBayar.push({ metode: 'deposit', jumlah: nDep });
+          }
           if (nTunai > 0) daftarBayar.push({ metode: 'tunai', jumlah: nTunai });
           if (nTrf > 0) daftarBayar.push({ metode: 'transfer', jumlah: nTrf });
           if (nTempo > 0) {
@@ -2476,7 +2587,7 @@ export function renderPosModule(container) {
             daftarBayar.push({ metode: 'tempo', jumlah: nTempo });
           }
 
-          const totKomb = nTunai + nTrf + nTempo;
+          const totKomb = nDep + nTunai + nTrf + nTempo;
           if (totKomb < grandTotal) {
             showToast(`Total pembayaran kombinasi (${formatRupiah(totKomb)}) masih kurang dari tagihan.`, 'warning');
             btnProses.disabled = false;
@@ -2526,10 +2637,11 @@ export function renderPosModule(container) {
         haptic.success();
         modal.close();
 
-        // Sinkronkan saldo poin, total belanja & level member terbaru di layar POS dan cache daftar member
+        // Sinkronkan saldo poin, saldo titipan/deposit, total belanja & level member terbaru di layar POS dan cache daftar pelanggan
         const pelTerbaru = res.data?.pelanggan;
         if (pelTerbaru && pelTerbaru.id) {
           const totalTempoDipakai = daftarBayar.filter((b) => b.metode === 'tempo').reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+          const saldoDepBaru = pelTerbaru.saldo_deposit !== undefined ? Number(pelTerbaru.saldo_deposit) : undefined;
           if (state.pelanggan && state.pelanggan.id === pelTerbaru.id) {
             const sisaLimitLama = Number(state.pelanggan.sisa_limit ?? state.pelanggan.limit_kredit ?? 0);
             state.pelanggan = {
@@ -2537,6 +2649,7 @@ export function renderPosModule(container) {
               poin: pelTerbaru.poin,
               total_belanja: pelTerbaru.total_belanja,
               level: pelTerbaru.level,
+              ...(saldoDepBaru !== undefined ? { saldo_deposit: saldoDepBaru } : {}),
               sisa_limit: Math.max(0, sisaLimitLama - totalTempoDipakai)
             };
             perbaruiTampilanPelanggan();
@@ -2550,6 +2663,7 @@ export function renderPosModule(container) {
                 poin: pelTerbaru.poin,
                 total_belanja: pelTerbaru.total_belanja,
                 level: pelTerbaru.level,
+                ...(saldoDepBaru !== undefined ? { saldo_deposit: saldoDepBaru } : {}),
                 sisa_limit: Math.max(0, sisaLama - totalTempoDipakai)
               };
             }
@@ -2722,11 +2836,15 @@ export function renderPosModule(container) {
     const hitungRumusLaci = (modalVal) => {
       const tunai = Number(reportData.total_tunai || 0);
       const piutangTunai = Number(reportData.total_piutang_tunai || 0);
+      const depositTunai = Number(reportData.total_deposit_tunai || 0);
+      const tarikDepositTunai = Number(reportData.total_tarik_deposit_tunai || 0);
       const biayaKasir = Number(reportData.total_biaya_kasir || 0);
       const refundTunai = Number(reportData.total_refund_tunai || 0);
-      const total = Math.max(0, modalVal + tunai + piutangTunai - biayaKasir - refundTunai);
+      const total = Math.max(0, modalVal + tunai + piutangTunai + depositTunai - biayaKasir - refundTunai - tarikDepositTunai);
       const bagian = [`Modal: ${formatRupiah(modalVal)}`, `+ Tunai: ${formatRupiah(tunai)}`];
       if (piutangTunai > 0) bagian.push(`+ Piutang Tunai: ${formatRupiah(piutangTunai)}`);
+      if (depositTunai > 0) bagian.push(`+ Titipan Tunai: ${formatRupiah(depositTunai)}`);
+      if (tarikDepositTunai > 0) bagian.push(`- Tarik Titipan: ${formatRupiah(tarikDepositTunai)}`);
       if (biayaKasir > 0) bagian.push(`- Kas Keluar: ${formatRupiah(biayaKasir)}`);
       if (refundTunai > 0) bagian.push(`- Refund Retur: ${formatRupiah(refundTunai)}`);
       return { total, teks: `(${bagian.join(' ')})` };
@@ -2735,6 +2853,8 @@ export function renderPosModule(container) {
     const renderShiftBody = () => {
       const totalBiayaKasir = Number(reportData.total_biaya_kasir || 0);
       const totalPiutangTunai = Number(reportData.total_piutang_tunai || 0);
+      const totalDepositTunai = Number(reportData.total_deposit_tunai || 0);
+      const totalTarikDepositTunai = Number(reportData.total_tarik_deposit_tunai || 0);
       const totalRefundTunai = Number(reportData.total_refund_tunai || 0);
       const { total: totalLaci, teks: teksRumusLaci } = hitungRumusLaci(modalAwal);
       reportData.modal_awal = modalAwal;
@@ -2806,6 +2926,12 @@ export function renderPosModule(container) {
                 <span class="fw-bold mono text-success">+${formatRupiah(totalPiutangTunai)}</span>
               </div>
             ` : ''}
+            ${totalDepositTunai > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-success fw-semibold">(+) Terima Titipan Pelanggan (Tunai):</span>
+                <span class="fw-bold mono text-success">+${formatRupiah(totalDepositTunai)}</span>
+              </div>
+            ` : ''}
             <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
               <span class="text-muted">Non-Tunai (Transfer / QRIS):</span>
               <span class="fw-bold mono text-info">${formatRupiah(reportData.total_transfer || 0)}</span>
@@ -2814,6 +2940,12 @@ export function renderPosModule(container) {
               <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
                 <span class="text-muted">Piutang Pelanggan (Tempo):</span>
                 <span class="fw-bold mono text-warning">${formatRupiah(reportData.total_tempo || 0)}</span>
+              </div>
+            ` : ''}
+            ${totalTarikDepositTunai > 0 ? `
+              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+                <span class="text-danger fw-semibold">(-) Pengembalian Titipan Tunai:</span>
+                <span class="fw-bold mono text-danger">-${formatRupiah(totalTarikDepositTunai)}</span>
               </div>
             ` : ''}
             ${totalRefundTunai > 0 ? `

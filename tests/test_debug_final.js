@@ -1449,6 +1449,149 @@ async function runAudit() {
       `Alokasi rata per qty wajib menaikkan masing-masing +Rp 1.000/unit (A=101rb, B=11rb), aktual: A=${hppA}, B=${hppB}`);
   });
 
+  test('20. Saldo Titipan / Deposit Pelanggan: Top-Up, Bayar POS Anti-Dobel Kas, Poin, Void, Retur, Tarik & Guard Hapus', () => {
+    const envDep = setupMockEnv();
+    envDep.setupDatabase();
+    const ownerRow = envDep.bacaSemua_('Users').find(u => u.username === 'owner');
+    const kasirRes = envDep.aksiUserCreate_({
+      user: ownerRow,
+      payload: { username: 'kasirdep', nama: 'Kasir Deposit', role: 'kasir', pin: '123456' }
+    });
+    const kasirRow = envDep.bacaSemua_('Users').find(u => u.username === 'kasirdep');
+
+    const pelCreate = envDep.aksiPelangganCreate_({
+      user: ownerRow,
+      payload: { nama: 'Pak Harto Proyek', hp: '081299998888', tipe: 'member', level: 'Reguler', limit_kredit: 0 }
+    });
+    const pelId = pelCreate.pelanggan.id;
+
+    const prodCreate = envDep.aksiProdukCreate_({
+      user: ownerRow,
+      payload: { nama: 'Cat Tembok 25kg', satuan_dasar: 'PAIL', hpp: 80000, harga_ritel: 100000, stok: 50, stok_min: 5 }
+    });
+    const prodId = (prodCreate.produk || prodCreate).id;
+
+    // 20a. Top-up Tunai Rp 500.000 (oleh kasir) + Transfer Rp 300.000 (oleh owner) -> saldo Rp 800.000, 0 omset, 0 poin
+    const dep1 = envDep.aksiDepositTambah_({
+      user: kasirRow,
+      payload: { pelanggan_id: pelId, jumlah: 500000, metode: 'tunai', catatan: 'Titipan awal proyek' }
+    });
+    const dep2 = envDep.aksiDepositTambah_({
+      user: ownerRow,
+      payload: { pelanggan_id: pelId, jumlah: 300000, metode: 'transfer', catatan: 'Tambahan titipan transfer' }
+    });
+    assert(dep1.saldo_deposit === 500000 && dep2.saldo_deposit === 800000, `Saldo titipan wajib Rp 800.000, aktual: ${dep2.saldo_deposit}`);
+
+    const arusKasAwal = envDep.aksiLaporanArusKas_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(arusKasAwal.rincian_masuk.deposit_masuk_tunai === 500000 && arusKasAwal.rincian_masuk.deposit_masuk_bank === 300000,
+      `Arus kas masuk wajib catat deposit tunai 500rb & bank 300rb`);
+    assert(arusKasAwal.ringkasan.total_kas_masuk === 800000, `Total kas masuk awal wajib Rp 800.000`);
+
+    const shiftKasir1 = envDep.aksiPenjualanShiftKasir_({ user: kasirRow, payload: {} });
+    assert(shiftKasir1.total_deposit_tunai === 500000 && shiftKasir1.total_laci === 500000,
+      `Shift kasir wajib mencatat titipan tunai Rp 500.000 di laci, aktual: ${shiftKasir1.total_laci}`);
+
+    const lapJualAwal = envDep.aksiLaporanPenjualan_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lapJualAwal.ringkasan.total_omset === 0, 'Terima titipan tidak boleh masuk omset penjualan');
+    assert(envDep.cariById_('Pelanggan', pelId).poin === 0, 'Terima titipan tidak boleh memberikan poin member');
+
+    // 20b. Belanja POS Rp 200.000 barang + Rp 50.000 ongkir = Rp 250.000 dibayar PENUH via Deposit
+    const jualDep = envDep.aksiPenjualanCreate_({
+      user: kasirRow,
+      payload: {
+        pelanggan_id: pelId,
+        pengiriman: 'dikirim',
+        ongkir: 50000,
+        items: [{ produk_id: prodId, satuan: 'PAIL', faktor: 1, qty: 2, harga: 100000, tipe_harga: 'ritel' }],
+        pembayaran: [{ metode: 'deposit', jumlah: 250000 }]
+      }
+    });
+    assert(jualDep.pelanggan.saldo_deposit === 550000, `Saldo deposit wajib turun ke Rp 550.000, aktual: ${jualDep.pelanggan.saldo_deposit}`);
+    assert(jualDep.penjualan.poin_didapat === 20, `Belanja lunas via deposit (barang Rp 200rb, ongkir Rp 50rb) wajib beri 20 poin, aktual: ${jualDep.penjualan.poin_didapat}`);
+
+    // Anti double-counting Arus Kas: pemakaian deposit TIDAK BOLEH menambah total_kas_masuk!
+    const arusKasSetelahPakai = envDep.aksiLaporanArusKas_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(arusKasSetelahPakai.ringkasan.total_kas_masuk === 800000,
+      `Anti double-count: total_kas_masuk wajib tetap Rp 800.000 setelah belanja pakai deposit, aktual: ${arusKasSetelahPakai.ringkasan.total_kas_masuk}`);
+
+    // 20c. Belanja Kombinasi: 7 item = Rp 700.000 -> Deposit Rp 550.000 + Tunai Rp 150.000
+    const jualKomb = envDep.aksiPenjualanCreate_({
+      user: kasirRow,
+      payload: {
+        pelanggan_id: pelId,
+        items: [{ produk_id: prodId, satuan: 'PAIL', faktor: 1, qty: 7, harga: 100000, tipe_harga: 'ritel' }],
+        pembayaran: [
+          { metode: 'deposit', jumlah: 550000 },
+          { metode: 'tunai', jumlah: 150000 }
+        ]
+      }
+    });
+    assert(jualKomb.pelanggan.saldo_deposit === 0, `Saldo deposit wajib habis Rp 0, aktual: ${jualKomb.pelanggan.saldo_deposit}`);
+    const arusKasKomb = envDep.aksiLaporanArusKas_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(arusKasKomb.rincian_masuk.penjualan_tunai === 150000 && arusKasKomb.ringkasan.total_kas_masuk === 950000,
+      `Kombinasi deposit+tunai hanya memasukkan porsi tunai Rp 150.000 ke Arus Kas (total Rp 950.000), aktual: ${arusKasKomb.ringkasan.total_kas_masuk}`);
+
+    // 20d. Belanja pakai deposit saat saldo = 0 wajib ditolak
+    let gagalSaldoKurang = false;
+    try {
+      envDep.aksiPenjualanCreate_({
+        user: kasirRow,
+        payload: {
+          pelanggan_id: pelId,
+          items: [{ produk_id: prodId, satuan: 'PAIL', faktor: 1, qty: 1, harga: 100000, tipe_harga: 'ritel' }],
+          pembayaran: [{ metode: 'deposit', jumlah: 100000 }]
+        }
+      });
+    } catch (e) {
+      gagalSaldoKurang = true;
+    }
+    assert(gagalSaldoKurang === true, 'Belanja deposit melebihi saldo wajib ditolak');
+
+    // 20e. Void nota jualDep (Rp 250.000 deposit) wajib mengembalikan saldo Rp 250.000 ke pelanggan
+    envDep.aksiPenjualanVoid_({
+      user: ownerRow,
+      payload: { id: jualDep.penjualan.id, alasan: 'Batal order proyek' }
+    });
+    assert(envDep.cariById_('Pelanggan', pelId).saldo_deposit === 250000,
+      `Void nota deposit wajib mengembalikan saldo Rp 250.000, aktual: ${envDep.cariById_('Pelanggan', pelId).saldo_deposit}`);
+
+    // 20f. Retur 1 item (Rp 100.000) dari jualKomb dengan metode_refund = 'deposit' -> saldo jadi Rp 350.000
+    envDep.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual',
+        ref_id: jualKomb.penjualan.id,
+        alasan: 'Sisa cat tidak terpakai',
+        metode_refund: 'deposit',
+        items: [{ produk_id: prodId, nama: 'Cat Tembok 25kg', satuan: 'PAIL', faktor: 1, qty: 1, harga: 100000, hpp: 80000 }]
+      }
+    });
+    assert(envDep.cariById_('Pelanggan', pelId).saldo_deposit === 350000,
+      `Refund retur ke deposit wajib menambah saldo menjadi Rp 350.000, aktual: ${envDep.cariById_('Pelanggan', pelId).saldo_deposit}`);
+
+    // 20g. Hapus pelanggan saat masih ada saldo deposit wajib ditolak
+    let gagalHapusPel = false;
+    try {
+      envDep.aksiPelangganDelete_({ user: ownerRow, payload: { id: pelId } });
+    } catch (e) {
+      gagalHapusPel = true;
+    }
+    assert(gagalHapusPel === true, 'Penghapusan pelanggan dengan saldo deposit > 0 wajib ditolak');
+
+    // 20h. RBAC deposit.tarik: Kasir dilarang via router resmi (FORBIDDEN), Owner boleh tarik tunai Rp 100.000 -> masuk arus kas keluar & kurangi laci
+    const resKasirTarik = callApi('deposit.tarik', tokenKasir, { pelanggan_id: pelId, jumlah: 50000, metode: 'tunai' });
+    assert(resKasirTarik.ok === false && resKasirTarik.code === 'FORBIDDEN',
+      `Kasir wajib ditolak (FORBIDDEN) saat memanggil deposit.tarik, aktual: ${resKasirTarik.code}`);
+    const tarikRes = envDep.aksiDepositTarik_({
+      user: ownerRow,
+      payload: { pelanggan_id: pelId, jumlah: 100000, metode: 'tunai', catatan: 'Kembalikan sebagian sisa titipan' }
+    });
+    assert(tarikRes.saldo_deposit === 250000, `Saldo setelah penarikan Rp 100rb wajib Rp 250.000, aktual: ${tarikRes.saldo_deposit}`);
+    const arusKasAkhir = envDep.aksiLaporanArusKas_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(arusKasAkhir.rincian_keluar.deposit_tarik_tunai === 100000,
+      `Arus kas keluar wajib mencatat pengembalian deposit tunai Rp 100.000, aktual: ${arusKasAkhir.rincian_keluar.deposit_tarik_tunai}`);
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

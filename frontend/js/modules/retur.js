@@ -250,7 +250,9 @@ async function muatDataReturJual(container) {
       if (it.status === 'disetujui') badgeStatus = '<span class="badge badge-success">Disetujui</span>';
       if (it.status === 'ditolak') badgeStatus = '<span class="badge badge-danger">Ditolak</span>';
 
-      const metodeRefund = it.metode_refund === 'potong_piutang' ? 'Potong Piutang' : 'Kas Toko';
+      const metodeRefund = it.metode_refund === 'potong_piutang'
+        ? 'Potong Piutang'
+        : (it.metode_refund === 'deposit' ? 'Saldo Titipan' : 'Kas Toko');
 
       return `
                 <tr data-id="${escapeHtml(it.id)}">
@@ -628,10 +630,11 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
         <select class="input" id="rj-metode-refund" required>
           ${adaPiutangAktif ? `
             <option value="potong_piutang">Potong Sisa Piutang Nota (Sisa Tagihan: ${formatRupiah(sisaPiutang)})</option>
-            <option value="kas">Kembalikan Uang Kas / Tunai ke Pelanggan</option>
-          ` : `
-            <option value="kas">Pengembalian Uang Tunai / Kas Toko</option>
-          `}
+          ` : ''}
+          ${pj.pelanggan_id ? `
+            <option value="deposit">Kembalikan ke Saldo Titipan (Deposit Pelanggan)</option>
+          ` : ''}
+          <option value="kas">${adaPiutangAktif ? 'Kembalikan Uang Kas / Tunai ke Pelanggan' : 'Pengembalian Uang Tunai / Kas Toko'}</option>
         </select>
       </div>
 
@@ -1118,7 +1121,11 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
         <div class="pel-modal-profile-stats">
           <div class="pel-modal-stat-item">
             <span class="text-2xs text-muted uppercase fw-semibold">Metode Refund</span>
-            <div style="margin-top: 2px;"><span class="badge badge-info">${escapeHtml(rt.metode_refund || 'kas')}</span></div>
+            <div style="margin-top: 2px;"><span class="badge badge-info">${escapeHtml(
+              rt.metode_refund === 'potong_piutang' ? 'Potong Piutang'
+                : (rt.metode_refund === 'potong_hutang' ? 'Potong Hutang'
+                  : (rt.metode_refund === 'deposit' ? 'Saldo Titipan' : 'Kas Toko'))
+            )}</span></div>
           </div>
           <div class="pel-modal-stat-divider"></div>
           <div class="pel-modal-stat-item" style="text-align: right;">
