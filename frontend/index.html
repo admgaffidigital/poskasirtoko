@@ -30,7 +30,10 @@
         r.setAttribute('data-font-style', st);
         r.setAttribute('data-font-family', ff);
         if (isFinite(s) && s >= 0.8 && s <= 1.35) r.style.setProperty('--font-scale', String(s));
-      } catch (_) {}
+        var accentHex = { orange: '#e8590c', teal: '#0d9488', blue: '#2563eb', emerald: '#059669', indigo: '#4f46e5', rose: '#e11d48', slate: '#334155' };
+        var tc = document.querySelector('meta[name="theme-color"]');
+        if (tc && accentHex[a]) tc.setAttribute('content', accentHex[a]);
+      } catch (_) { }
     })();
   </script>
 
@@ -112,7 +115,7 @@
       width: 76px;
       height: 76px;
       border-radius: 12px;
-      background: #e8590c;
+      background: var(--primary, #e8590c);
       display: grid;
       place-items: center;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -130,7 +133,7 @@
       position: absolute;
       inset: 0;
       border-radius: 12px;
-      border: 2px solid #ea580c;
+      border: 2px solid var(--primary, #e8590c);
       opacity: 0.35;
       animation: splash-ring 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
       z-index: 1;
@@ -202,7 +205,7 @@
       bottom: 0;
       left: 0;
       width: 45%;
-      background: #e8590c;
+      background: var(--primary, #e8590c);
       border-radius: 9999px;
       animation: splash-bar 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
@@ -239,7 +242,7 @@
       width: 7px;
       height: 7px;
       border-radius: 9999px;
-      background: #ea580c;
+      background: var(--primary, #e8590c);
       animation: splash-dot 1.2s infinite ease-in-out;
     }
 
@@ -306,7 +309,7 @@
 
       <!-- Versi di Bagian Bawah -->
       <div class="splash-footer">
-        <span>v1.0.100 • Terenkripsi &amp; Siap Offline</span>
+        <span>v1.0.101 • Terenkripsi &amp; Siap Offline</span>
       </div>
     </div>
   </div>

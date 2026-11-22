@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.101] - 2026-11-22
+
+### Changed
+- [PWA] [UI] [DEPLOY] **Maintenance Aplikasi, Website, Keamanan Header & Optimasi Repositori (`index.html`, `vercel.json`)**:
+  - **Sinkronisasi Tema Splash Screen & Status Bar (`index.html`)**: Mengganti warna oranye tetap pada layar splash (`.splash-logo`, `.splash-logo-ring`, `.splash-progress-bar`, `.splash-status-dot`) menjadi `var(--primary, #e8590c)` serta menyelaraskan `<meta name="theme-color">` otomatis sesuai aksen warna pilihan pengguna sebelum *first paint* (Zero-FOUC).
+  - **Optimasi Header CDN & Keamanan Website (`vercel.json`)**: Menambahkan header `Cache-Control: public, max-age=0, must-revalidate` untuk `manifest.json` dan berkas unduhan `/download/*.apk` (dengan MIME resmi `application/vnd.android.package-archive`) agar pengguna selalu mengunduh APK terbaru tanpa cache CDN lama, serta menambahkan header keamanan `Permissions-Policy`.
+  - **Pembersihan Repositori & Audit Dependensi**: Pembersihan objek longgar & file `.idx` yatim Git (`git gc --prune=now`) serta verifikasi `npm audit` (**0 kerentanan**), **0 masalah** deep check, dan **20/20** uji audit lulus.
+
 ## [1.0.100] - 2026-11-22
 
 ### Fixed
