@@ -26,5 +26,9 @@ Seluruh kode backend Google Apps Script dipecah menjadi **10 modul tematik** yan
    ```
    *(Juga otomatis dijalankan saat `npm run test:all` dan `npm run release`.)*
 3. **Deploy ke Google Apps Script**:
-   - **Cara 1 (Manual 1 File)**: Salin `backend/kode.gs` ke editor Google Apps Script → **Deploy → Versi Baru**.
-   - **Cara 2 (Opsional `clasp`)**: Arahkan `rootDir` ke `backend/src` untuk *push* seluruh 10 file `.gs` langsung sebagai tab terpisah di GAS.
+   - **Cara 1 — Otomatis Multi-File via `clasp` (Direkomendasikan, 0 Copy-Paste)**:
+     1. Aktifkan *Google Apps Script API* di https://script.google.com/home/usersettings (cukup 1 kali).
+     2. Login sekali dari terminal: `npm run gas:login`
+     3. Salin `.clasp.json.example` menjadi `.clasp.json`, lalu isi `scriptId` dari URL editor GAS Anda (`.clasp.json` otomatis diabaikan Git sehingga aman).
+     4. Jalankan `npm run gas:push` → seluruh **10 file kecil `.gs`** langsung masuk rapi sebagai 10 tab terpisah di editor Google Apps Script (tidak lagi 1 file panjang!).
+   - **Cara 2 — Manual 1 File (`kode.gs`)**: Salin hasil gabung otomatis `backend/kode.gs` ke editor Google Apps Script → **Deploy → Versi Baru**.

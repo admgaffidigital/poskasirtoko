@@ -24,5 +24,6 @@ android/app/src/main/assets/public/download/
 .env
 .env.local
 .env.*.local
+.clasp.json
 scratch/
 

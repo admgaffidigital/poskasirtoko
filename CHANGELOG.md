@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.103] - 2026-11-22
+
+### Added
+- [BACKEND] [DEPLOY] **Kesiapan Deploy Multi-File Google Apps Script via `clasp` (`backend/src/appsscript.json`, `.clasp.json.example`, `.gitignore`, `package.json`, `backend/src/README.md`)**:
+  - Menambahkan manifes resmi GAS [appsscript.json](file:///c:/POS%20KASIR%20TOKO/backend/src/appsscript.json) (V8, `Asia/Jakarta`, Web App `ANYONE_ANONYMOUS`) dan template [.clasp.json.example](file:///c:/POS%20KASIR%20TOKO/.clasp.json.example) dengan `rootDir: "backend/src"`.
+  - Melindungi `.clasp.json` lokal di [.gitignore](file:///c:/POS%20KASIR%20TOKO/.gitignore) agar `scriptId` pribadi tidak pernah ikut ter-push ke GitHub.
+  - Menambahkan perintah `npm run gas:login`, `npm run gas:push`, dan `npm run gas:open` agar ke-10 file modul di `backend/src/*.gs` dapat langsung diunggah sebagai 10 tab terpisah di editor Google Apps Script tanpa copy-paste manual, sambil tetap menjaga kompatibilitas penuh `npm run build:gas` ke `backend/kode.gs`.
+
 ## [1.0.102] - 2026-11-22
 
 ### Changed
