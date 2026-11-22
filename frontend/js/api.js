@@ -72,7 +72,12 @@ const PERSISTABLE_ACTIONS = new Set([
   'supplier.list',
   'hadiah.list',
   'penjualan.pending.list',
-  'laporan.dashboard'
+  'piutang.list',
+  'hutang.list',
+  'biaya.list',
+  'laporan.dashboard',
+  'laporan.penjualan',
+  'laporan.arusKas'
 ]);
 
 // Pola mutasi data yang otomatis mengosongkan cache terkait secara instan
@@ -175,6 +180,19 @@ export function hasFreshApiCache(action, payload = {}, explicitToken = null) {
   const cacheKey = `${action}::${token}::${payloadStr}`;
   const entry = memoryApiCache.get(cacheKey);
   return Boolean(entry && Date.now() < entry.expiry);
+}
+
+/**
+ * Periksa apakah aksi + payload sudah punya cache instan (Fresh atau Stale-While-Revalidate)
+ * agar UI tidak berkedip menampilkan skeleton saat berpindah tab/halaman.
+ */
+export function hasUsableApiCache(action, payload = {}, explicitToken = null) {
+  if (!CACHE_CONFIG[action] || Date.now() < forceFreshUntil) return false;
+  const token = ambilTokenAktif(explicitToken);
+  const payloadStr = payload && Object.keys(payload).length > 0 ? JSON.stringify(payload) : '';
+  const cacheKey = `${action}::${token}::${payloadStr}`;
+  const entry = memoryApiCache.get(cacheKey);
+  return Boolean(entry && entry.staleExpiry && Date.now() < entry.staleExpiry);
 }
 
 /**
@@ -304,7 +322,12 @@ if (typeof document !== 'undefined') {
   }, true);
 }
 
-const READ_SUFFIXES = ['.list', '.get', '.detail', '.me', '.status', '.ping', '.kartu', '.shift', '.riwayatPoin', '.ringkasan', '.penjualan', '.pembelian', '.kas', '.laba_rugi', '.stokValuasi'];
+const READ_SUFFIXES = [
+  '.list', '.get', '.detail', '.me', '.status', '.ping',
+  '.kartu', '.shift', '.shiftKasir', '.riwayat', '.riwayatPoin',
+  '.dashboard', '.ringkasan', '.penjualan', '.pembelian',
+  '.kas', '.arusKas', '.labaRugi', '.laba_rugi', '.stokValuasi'
+];
 
 function adalahAksiMutasi(action) {
   return !READ_SUFFIXES.some((s) => action.endsWith(s));

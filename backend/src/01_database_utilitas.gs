@@ -87,7 +87,10 @@ function dariSel_(nilai, tipe) {
   }
 }
 
-/** Sheet master yang sering dibaca: di-cache di CacheService (L2) untuk memangkas RPC Google Sheets. */
+/**
+ * Sheet yang di-cache di CacheService (L2) lintas-request untuk memangkas RPC Google Sheets.
+ * Setiap kali ada tambahBaris_/ubahBaris_/hapusLunak_, cache sheet terkait langsung dihapus (0% data basi).
+ */
 const MASTER_CACHE_SHEETS = Object.freeze({
   Kategori: 180,
   Produk: 120,
@@ -95,7 +98,20 @@ const MASTER_CACHE_SHEETS = Object.freeze({
   Satuan_Konversi: 120,
   Pelanggan: 180,
   Supplier: 180,
-  Hadiah: 180
+  Hadiah: 180,
+  Users: 180,
+  Penjualan: 90,
+  Penjualan_Item: 90,
+  Penjualan_Bayar: 90,
+  Pembelian: 90,
+  Pembelian_Item: 90,
+  Piutang: 90,
+  Hutang: 90,
+  Pembayaran: 90,
+  Retur: 90,
+  Retur_Item: 90,
+  Biaya: 90,
+  Deposit_Log: 90
 });
 
 /** Hapus cache L2 CacheService untuk sheet master saat ada penulisan data. */
@@ -190,17 +206,23 @@ function cariById_(namaSheet, id, opsi) {
  * (migrasi otomatis tanpa perlu jalankan setupDatabase manual).
  */
 function pastikanKolomSkema_(sh, namaSheet) {
-  const daftarNama = Object.keys(tipeKolom_(namaSheet));
-  const header = petaHeader_(sh);
-  const kurang = daftarNama.filter(function (nama) { return header[nama] === undefined; });
-  if (!kurang.length) return header;
-  const mulaiKol = sh.getLastColumn() + 1;
-  const maksKol = sh.getMaxColumns();
-  if (mulaiKol + kurang.length - 1 > maksKol) {
-    sh.insertColumnsAfter(maksKol, mulaiKol + kurang.length - 1 - maksKol);
+  if (_HEADER_CACHE_REQ && _HEADER_CACHE_REQ[namaSheet]) {
+    return _HEADER_CACHE_REQ[namaSheet];
   }
-  sh.getRange(1, mulaiKol, 1, kurang.length).setValues([kurang]);
-  return petaHeader_(sh);
+  const daftarNama = Object.keys(tipeKolom_(namaSheet));
+  let header = petaHeader_(sh);
+  const kurang = daftarNama.filter(function (nama) { return header[nama] === undefined; });
+  if (kurang.length) {
+    const mulaiKol = sh.getLastColumn() + 1;
+    const maksKol = sh.getMaxColumns();
+    if (mulaiKol + kurang.length - 1 > maksKol) {
+      sh.insertColumnsAfter(maksKol, mulaiKol + kurang.length - 1 - maksKol);
+    }
+    sh.getRange(1, mulaiKol, 1, kurang.length).setValues([kurang]);
+    header = petaHeader_(sh);
+  }
+  if (_HEADER_CACHE_REQ) _HEADER_CACHE_REQ[namaSheet] = header;
+  return header;
 }
 
 function tambahBaris_(namaSheet, daftar, userId) {
@@ -212,7 +234,7 @@ function tambahBaris_(namaSheet, daftar, userId) {
   if (!daftar || !daftar.length) return [];
   const sh = sheet_(namaSheet);
   const header = pastikanKolomSkema_(sh, namaSheet);
-  const lebar = sh.getLastColumn();
+  const lebar = Object.keys(header).reduce(function (m, k) { return Math.max(m, header[k] + 1); }, 0) || sh.getLastColumn();
   const tipe = tipeKolom_(namaSheet);
   const waktu = sekarang_();
   const tersimpan = [];
@@ -252,7 +274,7 @@ function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-un
   if (!perubahan || !perubahan.length) return [];
   const sh = sheet_(namaSheet);
   const header = pastikanKolomSkema_(sh, namaSheet);
-  const lebar = sh.getLastColumn();
+  const lebar = Object.keys(header).reduce(function (m, k) { return Math.max(m, header[k] + 1); }, 0) || sh.getLastColumn();
   const tipe = tipeKolom_(namaSheet);
   const semua = bacaSemua_(namaSheet, { termasukTerhapus: true });
   if (_CACHE_BACA_REQ) {
@@ -337,10 +359,11 @@ function denganKunci_(fn) {
   }
 }
 
-/** Simpan JSON ke cache; otomatis dipecah bila > batas per key. */
+/** Simpan JSON ke cache; otomatis dipecah bila > batas per key (batas aman 600KB agar tidak memenuhi kuota). */
 function cacheSimpan_(key, nilai, detik) {
   const cache = CacheService.getScriptCache();
   const teks = JSON.stringify(nilai);
+  if (teks.length > 600000) return;
   const durasi = detik || APP.CACHE_DETIK_DEFAULT;
   try {
     if (teks.length <= APP.CACHE_POTONGAN_BYTE) {
@@ -360,15 +383,16 @@ function cacheSimpan_(key, nilai, detik) {
   }
 }
 
-/** Ambil JSON dari cache; null bila tidak ada / rusak. */
+/** Ambil JSON dari cache dalam 1 RPC untuk entri standar; null bila tidak ada / rusak. */
 function cacheAmbil_(key) {
   const cache = CacheService.getScriptCache();
-  const n = cache.get(key + '__n');
-  if (n === null) return null;
+  const awal = cache.getAll([key, key + '__n']);
+  const n = awal[key + '__n'];
+  if (n === undefined || n === null) return null;
   try {
     if (n === '0') {
-      const t = cache.get(key);
-      return t === null ? null : JSON.parse(t);
+      const t = awal[key];
+      return t === undefined || t === null ? null : JSON.parse(t);
     }
     const kunci = [];
     for (let i = 0; i < Number(n); i++) kunci.push(key + '__' + i);

@@ -479,30 +479,36 @@ function aksiPenjualanCreate_(ctx) {
   });
   const bayarTersimpan = tambahBaris_('Penjualan_Bayar', barisBayar, ctx.user.id);
 
-  // 4. Pengurangan Stok & Pencatatan Kartu_Stok (Aturan Bisnis #5)
+  // 4. Pengurangan Stok & Pencatatan Kartu_Stok secara BATCH (Aturan Bisnis #5 — hemat puluhan RPC)
+  const updateVarianMap = {};
+  const updateProdukMap = {};
+  const barisKartuStok = [];
+
   itemsOlah.forEach(function (it) {
     let saldoAkhir = 0;
     if (it._var) {
       const stokVarianLama = Number(it._var.stok || 0);
       const stokVarianBaru = bulatQty_(stokVarianLama - it.qty_dasar);
-      ubahBaris_('Varian', [{ id: it._var.id, data: { stok: stokVarianBaru } }], ctx.user.id);
       it._var.stok = stokVarianBaru;
+      updateVarianMap[it._var.id] = { stok: stokVarianBaru };
 
       // Hitung ulang total stok induk produk dari semua varian
       const varianLain = semuaVarian.filter(function (v) { return v.produk_id === it._pr.id && !v.deleted; });
       let totalStokInduk = 0;
-      varianLain.forEach(function (v) { totalStokInduk += (v.id === it._var.id ? stokVarianBaru : Number(v.stok || 0)); });
-      ubahBaris_('Produk', [{ id: it._pr.id, data: { stok: bulatQty_(totalStokInduk) } }], ctx.user.id);
+      varianLain.forEach(function (v) { totalStokInduk += Number(v.stok || 0); });
+      const totalIndukBulat = bulatQty_(totalStokInduk);
+      it._pr.stok = totalIndukBulat;
+      updateProdukMap[it._pr.id] = { stok: totalIndukBulat };
       saldoAkhir = stokVarianBaru;
     } else {
       const stokProdukLama = Number(it._pr.stok || 0);
       const stokProdukBaru = bulatQty_(stokProdukLama - it.qty_dasar);
-      ubahBaris_('Produk', [{ id: it._pr.id, data: { stok: stokProdukBaru } }], ctx.user.id);
       it._pr.stok = stokProdukBaru;
+      updateProdukMap[it._pr.id] = { stok: stokProdukBaru };
       saldoAkhir = stokProdukBaru;
     }
 
-    tambahBaris_('Kartu_Stok', [{
+    barisKartuStok.push({
       produk_id: it.produk_id,
       varian_id: it.varian_id,
       tipe: 'jual',
@@ -512,8 +518,14 @@ function aksiPenjualanCreate_(ctx) {
       ref_id: noNota,
       user_id: ctx.user.id,
       keterangan: 'Penjualan ' + noNota + ' (' + it.qty + ' ' + it.satuan + ')'
-    }], ctx.user.id);
+    });
   });
+
+  const daftarUpdateVarian = Object.keys(updateVarianMap).map(function (vid) { return { id: vid, data: updateVarianMap[vid] }; });
+  const daftarUpdateProduk = Object.keys(updateProdukMap).map(function (pid) { return { id: pid, data: updateProdukMap[pid] }; });
+  if (daftarUpdateVarian.length) ubahBaris_('Varian', daftarUpdateVarian, ctx.user.id);
+  if (daftarUpdateProduk.length) ubahBaris_('Produk', daftarUpdateProduk, ctx.user.id);
+  if (barisKartuStok.length) tambahBaris_('Kartu_Stok', barisKartuStok, ctx.user.id);
 
   // 5. Catat Piutang Pelanggan (Bila ada pembayaran tempo)
   if (totalTempo > 0 && pelanggan) {

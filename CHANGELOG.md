@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.106] - 2026-11-22
+
+### Changed
+- [BACKEND] [API] [POS-JUAL] [DASHBOARD] **Peningkatan Performa & Kecepatan Load Data Menyeluruh (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `04_pos_penjualan.gs`, `api.js`, `laporan.js`, `app.js`)**:
+  - **Perbaikan Kritis `READ_SUFFIXES` di Klien (`api.js`)**: Menambahkan `.dashboard`, `.arusKas`, `.labaRugi`, `.shiftKasir`, dan `.riwayat` ke daftar aksi baca sehingga membuka Dashboard, Arus Kas, Laba Rugi, Shift Kasir, maupun Riwayat Deposit **tidak lagi mengosongkan cache klien** — perpindahan antar tab laporan kini instan (`0ms`).
+  - **Perluasan Cache L2 Server (`01_database_utilitas.gs`)**: Memperluas `MASTER_CACHE_SHEETS` (`CacheService` lintas-request dengan invalidasi otomatis per penulisan) mencakup 20 sheet operasional utama (`Users`, `Penjualan*`, `Pembelian*`, `Piutang`, `Hutang`, `Pembayaran`, `Retur*`, `Biaya`, `Deposit_Log`), optimasi `cacheAmbil_` menjadi **1 RPC `getAll()`**, serta guard batas aman `600 KB`.
+  - **Cache Header Per-Request (`_HEADER_CACHE_REQ`) & Batch Write Checkout (`04_pos_penjualan.gs`)**: Menghilangkan puluhan RPC pembacaan header & penulisan `Kartu_Stok`/`Produk`/`Varian` berulang per item saat checkout POS (semua digabung jadi 1 kali batch write).
+  - **UX Tanpa Kedipan & Prefetch Instan (`laporan.js`, `app.js`, `api.js`)**: Menambahkan `hasUsableApiCache` agar perpindahan tab laporan dengan cache SWR tampil instan tanpa kedipan skeleton + proteksi urutan request (`laporanReqSeq`), memperluas `PERSISTABLE_ACTIONS` (SWR 0ms pasca-F5), serta menambahkan *hover/touch module prefetching* pada seluruh tautan navigasi.
+
 ## [1.0.105] - 2026-11-22
 
 ### Removed

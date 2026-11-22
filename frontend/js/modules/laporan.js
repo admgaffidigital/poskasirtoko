@@ -4,7 +4,7 @@
  * valuasi aset persediaan stok, grafik tren harian ringan SVG, dan ekspor CSV/cetak.
  */
 
-import { kirimRequest } from '../api.js';
+import { kirimRequest, hasUsableApiCache } from '../api.js';
 import { store } from '../state.js';
 import { $, $$, escapeHtml, renderSkeleton } from '../utils/dom.js';
 import { formatRupiah, formatTanggal, formatAngka } from '../utils/format.js';
@@ -269,39 +269,63 @@ function pasangEventHeader(container) {
   }
 }
 
+let laporanReqSeq = 0;
+
 /**
- * Muat data sesuai tab aktif
+ * Muat data sesuai tab aktif (bebas kedipan skeleton bila cache SWR siap & bebas balapan klik cepat)
  */
 async function muatDataTabAktif(container) {
   const target = $('#konten-tab-laporan', container);
   if (!target) return;
 
-  target.innerHTML = `
-    <div class="stack" style="gap: var(--sp-4);">
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
-        ${Array.from({ length: 4 }).map(() => `
-          <div class="stat-card-pro">
-            <div class="skeleton" style="height: 14px; width: 55%; border-radius: 4px;"></div>
-            <div class="skeleton" style="height: 28px; width: 75%; margin-top: 10px; border-radius: 6px;"></div>
-            <div class="skeleton" style="height: 12px; width: 45%; margin-top: 8px; border-radius: 4px;"></div>
-          </div>
-        `).join('')}
+  const seq = ++laporanReqSeq;
+  const payload = {
+    dari: stateLaporan.dari,
+    sampai: stateLaporan.sampai,
+    periode: stateLaporan.periode
+  };
+
+  let targetAction = 'laporan.dashboard';
+  let targetPayload = payload;
+  if (stateLaporan.tabAktif === 'penjualan') {
+    targetAction = 'laporan.penjualan';
+    targetPayload = { ...payload, ...stateLaporan.filterPenjualan, limit: 150 };
+  } else if (stateLaporan.tabAktif === 'pembelian') {
+    targetAction = 'laporan.pembelian';
+    targetPayload = { ...payload, ...stateLaporan.filterPembelian, limit: 150 };
+  } else if (stateLaporan.tabAktif === 'aruskas') {
+    targetAction = 'laporan.arusKas';
+  } else if (stateLaporan.tabAktif === 'labarugi') {
+    targetAction = 'laporan.labaRugi';
+  } else if (stateLaporan.tabAktif === 'stok') {
+    targetAction = 'laporan.stokValuasi';
+    targetPayload = { ...stateLaporan.filterStok, limit: 200 };
+  }
+
+  if (!hasUsableApiCache(targetAction, targetPayload)) {
+    target.innerHTML = `
+      <div class="stack" style="gap: var(--sp-4);">
+        <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+          ${Array.from({ length: 4 }).map(() => `
+            <div class="stat-card-pro">
+              <div class="skeleton" style="height: 14px; width: 55%; border-radius: 4px;"></div>
+              <div class="skeleton" style="height: 28px; width: 75%; margin-top: 10px; border-radius: 6px;"></div>
+              <div class="skeleton" style="height: 12px; width: 45%; margin-top: 8px; border-radius: 4px;"></div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="card card-body">
+          ${renderSkeleton(5)}
+        </div>
       </div>
-      <div class="card card-body">
-        ${renderSkeleton(5)}
-      </div>
-    </div>
-  `;
+    `;
+  }
 
   try {
-    const payload = {
-      dari: stateLaporan.dari,
-      sampai: stateLaporan.sampai,
-      periode: stateLaporan.periode
-    };
+    const res = await kirimRequest(targetAction, targetPayload);
+    if (seq !== laporanReqSeq) return; // Abaikan respons lama jika user sudah berpindah tab/periode
 
     if (stateLaporan.tabAktif === 'dashboard') {
-      const res = await kirimRequest('laporan.dashboard', payload);
       if (res && res.ok) {
         stateLaporan.dataDashboard = res.data;
         renderTabDashboard(target, res.data);
@@ -309,8 +333,6 @@ async function muatDataTabAktif(container) {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat dashboard');
       }
     } else if (stateLaporan.tabAktif === 'penjualan') {
-      const p = { ...payload, ...stateLaporan.filterPenjualan, limit: 150 };
-      const res = await kirimRequest('laporan.penjualan', p);
       if (res && res.ok) {
         stateLaporan.dataPenjualan = res.data;
         renderTabPenjualan(target, res.data);
@@ -318,8 +340,6 @@ async function muatDataTabAktif(container) {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat laporan penjualan');
       }
     } else if (stateLaporan.tabAktif === 'pembelian') {
-      const p = { ...payload, ...stateLaporan.filterPembelian, limit: 150 };
-      const res = await kirimRequest('laporan.pembelian', p);
       if (res && res.ok) {
         stateLaporan.dataPembelian = res.data;
         renderTabPembelian(target, res.data);
@@ -327,7 +347,6 @@ async function muatDataTabAktif(container) {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat laporan pembelian');
       }
     } else if (stateLaporan.tabAktif === 'aruskas') {
-      const res = await kirimRequest('laporan.arusKas', payload);
       if (res && res.ok) {
         stateLaporan.dataArusKas = res.data;
         renderTabArusKas(target, res.data);
@@ -335,7 +354,6 @@ async function muatDataTabAktif(container) {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat arus kas');
       }
     } else if (stateLaporan.tabAktif === 'labarugi') {
-      const res = await kirimRequest('laporan.labaRugi', payload);
       if (res && res.ok) {
         stateLaporan.dataLabaRugi = res.data;
         renderTabLabaRugi(target, res.data);
@@ -343,8 +361,6 @@ async function muatDataTabAktif(container) {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat laba rugi');
       }
     } else if (stateLaporan.tabAktif === 'stok') {
-      const p = { ...stateLaporan.filterStok, limit: 200 };
-      const res = await kirimRequest('laporan.stokValuasi', p);
       if (res && res.ok) {
         stateLaporan.dataStokValuasi = res.data;
         renderTabStokValuasi(target, res.data);
@@ -353,6 +369,7 @@ async function muatDataTabAktif(container) {
       }
     }
   } catch (err) {
+    if (seq !== laporanReqSeq) return;
     target.innerHTML = renderErrorState(err.message || 'Terjadi kesalahan sistem saat memuat laporan.');
   }
 }

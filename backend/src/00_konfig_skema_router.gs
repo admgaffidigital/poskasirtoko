@@ -333,6 +333,7 @@ const RUTE = {
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */
 var _CACHE_BACA_REQ = {};
+var _HEADER_CACHE_REQ = {};
 var _SS_REQ = null;
 var _SHEET_MAP_REQ = {};
 var _LOCK_DEPTH_REQ = 0;
@@ -340,6 +341,7 @@ var _LOCK_DEPTH_REQ = 0;
 /** Entry point Web App (semua aksi). */
 function doPost(e) {
   _CACHE_BACA_REQ = {};
+  _HEADER_CACHE_REQ = {};
   _SS_REQ = null;
   _SHEET_MAP_REQ = {};
   _LOCK_DEPTH_REQ = 0;
