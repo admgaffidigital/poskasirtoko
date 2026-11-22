@@ -1,4 +1,12 @@
 /**
+ * ==========================================================================
+ * PERHATIAN: FILE INI DIGABUNG OTOMATIS DARI `backend/src/*.gs`
+ * Jalankan `npm run build:gas` setelah mengubah file di `backend/src/`.
+ * Total Modul: 10 file (00_konfig_skema_router.gs, 01_database_utilitas.gs, 02_auth_user_pengaturan.gs, 03_kategori_produk.gs, 04_pos_penjualan.gs, 05_pembelian_stok.gs, 06_hutang_piutang_retur.gs, 07_pelanggan_loyalti_deposit.gs, 08_laporan_biaya.gs, 09_setup_trigger_beautifier.gs)
+ * ==========================================================================
+ */
+/* >>> [MODUL: backend/src/00_konfig_skema_router.gs] (484 baris) <<< */
+/**
  * ============================================================================
  *  POS KASIR TOKO BANGUNAN — Backend Google Apps Script
  * ============================================================================
@@ -483,6 +491,7 @@ function validasiSesi_(token) {
   return userAman;
 }
 
+/* >>> [MODUL: backend/src/01_database_utilitas.gs] (706 baris) <<< */
 /* ========================================================================== */
 /* 6. LAPISAN DATA                                                            */
 /* ========================================================================== */
@@ -1190,6 +1199,7 @@ function aksiSistemMaintenance_(ctx) {
   };
 }
 
+/* >>> [MODUL: backend/src/02_auth_user_pengaturan.gs] (360 baris) <<< */
 /* ---------- 9.1 AUTENTIKASI & SESI ---------- */
 
 /** auth.login — Login dengan username & 6-digit PIN. */
@@ -1362,6 +1372,196 @@ function aksiAuthGantiPin_(ctx) {
   return { pesan: 'PIN Anda berhasil diperbarui.' };
 }
 
+/* ---------- 9.4 PENGATURAN UMUM ---------- */
+
+/** pengaturan.get — Membaca konfigurasi operasional toko. */
+function aksiPengaturanGet_() {
+  const p = ambilPengaturan_();
+  return {
+    pengaturan: p,
+    toko: {
+      nama: p.toko_nama || 'Toko',
+      alamat: p.toko_alamat || '',
+      hp: p.toko_hp || '',
+      nota_footer: p.nota_footer || ''
+    }
+  };
+}
+
+/** pengaturan.set — Mengubah konfigurasi operasional toko (Khusus Owner). */
+function aksiPengaturanSet_(ctx) {
+  const p = ctx.payload || {};
+  const kunciDukungan = Object.keys(PENGATURAN_DEFAULT);
+  const barisPengaturan = bacaSemua_('Pengaturan', { termasukTerhapus: true });
+  const petaId = {};
+  barisPengaturan.forEach(function (row) { petaId[row.key] = row.id; });
+
+  const diubah = [];
+  const ditambah = [];
+
+  kunciDukungan.forEach(function (k) {
+    if (p[k] !== undefined) {
+      let val = p[k];
+      if (k === 'diskon_maks_kasir_persen') val = V_.angka(val, 'Maks Diskon Kasir', { min: 0, max: 100 });
+      if (k === 'pajak_persen') val = V_.angka(val, 'Pajak Persen', { min: 0, max: 100 });
+      if (k === 'poin_per_rupiah') val = V_.angka(val, 'Aturan Poin (Rp per 1 Poin)', { min: 100 });
+      if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
+      if (k === 'printer_jalur') val = ['otomatis', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
+
+      if (petaId[k]) {
+        diubah.push({ id: petaId[k], data: { value: val } });
+      } else {
+        ditambah.push({ key: k, value: val });
+      }
+    }
+  });
+
+  if (diubah.length) ubahBaris_('Pengaturan', diubah, ctx.user.id);
+  if (ditambah.length) tambahBaris_('Pengaturan', ditambah, ctx.user.id);
+
+  cacheHapus_('pengaturan');
+  catatAudit_(ctx.user.id, 'pengaturan_ubah', 'SETTING', '', { perubahan: p });
+
+  const hasilPengaturan = ambilPengaturan_();
+  return {
+    pengaturan: hasilPengaturan,
+    toko: {
+      nama: hasilPengaturan.toko_nama || 'Toko',
+      alamat: hasilPengaturan.toko_alamat || '',
+      hp: hasilPengaturan.toko_hp || '',
+      nota_footer: hasilPengaturan.nota_footer || ''
+    }
+  };
+}
+
+/* ---------- 9.5 MANAJEMEN MULTI AKUN PENGGUNA ---------- */
+
+/** user.list — Daftar akun pengguna (Khusus Owner). */
+function aksiUserList_() {
+  const users = bacaSemua_('Users').map(function (u) {
+    return {
+      id: u.id,
+      username: u.username,
+      nama: u.nama,
+      role: u.role,
+      aktif: !!u.aktif,
+      wajib_ganti_pin: !!u.wajib_ganti_pin,
+      gagal_login: Number(u.gagal_login) || 0,
+      kunci_sampai: u.kunci_sampai || '',
+      last_login: u.last_login || '',
+      created_at: u.created_at || ''
+    };
+  });
+  return { items: users };
+}
+
+/** user.create — Tambah akun pengguna baru (Khusus Owner). */
+function aksiUserCreate_(ctx) {
+  const p = ctx.payload || {};
+  const username = V_.teks(p.username, 'Username', { wajib: true, maks: 30, pola: /^[a-zA-Z0-9_.-]+$/ });
+  const nama = V_.teks(p.nama, 'Nama Lengkap', { wajib: true, maks: 100 });
+  const role = V_.pilihan(p.role, 'Role', SEMUA_ROLE);
+  const pin = V_.pin(p.pin);
+
+  // Cek duplikasi username
+  const sudahAda = bacaSemua_('Users').some(function (u) {
+    return String(u.username || '').toLowerCase() === username.toLowerCase() && !u.deleted;
+  });
+  if (sudahAda) {
+    gagal_(KODE.CONFLICT, 'Username "' + username + '" sudah digunakan oleh pengguna lain.');
+  }
+
+  const salt = buatSalt_();
+  const dibuat = tambahBaris_('Users', [{
+    username: username,
+    nama: nama,
+    role: role,
+    pin_hash: hashPin_(pin, salt),
+    salt: salt,
+    aktif: true,
+    wajib_ganti_pin: true,
+    gagal_login: 0,
+    kunci_sampai: '',
+    last_login: ''
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'user_tambah', 'USER', dibuat.id, { username: username, role: role });
+
+  return {
+    id: dibuat.id,
+    username: dibuat.username,
+    nama: dibuat.nama,
+    role: dibuat.role,
+    aktif: true,
+    wajib_ganti_pin: true
+  };
+}
+
+/** user.update — Ubah nama, role, status aktif pengguna (Khusus Owner). */
+function aksiUserUpdate_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Pengguna', { wajib: true });
+  const nama = V_.teks(p.nama, 'Nama Lengkap', { wajib: true, maks: 100 });
+  const role = V_.pilihan(p.role, 'Role', SEMUA_ROLE);
+  const aktif = p.aktif !== false;
+
+  // Proteksi akun sendiri
+  if (id === ctx.user.id && !aktif) {
+    gagal_(KODE.VALIDATION, 'Anda tidak dapat menonaktifkan akun Anda sendiri yang sedang aktif.');
+  }
+  if (id === ctx.user.id && role !== ctx.user.role) {
+    gagal_(KODE.VALIDATION, 'Anda tidak dapat mengubah role akun Anda sendiri saat sedang login.');
+  }
+
+  const diubah = ubahBaris_('Users', [{
+    id: id,
+    data: { nama: nama, role: role, aktif: aktif }
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'user_ubah', 'USER', id, { role: role, aktif: aktif });
+
+  return {
+    id: diubah.id,
+    username: diubah.username,
+    nama: diubah.nama,
+    role: diubah.role,
+    aktif: diubah.aktif
+  };
+}
+
+/** user.resetPin — Reset PIN akun pengguna lain ke PIN baru (Khusus Owner). */
+function aksiUserResetPin_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Pengguna', { wajib: true });
+  const pinBaru = V_.pin(p.pin_baru);
+
+  const u = cariById_('Users', id);
+  if (!u || u.deleted) gagal_(KODE.NOT_FOUND, 'Pengguna tidak ditemukan.');
+
+  const saltBaru = buatSalt_();
+  ubahBaris_('Users', [{
+    id: id,
+    data: {
+      pin_hash: hashPin_(pinBaru, saltBaru),
+      salt: saltBaru,
+      wajib_ganti_pin: true,
+      gagal_login: 0,
+      kunci_sampai: ''
+    }
+  }], ctx.user.id);
+
+  // Batalkan sesi aktif pengguna yang di-reset PIN-nya di perangkat lain
+  bacaSemua_('Sesi').filter(function (s) { return s.user_id === id && !s.deleted; }).forEach(function (s) {
+    hapusLunak_('Sesi', s.id, ctx.user.id);
+    cacheHapus_('sesi_' + s.token_hash);
+  });
+
+  catatAudit_(ctx.user.id, 'user_reset_pin', 'USER', id, { username: u.username });
+
+  return { pesan: 'PIN pengguna ' + u.username + ' berhasil direset. Pengguna wajib mengganti PIN saat login berikutnya.' };
+}
+
+/* >>> [MODUL: backend/src/03_kategori_produk.gs] (635 baris) <<< */
 /* ---------- 9.2 KATEGORI PRODUK ---------- */
 
 /** kategori.list — Mengambil semua kategori aktif. */
@@ -1998,195 +2198,7 @@ function aksiProdukUploadFoto_(ctx) {
   };
 }
 
-/* ---------- 9.4 PENGATURAN UMUM ---------- */
-
-/** pengaturan.get — Membaca konfigurasi operasional toko. */
-function aksiPengaturanGet_() {
-  const p = ambilPengaturan_();
-  return {
-    pengaturan: p,
-    toko: {
-      nama: p.toko_nama || 'Toko',
-      alamat: p.toko_alamat || '',
-      hp: p.toko_hp || '',
-      nota_footer: p.nota_footer || ''
-    }
-  };
-}
-
-/** pengaturan.set — Mengubah konfigurasi operasional toko (Khusus Owner). */
-function aksiPengaturanSet_(ctx) {
-  const p = ctx.payload || {};
-  const kunciDukungan = Object.keys(PENGATURAN_DEFAULT);
-  const barisPengaturan = bacaSemua_('Pengaturan', { termasukTerhapus: true });
-  const petaId = {};
-  barisPengaturan.forEach(function (row) { petaId[row.key] = row.id; });
-
-  const diubah = [];
-  const ditambah = [];
-
-  kunciDukungan.forEach(function (k) {
-    if (p[k] !== undefined) {
-      let val = p[k];
-      if (k === 'diskon_maks_kasir_persen') val = V_.angka(val, 'Maks Diskon Kasir', { min: 0, max: 100 });
-      if (k === 'pajak_persen') val = V_.angka(val, 'Pajak Persen', { min: 0, max: 100 });
-      if (k === 'poin_per_rupiah') val = V_.angka(val, 'Aturan Poin (Rp per 1 Poin)', { min: 100 });
-      if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
-      if (k === 'printer_jalur') val = ['otomatis', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
-
-      if (petaId[k]) {
-        diubah.push({ id: petaId[k], data: { value: val } });
-      } else {
-        ditambah.push({ key: k, value: val });
-      }
-    }
-  });
-
-  if (diubah.length) ubahBaris_('Pengaturan', diubah, ctx.user.id);
-  if (ditambah.length) tambahBaris_('Pengaturan', ditambah, ctx.user.id);
-
-  cacheHapus_('pengaturan');
-  catatAudit_(ctx.user.id, 'pengaturan_ubah', 'SETTING', '', { perubahan: p });
-
-  const hasilPengaturan = ambilPengaturan_();
-  return {
-    pengaturan: hasilPengaturan,
-    toko: {
-      nama: hasilPengaturan.toko_nama || 'Toko',
-      alamat: hasilPengaturan.toko_alamat || '',
-      hp: hasilPengaturan.toko_hp || '',
-      nota_footer: hasilPengaturan.nota_footer || ''
-    }
-  };
-}
-
-/* ---------- 9.5 MANAJEMEN MULTI AKUN PENGGUNA ---------- */
-
-/** user.list — Daftar akun pengguna (Khusus Owner). */
-function aksiUserList_() {
-  const users = bacaSemua_('Users').map(function (u) {
-    return {
-      id: u.id,
-      username: u.username,
-      nama: u.nama,
-      role: u.role,
-      aktif: !!u.aktif,
-      wajib_ganti_pin: !!u.wajib_ganti_pin,
-      gagal_login: Number(u.gagal_login) || 0,
-      kunci_sampai: u.kunci_sampai || '',
-      last_login: u.last_login || '',
-      created_at: u.created_at || ''
-    };
-  });
-  return { items: users };
-}
-
-/** user.create — Tambah akun pengguna baru (Khusus Owner). */
-function aksiUserCreate_(ctx) {
-  const p = ctx.payload || {};
-  const username = V_.teks(p.username, 'Username', { wajib: true, maks: 30, pola: /^[a-zA-Z0-9_.-]+$/ });
-  const nama = V_.teks(p.nama, 'Nama Lengkap', { wajib: true, maks: 100 });
-  const role = V_.pilihan(p.role, 'Role', SEMUA_ROLE);
-  const pin = V_.pin(p.pin);
-
-  // Cek duplikasi username
-  const sudahAda = bacaSemua_('Users').some(function (u) {
-    return String(u.username || '').toLowerCase() === username.toLowerCase() && !u.deleted;
-  });
-  if (sudahAda) {
-    gagal_(KODE.CONFLICT, 'Username "' + username + '" sudah digunakan oleh pengguna lain.');
-  }
-
-  const salt = buatSalt_();
-  const dibuat = tambahBaris_('Users', [{
-    username: username,
-    nama: nama,
-    role: role,
-    pin_hash: hashPin_(pin, salt),
-    salt: salt,
-    aktif: true,
-    wajib_ganti_pin: true,
-    gagal_login: 0,
-    kunci_sampai: '',
-    last_login: ''
-  }], ctx.user.id)[0];
-
-  catatAudit_(ctx.user.id, 'user_tambah', 'USER', dibuat.id, { username: username, role: role });
-
-  return {
-    id: dibuat.id,
-    username: dibuat.username,
-    nama: dibuat.nama,
-    role: dibuat.role,
-    aktif: true,
-    wajib_ganti_pin: true
-  };
-}
-
-/** user.update — Ubah nama, role, status aktif pengguna (Khusus Owner). */
-function aksiUserUpdate_(ctx) {
-  const p = ctx.payload || {};
-  const id = V_.teks(p.id, 'ID Pengguna', { wajib: true });
-  const nama = V_.teks(p.nama, 'Nama Lengkap', { wajib: true, maks: 100 });
-  const role = V_.pilihan(p.role, 'Role', SEMUA_ROLE);
-  const aktif = p.aktif !== false;
-
-  // Proteksi akun sendiri
-  if (id === ctx.user.id && !aktif) {
-    gagal_(KODE.VALIDATION, 'Anda tidak dapat menonaktifkan akun Anda sendiri yang sedang aktif.');
-  }
-  if (id === ctx.user.id && role !== ctx.user.role) {
-    gagal_(KODE.VALIDATION, 'Anda tidak dapat mengubah role akun Anda sendiri saat sedang login.');
-  }
-
-  const diubah = ubahBaris_('Users', [{
-    id: id,
-    data: { nama: nama, role: role, aktif: aktif }
-  }], ctx.user.id)[0];
-
-  catatAudit_(ctx.user.id, 'user_ubah', 'USER', id, { role: role, aktif: aktif });
-
-  return {
-    id: diubah.id,
-    username: diubah.username,
-    nama: diubah.nama,
-    role: diubah.role,
-    aktif: diubah.aktif
-  };
-}
-
-/** user.resetPin — Reset PIN akun pengguna lain ke PIN baru (Khusus Owner). */
-function aksiUserResetPin_(ctx) {
-  const p = ctx.payload || {};
-  const id = V_.teks(p.id, 'ID Pengguna', { wajib: true });
-  const pinBaru = V_.pin(p.pin_baru);
-
-  const u = cariById_('Users', id);
-  if (!u || u.deleted) gagal_(KODE.NOT_FOUND, 'Pengguna tidak ditemukan.');
-
-  const saltBaru = buatSalt_();
-  ubahBaris_('Users', [{
-    id: id,
-    data: {
-      pin_hash: hashPin_(pinBaru, saltBaru),
-      salt: saltBaru,
-      wajib_ganti_pin: true,
-      gagal_login: 0,
-      kunci_sampai: ''
-    }
-  }], ctx.user.id);
-
-  // Batalkan sesi aktif pengguna yang di-reset PIN-nya di perangkat lain
-  bacaSemua_('Sesi').filter(function (s) { return s.user_id === id && !s.deleted; }).forEach(function (s) {
-    hapusLunak_('Sesi', s.id, ctx.user.id);
-    cacheHapus_('sesi_' + s.token_hash);
-  });
-
-  catatAudit_(ctx.user.id, 'user_reset_pin', 'USER', id, { username: u.username });
-
-  return { pesan: 'PIN pengguna ' + u.username + ' berhasil direset. Pengguna wajib mengganti PIN saat login berikutnya.' };
-}
-
+/* >>> [MODUL: backend/src/04_pos_penjualan.gs] (1281 baris) <<< */
 /* ========================================================================== */
 /* FASE 2: HANDLER POS PENJUALAN                                              */
 /* ========================================================================== */
@@ -3469,6 +3481,7 @@ function formatRupiah_(angka) {
   return 'Rp ' + Math.round(Number(angka) || 0).toLocaleString('id-ID');
 }
 
+/* >>> [MODUL: backend/src/05_pembelian_stok.gs] (931 baris) <<< */
 /* ---------- 9.3 SUPPLIER, PEMBELIAN, KARTU STOK & OPNAME (FASE 3) ---------- */
 
 /** supplier.list — Daftar supplier dengan agregasi saldo hutang & riwayat pembelian. */
@@ -4401,6 +4414,7 @@ function aksiOpnameApprove_(ctx) {
   };
 }
 
+/* >>> [MODUL: backend/src/06_hutang_piutang_retur.gs] (1148 baris) <<< */
 /* ---------- 9.4 HUTANG, PIUTANG, DAN RETUR (FASE 4) ---------- */
 
 /** piutang.list — Daftar piutang pelanggan atas penjualan tempo. */
@@ -5550,6 +5564,7 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
   cacheHapus_('produk');
 }
 
+/* >>> [MODUL: backend/src/07_pelanggan_loyalti_deposit.gs] (626 baris) <<< */
 /* ========================================================================== */
 /* 9.5 FASE 5: PELANGGAN, MEMBER, KATALOG HADIAH, & PENUKARAN POIN            */
 /* ========================================================================== */
@@ -6177,6 +6192,7 @@ function aksiMemberRiwayatPoin_(ctx) {
   };
 }
 
+/* >>> [MODUL: backend/src/08_laporan_biaya.gs] (1254 baris) <<< */
 /* ========================================================================== */
 /* 9.6 FASE 6: DASHBOARD & LAPORAN USAHA                                      */
 /* ========================================================================== */
@@ -7432,6 +7448,7 @@ function aksiBiayaDelete_(ctx) {
   });
 }
 
+/* >>> [MODUL: backend/src/09_setup_trigger_beautifier.gs] (534 baris) <<< */
 /* ========================================================================== */
 /* 10. SETUP, TRIGGER, BACKUP, MENU                                           */
 /* ========================================================================== */

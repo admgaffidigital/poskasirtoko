@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.102] - 2026-11-22
+
+### Changed
+- [BACKEND] [DOCS] **Modularisasi Arsitektur Backend `backend/src/*.gs` + Auto-Build `kode.gs` (`scripts/build-gas.js`, `backend/src/`, `package.json`, `scripts/release.js`)**:
+  - Memecah monolith `backend/kode.gs` (~7.968 baris) menjadi **10 modul tematik ringkas** (`00_konfig_skema_router.gs` s/d `09_setup_trigger_beautifier.gs`) di folder [backend/src/](file:///c:/POS%20KASIR%20TOKO/backend/src/README.md) tanpa mengubah logika bisnis apa pun.
+  - Menambahkan skrip penggabung otomatis [scripts/build-gas.js](file:///c:/POS%20KASIR%20TOKO/scripts/build-gas.js) (`npm run build:gas` & `npm run check:gas`) lengkap dengan validasi syntax otomatis serta integrasi penuh ke `npm run test:all` dan `npm run release`.
+  - Siap di-deploy baik via copy-paste 1 file `backend/kode.gs` seperti biasa maupun via `clasp push` multi-file ke Google Apps Script di masa depan.
+
 ## [1.0.101] - 2026-11-22
 
 ### Changed

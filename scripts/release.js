@@ -130,13 +130,14 @@ function main() {
     fs.writeFileSync(gradlePath, gradle);
   }
 
-  // 3. Menjalankan Seluruh Uji Otomatis
-  logStep(3, 'Menjalankan Seluruh Pengujian Otomatis (Syntax, Import, Audit)');
+  // 3. Gabungkan Modul Backend GAS & Jalankan Seluruh Uji Otomatis
+  logStep(3, 'Kompilasi Modul Backend GAS & Pengujian Otomatis (Syntax, Import, Audit)');
+  runCmd('node scripts/build-gas.js');
   runCmd('node tests/check_syntax.js');
   runCmd('node tests/check_imports.js');
   runCmd('node tests/check_globals.js');
   runCmd('node tests/test_debug_final.js');
-  logSuccess('Semua 13 suite uji audit lulus 100%');
+  logSuccess('Modul backend/src/*.gs tergabung rapi & semua uji audit lulus 100%');
 
   // 4. Sinkronisasi Web Assets ke Android (Capacitor)
   logStep(4, 'Sinkronisasi Web Assets ke Capacitor Android');
