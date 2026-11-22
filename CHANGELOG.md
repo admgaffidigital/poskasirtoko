@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.107] - 2026-11-23
+
+### Added
+- [UI] [DOCS] **Penguncian Otomatis Standar Konsistensi UI/UX (`.gemini/rules/UI_DESIGN_STANDARDS.md`, `tests/check_ui_consistency.js`, `package.json`, `scripts/release.js`)**:
+  - Menambahkan aturan permanen [.gemini/rules/UI_DESIGN_STANDARDS.md](file:///c:/POS%20KASIR%20TOKO/.gemini/rules/UI_DESIGN_STANDARDS.md) yang otomatis dibaca di setiap sesi pengembangan masa depan (100% Solid Flat, token tema `tokens.css`, `.stat-card-pro`, `ICONS.*`, `data-label` mobile, 0 emoji/dialog klasik).
+  - Menambahkan pagar uji otomatis [tests/check_ui_consistency.js](file:///c:/POS%20KASIR%20TOKO/tests/check_ui_consistency.js) (`npm run test:ui`) dan mengintegrasikannya ke `npm run test`, `npm run test:all`, serta `npm run release` agar setiap pembaruan otomatis terblokir bila ada pelanggaran konsistensi antarmuka.
+
 ## [1.0.106] - 2026-11-22
 
 ### Changed

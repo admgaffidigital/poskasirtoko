@@ -136,6 +136,7 @@ function main() {
   runCmd('node tests/check_syntax.js');
   runCmd('node tests/check_imports.js');
   runCmd('node tests/check_globals.js');
+  runCmd('node tests/check_ui_consistency.js');
   runCmd('node tests/test_debug_final.js');
   logSuccess('Seluruh 10 modul backend/src/*.gs valid & semua uji audit lulus 100%');
 
