@@ -3236,23 +3236,29 @@ function aksiPenjualanVoid_(ctx) {
     }], ctx.user.id);
   });
 
-  // 2. Batalkan Poin & Kurangi Total Belanja Member
+  // 2. Batalkan Poin & Kurangi Total Belanja Member (hanya sebesar bagian yang memang sudah dibayar/masuk total_belanja)
   if (penjualan.pelanggan_id) {
     const pel = cariById_('Pelanggan', penjualan.pelanggan_id);
-    if (pel && pel.tipe === 'member') {
+    if (pel && String(pel.tipe || '').toLowerCase() === 'member') {
       const poinKembali = Number(penjualan.poin_didapat || 0);
       const poinLama = Number(pel.poin || 0);
       const poinBaru = Math.max(0, poinLama - poinKembali);
       const belanjaLama = Number(pel.total_belanja || 0);
-      const belanjaBaru = Math.max(0, belanjaLama - Number(penjualan.total || 0));
+      const porsiTempoAwal = piutangTerkait ? Number(piutangTerkait.total || 0) : 0;
+      const porsiSudahMasukBelanja = piutangTerkait
+        ? Math.max(0, Number(penjualan.total || 0) - porsiTempoAwal)
+        : (String(penjualan.status_bayar || '') === 'belum_lunas' ? 0 : Number(penjualan.total || 0));
+      const belanjaBaru = Math.max(0, belanjaLama - porsiSudahMasukBelanja);
 
-      ubahBaris_('Pelanggan', [{
-        id: pel.id,
-        data: {
-          poin: poinBaru,
-          total_belanja: belanjaBaru
-        }
-      }], ctx.user.id);
+      if (poinKembali > 0 || porsiSudahMasukBelanja > 0) {
+        ubahBaris_('Pelanggan', [{
+          id: pel.id,
+          data: {
+            poin: poinBaru,
+            total_belanja: belanjaBaru
+          }
+        }], ctx.user.id);
+      }
 
       if (poinKembali > 0) {
         tambahBaris_('Poin_Log', [{
@@ -4138,8 +4144,10 @@ function aksiOpnameApprove_(ctx) {
     varian = cariById_('Varian', opname.varian_id);
   }
 
+  const stokSistemAktual = varian ? Number(varian.stok || 0) : Number(produk.stok || 0);
   const hppSaatIni = varian ? Number(varian.hpp || 0) : Number(produk.hpp || 0);
   const qtyFisik = Number(opname.qty_fisik);
+  const selisihAktual = Math.round((qtyFisik - stokSistemAktual) * 1000) / 1000;
   const waktuSetuju = sekarang_();
 
   // Terapkan penyesuaian stok ke master
@@ -4155,12 +4163,12 @@ function aksiOpnameApprove_(ctx) {
     ubahBaris_('Produk', [{ id: produk.id, data: { stok: qtyFisik } }], ctx.user.id);
   }
 
-  // Catat di Kartu_Stok
+  // Catat di Kartu_Stok memakai selisih aktual saat persetujuan agar buku besar stok 100% rekonsiliasi
   tambahBaris_('Kartu_Stok', [{
     produk_id: produk.id,
     varian_id: varian ? varian.id : '',
     tipe: 'opname',
-    qty: opname.selisih,
+    qty: selisihAktual,
     saldo: qtyFisik,
     hpp: hppSaatIni,
     ref_id: opname.no_opname,
@@ -4168,10 +4176,12 @@ function aksiOpnameApprove_(ctx) {
     keterangan: 'Persetujuan opname ' + opname.no_opname + ': ' + opname.alasan
   }], ctx.user.id);
 
-  // Ubah status Opname
+  // Ubah status Opname + perbarui qty_sistem & selisih aktual saat persetujuan
   ubahBaris_('Opname', [{
     id: opname.id,
     data: {
+      qty_sistem: stokSistemAktual,
+      selisih: selisihAktual,
       status: 'disetujui',
       disetujui_oleh: ctx.user.id,
       disetujui_at: waktuSetuju
@@ -4179,7 +4189,9 @@ function aksiOpnameApprove_(ctx) {
   }], ctx.user.id);
 
   catatAudit_(ctx.user.id, 'opname_approve', 'STOK', opname.no_opname, {
-    selisih: opname.selisih,
+    qty_sistem: stokSistemAktual,
+    qty_fisik: qtyFisik,
+    selisih: selisihAktual,
     alasan: opname.alasan
   });
 
@@ -6300,6 +6312,14 @@ function aksiLaporanPembelian_(ctx) {
   const supMap = {};
   semuaSupplier.forEach(function (s) { supMap[s.id] = s.nama; });
 
+  // Ambil sisa hutang riil dari sheet Hutang agar sinkron setelah cicilan maupun retur potong_hutang
+  const hutangByBeli = {};
+  bacaSemua_('Hutang').forEach(function (h) {
+    if (!h.deleted && h.pembelian_id) {
+      hutangByBeli[h.pembelian_id] = h;
+    }
+  });
+
   let filtered = semuaPembelian.filter(function (pb) {
     if (pb.deleted || pb.status === 'batal') return false;
     const tgl = String(pb.tanggal || '').substring(0, 10);
@@ -6324,7 +6344,10 @@ function aksiLaporanPembelian_(ctx) {
     const total = Number(pb.total) || 0;
     const diskon = Number(pb.diskon) || 0;
     const bayar = Number(pb.bayar) || 0;
-    const sisa = Math.max(0, total - bayar);
+    const htTerkait = hutangByBeli[pb.id];
+    const sisa = htTerkait
+      ? (htTerkait.status === 'lunas' ? 0 : Math.max(0, Number(htTerkait.sisa) || 0))
+      : (pb.status_bayar === 'lunas' ? 0 : Math.max(0, total - bayar));
 
     totalBeli += total;
     totalDiskon += diskon;

@@ -1202,6 +1202,48 @@ async function runAudit() {
     assert(shift.total_piutang_tunai === 15000, `Shift total_piutang_tunai harus Rp 15.000, aktual: ${shift.total_piutang_tunai}`);
     assert(shift.total_refund_tunai === 20000, `Shift total_refund_tunai harus Rp 20.000, aktual: ${shift.total_refund_tunai}`);
     assert(shift.total_laci === 155000, `Shift total_laci harus Rp 155.000, aktual: ${shift.total_laci}`);
+
+    // 17f. Void nota tempo belum lunas TIDAK boleh memotong total_belanja member sebelumnya
+    envAcc.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        items: [{ produk_id: pr.id, qty: 5, harga: 10000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 50000 }]
+      }
+    });
+    const belanjaSebelumTempo = envAcc.cariById_('Pelanggan', pelId).total_belanja;
+    const jualTempoVoid = envAcc.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        items: [{ produk_id: pr.id, qty: 4, harga: 10000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 40000 }]
+      }
+    });
+    envAcc.aksiPenjualanVoid_({
+      user: ownerRow,
+      payload: { id: jualTempoVoid.penjualan.id, alasan: 'Batal order tempo' }
+    });
+    const belanjaSetelahVoidTempo = envAcc.cariById_('Pelanggan', pelId).total_belanja;
+    assert(belanjaSetelahVoidTempo === belanjaSebelumTempo,
+      `Void nota tempo belum lunas tidak boleh mengurangi total_belanja member sebelumnya (${belanjaSebelumTempo} -> ${belanjaSetelahVoidTempo})`);
+
+    // 17g. Draft Opname disetujui setelah ada mutasi stok -> Kartu_Stok mencatat selisih aktual
+    const stokAwalOp = Number(envAcc.cariById_('Produk', pr.id).stok);
+    const opDraft = envAcc.aksiOpnameCreate_({
+      user: ownerRow,
+      payload: { produk_id: pr.id, qty_fisik: stokAwalOp - 2, alasan: 'Cek gudang pagi', langsung_setuju: false }
+    });
+    // Terjadi penjualan 1 unit sebelum opname disetujui
+    envAcc.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: { items: [{ produk_id: pr.id, qty: 1, harga: 10000 }], pembayaran: [{ metode: 'tunai', jumlah: 10000 }] }
+    });
+    envAcc.aksiOpnameApprove_({ user: ownerRow, payload: { id: opDraft.id } });
+    const ksOp = envAcc.bacaSemua_('Kartu_Stok').find(k => k.ref_id === opDraft.no_opname);
+    assert(ksOp && Number(ksOp.qty) === -1 && Number(ksOp.saldo) === stokAwalOp - 2,
+      `Opname approve wajib mencatat selisih aktual (-1), aktual: qty=${ksOp?.qty}, saldo=${ksOp?.saldo}`);
   });
 
   console.log('\n=============================================');

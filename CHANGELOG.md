@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.92] - 2026-11-22
+
+### Fixed
+- [BACKEND] [POS-JUAL] [OPNAME] [DASHBOARD] **Penyempurnaan 3 Edge-Case Rekonsiliasi Akhir (`kode.gs`, `test_debug_final.js`)**:
+  - **Void Nota Tempo Tidak Memotong `total_belanja` Member (`aksiPenjualanVoid_`)**: Pembatalan nota tempo belum lunas hanya mengurangi porsi yang memang sudah dibayar di awal (DP), sehingga histori `total_belanja` transaksi lunas member sebelumnya tetap utuh.
+  - **Rekonsiliasi Selisih Aktual Persetujuan Opname (`aksiOpnameApprove_`)**: Menghitung ulang `stokSistemAktual` dan `selisihAktual` pada saat persetujuan draft opname sehingga mutasi `Kartu_Stok` tetap 100% sinkron meski terjadi penjualan/pembelian di sela waktu antara pembuatan draft dan persetujuan.
+  - **Sinkronisasi Sisa Hutang Laporan Pembelian (`aksiLaporanPembelian_`)**: Membaca sisa hutang riil dari sheet `Hutang` agar angka sisa hutang pada Laporan Pembelian selalu identik dengan modul Hutang Supplier, termasuk setelah retur pembelian `potong_hutang`.
+
 ## [1.0.91] - 2026-11-22
 
 ### Fixed
