@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.105] - 2026-11-22
+
+### Removed
+- [BACKEND] **Penghapusan Permanen File Monolith `backend/kode.gs` & `scripts/build-gas.js` (100% Modular Murni)**:
+  - Menghapus `backend/kode.gs` (file raksasa 7.985 baris) dan `scripts/build-gas.js` karena proyek kini 100% menggunakan **10 modul ringkas** di `backend/src/*.gs` yang terhubung langsung ke Google Apps Script melalui `clasp`.
+  - Menambahkan helper [tests/_load_gas.js](file:///c:/POS%20KASIR%20TOKO/tests/_load_gas.js) dan validator [scripts/check-gas.js](file:///c:/POS%20KASIR%20TOKO/scripts/check-gas.js) (`npm run check:gas`) agar seluruh 16 suite uji otomatis membaca & memvalidasi langsung dari `backend/src/*.gs`.
+
 ## [1.0.104] - 2026-11-22
 
 ### Changed

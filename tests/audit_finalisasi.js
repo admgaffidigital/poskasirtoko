@@ -45,9 +45,9 @@ assert.ok(posJs.includes('pageSize: 30'), 'POS wajib menggunakan batching pageSi
 assert.ok(posJs.includes('muatLebihBanyakKatalog'), 'POS wajib memiliki handler muatLebihBanyakKatalog');
 console.log('  ✔ LULUS: POS Kasir memuat 30 produk pertama secara instan dan mendukung tombol Load More.');
 
-// 4. Audit Backend kode.gs PAGE_LIMIT_MAKS & has_more
-console.log('\n[4/7] Memeriksa konfigurasi skalabilitas backend kode.gs...');
-const kodeGs = fs.readFileSync('backend/kode.gs', 'utf8');
+// 4. Audit Backend backend/src/*.gs PAGE_LIMIT_MAKS & has_more
+console.log('\n[4/7] Memeriksa konfigurasi skalabilitas backend GAS (backend/src/*.gs)...');
+const kodeGs = require('./_load_gas')();
 assert.ok(kodeGs.includes('PAGE_LIMIT_MAKS: 500'), 'PAGE_LIMIT_MAKS harus 500');
 assert.ok(kodeGs.includes('has_more:'), 'aksiProdukList_ wajib menyertakan properti has_more');
 assert.ok(kodeGs.includes('produk.uploadFoto'), 'Backend wajib mendukung handler produk.uploadFoto ke Google Drive');

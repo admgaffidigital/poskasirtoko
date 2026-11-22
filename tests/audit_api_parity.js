@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const kodeGs = fs.readFileSync(path.join(__dirname, '..', 'backend', 'kode.gs'), 'utf8');
+const kodeGs = require('./_load_gas')();
 
 // Collect all keys in RUTE
 const backendActions = new Set();

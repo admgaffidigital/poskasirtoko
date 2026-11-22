@@ -2,7 +2,7 @@
 
 Aplikasi Point of Sale (POS) untuk toko bangunan: penjualan, pembelian, stok, membership, hutang-piutang, dan laporan dalam satu sistem. Berjalan di **Web** dan **Android (APK)** dengan tampilan ala aplikasi native, responsif, dan ramah mobile.
 
-> **Status:** Produksi (Seluruh Modul Aktif + Modular GAS & `clasp`) · **Versi:** 1.0.104 · **Versi skema DB:** 1 (28 sheet) · **Dokumen wajib dibaca agent:** `README.md` → `CHANGELOG.md` → `PROMPT_ANTIGRAVITY.md`
+> **Status:** Produksi (Seluruh Modul Aktif + Modular GAS & `clasp`) · **Versi:** 1.0.105 · **Versi skema DB:** 1 (28 sheet) · **Dokumen wajib dibaca agent:** `README.md` → `CHANGELOG.md` → `PROMPT_ANTIGRAVITY.md`
 
 ---
 
@@ -80,7 +80,7 @@ Keputusan ini **mengikat**. Agent tidak boleh mengubahnya tanpa persetujuan tert
 | Editor / Dev | VS Code & Antigravity |
 | Front end | Vanilla JS (ES Modules), push ke **GitHub** |
 | Hosting | **Vercel** (auto-deploy branch `main`, output directory `frontend`) |
-| Back end | **Google Apps Script** (10 modul di `backend/src/*.gs`, auto-deploy multi-file via `clasp` / auto-bundle ke `backend/kode.gs`) |
+| Back end | **Google Apps Script** (10 modul murni di `backend/src/*.gs`, auto-deploy multi-file via `clasp`) |
 | Database | **Google Spreadsheet** (satu sheet per entitas) |
 | Platform | Web + Android APK (PWA → Capacitor) |
 

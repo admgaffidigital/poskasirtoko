@@ -1,6 +1,6 @@
 # 🗄️ Dokumentasi Struktur Database Spreadsheet
 
-Database POS Kasir Toko Bangunan menggunakan **Google Spreadsheet** dengan arsitektur 1 sheet per entitas. Seluruh definisi teknis skema terpusat di konstanta `SKEMA` pada `backend/src/00_konfig_skema_router.gs` (tergabung otomatis ke `backend/kode.gs`).
+Database POS Kasir Toko Bangunan menggunakan **Google Spreadsheet** dengan arsitektur 1 sheet per entitas. Seluruh definisi teknis skema terpusat di konstanta `SKEMA` pada `backend/src/00_konfig_skema_router.gs`.
 
 > **Versi Skema:** 1 · **Jumlah Sheet:** 28 · **Zona Waktu:** `Asia/Jakarta` (WIB) · **Migrasi:** Otomatis (*zero-migration* kolom & sheet baru)
 

@@ -44,8 +44,8 @@ assert(cssContent.includes('.ks-cell-keterangan'), 'CSS komponen harus memuat de
 assert(cssContent.includes('word-break: break-word'), 'CSS harus mendukung pemotongan kata rapi');
 console.log('  ✔ [PASS] 6. CSS pendukung tabel kartu stok dan teks keterangan terpasang sempurna');
 
-// 3. Cek backend/kode.gs untuk penanganan produk terhapus pada kartu stok
-const kodeGs = fs.readFileSync(path.join(__dirname, '../backend/kode.gs'), 'utf8');
+// 3. Cek backend/src/*.gs untuk penanganan produk terhapus pada kartu stok
+const kodeGs = require('./_load_gas')();
 assert(kodeGs.includes("bacaSemua_('Produk', { termasukTerhapus: true })"), 'Backend harus membaca produk termasuk yang terhapus untuk audit');
 console.log('  ✔ [PASS] 7. Backend kartu stok mempertahankan nama produk asli dan satuan untuk barang terhapus');
 

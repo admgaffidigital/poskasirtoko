@@ -161,7 +161,7 @@ function setupMockEnv() {
     }
   };
 
-  const code = fs.readFileSync('backend/kode.gs', 'utf8');
+  const code = require('./_load_gas')();
   vm.createContext(sandbox);
   vm.runInContext(code, sandbox);
 
