@@ -1592,6 +1592,109 @@ async function runAudit() {
       `Arus kas keluar wajib mencatat pengembalian deposit tunai Rp 100.000, aktual: ${arusKasAkhir.rincian_keluar.deposit_tarik_tunai}`);
   });
 
+  // =========================================================================
+  // TEST 21: MANAJEMEN BUKA & TUTUP SHIFT KASIR (MODAL AWAL, HITUNG LACI, SELISIH, Z-REPORT)
+  // =========================================================================
+  test('21. Buka & Tutup Shift Kasir: Modal Awal, Rekap Laci Akurat, Validasi Selisih, Z-Report, & RBAC', () => {
+    const envShf = setupMockEnv();
+    envShf.setupDatabase();
+    const ownerRow = envShf.bacaSemua_('Users').find((u) => u.role === 'owner');
+    const saltK = envShf.buatSalt_();
+    const kasir1 = envShf.tambahBaris_('Users', [{
+      username: 'kasir_pagi', nama: 'Kasir Pagi', role: 'kasir',
+      pin_hash: envShf.hashPin_('111111', saltK), salt: saltK, aktif: true
+    }], ownerRow.id)[0];
+    const kasir2 = envShf.tambahBaris_('Users', [{
+      username: 'kasir_sore', nama: 'Kasir Sore', role: 'kasir',
+      pin_hash: envShf.hashPin_('222222', saltK), salt: saltK, aktif: true
+    }], ownerRow.id)[0];
+
+    const prod = envShf.tambahBaris_('Produk', [{
+      sku: 'SKU-SHF-1', nama: 'Semen 50kg', satuan_dasar: 'SAK',
+      hpp: 55000, harga_ritel: 70000, stok: 50, aktif: true
+    }], ownerRow.id)[0];
+
+    // 21a. Awalnya belum ada shift aktif
+    const awal = envShf.aksiShiftAktif_({ user: kasir1, payload: {} });
+    assert(awal.shift === null, 'Sebelum buka shift, shift.aktif wajib null');
+
+    // 21b. Buka shift dengan modal awal Rp 200.000
+    const buka = envShf.aksiShiftBuka_({ user: kasir1, payload: { modal_awal: 200000, catatan: 'Shift Pagi siap' } });
+    assert(buka.shift && buka.shift.status === 'aktif' && /^SHF-\d{8}-\d{4}$/.test(buka.shift.no_shift),
+      `Nomor shift wajib format SHF-YYYYMMDD-0001, aktual: ${buka.shift && buka.shift.no_shift}`);
+    assert(buka.shift.modal_awal === 200000, 'Modal awal wajib tersimpan Rp 200.000');
+
+    // 21c. Cegah buka shift ganda oleh kasir yang sama
+    let gagalGanda = false;
+    try {
+      envShf.aksiShiftBuka_({ user: kasir1, payload: { modal_awal: 100000 } });
+    } catch (e) {
+      gagalGanda = e.code === 'CONFLICT';
+    }
+    assert(gagalGanda === true, 'Kasir tidak boleh membuka 2 shift aktif bersamaan (CONFLICT)');
+
+    // 21d. Transaksi tunai 2 sak = Rp 140.000 (bayar Rp 150.000, kembalian Rp 10.000) + Kas Keluar Rp 25.000
+    envShf.aksiPenjualanCreate_({
+      user: kasir1,
+      payload: {
+        items: [{ produk_id: prod.id, satuan: 'SAK', faktor: 1, qty: 2, harga: 70000, tipe_harga: 'ritel' }],
+        pembayaran: [{ metode: 'tunai', jumlah: 150000 }]
+      }
+    });
+    envShf.aksiBiayaCreate_({
+      user: kasir1,
+      payload: {
+        kategori: 'Konsumsi & Dapur Toko',
+        nominal: 25000,
+        keterangan: 'Beli air galon',
+        sumber_dana: 'kas_kasir',
+        shift_id: buka.shift.id
+      }
+    });
+
+    // Ekspektasi kas laci = 200.000 (modal) + 140.000 (tunai bersih) - 25.000 (kas keluar) = Rp 315.000
+    const cekAktif = envShf.aksiShiftAktif_({ user: kasir1, payload: {} });
+    assert(cekAktif.ringkasan.kas_sistem === 315000,
+      `Ekspektasi kas sistem wajib Rp 315.000, aktual: ${cekAktif.ringkasan.kas_sistem}`);
+    assert(cekAktif.ringkasan.total_transaksi === 1 && cekAktif.ringkasan.total_biaya_kasir === 25000,
+      'Ringkasan shift wajib menghitung 1 transaksi & Rp 25.000 kas keluar');
+
+    // 21e. RBAC: Kasir 2 tidak boleh menutup shift milik Kasir 1
+    let gagalRbac = false;
+    try {
+      envShf.aksiShiftTutup_({ user: kasir2, payload: { id: buka.shift.id, kas_fisik: 315000 } });
+    } catch (e) {
+      gagalRbac = e.code === 'FORBIDDEN';
+    }
+    assert(gagalRbac === true, 'Kasir lain dilarang menutup shift milik kasir lain (FORBIDDEN)');
+
+    // 21f. Validasi selisih: kas_fisik Rp 310.000 (kurang Rp 5.000) TANPA catatan wajib ditolak
+    let gagalTanpaCatatan = false;
+    try {
+      envShf.aksiShiftTutup_({ user: kasir1, payload: { id: buka.shift.id, kas_fisik: 310000, catatan: '' } });
+    } catch (e) {
+      gagalTanpaCatatan = e.code === 'VALIDATION';
+    }
+    assert(gagalTanpaCatatan === true, 'Tutup shift dengan selisih kas tanpa catatan wajib ditolak (VALIDATION)');
+
+    // 21g. Tutup shift dengan catatan selisih -> sukses, status = 'ditutup', selisih = -5000, Z-Report siap
+    const tutup = envShf.aksiShiftTutup_({
+      user: kasir1,
+      payload: { id: buka.shift.id, kas_fisik: 310000, catatan: 'Salah kembalian Rp 5.000' }
+    });
+    assert(tutup.shift.status === 'ditutup', 'Status shift setelah ditutup wajib "ditutup"');
+    assert(tutup.shift.kas_sistem === 315000 && tutup.shift.kas_fisik === 310000 && tutup.shift.selisih === -5000,
+      `Snapshot Z-Report wajib mencatat sistem 315rb, fisik 310rb, selisih -5000, aktual: ${tutup.shift.selisih}`);
+    assert(tutup.ringkasan.tipe_laporan === 'Z-REPORT', 'Ringkasan tutup shift wajib bertipe Z-REPORT');
+
+    // 21h. Setelah ditutup, shift.aktif kembali null dan shift.list Owner menampilkan ringkasan akurat
+    const pascaTutup = envShf.aksiShiftAktif_({ user: kasir1, payload: {} });
+    assert(pascaTutup.shift === null, 'Setelah ditutup, shift.aktif wajib null');
+    const listOwner = envShf.aksiShiftList_({ user: ownerRow, payload: {} });
+    assert(listOwner.items.length === 1 && listOwner.ringkasan.total_selisih === -5000 && listOwner.ringkasan.jumlah_kurang === 1,
+      `shift.list wajib merangkum 1 shift ditutup dengan selisih -5000, aktual: ${JSON.stringify(listOwner.ringkasan)}`);
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

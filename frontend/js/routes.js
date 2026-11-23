@@ -150,7 +150,7 @@ export const ROUTES = [
     id: 'biaya',
     title: 'Biaya Operasional Toko',
     shortTitle: 'Biaya Toko',
-    icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    icon: ICONS.calculator,
     roles: ['owner', 'admin', 'kasir'],
     fase: 'Fase 6',
     inBottomNav: false,

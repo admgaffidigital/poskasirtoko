@@ -153,6 +153,13 @@ const SKEMA = {
   Biaya: [['no_transaksi', 's'], ['tanggal', 'd'], ['kategori', 's'], ['nominal', 'n'], ['keterangan', 's'],
     ['sumber_dana', 's'], ['shift_id', 's'], ['user_id', 's'], ['user_nama', 's'], ['bukti_url', 's'],
     ['status', 's']],
+  Shift_Kasir: [['no_shift', 's'], ['kasir_id', 's'], ['kasir_nama', 's'], ['waktu_buka', 'd'], ['waktu_tutup', 'd'],
+    ['status', 's'], ['modal_awal', 'n'], ['total_transaksi', 'n'], ['total_penjualan', 'n'], ['total_tunai', 'n'],
+    ['total_transfer', 'n'], ['total_tempo', 'n'], ['total_deposit_pakai', 'n'], ['total_diskon', 'n'],
+    ['total_piutang_tunai', 'n'], ['total_deposit_tunai', 'n'], ['total_tarik_deposit_tunai', 'n'],
+    ['total_refund_tunai', 'n'], ['total_biaya_kasir', 'n'], ['kas_sistem', 'n'], ['kas_fisik', 'n'],
+    ['selisih', 'n'], ['catatan_buka', 's'], ['catatan_tutup', 's'], ['ditutup_oleh', 's'],
+    ['ditutup_oleh_nama', 's']],
   Pengaturan: [['key', 's'], ['value', 'j']],
   Log_Audit: [['user_id', 's'], ['aksi', 's'], ['modul', 's'], ['ref_id', 's'], ['detail_json', 'j']],
   Counter: [['key', 's'], ['nilai', 'n']]
@@ -328,7 +335,13 @@ const RUTE = {
   // Biaya Operasional & Kas Keluar
   'biaya.list': { publik: false, roles: SEMUA_ROLE, handler: aksiBiayaList_ },
   'biaya.create': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiBiayaCreate_ },
-  'biaya.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiBiayaDelete_ }
+  'biaya.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiBiayaDelete_ },
+
+  // Manajemen Buka & Tutup Shift Kasir (Z-Report & Hitung Fisik Laci)
+  'shift.aktif': { publik: false, roles: SEMUA_ROLE, handler: aksiShiftAktif_ },
+  'shift.buka': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiShiftBuka_ },
+  'shift.tutup': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiShiftTutup_ },
+  'shift.list': { publik: false, roles: SEMUA_ROLE, handler: aksiShiftList_ }
 };
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */

@@ -111,7 +111,8 @@ const MASTER_CACHE_SHEETS = Object.freeze({
   Retur: 90,
   Retur_Item: 90,
   Biaya: 90,
-  Deposit_Log: 90
+  Deposit_Log: 90,
+  Shift_Kasir: 60
 });
 
 /** Hapus cache L2 CacheService untuk sheet master saat ada penulisan data. */
@@ -422,7 +423,7 @@ function cacheHapus_(key) {
  * WAJIB dipanggil di dalam denganKunci_ agar tidak ada nomor ganda.
  */
 function nomorBerikut_(prefix) {
-  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP', 'DEP'];
+  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP', 'DEP', 'SHF'];
   if (valid.indexOf(prefix) === -1) gagal_(KODE.SERVER, 'Prefix nomor tidak dikenal: ' + prefix);
   const key = prefix + '-' + Utilities.formatDate(new Date(), APP.TZ, 'yyyyMMdd');
   const baris = bacaSemua_('Counter').filter(function (c) { return c.key === key; })[0];

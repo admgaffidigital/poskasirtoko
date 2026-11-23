@@ -295,6 +295,7 @@ function percantikTampilanSpreadsheet() {
     'Penjualan': '#059669',
     'Penjualan_Item': '#10B981',
     'Penjualan_Bayar': '#34D399',
+    'Shift_Kasir': '#0D9488',
 
     // 3. Pengadaan & Pembelian (Oranye Hangat)
     'Pembelian': '#EA580C',
@@ -304,6 +305,7 @@ function percantikTampilanSpreadsheet() {
     'Hutang': '#7C3AED',
     'Piutang': '#8B5CF6',
     'Pembayaran': '#A78BFA',
+    'Deposit_Log': '#06B6D4',
     'Biaya': '#EF4444',
 
     // 5. Inventori Gudang & Stok (Amber Emas)

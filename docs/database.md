@@ -2,7 +2,7 @@
 
 Database POS Kasir Toko Bangunan menggunakan **Google Spreadsheet** dengan arsitektur 1 sheet per entitas. Seluruh definisi teknis skema terpusat di konstanta `SKEMA` pada `backend/src/00_konfig_skema_router.gs`.
 
-> **Versi Skema:** 1 · **Jumlah Sheet:** 28 · **Zona Waktu:** `Asia/Jakarta` (WIB) · **Migrasi:** Otomatis (*zero-migration* kolom & sheet baru)
+> **Versi Skema:** 1 · **Jumlah Sheet:** 29 · **Zona Waktu:** `Asia/Jakarta` (WIB) · **Migrasi:** Otomatis (*zero-migration* kolom & sheet baru)
 
 ---
 
@@ -22,7 +22,7 @@ Setiap sheet memiliki format kolom yang seragam:
 
 ---
 
-## 2. Rincian 28 Sheet & Tipe Kolom
+## 2. Rincian 29 Sheet & Tipe Kolom
 
 Keterangan tipe data:
 - `s` = Teks (String)
@@ -347,21 +347,50 @@ Catatan pengeluaran biaya operasional toko & kas keluar kasir (*petty cash*).
 - `bukti_url` (s): URL foto nota bukti pengeluaran (opsional)
 - `status` (s): `aktif` | `batal`
 
-### 26. `Pengaturan`
+### 26. `Shift_Kasir`
+Catatan sesi buka/tutup shift kasir, modal awal (float), rekonsiliasi fisik laci, selisih kas, dan snapshot Z-Report.
+- `no_shift` (s): Nomor shift `SHF-YYYYMMDD-0001`
+- `kasir_id` (s): Relasi ke `Users.id`
+- `kasir_nama` (s): Snapshot nama kasir
+- `waktu_buka` (d): Waktu buka shift (WIB)
+- `waktu_tutup` (d): Waktu tutup shift (kosong saat masih aktif)
+- `status` (s): `aktif` | `ditutup`
+- `modal_awal` (n): Uang modal awal / float di laci saat buka shift
+- `total_transaksi` (n): Snapshot jumlah nota selama shift
+- `total_penjualan` (n): Snapshot total omset penjualan selama shift
+- `total_tunai` (n): Snapshot penerimaan tunai penjualan
+- `total_transfer` (n): Snapshot penerimaan non-tunai (transfer/QRIS/debit)
+- `total_tempo` (n): Snapshot penjualan tempo (piutang)
+- `total_deposit_pakai` (n): Snapshot penjualan dibayar via saldo titipan pelanggan
+- `total_diskon` (n): Snapshot total diskon diberikan
+- `total_piutang_tunai` (n): Snapshot pelunasan piutang tunai masuk laci
+- `total_deposit_tunai` (n): Snapshot terima titipan tunai masuk laci
+- `total_tarik_deposit_tunai` (n): Snapshot pengembalian titipan tunai keluar laci
+- `total_refund_tunai` (n): Snapshot refund retur tunai keluar laci
+- `total_biaya_kasir` (n): Snapshot kas keluar kasir (*petty cash*)
+- `kas_sistem` (n): Ekspektasi total uang fisik di laci menurut komputer
+- `kas_fisik` (n): Total uang fisik yang dihitung kasir saat tutup shift
+- `selisih` (n): `kas_fisik - kas_sistem` (`0` = pas, `>0` = lebih, `<0` = kurang)
+- `catatan_buka` (s): Catatan saat buka shift (opsional)
+- `catatan_tutup` (s): Catatan saat tutup shift (wajib diisi jika `selisih != 0`)
+- `ditutup_oleh` (s): ID pengguna penutup shift
+- `ditutup_oleh_nama` (s): Nama pengguna penutup shift
+
+### 27. `Pengaturan`
 Konfigurasi operasional toko (key-value JSON).
 - `key` (s): Kunci pengaturan (cth: `toko_nama`, `poin_per_rupiah`)
 - `value` (j): Nilai pengaturan tersimpan dalam format teks JSON
 
-### 27. `Log_Audit`
+### 28. `Log_Audit`
 Pencatatan jejak audit aksi sensitif sistem.
 - `user_id` (s): Pengguna yang melakukan aksi
-- `aksi` (s): Nama tindakan (misal: `void_penjualan`, `ganti_harga`, `reset_pin`, `deposit_tambah`)
-- `modul` (s): Modul sistem (cth: `POS`, `PRODUK`, `USER`, `DEPOSIT`)
+- `aksi` (s): Nama tindakan (misal: `void_penjualan`, `ganti_harga`, `reset_pin`, `deposit_tambah`, `shift_buka`, `shift_tutup`)
+- `modul` (s): Modul sistem (cth: `POS`, `PRODUK`, `USER`, `DEPOSIT`, `SHIFT`)
 - `ref_id` (s): ID entitas terkait
 - `detail_json` (j): Payload detail perubahan sebelum/sesudah
 
-### 28. `Counter`
+### 29. `Counter`
 Penghitung sekuensial nomor urut harian untuk mencegah nomor nota ganda/loncat.
-- `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`, `DEP-20261122`, `EXP-20261122`)
+- `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`, `DEP-20261122`, `EXP-20261122`, `SHF-20261123`)
 - `nilai` (n): Nomor urut terakhir hari tersebut
 

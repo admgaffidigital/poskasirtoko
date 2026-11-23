@@ -16,6 +16,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.108] - 2026-11-23
+
+### Added
+- [POS-JUAL] [DASHBOARD] [CETAK] [BACKEND] [DB] **Manajemen Buka & Tutup Shift Kasir — Modal Awal, Hitung Fisik Laci, Selisih Kas, & Z-Report (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `04_pos_penjualan.gs`, `09_setup_trigger_beautifier.gs`, `api.js`, `pos.js`, `laporan.js`, `printer.js`, `routes.js`, `tests/test_debug_final.js`)**:
+  - **[MIGRASI OTOMATIS]** Menambahkan sheet `Shift_Kasir` (sheet ke-29, *zero-migration* auto-create, prefix nomor `SHF-YYYYMMDD-0001`, masuk cache L2 `MASTER_CACHE_SHEETS`).
+  - Menambahkan 4 endpoint backend resmi: `shift.aktif`, `shift.buka`, `shift.tutup`, dan `shift.list` dengan pembatasan RBAC ketat (kasir hanya menutup/melihat shift sendiri; Owner/Admin dapat mengaudit & menutup paksa shift aktif kasir mana pun).
+  - Meningkatkan modal **Shift Kasir (`F3`)** di POS dengan alur lengkap:
+    - Indikator status shift aktif langsung di quickbar POS (`#btn-pos-shift`) + otomatis menyertakan `shift_id` saat mencatat Kas Keluar Kasir.
+    - **Buka Shift**: input modal awal laci (float) dengan tombol cepat + catatan buka.
+    - **Rekap Shift Berjalan (X-Report)** secara *real-time* berdasarkan rentang waktu buka shift (akurat untuk multi-shift dalam 1 hari).
+    - **Tutup Shift & Hitung Fisik Laci (Z-Report)**: dilengkapi **Kalkulator Pecahan Uang** (Rp 100rb s/d koin Rp 500), perbandingan live **Kas Sistem vs Kas Fisik**, badge selisih otomatis (`PAS` / `LEBIH` / `KURANG`), serta **validasi wajib catatan bila ada selisih kas**.
+    - Cetak struk **Z-Report Thermal 58/80mm** (RawBT / Web Bluetooth / Browser) dengan blok *Rekonsiliasi Fisik Laci* dan kolom tanda tangan.
+  - Menambahkan tab **`Shift Kasir`** di halaman **Dashboard & Laporan Usaha** (4 `.stat-card-pro`, filter status, ekspor CSV, cetak ulang X/Z-Report, & tombol Tutup Shift untuk Owner/Admin).
+  - Menambahkan **Test Audit #21** (`21/21 LULUS`) untuk seluruh skenario buka/tutup shift, selisih, Z-Report, dan RBAC; serta merapikan ikon rute `#/biaya` ke `ICONS.calculator`.
+
 ## [1.0.107] - 2026-11-23
 
 ### Added

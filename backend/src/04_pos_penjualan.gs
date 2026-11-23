@@ -912,25 +912,36 @@ function aksiPenjualanDetail_(ctx) {
   };
 }
 
-/** penjualan.shiftKasir — Ringkasan kas, transaksi, dan saldo laci untuk shift kasir (X-Report). */
-function aksiPenjualanShiftKasir_(ctx) {
-  const p = ctx.payload || {};
-  const user = ctx.user;
-  const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
+/** Helper cek apakah timestamp transaksi masuk rentang shift (waktu penuh) atau tanggal harian. */
+function cocokRentangWaktuShift_(tsUtama, tsCadangan, opsi) {
+  const s1 = String(tsUtama || '').trim();
+  const s2 = String(tsCadangan || '').trim();
+  if (opsi.waktuMulai) {
+    const waktuPenuh = s1.length >= 19 ? s1 : (s2.length >= 19 ? s2 : '');
+    if (waktuPenuh) {
+      return waktuPenuh >= opsi.waktuMulai && waktuPenuh <= opsi.waktuSelesai;
+    }
+    const tglSaja = (s1 || s2).substring(0, 10);
+    if (!tglSaja) return false;
+    return tglSaja >= opsi.waktuMulai.substring(0, 10) && tglSaja <= opsi.waktuSelesai.substring(0, 10);
+  }
+  const tgl = (s1 || s2).substring(0, 10);
+  return tgl === opsi.targetTgl;
+}
 
-  // Tanggal target (default hari ini WIB YYYY-MM-DD)
-  const targetTgl = p.tanggal || formatWaktu_(new Date()).substring(0, 10);
-  const targetKasirId = p.kasir_id || (isOwnerOrAdmin && p.semua_kasir ? '' : user.id);
-
-  const semuaPenjualan = bacaSemua_('Penjualan');
+/**
+ * Mesin hitung rekapitulasi kas & transaksi untuk shift kasir (dipakai oleh X-Report, Shift Aktif, & Z-Report Tutup Shift).
+ */
+function hitungRekapShiftKasir_(targetKasirId, opsi) {
+  opsi = opsi || {};
   const semuaUsers = bacaSemua_('Users');
   const userPeta = {};
   semuaUsers.forEach(function (u) { userPeta[u.id] = u.nama || u.username; });
 
-  const penjualanHariIni = semuaPenjualan.filter(function (pj) {
+  const semuaPenjualan = bacaSemua_('Penjualan');
+  const penjualanShift = semuaPenjualan.filter(function (pj) {
     if (pj.deleted || pj.void || pj.status === 'void' || pj.status === 'pending') return false;
-    const tgl = String(pj.tanggal || '').substring(0, 10);
-    if (tgl !== targetTgl) return false;
+    if (!cocokRentangWaktuShift_(pj.tanggal, pj.created_at, opsi)) return false;
     if (targetKasirId && pj.created_by !== targetKasirId && pj.kasir_id !== targetKasirId) return false;
     return true;
   });
@@ -943,14 +954,15 @@ function aksiPenjualanShiftKasir_(ctx) {
     bayarByPenjualan[byr.penjualan_id].push(byr);
   });
 
-  let totalTransaksi = penjualanHariIni.length;
+  let totalTransaksi = penjualanShift.length;
   let totalPenjualan = 0;
   let totalTunai = 0;
   let totalTransfer = 0;
   let totalTempo = 0;
+  let totalDepositPakai = 0;
   let totalDiskon = 0;
 
-  penjualanHariIni.forEach(function (pj) {
+  penjualanShift.forEach(function (pj) {
     const tot = Number(pj.total) || 0;
     totalPenjualan += tot;
     totalDiskon += Number(pj.diskon) || 0;
@@ -972,6 +984,7 @@ function aksiPenjualanShiftKasir_(ctx) {
         if (m === 'tunai') totalTunai += jml;
         else if (m === 'transfer' || m === 'qris' || m === 'debit') totalTransfer += jml;
         else if (m === 'tempo') totalTempo += jml;
+        else if (m === 'deposit') totalDepositPakai += jml;
       });
     } else {
       const m = String(pj.metode_bayar || 'tunai').toLowerCase();
@@ -981,6 +994,8 @@ function aksiPenjualanShiftKasir_(ctx) {
         totalTransfer += tot;
       } else if (m === 'tempo') {
         totalTempo += tot;
+      } else if (m === 'deposit') {
+        totalDepositPakai += tot;
       } else {
         const bayarNet = Math.max(0, (Number(pj.bayar) || tot) - (Number(pj.kembalian) || 0));
         totalTunai += Math.min(tot, bayarNet);
@@ -988,14 +1003,13 @@ function aksiPenjualanShiftKasir_(ctx) {
     }
   });
 
-  const modalAwal = Number(p.modal_awal) || 0;
+  const modalAwal = Math.max(0, Math.round(Number(opsi.modalAwal) || 0));
 
-  // Penerimaan Pelunasan Piutang Tunai Hari Ini (masuk ke laci kasir)
+  // Penerimaan Pelunasan Piutang Tunai (masuk ke laci kasir)
   let totalPiutangTunai = 0;
   bacaSemua_('Pembayaran').forEach(function (byr) {
     if (byr.deleted || byr.tipe !== 'piutang') return;
-    const tgl = String(byr.tanggal || byr.created_at || '').substring(0, 10);
-    if (tgl !== targetTgl) return;
+    if (!cocokRentangWaktuShift_(byr.created_at, byr.tanggal, opsi)) return;
     if (targetKasirId && byr.created_by !== targetKasirId) return;
     const m = String(byr.metode || 'tunai').toLowerCase();
     if (m === 'tunai') {
@@ -1003,13 +1017,12 @@ function aksiPenjualanShiftKasir_(ctx) {
     }
   });
 
-  // Refund Retur Penjualan Tunai Hari Ini (keluar dari laci kasir)
+  // Refund Retur Penjualan Tunai (keluar dari laci kasir)
   let totalRefundTunai = 0;
   bacaSemua_('Retur').forEach(function (rt) {
     if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui') return;
     if (String(rt.metode_refund || '').toLowerCase() !== 'kas') return;
-    const tgl = String(rt.disetujui_at || rt.tanggal || '').substring(0, 10);
-    if (tgl !== targetTgl) return;
+    if (!cocokRentangWaktuShift_(rt.disetujui_at, rt.tanggal, opsi)) return;
     const pelaksanaId = rt.disetujui_oleh || rt.created_by;
     if (targetKasirId && pelaksanaId !== targetKasirId && rt.created_by !== targetKasirId) return;
     totalRefundTunai += Number(rt.total) || 0;
@@ -1022,9 +1035,12 @@ function aksiPenjualanShiftKasir_(ctx) {
 
   semuaBiaya.forEach(function (b) {
     if (b.deleted || b.status === 'batal') return;
-    const tgl = String(b.tanggal || b.created_at || '').substring(0, 10);
-    if (tgl !== targetTgl) return;
-    if (targetKasirId && b.user_id !== targetKasirId) return;
+    const cocokShiftId = opsi.shiftId && b.shift_id && b.shift_id === opsi.shiftId;
+    if (opsi.shiftId && b.shift_id && b.shift_id !== opsi.shiftId) return;
+    if (!cocokShiftId) {
+      if (!cocokRentangWaktuShift_(b.created_at, b.tanggal, opsi)) return;
+      if (targetKasirId && b.user_id !== targetKasirId) return;
+    }
     const sumber = String(b.sumber_dana || 'kas_kasir').toLowerCase();
     if (sumber === 'kas_kasir') {
       const nom = Number(b.nominal) || 0;
@@ -1040,13 +1056,12 @@ function aksiPenjualanShiftKasir_(ctx) {
     }
   });
 
-  // Terima Titipan / Tarik Titipan Pelanggan Tunai Hari Ini (masuk/keluar laci kasir)
+  // Terima Titipan / Tarik Titipan Pelanggan Tunai (masuk/keluar laci kasir)
   let totalDepositTunai = 0;
   let totalTarikDepositTunai = 0;
   bacaSemua_('Deposit_Log').forEach(function (dl) {
     if (dl.deleted) return;
-    const tgl = String(dl.created_at || '').substring(0, 10);
-    if (tgl !== targetTgl) return;
+    if (!cocokRentangWaktuShift_(dl.created_at, '', opsi)) return;
     if (targetKasirId && dl.created_by !== targetKasirId) return;
     const m = String(dl.metode || '').toLowerCase();
     if (m !== 'tunai') return;
@@ -1061,10 +1076,10 @@ function aksiPenjualanShiftKasir_(ctx) {
   const totalLaci = Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai);
 
   return {
-    tanggal: targetTgl,
+    tanggal: opsi.targetTgl || (opsi.waktuMulai ? opsi.waktuMulai.substring(0, 10) : sekarang_().substring(0, 10)),
     kasir: {
-      id: targetKasirId || user.id,
-      nama: userPeta[targetKasirId] || user.nama || user.username
+      id: targetKasirId || (opsi.fallbackUser ? opsi.fallbackUser.id : ''),
+      nama: userPeta[targetKasirId] || (opsi.fallbackUser ? (opsi.fallbackUser.nama || opsi.fallbackUser.username) : 'Kasir')
     },
     modal_awal: modalAwal,
     total_transaksi: totalTransaksi,
@@ -1072,6 +1087,7 @@ function aksiPenjualanShiftKasir_(ctx) {
     total_tunai: totalTunai,
     total_transfer: totalTransfer,
     total_tempo: totalTempo,
+    total_deposit_pakai: totalDepositPakai,
     total_diskon: totalDiskon,
     total_piutang_tunai: totalPiutangTunai,
     total_deposit_tunai: totalDepositTunai,
@@ -1079,8 +1095,377 @@ function aksiPenjualanShiftKasir_(ctx) {
     total_refund_tunai: totalRefundTunai,
     total_biaya_kasir: totalBiayaKasir,
     rincian_biaya_kasir: rincianBiayaKasir,
-    total_laci: totalLaci
+    total_laci: totalLaci,
+    kas_sistem: totalLaci
   };
+}
+
+/** Cari shift kasir aktif milik userId tertentu (null bila belum buka shift). */
+function cariShiftAktifKasir_(kasirId) {
+  if (!kasirId) return null;
+  const semua = bacaSemua_('Shift_Kasir');
+  for (let i = semua.length - 1; i >= 0; i--) {
+    const s = semua[i];
+    if (!s.deleted && s.status === 'aktif' && s.kasir_id === kasirId) return s;
+  }
+  return null;
+}
+
+/** penjualan.shiftKasir — Ringkasan kas, transaksi, dan saldo laci untuk shift kasir (X-Report). */
+function aksiPenjualanShiftKasir_(ctx) {
+  const p = ctx.payload || {};
+  const user = ctx.user;
+  const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
+
+  const targetTgl = p.tanggal || formatWaktu_(new Date()).substring(0, 10);
+  const targetKasirId = p.kasir_id || (isOwnerOrAdmin && p.semua_kasir ? '' : user.id);
+
+  // Cek apakah ada shift aktif yang relevan (kecuali user secara eksplisit meminta tanggal berbeda atau semua kasir)
+  let shiftAktif = null;
+  if (p.shift_id) {
+    shiftAktif = cariById_('Shift_Kasir', p.shift_id);
+  } else if (targetKasirId && (!p.tanggal || p.tanggal === formatWaktu_(new Date()).substring(0, 10))) {
+    shiftAktif = cariShiftAktifKasir_(targetKasirId);
+  }
+
+  let opsiHitung;
+  if (shiftAktif && !p.abaikan_shift_aktif) {
+    opsiHitung = {
+      shiftId: shiftAktif.id,
+      waktuMulai: shiftAktif.waktu_buka,
+      waktuSelesai: shiftAktif.waktu_tutup || sekarang_(),
+      targetTgl: String(shiftAktif.waktu_buka || targetTgl).substring(0, 10),
+      modalAwal: p.modal_awal !== undefined && p.modal_awal !== null ? Number(p.modal_awal) : Number(shiftAktif.modal_awal || 0),
+      fallbackUser: user
+    };
+  } else {
+    opsiHitung = {
+      targetTgl: targetTgl,
+      modalAwal: Number(p.modal_awal) || 0,
+      fallbackUser: user
+    };
+  }
+
+  const hasil = hitungRekapShiftKasir_(targetKasirId, opsiHitung);
+  if (shiftAktif) {
+    hasil.shift_id = shiftAktif.id;
+    hasil.no_shift = shiftAktif.no_shift;
+    hasil.status = shiftAktif.status;
+    hasil.waktu_buka = shiftAktif.waktu_buka;
+    hasil.waktu_tutup = shiftAktif.waktu_tutup || '';
+    hasil.catatan_buka = shiftAktif.catatan_buka || '';
+    hasil.shift_aktif = shiftAktif;
+  } else {
+    hasil.shift_aktif = null;
+  }
+  return hasil;
+}
+
+/** shift.aktif — Cek status shift aktif kasir + hitung live ekspektasi kas laci. */
+function aksiShiftAktif_(ctx) {
+  const p = ctx.payload || {};
+  const user = ctx.user;
+  const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
+  const targetKasirId = (isOwnerOrAdmin && p.kasir_id) ? String(p.kasir_id) : user.id;
+
+  const shiftAktif = cariShiftAktifKasir_(targetKasirId);
+  if (!shiftAktif) {
+    return { shift: null, ringkasan: null };
+  }
+
+  const rekap = hitungRekapShiftKasir_(shiftAktif.kasir_id, {
+    shiftId: shiftAktif.id,
+    waktuMulai: shiftAktif.waktu_buka,
+    waktuSelesai: sekarang_(),
+    targetTgl: String(shiftAktif.waktu_buka || '').substring(0, 10),
+    modalAwal: Number(shiftAktif.modal_awal || 0),
+    fallbackUser: user
+  });
+  rekap.shift_id = shiftAktif.id;
+  rekap.no_shift = shiftAktif.no_shift;
+  rekap.status = shiftAktif.status;
+  rekap.waktu_buka = shiftAktif.waktu_buka;
+  rekap.catatan_buka = shiftAktif.catatan_buka || '';
+  rekap.tipe_laporan = 'X-REPORT';
+
+  return {
+    shift: shiftAktif,
+    ringkasan: rekap
+  };
+}
+
+/** shift.buka — Buka shift kasir baru dengan modal awal (float laci). */
+function aksiShiftBuka_(ctx) {
+  const p = ctx.payload || {};
+  const user = ctx.user;
+  const modalAwal = Math.round(V_.nonNegatif(p.modal_awal, 'Modal awal laci', { bawaan: 0 }));
+  const catatanBuka = V_.teks(p.catatan || p.catatan_buka || '', 'Catatan buka shift', { maks: 300 });
+
+  const sudahAktif = cariShiftAktifKasir_(user.id);
+  if (sudahAktif) {
+    gagal_(KODE.CONFLICT, 'Anda masih memiliki shift kasir aktif (' + sudahAktif.no_shift + '). Tutup shift tersebut terlebih dahulu.');
+  }
+
+  const noShift = nomorBerikut_('SHF');
+  const waktuBuka = sekarang_();
+  const namaKasir = user.nama || user.username || 'Kasir';
+
+  const baru = tambahBaris_('Shift_Kasir', [{
+    no_shift: noShift,
+    kasir_id: user.id,
+    kasir_nama: namaKasir,
+    waktu_buka: waktuBuka,
+    waktu_tutup: '',
+    status: 'aktif',
+    modal_awal: modalAwal,
+    total_transaksi: 0,
+    total_penjualan: 0,
+    total_tunai: 0,
+    total_transfer: 0,
+    total_tempo: 0,
+    total_deposit_pakai: 0,
+    total_diskon: 0,
+    total_piutang_tunai: 0,
+    total_deposit_tunai: 0,
+    total_tarik_deposit_tunai: 0,
+    total_refund_tunai: 0,
+    total_biaya_kasir: 0,
+    kas_sistem: modalAwal,
+    kas_fisik: 0,
+    selisih: 0,
+    catatan_buka: catatanBuka,
+    catatan_tutup: '',
+    ditutup_oleh: '',
+    ditutup_oleh_nama: ''
+  }], user.id)[0];
+
+  catatAudit_(user.id, 'shift_buka', 'SHIFT', noShift, {
+    modal_awal: modalAwal,
+    catatan_buka: catatanBuka
+  });
+
+  const rekap = hitungRekapShiftKasir_(user.id, {
+    shiftId: baru.id,
+    waktuMulai: waktuBuka,
+    waktuSelesai: waktuBuka,
+    targetTgl: waktuBuka.substring(0, 10),
+    modalAwal: modalAwal,
+    fallbackUser: user
+  });
+  rekap.shift_id = baru.id;
+  rekap.no_shift = noShift;
+  rekap.status = 'aktif';
+  rekap.waktu_buka = waktuBuka;
+  rekap.catatan_buka = catatanBuka;
+  rekap.tipe_laporan = 'X-REPORT';
+
+  return {
+    shift: baru,
+    ringkasan: rekap,
+    pesan: 'Shift kasir ' + noShift + ' berhasil dibuka dengan modal awal ' + formatRupiah_(modalAwal) + '.'
+  };
+}
+
+/** shift.tutup — Tutup shift kasir, hitung fisik laci vs kas sistem, simpan snapshot Z-Report & audit selisih. */
+function aksiShiftTutup_(ctx) {
+  const p = ctx.payload || {};
+  const user = ctx.user;
+  const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
+
+  let shift = null;
+  if (p.id) {
+    shift = cariById_('Shift_Kasir', String(p.id).trim());
+  } else {
+    shift = cariShiftAktifKasir_(user.id);
+  }
+
+  if (!shift || shift.deleted) {
+    gagal_(KODE.NOT_FOUND, 'Shift kasir aktif tidak ditemukan.');
+  }
+  if (shift.status !== 'aktif') {
+    gagal_(KODE.CONFLICT, 'Shift ' + shift.no_shift + ' sudah ditutup sebelumnya.');
+  }
+  if (!isOwnerOrAdmin && shift.kasir_id !== user.id) {
+    gagal_(KODE.FORBIDDEN, 'Anda hanya dapat menutup shift kasir milik Anda sendiri.');
+  }
+
+  if (p.kas_fisik === undefined || p.kas_fisik === null || p.kas_fisik === '') {
+    gagal_(KODE.VALIDATION, 'Jumlah uang fisik di laci wajib diisi.');
+  }
+  const kasFisik = Math.round(V_.nonNegatif(p.kas_fisik, 'Jumlah uang fisik di laci', { wajib: true }));
+  const catatanTutup = V_.teks(p.catatan || p.catatan_tutup || '', 'Catatan tutup shift', { maks: 400 });
+
+  const waktuTutup = sekarang_();
+  const rekap = hitungRekapShiftKasir_(shift.kasir_id, {
+    shiftId: shift.id,
+    waktuMulai: shift.waktu_buka,
+    waktuSelesai: waktuTutup,
+    targetTgl: String(shift.waktu_buka || '').substring(0, 10),
+    modalAwal: Number(shift.modal_awal || 0),
+    fallbackUser: { id: shift.kasir_id, nama: shift.kasir_nama }
+  });
+
+  const kasSistem = Math.round(Number(rekap.total_laci || 0));
+  const selisih = kasFisik - kasSistem;
+
+  if (selisih !== 0 && !catatanTutup) {
+    const labelSelisih = selisih > 0 ? ('lebih +' + formatRupiah_(selisih)) : ('kurang -' + formatRupiah_(Math.abs(selisih)));
+    gagal_(KODE.VALIDATION, 'Terdapat selisih kas ' + labelSelisih + '. Catatan/penjelasan selisih wajib diisi.');
+  }
+
+  const namaPenutup = user.nama || user.username || 'Kasir';
+  const shiftTutup = ubahBaris_('Shift_Kasir', [{
+    id: shift.id,
+    data: {
+      waktu_tutup: waktuTutup,
+      status: 'ditutup',
+      total_transaksi: rekap.total_transaksi,
+      total_penjualan: rekap.total_penjualan,
+      total_tunai: rekap.total_tunai,
+      total_transfer: rekap.total_transfer,
+      total_tempo: rekap.total_tempo,
+      total_deposit_pakai: rekap.total_deposit_pakai,
+      total_diskon: rekap.total_diskon,
+      total_piutang_tunai: rekap.total_piutang_tunai,
+      total_deposit_tunai: rekap.total_deposit_tunai,
+      total_tarik_deposit_tunai: rekap.total_tarik_deposit_tunai,
+      total_refund_tunai: rekap.total_refund_tunai,
+      total_biaya_kasir: rekap.total_biaya_kasir,
+      kas_sistem: kasSistem,
+      kas_fisik: kasFisik,
+      selisih: selisih,
+      catatan_tutup: catatanTutup,
+      ditutup_oleh: user.id,
+      ditutup_oleh_nama: namaPenutup
+    }
+  }], user.id)[0];
+
+  catatAudit_(user.id, 'shift_tutup', 'SHIFT', shift.no_shift, {
+    kasir_id: shift.kasir_id,
+    kasir_nama: shift.kasir_nama,
+    modal_awal: shift.modal_awal,
+    kas_sistem: kasSistem,
+    kas_fisik: kasFisik,
+    selisih: selisih,
+    catatan_tutup: catatanTutup
+  });
+
+  rekap.shift_id = shiftTutup.id;
+  rekap.no_shift = shiftTutup.no_shift;
+  rekap.status = 'ditutup';
+  rekap.waktu_buka = shiftTutup.waktu_buka;
+  rekap.waktu_tutup = waktuTutup;
+  rekap.kas_sistem = kasSistem;
+  rekap.kas_fisik = kasFisik;
+  rekap.selisih = selisih;
+  rekap.catatan_buka = shiftTutup.catatan_buka || '';
+  rekap.catatan_tutup = catatanTutup;
+  rekap.ditutup_oleh_nama = namaPenutup;
+  rekap.tipe_laporan = 'Z-REPORT';
+
+  return {
+    shift: shiftTutup,
+    ringkasan: rekap,
+    pesan: 'Shift ' + shiftTutup.no_shift + ' berhasil ditutup. ' +
+      (selisih === 0 ? 'Kas fisik PAS dengan sistem!' : (selisih > 0 ? 'Selisih kas LEBIH +' + formatRupiah_(selisih) : 'Selisih kas KURANG -' + formatRupiah_(Math.abs(selisih))))
+  };
+}
+
+/** shift.list — Daftar riwayat shift kasir (untuk audit Owner/Admin di Laporan & riwayat kasir). */
+function aksiShiftList_(ctx) {
+  const p = ctx.payload || {};
+  const user = ctx.user;
+  const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
+  const dari = String(p.dari || '').trim().substring(0, 10);
+  const sampai = String(p.sampai || '').trim().substring(0, 10);
+  const statusFilter = String(p.status || '').trim().toLowerCase();
+  const kasirFilter = isOwnerOrAdmin ? String(p.kasir_id || '').trim() : user.id;
+
+  const semua = bacaSemua_('Shift_Kasir').filter(function (s) {
+    if (s.deleted) return false;
+    if (kasirFilter && s.kasir_id !== kasirFilter) return false;
+    if (statusFilter && statusFilter !== 'semua' && String(s.status || '').toLowerCase() !== statusFilter) return false;
+    const tglBuka = String(s.waktu_buka || s.created_at || '').substring(0, 10);
+    if (dari && tglBuka && tglBuka < dari) return false;
+    if (sampai && tglBuka && tglBuka > sampai) return false;
+    return true;
+  });
+
+  // Urutkan terbaru di atas
+  semua.sort(function (a, b) {
+    return String(b.waktu_buka || b.created_at || '').localeCompare(String(a.waktu_buka || a.created_at || ''));
+  });
+
+  // Enrich shift aktif dengan hitungan live agar Owner/Admin langsung melihat posisi kas saat ini
+  const waktuSkrg = sekarang_();
+  let totalOmset = 0;
+  let totalKasSistem = 0;
+  let totalKasFisik = 0;
+  let totalSelisih = 0;
+  let shiftAktifCount = 0;
+  let shiftDitutupCount = 0;
+  let jumlahPas = 0;
+  let jumlahLebih = 0;
+  let jumlahKurang = 0;
+
+  const enriched = semua.map(function (s) {
+    const item = Object.assign({}, s);
+    if (item.status === 'aktif') {
+      shiftAktifCount++;
+      const live = hitungRekapShiftKasir_(item.kasir_id, {
+        shiftId: item.id,
+        waktuMulai: item.waktu_buka,
+        waktuSelesai: waktuSkrg,
+        targetTgl: String(item.waktu_buka || '').substring(0, 10),
+        modalAwal: Number(item.modal_awal || 0),
+        fallbackUser: { id: item.kasir_id, nama: item.kasir_nama }
+      });
+      item.total_transaksi = live.total_transaksi;
+      item.total_penjualan = live.total_penjualan;
+      item.total_tunai = live.total_tunai;
+      item.total_transfer = live.total_transfer;
+      item.total_tempo = live.total_tempo;
+      item.total_deposit_pakai = live.total_deposit_pakai;
+      item.total_diskon = live.total_diskon;
+      item.total_piutang_tunai = live.total_piutang_tunai;
+      item.total_deposit_tunai = live.total_deposit_tunai;
+      item.total_tarik_deposit_tunai = live.total_tarik_deposit_tunai;
+      item.total_refund_tunai = live.total_refund_tunai;
+      item.total_biaya_kasir = live.total_biaya_kasir;
+      item.rincian_biaya_kasir = live.rincian_biaya_kasir;
+      item.kas_sistem = live.total_laci;
+      item.total_laci = live.total_laci;
+      totalOmset += Number(live.total_penjualan || 0);
+      totalKasSistem += Number(live.total_laci || 0);
+    } else {
+      shiftDitutupCount++;
+      item.total_laci = Number(item.kas_sistem || 0);
+      const sel = Number(item.selisih || 0);
+      totalOmset += Number(item.total_penjualan || 0);
+      totalKasSistem += Number(item.kas_sistem || 0);
+      totalKasFisik += Number(item.kas_fisik || 0);
+      totalSelisih += sel;
+      if (sel === 0) jumlahPas++;
+      else if (sel > 0) jumlahLebih++;
+      else jumlahKurang++;
+    }
+    return item;
+  });
+
+  const hasilPag = paginasi_(enriched, p, ['no_shift', 'kasir_nama', 'catatan_buka', 'catatan_tutup']);
+  hasilPag.ringkasan = {
+    total_shift: enriched.length,
+    shift_aktif: shiftAktifCount,
+    shift_ditutup: shiftDitutupCount,
+    total_omset: totalOmset,
+    total_kas_sistem: totalKasSistem,
+    total_kas_fisik: totalKasFisik,
+    total_selisih: totalSelisih,
+    jumlah_pas: jumlahPas,
+    jumlah_lebih: jumlahLebih,
+    jumlah_kurang: jumlahKurang
+  };
+  return hasilPag;
 }
 
 /**

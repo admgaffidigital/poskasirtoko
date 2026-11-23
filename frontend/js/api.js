@@ -46,6 +46,8 @@ const CACHE_CONFIG = {
   'penjualan.detail': 60000,       // 1 menit
   'penjualan.pending.list': 45000, // 45 detik
   'penjualan.shiftKasir': 45000,   // 45 detik
+  'shift.aktif': 45000,            // 45 detik
+  'shift.list': 60000,             // 1 menit
   'piutang.list': 60000,           // 1 menit
   'piutang.detail': 60000,         // 1 menit
   'hutang.list': 60000,            // 1 menit
@@ -84,18 +86,19 @@ const PERSISTABLE_ACTIONS = new Set([
 const MUTATION_PATTERNS = [
   { trigger: 'kategori.', targets: ['kategori.', 'produk.', 'laporan.'] },
   { trigger: 'produk.', targets: ['produk.', 'kartuStok.', 'laporan.'] },
-  { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
+  { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'shift.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
+  { trigger: 'shift.', targets: ['shift.', 'penjualan.', 'laporan.'] },
   { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'kartuStok.', 'laporan.'] },
   { trigger: 'opname.', targets: ['produk.', 'opname.', 'kartuStok.', 'laporan.'] },
-  { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'kartuStok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'member.', 'deposit.'] },
-  { trigger: 'piutang.', targets: ['piutang.', 'pelanggan.', 'penjualan.', 'laporan.', 'member.'] },
+  { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'kartuStok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'shift.', 'member.', 'deposit.'] },
+  { trigger: 'piutang.', targets: ['piutang.', 'pelanggan.', 'penjualan.', 'shift.', 'laporan.', 'member.'] },
   { trigger: 'hutang.', targets: ['hutang.', 'supplier.', 'pembelian.', 'laporan.'] },
   { trigger: 'pelanggan.', targets: ['pelanggan.', 'piutang.', 'deposit.', 'laporan.'] },
-  { trigger: 'deposit.', targets: ['pelanggan.', 'deposit.', 'penjualan.', 'laporan.'] },
+  { trigger: 'deposit.', targets: ['pelanggan.', 'deposit.', 'penjualan.', 'shift.', 'laporan.'] },
   { trigger: 'supplier.', targets: ['supplier.', 'hutang.', 'laporan.'] },
   { trigger: 'hadiah.', targets: ['hadiah.', 'pelanggan.', 'member.'] },
   { trigger: 'member.', targets: ['pelanggan.', 'hadiah.', 'member.'] },
-  { trigger: 'biaya.', targets: ['biaya.', 'penjualan.', 'laporan.'] },
+  { trigger: 'biaya.', targets: ['biaya.', 'penjualan.', 'shift.', 'laporan.'] },
   { trigger: 'kartuStok.', targets: ['kartuStok.', 'produk.', 'laporan.'] },
   { trigger: 'sistem.', targets: [''] },
   { trigger: 'pengaturan.', targets: ['pengaturan.'] },
@@ -323,7 +326,7 @@ if (typeof document !== 'undefined') {
 }
 
 const READ_SUFFIXES = [
-  '.list', '.get', '.detail', '.me', '.status', '.ping',
+  '.list', '.get', '.detail', '.me', '.status', '.ping', '.aktif',
   '.kartu', '.shift', '.shiftKasir', '.riwayat', '.riwayatPoin',
   '.dashboard', '.ringkasan', '.penjualan', '.pembelian',
   '.kas', '.arusKas', '.labaRugi', '.laba_rugi', '.stokValuasi'

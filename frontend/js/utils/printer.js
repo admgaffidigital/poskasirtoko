@@ -1423,19 +1423,23 @@ export function susunTeksXReport(data, ukuran = '58') {
     alamat: store.get('pengaturan')?.toko_alamat || '',
     hp: store.get('pengaturan')?.toko_hp || ''
   };
-  const kasir = data.kasir || { nama: 'Kasir' };
+  const kasir = data.kasir || { nama: data.kasir_nama || 'Kasir' };
+  const isZReport = data.status === 'ditutup' || data.tipe_laporan === 'Z-REPORT';
   const modalAwal = Number(data.modal_awal || 0);
   const totalTransaksi = Number(data.total_transaksi || 0);
   const totalTunai = Number(data.total_tunai || 0);
   const totalTransfer = Number(data.total_transfer || 0);
   const totalTempo = Number(data.total_tempo || 0);
+  const totalDepositPakai = Number(data.total_deposit_pakai || 0);
   const totalPenjualan = Number(data.total_penjualan || 0);
   const totalPiutangTunai = Number(data.total_piutang_tunai || 0);
   const totalDepositTunai = Number(data.total_deposit_tunai || 0);
   const totalTarikDepositTunai = Number(data.total_tarik_deposit_tunai || 0);
   const totalRefundTunai = Number(data.total_refund_tunai || 0);
   const totalBiayaKasir = Number(data.total_biaya_kasir || 0);
-  const totalLaci = Number(data.total_laci !== undefined ? data.total_laci : Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai));
+  const kasSistem = Number(data.kas_sistem !== undefined ? data.kas_sistem : (data.total_laci !== undefined ? data.total_laci : Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai)));
+  const kasFisik = Number(data.kas_fisik || 0);
+  const selisih = Number(data.selisih !== undefined ? data.selisih : (kasFisik - kasSistem));
 
   const baris = [];
 
@@ -1449,13 +1453,24 @@ export function susunTeksXReport(data, ukuran = '58') {
     baris.push(formatTengah('Telp/WA: ' + toko.hp, lebar));
   }
   baris.push(buatGaris(lebar, '='));
-  baris.push(formatTengah('REKAP SHIFT KASIR (X-REPORT)', lebar));
+  baris.push(formatTengah(isZReport ? 'LAPORAN TUTUP SHIFT (Z-REPORT)' : 'REKAP SHIFT KASIR (X-REPORT)', lebar));
   baris.push(buatGaris(lebar, '-'));
 
   // Info Petugas & Waktu
-  baris.push(formatDuaKolom('Waktu Cetak', formatTanggal(new Date(), true), lebar));
+  if (data.no_shift) {
+    baris.push(formatDuaKolom('No. Shift', data.no_shift, lebar));
+  }
   baris.push(formatDuaKolom('Petugas/Kasir', (kasir.nama || kasir.username || 'Kasir'), lebar));
-  baris.push(formatDuaKolom('Tanggal Shift', data.tanggal || formatTanggal(new Date()).substring(0, 10), lebar));
+  if (data.waktu_buka) {
+    baris.push(formatDuaKolom('Waktu Buka', formatTanggal(data.waktu_buka, true), lebar));
+  } else {
+    baris.push(formatDuaKolom('Tanggal Shift', data.tanggal || formatTanggal(new Date()).substring(0, 10), lebar));
+  }
+  if (isZReport && data.waktu_tutup) {
+    baris.push(formatDuaKolom('Waktu Tutup', formatTanggal(data.waktu_tutup, true), lebar));
+  } else {
+    baris.push(formatDuaKolom('Waktu Cetak', formatTanggal(new Date(), true), lebar));
+  }
   baris.push(buatGaris(lebar, '-'));
 
   // Rincian Kas & Transaksi
@@ -1471,6 +1486,9 @@ export function susunTeksXReport(data, ukuran = '58') {
     baris.push(formatDuaKolom('(+) Titipan Tunai', '+' + formatRupiah(totalDepositTunai), lebar));
   }
   baris.push(formatDuaKolom('Non-Tunai (QRIS/Bank)', formatRupiah(totalTransfer), lebar));
+  if (totalDepositPakai > 0) {
+    baris.push(formatDuaKolom('Pakai Saldo Titipan', formatRupiah(totalDepositPakai), lebar));
+  }
   if (totalTempo > 0) {
     baris.push(formatDuaKolom('Piutang (Tempo Bon)', formatRupiah(totalTempo), lebar));
   }
@@ -1494,9 +1512,26 @@ export function susunTeksXReport(data, ukuran = '58') {
   baris.push(formatDuaKolom('TOTAL OMSET SHIFT', formatRupiah(totalPenjualan), lebar));
   baris.push(buatGaris(lebar, '='));
 
-  // Saldo Akhir Uang Fisik di Laci
-  baris.push(formatDuaKolom('UANG FISIK LACI', formatRupiah(totalLaci), lebar));
-  baris.push(formatTengah(totalBiayaKasir > 0 ? '(Modal + Tunai - Kas Keluar)' : '(Modal Awal + Kas Tunai)', lebar));
+  // Saldo Akhir & Rekonsiliasi Fisik Laci
+  if (isZReport) {
+    baris.push(formatTengah('REKONSILIASI FISIK LACI', lebar));
+    baris.push(formatDuaKolom('Kas Menurut Sistem', formatRupiah(kasSistem), lebar));
+    baris.push(formatDuaKolom('Kas Fisik Dihitung', formatRupiah(kasFisik), lebar));
+    const teksSelisih = selisih === 0
+      ? 'PAS (Rp 0)'
+      : (selisih > 0 ? 'LEBIH +' + formatRupiah(selisih) : 'KURANG -' + formatRupiah(Math.abs(selisih)));
+    baris.push(formatDuaKolom('Selisih Laci', teksSelisih, lebar));
+    if (data.catatan_tutup) {
+      baris.push(buatGaris(lebar, '.'));
+      baris.push('Catatan: ' + String(data.catatan_tutup));
+    }
+    if (data.ditutup_oleh_nama && data.ditutup_oleh_nama !== (kasir.nama || '')) {
+      baris.push(formatDuaKolom('Ditutup Oleh', data.ditutup_oleh_nama, lebar));
+    }
+  } else {
+    baris.push(formatDuaKolom('UANG FISIK LACI', formatRupiah(kasSistem), lebar));
+    baris.push(formatTengah(totalBiayaKasir > 0 ? '(Modal + Tunai - Kas Keluar)' : '(Modal Awal + Kas Tunai)', lebar));
+  }
   baris.push(buatGaris(lebar, '='));
 
   // Tanda Tangan Serah Terima
@@ -1538,6 +1573,7 @@ export async function cetakBluetoothShift(dataReport, ukuran = '58') {
  * Cetak X-Report shift via browser print dialog
  */
 export function cetakBrowserShift(dataReport, ukuran = '58') {
+  const isZReport = dataReport && (dataReport.status === 'ditutup' || dataReport.tipe_laporan === 'Z-REPORT');
   const teks = susunTeksXReport(dataReport, ukuran);
   const win = window.open('', '_blank', 'width=380,height=600');
   if (!win) {
@@ -1548,7 +1584,7 @@ export function cetakBrowserShift(dataReport, ukuran = '58') {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Rekap Shift (X-Report)</title>
+        <title>${isZReport ? 'Laporan Tutup Shift (Z-Report)' : 'Rekap Shift (X-Report)'}</title>
         <style>
           @page { size: ${ukuran === '80' ? '80mm' : '58mm'} auto; margin: 2mm; }
           body { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; white-space: pre-wrap; padding: 4px; margin: 0; }
@@ -1571,23 +1607,24 @@ export function cetakBrowserShift(dataReport, ukuran = '58') {
  */
 export function bukaModalPilihanCetakShift(dataReport) {
   const cfg = store.get('pengaturan') || {};
-  const ukuran = cfg.printer_lebar === '80' ? '80' : '58';
+  const ukuran = (cfg.printer_ukuran === '80' || cfg.printer_lebar === '80') ? '80' : '58';
+  const isZReport = dataReport && (dataReport.status === 'ditutup' || dataReport.tipe_laporan === 'Z-REPORT');
   const teksStruk = susunTeksXReport(dataReport, ukuran);
 
   const modal = showModal({
-    title: 'Cetak Rekap Shift (X-Report)',
+    title: isZReport ? 'Cetak Laporan Tutup Shift (Z-Report)' : 'Cetak Rekap Shift (X-Report)',
     body: `
       <div class="stack" style="gap: var(--sp-4);">
-        <div class="alert alert-info">
+        <div class="alert ${isZReport ? 'alert-success' : 'alert-info'}">
           ${ICONS.printer}
           <div>
-            <strong>Rekap Shift Kasir Siap Dicetak</strong><br>
+            <strong>${isZReport ? 'Laporan Tutup Shift (Z-Report) Siap Dicetak' : 'Rekap Shift Kasir Siap Dicetak'}</strong><br>
             Pilih jalur pencetakan yang sesuai dengan printer kasir Anda.
           </div>
         </div>
 
         <div>
-          <label class="form-label text-xs fw-semibold">Pratinjau Struk X-Report (${ukuran}mm):</label>
+          <label class="form-label text-xs fw-semibold">Pratinjau Struk ${isZReport ? 'Z-Report' : 'X-Report'} (${ukuran}mm):</label>
           <pre class="struk-preview mono" style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: 11px; line-height: 1.35; max-height: 240px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all;">${escapeHtml(teksStruk)}</pre>
         </div>
 

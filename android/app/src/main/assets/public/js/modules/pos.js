@@ -59,7 +59,8 @@ export function renderPosModule(container) {
     hasMore: false,
     isLoadingMore: false,
     multiSelectMode: false,
-    multiSelectedMap: new Map()
+    multiSelectedMap: new Map(),
+    shiftAktif: null
   };
 
   const isOwnerAtauAdmin = state.user.role === 'owner' || state.user.role === 'admin';
@@ -162,9 +163,10 @@ export function renderPosModule(container) {
 
           <!-- Quick Actions Toolbar: 5 Tombol Operasional POS (Shift, Biaya, Struk, Printer, Pending) -->
           <div class="pos-cart-quickbar">
-            <button type="button" id="btn-pos-shift" class="pos-quick-btn" title="Kas & Rekap Shift Kasir (F3)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-              <span>Shift <span class="pos-kbd-hint">(F3)</span></span>
+            <button type="button" id="btn-pos-shift" class="pos-quick-btn" title="Buka / Tutup Shift & Rekap Kas Kasir (F3)">
+              ${ICONS.wallet}
+              <span id="label-pos-shift-btn">Shift <span class="pos-kbd-hint">(F3)</span></span>
+              <span id="dot-pos-shift-aktif" style="display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0;"></span>
             </button>
             <button type="button" id="btn-pos-kas-keluar" class="pos-quick-btn" title="Catat Pengeluaran Kasir / Petty Cash">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -2764,273 +2766,712 @@ export function renderPosModule(container) {
     }
   }
 
-  // ---------- Ringkasan Kas & Shift Kasir (X-Report / Fitur #5) ----------
-  async function bukaModalShiftKasir() {
+  // ---------- Manajemen Buka & Tutup Shift Kasir (X-Report & Z-Report + Hitung Fisik Laci) ----------
+  const perbaruiIndikatorShift = (shiftObj) => {
+    state.shiftAktif = shiftObj || null;
+    const btnShift = container.querySelector('#btn-pos-shift');
+    const dotAktif = container.querySelector('#dot-pos-shift-aktif');
+    if (dotAktif) {
+      dotAktif.style.display = state.shiftAktif ? 'inline-block' : 'none';
+    }
+    if (btnShift) {
+      if (state.shiftAktif) {
+        btnShift.style.borderColor = 'var(--success)';
+        btnShift.title = `Shift Aktif: ${state.shiftAktif.no_shift} | Modal Awal: ${formatRupiah(state.shiftAktif.modal_awal || 0)} (F3)`;
+      } else {
+        btnShift.style.borderColor = '';
+        btnShift.title = 'Belum Buka Shift — Klik untuk Buka Shift Kasir (F3)';
+      }
+    }
+  };
+
+  async function muatStatusShiftAktif() {
+    try {
+      const res = await apiCall('shift.aktif', {});
+      perbaruiIndikatorShift(res && res.shift ? res.shift : null);
+    } catch (_) {
+      // Abaikan diam-diam bila offline/gagal koneksi awal
+    }
+  }
+
+  async function bukaModalShiftKasir(modeAwal = 'utama') {
     const user = store.get('user') || state.user || {};
     const nowDt = new Date();
     const todayStr = `${nowDt.getFullYear()}-${String(nowDt.getMonth() + 1).padStart(2, '0')}-${String(nowDt.getDate()).padStart(2, '0')}`;
-    const storageKey = `pos_modal_awal_${todayStr}_${user.id || 'kasir'}`;
-    let modalAwal = Number(localStorage.getItem(storageKey) || 0);
 
     const modal = showModal({
-      title: 'Kas & Shift Kasir (X-Report)',
+      title: 'Manajemen Shift Kasir (Buka / Tutup Laci)',
       size: 'md',
       body: `
-        <div class="stack" style="gap: var(--sp-4);" id="shift-kasir-container">
+        <div class="stack" style="gap: var(--sp-3);" id="shift-kasir-container">
           <div class="text-center" style="padding: var(--sp-6);">
             <div class="spinner spinner-primary" style="margin: 0 auto var(--sp-2);"></div>
-            <div class="text-muted text-sm">Menghitung rekapitulasi shift kasir...</div>
+            <div class="text-muted text-sm">Memeriksa status shift kasir & menghitung kas laci...</div>
           </div>
         </div>
       `,
       footer: `
-        <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-shift">Tutup</button>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-xreport" disabled style="display: inline-flex; align-items: center; gap: 6px;">
-            ${ICONS.printer}
-            <span>Cetak X-Report</span>
-          </button>
+        <div class="row" style="width: 100%; justify-content: space-between; align-items: center; gap: var(--sp-2);" id="shift-modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-modal-shift">Tutup</button>
+          <div class="row" style="gap: var(--sp-2);" id="shift-footer-actions"></div>
         </div>
       `
     });
 
     const elContainer = modal.el.querySelector('#shift-kasir-container');
-    const btnCetak = modal.el.querySelector('#btn-cetak-xreport');
-    modal.el.querySelector('#btn-tutup-shift')?.addEventListener('click', () => modal.close());
+    const elFooterActions = modal.el.querySelector('#shift-footer-actions');
+    modal.el.querySelector('#btn-tutup-modal-shift')?.addEventListener('click', () => modal.close());
 
-    let reportData = null;
+    let shiftAktif = null;
+    let ringkasanAktif = null;
+    let tabAktif = modeAwal; // 'utama' | 'tutup' | 'riwayat' | 'harian'
+    let riwayatShift = null;
 
-    try {
-      const res = await apiCall('penjualan.shiftKasir', {
-        kasir_id: user.id,
-        tanggal: todayStr,
-        modal_awal: modalAwal
-      });
-
-      if (res && typeof res === 'object') {
-        reportData = (res.data && typeof res.data === 'object') ? res.data : res;
+    const muatDataShift = async (skipCache = false) => {
+      try {
+        const res = await apiCall('shift.aktif', {}, { skipCache });
+        shiftAktif = res && res.shift ? res.shift : null;
+        ringkasanAktif = res && res.ringkasan ? res.ringkasan : null;
+        perbaruiIndikatorShift(shiftAktif);
+      } catch (err) {
+        shiftAktif = null;
+        ringkasanAktif = null;
+        showToast('Gagal memuat status shift: ' + (err.message || err), 'warning');
       }
-    } catch (err) {
-      console.warn('Gagal panggil penjualan.shiftKasir, fallback client-side:', err);
-    }
-
-    if (!reportData) {
-      // Fallback offline / client-side calculation
-      reportData = {
-        tanggal: todayStr,
-        kasir: { id: user.id, nama: user.nama || user.username || 'Kasir' },
-        modal_awal: modalAwal,
-        total_transaksi: 0,
-        total_penjualan: 0,
-        total_tunai: 0,
-        total_transfer: 0,
-        total_tempo: 0,
-        total_diskon: 0,
-        total_piutang_tunai: 0,
-        total_refund_tunai: 0,
-        total_biaya_kasir: 0,
-        total_laci: modalAwal
-      };
-    }
-
-    const hitungRumusLaci = (modalVal) => {
-      const tunai = Number(reportData.total_tunai || 0);
-      const piutangTunai = Number(reportData.total_piutang_tunai || 0);
-      const depositTunai = Number(reportData.total_deposit_tunai || 0);
-      const tarikDepositTunai = Number(reportData.total_tarik_deposit_tunai || 0);
-      const biayaKasir = Number(reportData.total_biaya_kasir || 0);
-      const refundTunai = Number(reportData.total_refund_tunai || 0);
-      const total = Math.max(0, modalVal + tunai + piutangTunai + depositTunai - biayaKasir - refundTunai - tarikDepositTunai);
-      const bagian = [`Modal: ${formatRupiah(modalVal)}`, `+ Tunai: ${formatRupiah(tunai)}`];
-      if (piutangTunai > 0) bagian.push(`+ Piutang Tunai: ${formatRupiah(piutangTunai)}`);
-      if (depositTunai > 0) bagian.push(`+ Titipan Tunai: ${formatRupiah(depositTunai)}`);
-      if (tarikDepositTunai > 0) bagian.push(`- Tarik Titipan: ${formatRupiah(tarikDepositTunai)}`);
-      if (biayaKasir > 0) bagian.push(`- Kas Keluar: ${formatRupiah(biayaKasir)}`);
-      if (refundTunai > 0) bagian.push(`- Refund Retur: ${formatRupiah(refundTunai)}`);
-      return { total, teks: `(${bagian.join(' ')})` };
     };
 
-    const renderShiftBody = () => {
-      const totalBiayaKasir = Number(reportData.total_biaya_kasir || 0);
-      const totalPiutangTunai = Number(reportData.total_piutang_tunai || 0);
-      const totalDepositTunai = Number(reportData.total_deposit_tunai || 0);
-      const totalTarikDepositTunai = Number(reportData.total_tarik_deposit_tunai || 0);
-      const totalRefundTunai = Number(reportData.total_refund_tunai || 0);
-      const { total: totalLaci, teks: teksRumusLaci } = hitungRumusLaci(modalAwal);
-      reportData.modal_awal = modalAwal;
-      reportData.total_laci = totalLaci;
+    const buatBlokRincianKas = (rd) => {
+      const totalBiayaKasir = Number(rd.total_biaya_kasir || 0);
+      const totalPiutangTunai = Number(rd.total_piutang_tunai || 0);
+      const totalDepositTunai = Number(rd.total_deposit_tunai || 0);
+      const totalTarikDepositTunai = Number(rd.total_tarik_deposit_tunai || 0);
+      const totalDepositPakai = Number(rd.total_deposit_pakai || 0);
+      const totalRefundTunai = Number(rd.total_refund_tunai || 0);
+      const totalLaci = Number(rd.kas_sistem !== undefined ? rd.kas_sistem : (rd.total_laci || 0));
+      const modalVal = Number(rd.modal_awal || 0);
+      const tunai = Number(rd.total_tunai || 0);
 
-      elContainer.innerHTML = `
-        <div class="stack" style="gap: var(--sp-3);">
-          <!-- Header Kasir & Tanggal -->
+      const bagian = [`Modal: ${formatRupiah(modalVal)}`, `+ Tunai: ${formatRupiah(tunai)}`];
+      if (totalPiutangTunai > 0) bagian.push(`+ Piutang Tunai: ${formatRupiah(totalPiutangTunai)}`);
+      if (totalDepositTunai > 0) bagian.push(`+ Titipan Tunai: ${formatRupiah(totalDepositTunai)}`);
+      if (totalTarikDepositTunai > 0) bagian.push(`- Tarik Titipan: ${formatRupiah(totalTarikDepositTunai)}`);
+      if (totalBiayaKasir > 0) bagian.push(`- Kas Keluar: ${formatRupiah(totalBiayaKasir)}`);
+      if (totalRefundTunai > 0) bagian.push(`- Refund Retur: ${formatRupiah(totalRefundTunai)}`);
+
+      return `
+        <div style="background: var(--primary-soft); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: var(--sp-3); text-align: center;">
+          <div class="text-xs fw-semibold" style="color: var(--primary-soft-text); text-transform: uppercase; letter-spacing: 0.4px;">
+            Ekspektasi Uang Fisik di Laci (Sistem)
+          </div>
+          <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary); margin: 4px 0;">
+            ${formatRupiah(totalLaci)}
+          </div>
+          <div class="text-xs text-muted">(${bagian.join(' ')})</div>
+        </div>
+
+        <div class="stack" style="gap: 5px; font-size: var(--fs-sm);">
+          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+            <span class="text-muted">Modal Awal Laci (Float):</span>
+            <span class="fw-bold mono">${formatRupiah(modalVal)}</span>
+          </div>
+          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+            <span class="text-muted">Total Transaksi (Nota):</span>
+            <span class="fw-bold">${rd.total_transaksi || 0} Penjualan</span>
+          </div>
+          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+            <span class="text-muted">Penerimaan Tunai Penjualan:</span>
+            <span class="fw-bold mono text-success">${formatRupiah(tunai)}</span>
+          </div>
+          ${totalPiutangTunai > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-success fw-semibold">(+) Pelunasan Piutang Tunai:</span>
+              <span class="fw-bold mono text-success">+${formatRupiah(totalPiutangTunai)}</span>
+            </div>
+          ` : ''}
+          ${totalDepositTunai > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-success fw-semibold">(+) Terima Titipan Tunai:</span>
+              <span class="fw-bold mono text-success">+${formatRupiah(totalDepositTunai)}</span>
+            </div>
+          ` : ''}
+          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+            <span class="text-muted">Non-Tunai (Transfer / QRIS):</span>
+            <span class="fw-bold mono text-info">${formatRupiah(rd.total_transfer || 0)}</span>
+          </div>
+          ${totalDepositPakai > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-muted">Pemakaian Saldo Titipan:</span>
+              <span class="fw-bold mono">${formatRupiah(totalDepositPakai)}</span>
+            </div>
+          ` : ''}
+          ${Number(rd.total_tempo || 0) > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-muted">Piutang Pelanggan (Tempo):</span>
+              <span class="fw-bold mono text-warning">${formatRupiah(rd.total_tempo || 0)}</span>
+            </div>
+          ` : ''}
+          ${totalTarikDepositTunai > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-danger fw-semibold">(-) Pengembalian Titipan Tunai:</span>
+              <span class="fw-bold mono text-danger">-${formatRupiah(totalTarikDepositTunai)}</span>
+            </div>
+          ` : ''}
+          ${totalRefundTunai > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-danger fw-semibold">(-) Refund Retur Tunai:</span>
+              <span class="fw-bold mono text-danger">-${formatRupiah(totalRefundTunai)}</span>
+            </div>
+          ` : ''}
+          ${totalBiayaKasir > 0 ? `
+            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
+              <span class="text-danger fw-semibold">(-) Kas Keluar Kasir:</span>
+              <span class="fw-bold mono text-danger">-${formatRupiah(totalBiayaKasir)}</span>
+            </div>
+            ${Array.isArray(rd.rincian_biaya_kasir) && rd.rincian_biaya_kasir.length > 0 ? `
+              <div style="background: var(--danger-soft); border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs);">
+                ${rd.rincian_biaya_kasir.map((rb) => `
+                  <div class="row" style="justify-content: space-between; padding: 2px 0;">
+                    <span class="text-muted">${escapeHtml(rb.kategori)}${rb.keterangan ? ` (${escapeHtml(rb.keterangan)})` : ''}</span>
+                    <span class="mono fw-semibold text-danger">-${formatRupiah(rb.nominal)}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          ` : ''}
+          <div class="row" style="justify-content: space-between; padding: 6px 0; font-weight: bold; font-size: var(--fs-base);">
+            <span>Total Omset Penjualan:</span>
+            <span class="mono" style="color: var(--primary);">${formatRupiah(rd.total_penjualan || 0)}</span>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderNavTab = () => {
+      if (shiftAktif) {
+        return `
+          <div class="segmented" style="width: 100%; box-sizing: border-box;">
+            <button type="button" class="btn btn-sm ${tabAktif === 'utama' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="utama" style="flex: 1;">
+              ${ICONS.chart}
+              <span>Rekap (X-Report)</span>
+            </button>
+            <button type="button" class="btn btn-sm ${tabAktif === 'tutup' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="tutup" style="flex: 1;">
+              ${ICONS.checkCircle}
+              <span>Tutup Shift (Z)</span>
+            </button>
+            <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat" style="flex: 1;">
+              ${ICONS.clipboard}
+              <span>Riwayat</span>
+            </button>
+          </div>
+        `;
+      }
+      return `
+        <div class="segmented" style="width: 100%; box-sizing: border-box;">
+          <button type="button" class="btn btn-sm ${tabAktif === 'utama' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="utama" style="flex: 1;">
+            ${ICONS.wallet}
+            <span>Buka Shift</span>
+          </button>
+          <button type="button" class="btn btn-sm ${tabAktif === 'harian' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="harian" style="flex: 1;">
+            ${ICONS.chart}
+            <span>Rekap Hari Ini</span>
+          </button>
+          <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat" style="flex: 1;">
+            ${ICONS.clipboard}
+            <span>Riwayat</span>
+          </button>
+        </div>
+      `;
+    };
+
+    const pasangEventNavTab = () => {
+      elContainer.querySelectorAll('[data-shift-tab]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          tabAktif = btn.getAttribute('data-shift-tab');
+          renderTampilanShift();
+        });
+      });
+    };
+
+    const renderTampilanShift = async () => {
+      elFooterActions.innerHTML = '';
+
+      // TAB RIWAYAT SHIFT KASIR
+      if (tabAktif === 'riwayat') {
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          <div class="text-center" style="padding: var(--sp-5);">
+            <div class="spinner spinner-primary" style="margin: 0 auto var(--sp-2);"></div>
+            <div class="text-muted text-sm">Memuat riwayat shift terakhir...</div>
+          </div>
+        `;
+        pasangEventNavTab();
+        try {
+          const res = await apiCall('shift.list', { limit: 10 });
+          riwayatShift = (res && Array.isArray(res.items)) ? res.items : [];
+        } catch (err) {
+          riwayatShift = [];
+        }
+
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          ${riwayatShift.length === 0 ? `
+            <div class="empty-state" style="padding: var(--sp-5);">
+              ${ICONS.clipboard}
+              <p class="text-muted text-sm">Belum ada riwayat buka/tutup shift tersimpan.</p>
+            </div>
+          ` : `
+            <div class="stack" style="gap: var(--sp-2); max-height: 360px; overflow-y: auto;">
+              ${riwayatShift.map((sh) => {
+                const isAktif = sh.status === 'aktif';
+                const sel = Number(sh.selisih || 0);
+                const badgeSelisih = isAktif
+                  ? `<span class="badge badge-info">Aktif</span>`
+                  : (sel === 0
+                    ? `<span class="badge badge-success">PAS Rp 0</span>`
+                    : (sel > 0
+                      ? `<span class="badge badge-info">Lebih +${formatRupiah(sel)}</span>`
+                      : `<span class="badge badge-danger">Kurang -${formatRupiah(Math.abs(sel))}</span>`));
+                return `
+                  <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3);">
+                    <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: 4px;">
+                      <div class="fw-bold mono text-sm">${escapeHtml(sh.no_shift)}</div>
+                      ${badgeSelisih}
+                    </div>
+                    <div class="text-xs text-muted" style="margin-bottom: 6px;">
+                      ${escapeHtml(sh.kasir_nama || '-')} • Buka: ${escapeHtml(formatTanggal(sh.waktu_buka, true))}${sh.waktu_tutup ? ` • Tutup: ${escapeHtml(formatTanggal(sh.waktu_tutup, true))}` : ''}
+                    </div>
+                    <div class="row" style="justify-content: space-between; align-items: center; font-size: var(--fs-xs);">
+                      <span>Modal: <strong class="mono">${formatRupiah(sh.modal_awal || 0)}</strong> | Omset: <strong class="mono">${formatRupiah(sh.total_penjualan || 0)}</strong></span>
+                      <button type="button" class="btn btn-secondary btn-xs btn-cetak-riwayat-shift" data-id="${escapeHtml(sh.id)}" style="display: inline-flex; align-items: center; gap: 4px;">
+                        ${ICONS.printer}
+                        <span>${isAktif ? 'X-Report' : 'Z-Report'}</span>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        `;
+        pasangEventNavTab();
+        elContainer.querySelectorAll('.btn-cetak-riwayat-shift').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const target = riwayatShift.find((x) => x.id === id);
+            if (target) {
+              bukaModalPilihanCetakShift({
+                ...target,
+                kasir: { id: target.kasir_id, nama: target.kasir_nama },
+                tipe_laporan: target.status === 'ditutup' ? 'Z-REPORT' : 'X-REPORT'
+              });
+            }
+          });
+        });
+        return;
+      }
+
+      // TAB REKAP HARIAN TANPA SHIFT (Fallback bila kasir belum buka shift)
+      if (!shiftAktif && tabAktif === 'harian') {
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          <div class="text-center" style="padding: var(--sp-5);">
+            <div class="spinner spinner-primary" style="margin: 0 auto var(--sp-2);"></div>
+            <div class="text-muted text-sm">Menghitung rekap transaksi hari ini...</div>
+          </div>
+        `;
+        pasangEventNavTab();
+        let dataHarian = null;
+        try {
+          const res = await apiCall('penjualan.shiftKasir', {
+            kasir_id: user.id,
+            tanggal: todayStr,
+            abaikan_shift_aktif: true
+          });
+          dataHarian = res && res.data ? res.data : res;
+        } catch (_) {
+          dataHarian = { tanggal: todayStr, kasir: { nama: user.nama || 'Kasir' }, modal_awal: 0, total_laci: 0 };
+        }
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
+            ${ICONS.info}
+            <span>Menampilkan rekap harian <strong>${escapeHtml(todayStr)}</strong> untuk kasir <strong>${escapeHtml(user.nama || user.username || 'Kasir')}</strong>. Buka Shift untuk mencatat modal awal & rekonsiliasi laci.</span>
+          </div>
+          ${buatBlokRincianKas(dataHarian)}
+        `;
+        pasangEventNavTab();
+        elFooterActions.innerHTML = `
+          <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-xreport-harian" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak X-Report</span>
+          </button>
+        `;
+        elFooterActions.querySelector('#btn-cetak-xreport-harian')?.addEventListener('click', () => {
+          bukaModalPilihanCetakShift(dataHarian);
+        });
+        return;
+      }
+
+      // KONDISI A: BELUM ADA SHIFT AKTIF → FORM BUKA SHIFT
+      if (!shiftAktif) {
+        let modalInputVal = 0;
+        elContainer.innerHTML = `
+          ${renderNavTab()}
           <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
             <div class="row" style="justify-content: space-between; align-items: center;">
               <div>
-                <div class="text-xs text-muted">Kasir Bertugas:</div>
-                <div class="fw-bold" style="font-size: var(--fs-base); color: var(--text);">${escapeHtml(reportData.kasir?.nama || user.nama || 'Kasir')}</div>
+                <div class="text-xs text-muted">Kasir Bertugas</div>
+                <div class="fw-bold" style="color: var(--text);">${escapeHtml(user.nama || user.username || 'Kasir')}</div>
               </div>
-              <div class="text-right">
-                <div class="text-xs text-muted">Tanggal Shift:</div>
-                <div class="fw-bold mono text-sm">${escapeHtml(reportData.tanggal || todayStr)}</div>
-              </div>
+              <span class="badge badge-warning">Belum Buka Shift</span>
             </div>
           </div>
 
-          <!-- Input Modal Awal / Float Uang Kasir -->
-          <div style="background: var(--surface-1); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
-            <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <label class="form-label fw-bold text-xs" style="margin: 0;">Modal Awal / Kas Kasir (Float Laci):</label>
-              <button type="button" class="btn btn-secondary btn-xs text-danger" id="btn-tambah-kas-keluar-shift" style="display: inline-flex; align-items: center; gap: 4px;">
+          <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 10px 12px;">
+            ${ICONS.info}
+            <div>Hitung uang pecahan kembalian (modal awal / float) di laci kasir lalu klik <strong>Buka Shift Kasir</strong>. Seluruh transaksi tunai, piutang, titipan, dan kas keluar selama shift akan direkap otomatis hingga tutup toko.</div>
+          </div>
+
+          <div class="stack" style="gap: var(--sp-2);">
+            <label class="form-label fw-bold text-xs" for="inp-buka-modal-awal" style="margin: 0;">Modal Awal Laci / Float Kasir (Rp)</label>
+            <input type="text" inputmode="numeric" id="inp-buka-modal-awal" class="input fw-bold mono" value="0" placeholder="Rp 0" autocomplete="off" />
+            <div class="row" style="gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-buka" data-val="100000">+100rb</button>
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-buka" data-val="200000">+200rb</button>
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-buka" data-val="500000">+500rb</button>
+              <button type="button" class="btn btn-secondary btn-xs btn-preset-buka" data-val="1000000">+1 Juta</button>
+              <button type="button" class="btn btn-ghost btn-xs text-muted" id="btn-reset-buka-modal">Reset 0</button>
+            </div>
+          </div>
+
+          <div class="stack" style="gap: 4px;">
+            <label class="form-label text-xs fw-semibold" for="inp-buka-catatan" style="margin: 0;">Catatan Buka Shift (Opsional)</label>
+            <input type="text" id="inp-buka-catatan" class="input" maxlength="200" placeholder="Contoh: Shift Pagi, uang pecahan kecil Rp 2.000 & Rp 5.000 lengkap" />
+          </div>
+        `;
+        pasangEventNavTab();
+
+        elFooterActions.innerHTML = `
+          <button type="button" class="btn btn-primary btn-sm" id="btn-aksi-buka-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.checkCircle}
+            <span>Buka Shift Kasir</span>
+          </button>
+        `;
+
+        const inpModal = elContainer.querySelector('#inp-buka-modal-awal');
+        const setModalVal = (val) => {
+          modalInputVal = Math.max(0, Math.round(Number(val) || 0));
+          if (inpModal) inpModal.value = modalInputVal > 0 ? formatRupiah(modalInputVal).replace('Rp ', '') : '0';
+        };
+        inpModal?.addEventListener('input', () => {
+          modalInputVal = Math.max(0, parseRupiah(inpModal.value));
+          inpModal.value = modalInputVal > 0 ? formatRupiah(modalInputVal).replace('Rp ', '') : '';
+        });
+        elContainer.querySelectorAll('.btn-preset-buka').forEach((b) => {
+          b.addEventListener('click', () => setModalVal(modalInputVal + Number(b.getAttribute('data-val') || 0)));
+        });
+        elContainer.querySelector('#btn-reset-buka-modal')?.addEventListener('click', () => setModalVal(0));
+
+        const btnBuka = elFooterActions.querySelector('#btn-aksi-buka-shift');
+        btnBuka?.addEventListener('click', async () => {
+          const catatan = (elContainer.querySelector('#inp-buka-catatan')?.value || '').trim();
+          btnBuka.disabled = true;
+          btnBuka.innerHTML = '<span>Membuka Shift...</span>';
+          try {
+            const res = await apiCall('shift.buka', {
+              modal_awal: modalInputVal,
+              catatan
+            });
+            shiftAktif = res.shift;
+            ringkasanAktif = res.ringkasan;
+            perbaruiIndikatorShift(shiftAktif);
+            haptic.success();
+            showToast(res.pesan || 'Shift kasir berhasil dibuka!', 'success');
+            tabAktif = 'utama';
+            renderTampilanShift();
+          } catch (err) {
+            showToast(err.message || 'Gagal membuka shift kasir', 'error');
+            btnBuka.disabled = false;
+            btnBuka.innerHTML = `${ICONS.checkCircle}<span>Buka Shift Kasir</span>`;
+          }
+        });
+        return;
+      }
+
+      // KONDISI B1: SHIFT AKTIF → TAB REKAP BERJALAN (X-REPORT)
+      if (tabAktif === 'utama') {
+        const rd = ringkasanAktif || { modal_awal: shiftAktif.modal_awal || 0, kas_sistem: shiftAktif.modal_awal || 0 };
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-2);">
+              <div>
+                <div class="row" style="align-items: center; gap: 6px;">
+                  <span class="badge badge-success">Shift Aktif</span>
+                  <span class="fw-bold mono text-sm">${escapeHtml(shiftAktif.no_shift)}</span>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 4px;">
+                  ${escapeHtml(shiftAktif.kasir_nama || user.nama || 'Kasir')} • Dibuka: ${escapeHtml(formatTanggal(shiftAktif.waktu_buka, true))}
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-xs text-danger" id="btn-tambah-kas-keluar-shift" style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
                 ${ICONS.plus}
                 <span>Kas Keluar</span>
               </button>
             </div>
-            <div class="row" style="gap: var(--sp-2); align-items: center;">
-              <input type="number" id="input-shift-modal-awal" class="input fw-bold mono" value="${modalAwal}" min="0" step="10000" style="flex: 1;" placeholder="Rp 0" />
-            </div>
-            <div class="row" style="gap: 4px; margin-top: 6px; flex-wrap: wrap;">
-              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="50000">+50rb</button>
-              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="100000">+100rb</button>
-              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="200000">+200rb</button>
-              <button type="button" class="btn btn-secondary btn-xs btn-preset-modal" data-val="500000">+500rb</button>
-              <button type="button" class="btn btn-ghost btn-xs text-muted btn-reset-modal" style="font-size: 10px;">Reset 0</button>
-            </div>
           </div>
 
-          <!-- Highlight Total Uang Fisik di Laci -->
-          <div style="background: var(--primary-soft); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
-            <div class="text-xs fw-semibold" style="color: var(--primary-soft-text); text-transform: uppercase; letter-spacing: 0.5px;">
-              Total Uang Fisik Harus Ada di Laci
-            </div>
-            <div class="fw-bold mono" style="font-size: var(--fs-xl); color: var(--primary); margin: 4px 0;" id="display-total-laci">
-              ${formatRupiah(totalLaci)}
-            </div>
-            <div class="text-xs text-muted" id="display-rumus-laci">
-              ${teksRumusLaci}
-            </div>
-          </div>
+          ${buatBlokRincianKas(rd)}
+        `;
+        pasangEventNavTab();
 
-          <!-- Rincian Penjualan Shift -->
-          <div class="stack" style="gap: 6px; font-size: var(--fs-sm);">
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-muted">Total Transaksi (Nota):</span>
-              <span class="fw-bold">${reportData.total_transaksi || 0} Penjualan</span>
+        elContainer.querySelector('#btn-tambah-kas-keluar-shift')?.addEventListener('click', () => {
+          bukaModalKasKeluarKasir(async () => {
+            await muatDataShift(true);
+            renderTampilanShift();
+          });
+        });
+
+        elFooterActions.innerHTML = `
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-xreport" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak X-Report</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-ke-tutup-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.checkCircle}
+            <span>Tutup Shift</span>
+          </button>
+        `;
+        elFooterActions.querySelector('#btn-cetak-xreport')?.addEventListener('click', () => {
+          bukaModalPilihanCetakShift(rd);
+        });
+        elFooterActions.querySelector('#btn-ke-tutup-shift')?.addEventListener('click', () => {
+          tabAktif = 'tutup';
+          renderTampilanShift();
+        });
+        return;
+      }
+
+      // KONDISI B2: SHIFT AKTIF → TAB TUTUP SHIFT & HITUNG FISIK LACI (Z-REPORT)
+      const rd = ringkasanAktif || { modal_awal: shiftAktif.modal_awal || 0, kas_sistem: shiftAktif.modal_awal || 0 };
+      const kasSistem = Math.round(Number(rd.kas_sistem !== undefined ? rd.kas_sistem : (rd.total_laci || 0)));
+      const daftarPecahan = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500];
+      let kasFisikVal = 0;
+      let sudahInputFisik = false;
+
+      elContainer.innerHTML = `
+        ${renderNavTab()}
+        <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
+          <div class="row" style="justify-content: space-between; align-items: center;">
+            <div>
+              <div class="text-xs text-muted">Menutup Shift Kasir</div>
+              <div class="fw-bold mono text-sm">${escapeHtml(shiftAktif.no_shift)} • ${escapeHtml(shiftAktif.kasir_nama || user.nama || 'Kasir')}</div>
             </div>
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-muted">Penerimaan Tunai Penjualan:</span>
-              <span class="fw-bold mono text-success">${formatRupiah(reportData.total_tunai || 0)}</span>
-            </div>
-            ${totalPiutangTunai > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-success fw-semibold">(+) Pelunasan Piutang Tunai:</span>
-                <span class="fw-bold mono text-success">+${formatRupiah(totalPiutangTunai)}</span>
-              </div>
-            ` : ''}
-            ${totalDepositTunai > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-success fw-semibold">(+) Terima Titipan Pelanggan (Tunai):</span>
-                <span class="fw-bold mono text-success">+${formatRupiah(totalDepositTunai)}</span>
-              </div>
-            ` : ''}
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-muted">Non-Tunai (Transfer / QRIS):</span>
-              <span class="fw-bold mono text-info">${formatRupiah(reportData.total_transfer || 0)}</span>
-            </div>
-            ${reportData.total_tempo > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-muted">Piutang Pelanggan (Tempo):</span>
-                <span class="fw-bold mono text-warning">${formatRupiah(reportData.total_tempo || 0)}</span>
-              </div>
-            ` : ''}
-            ${totalTarikDepositTunai > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-danger fw-semibold">(-) Pengembalian Titipan Tunai:</span>
-                <span class="fw-bold mono text-danger">-${formatRupiah(totalTarikDepositTunai)}</span>
-              </div>
-            ` : ''}
-            ${totalRefundTunai > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-danger fw-semibold">(-) Refund Retur Tunai:</span>
-                <span class="fw-bold mono text-danger">-${formatRupiah(totalRefundTunai)}</span>
-              </div>
-            ` : ''}
-            ${totalBiayaKasir > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-danger fw-semibold">(-) Kas Keluar Kasir:</span>
-                <span class="fw-bold mono text-danger">-${formatRupiah(totalBiayaKasir)}</span>
-              </div>
-              ${Array.isArray(reportData.rincian_biaya_kasir) && reportData.rincian_biaya_kasir.length > 0 ? `
-                <div style="background: var(--danger-soft); border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs);">
-                  ${reportData.rincian_biaya_kasir.map(rb => `
-                    <div class="row" style="justify-content: space-between; padding: 2px 0;">
-                      <span class="text-muted">• ${escapeHtml(rb.kategori)}${rb.keterangan ? ` (${escapeHtml(rb.keterangan)})` : ''}</span>
-                      <span class="mono fw-semibold text-danger">-${formatRupiah(rb.nominal)}</span>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : ''}
-            ` : ''}
-            ${reportData.total_diskon > 0 ? `
-              <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-                <span class="text-muted">Total Diskon Diberikan:</span>
-                <span class="fw-bold mono text-danger">-${formatRupiah(reportData.total_diskon || 0)}</span>
-              </div>
-            ` : ''}
-            <div class="row" style="justify-content: space-between; padding: 6px 0; font-weight: bold; font-size: var(--fs-base);">
-              <span>Total Omset Penjualan:</span>
-              <span class="mono" style="color: var(--primary);">${formatRupiah(reportData.total_penjualan || 0)}</span>
+            <div class="text-right">
+              <div class="text-xs text-muted">Kas Sistem</div>
+              <div class="fw-bold mono" style="color: var(--primary);">${formatRupiah(kasSistem)}</div>
             </div>
           </div>
         </div>
+
+        <div class="stack" style="gap: var(--sp-2);">
+          <div class="row" style="justify-content: space-between; align-items: center;">
+            <label class="form-label required fw-bold text-xs" for="inp-tutup-kas-fisik" style="margin: 0;">Total Uang Fisik di Laci (Rp)</label>
+            <button type="button" class="btn btn-ghost btn-xs" id="btn-toggle-pecahan" style="color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">
+              ${ICONS.calculator}
+              <span>Hitung Pecahan</span>
+            </button>
+          </div>
+          <input type="text" inputmode="numeric" id="inp-tutup-kas-fisik" class="input fw-bold mono" placeholder="Masukkan total uang fisik yang dihitung..." autocomplete="off" style="font-size: var(--fs-md);" />
+          <div class="row" style="gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-xs" id="btn-isi-sama-sistem">Sama Dengan Sistem (${formatRupiah(kasSistem)})</button>
+          </div>
+        </div>
+
+        <!-- Kalkulator Pecahan Uang (Collapsible) -->
+        <div id="box-kalkulator-pecahan" style="display: none; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3);">
+          <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: var(--sp-2);">
+            <span class="text-xs fw-bold">Hitung Lembar / Koin di Laci</span>
+            <button type="button" class="btn btn-ghost btn-xs text-muted" id="btn-reset-pecahan">Reset</button>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            ${daftarPecahan.map((nom) => `
+              <div class="row" style="align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 8px;">
+                <span class="text-xs mono fw-semibold" style="min-width: 66px;">${formatRupiah(nom)}</span>
+                <span class="text-xs text-muted">x</span>
+                <input type="number" min="0" step="1" class="input input-sm inp-pecahan-qty mono" data-nominal="${nom}" placeholder="0" style="width: 100%; min-height: 28px; height: 28px; padding: 2px 6px; text-align: right;" />
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Panel Live Perbandingan Selisih -->
+        <div id="box-status-selisih" style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3);">
+          <div class="row" style="justify-content: space-between; font-size: var(--fs-xs); margin-bottom: 4px;">
+            <span class="text-muted">Kas Menurut Sistem:</span>
+            <span class="fw-bold mono">${formatRupiah(kasSistem)}</span>
+          </div>
+          <div class="row" style="justify-content: space-between; font-size: var(--fs-xs); margin-bottom: 6px;">
+            <span class="text-muted">Uang Fisik Dihitung:</span>
+            <span class="fw-bold mono" id="disp-kas-fisik">-</span>
+          </div>
+          <div class="row" style="justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px dashed var(--border);">
+            <span class="fw-bold text-sm">Selisih Kas Laci:</span>
+            <span class="badge badge-secondary mono fw-bold" id="badge-selisih-live">Belum diisi</span>
+          </div>
+        </div>
+
+        <div class="stack" style="gap: 4px;">
+          <label class="form-label text-xs fw-semibold" for="inp-tutup-catatan" id="label-catatan-tutup" style="margin: 0;">Catatan Tutup Shift (Opsional bila pas, wajib bila ada selisih)</label>
+          <textarea id="inp-tutup-catatan" class="input" rows="2" maxlength="400" placeholder="Contoh: Setoran tunai diserahkan ke Owner / alasan selisih jika ada..."></textarea>
+        </div>
+      `;
+      pasangEventNavTab();
+
+      elFooterActions.innerHTML = `
+        <button type="button" class="btn btn-primary btn-sm" id="btn-konfirmasi-tutup-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+          ${ICONS.checkCircle}
+          <span>Konfirmasi Tutup Shift (Z-Report)</span>
+        </button>
       `;
 
-      const inputModal = elContainer.querySelector('#input-shift-modal-awal');
-      inputModal?.addEventListener('input', () => {
-        modalAwal = Math.max(0, parseRupiah(inputModal.value));
-        localStorage.setItem(storageKey, String(modalAwal));
-        const { total: laciBaru, teks: teksBaru } = hitungRumusLaci(modalAwal);
-        reportData.modal_awal = modalAwal;
-        reportData.total_laci = laciBaru;
-        const displayLaci = elContainer.querySelector('#display-total-laci');
-        if (displayLaci) displayLaci.textContent = formatRupiah(laciBaru);
-        const displayRumus = elContainer.querySelector('#display-rumus-laci');
-        if (displayRumus) displayRumus.textContent = teksBaru;
+      const inpFisik = elContainer.querySelector('#inp-tutup-kas-fisik');
+      const dispFisik = elContainer.querySelector('#disp-kas-fisik');
+      const badgeSelisih = elContainer.querySelector('#badge-selisih-live');
+      const boxSelisih = elContainer.querySelector('#box-status-selisih');
+      const labelCatatan = elContainer.querySelector('#label-catatan-tutup');
+
+      const updateTampilanSelisih = () => {
+        if (!sudahInputFisik) {
+          if (dispFisik) dispFisik.textContent = '-';
+          if (badgeSelisih) {
+            badgeSelisih.className = 'badge badge-secondary mono fw-bold';
+            badgeSelisih.textContent = 'Belum diisi';
+          }
+          if (boxSelisih) boxSelisih.style.borderColor = 'var(--border)';
+          return;
+        }
+        const sel = kasFisikVal - kasSistem;
+        if (dispFisik) dispFisik.textContent = formatRupiah(kasFisikVal);
+        if (sel === 0) {
+          badgeSelisih.className = 'badge badge-success mono fw-bold';
+          badgeSelisih.textContent = 'PAS / COCOK (Rp 0)';
+          boxSelisih.style.borderColor = 'var(--success)';
+          if (labelCatatan) labelCatatan.classList.remove('required');
+        } else if (sel > 0) {
+          badgeSelisih.className = 'badge badge-info mono fw-bold';
+          badgeSelisih.textContent = `LEBIH +${formatRupiah(sel)}`;
+          boxSelisih.style.borderColor = 'var(--info)';
+          if (labelCatatan) labelCatatan.classList.add('required');
+        } else {
+          badgeSelisih.className = 'badge badge-danger mono fw-bold';
+          badgeSelisih.textContent = `KURANG -${formatRupiah(Math.abs(sel))}`;
+          boxSelisih.style.borderColor = 'var(--danger)';
+          if (labelCatatan) labelCatatan.classList.add('required');
+        }
+      };
+
+      inpFisik?.addEventListener('input', () => {
+        const rawText = inpFisik.value.replace(/[^\d]/g, '');
+        sudahInputFisik = rawText.length > 0;
+        kasFisikVal = sudahInputFisik ? parseInt(rawText, 10) : 0;
+        inpFisik.value = sudahInputFisik ? formatRupiah(kasFisikVal).replace('Rp ', '') : '';
+        updateTampilanSelisih();
       });
 
-      elContainer.querySelectorAll('.btn-preset-modal').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const val = Number(btn.getAttribute('data-val') || 0);
-          modalAwal = (modalAwal || 0) + val;
-          localStorage.setItem(storageKey, String(modalAwal));
-          if (inputModal) inputModal.value = modalAwal;
-          inputModal?.dispatchEvent(new Event('input'));
+      elContainer.querySelector('#btn-isi-sama-sistem')?.addEventListener('click', () => {
+        sudahInputFisik = true;
+        kasFisikVal = kasSistem;
+        if (inpFisik) inpFisik.value = formatRupiah(kasSistem).replace('Rp ', '');
+        updateTampilanSelisih();
+      });
+
+      const boxPecahan = elContainer.querySelector('#box-kalkulator-pecahan');
+      elContainer.querySelector('#btn-toggle-pecahan')?.addEventListener('click', () => {
+        if (!boxPecahan) return;
+        boxPecahan.style.display = boxPecahan.style.display === 'none' ? '' : 'none';
+      });
+
+      const hitungTotalPecahan = () => {
+        let total = 0;
+        let adaIsi = false;
+        elContainer.querySelectorAll('.inp-pecahan-qty').forEach((inp) => {
+          const qty = Math.max(0, parseInt(inp.value, 10) || 0);
+          if (qty > 0) adaIsi = true;
+          total += qty * Number(inp.getAttribute('data-nominal') || 0);
         });
+        sudahInputFisik = adaIsi || total > 0;
+        kasFisikVal = total;
+        if (inpFisik) inpFisik.value = sudahInputFisik ? formatRupiah(total).replace('Rp ', '') : '';
+        updateTampilanSelisih();
+      };
+
+      elContainer.querySelectorAll('.inp-pecahan-qty').forEach((inp) => {
+        inp.addEventListener('input', hitungTotalPecahan);
+      });
+      elContainer.querySelector('#btn-reset-pecahan')?.addEventListener('click', () => {
+        elContainer.querySelectorAll('.inp-pecahan-qty').forEach((inp) => { inp.value = ''; });
+        sudahInputFisik = false;
+        kasFisikVal = 0;
+        if (inpFisik) inpFisik.value = '';
+        updateTampilanSelisih();
       });
 
-      elContainer.querySelector('.btn-reset-modal')?.addEventListener('click', () => {
-        modalAwal = 0;
-        localStorage.setItem(storageKey, '0');
-        if (inputModal) inputModal.value = 0;
-        inputModal?.dispatchEvent(new Event('input'));
-      });
+      const btnKonfirmasiTutup = elFooterActions.querySelector('#btn-konfirmasi-tutup-shift');
+      btnKonfirmasiTutup?.addEventListener('click', async () => {
+        if (!sudahInputFisik) {
+          showToast('Masukkan total uang fisik di laci terlebih dahulu.', 'warning');
+          inpFisik?.focus();
+          return;
+        }
+        const sel = kasFisikVal - kasSistem;
+        const catatan = (elContainer.querySelector('#inp-tutup-catatan')?.value || '').trim();
+        if (sel !== 0 && !catatan) {
+          showToast('Ada selisih kas laci. Wajib mengisi catatan/penjelasan selisih.', 'warning');
+          elContainer.querySelector('#inp-tutup-catatan')?.focus();
+          return;
+        }
 
-      elContainer.querySelector('#btn-tambah-kas-keluar-shift')?.addEventListener('click', () => {
-        bukaModalKasKeluarKasir(() => {
+        const labelSel = sel === 0
+          ? 'PAS (Rp 0)'
+          : (sel > 0 ? `LEBIH +${formatRupiah(sel)}` : `KURANG -${formatRupiah(Math.abs(sel))}`);
+        const yakin = await showConfirm({
+          title: 'Konfirmasi Tutup Shift Kasir',
+          message: `Tutup shift ${shiftAktif.no_shift}?\n\n• Kas Sistem: ${formatRupiah(kasSistem)}\n• Kas Fisik Laci: ${formatRupiah(kasFisikVal)}\n• Selisih: ${labelSel}`,
+          confirmText: 'Ya, Tutup Shift',
+          danger: sel < 0
+        });
+        if (!yakin) return;
+
+        btnKonfirmasiTutup.disabled = true;
+        btnKonfirmasiTutup.innerHTML = '<span>Menutup Shift...</span>';
+        try {
+          const res = await apiCall('shift.tutup', {
+            id: shiftAktif.id,
+            kas_fisik: kasFisikVal,
+            catatan
+          });
+          perbaruiIndikatorShift(null);
+          haptic.success();
+          showToast(res.pesan || 'Shift kasir berhasil ditutup!', 'success', 4500);
           modal.close();
-          bukaModalShiftKasir();
-        });
+          if (res && res.ringkasan) {
+            bukaModalPilihanCetakShift(res.ringkasan);
+          }
+        } catch (err) {
+          showToast(err.message || 'Gagal menutup shift kasir', 'error');
+          btnKonfirmasiTutup.disabled = false;
+          btnKonfirmasiTutup.innerHTML = `${ICONS.checkCircle}<span>Konfirmasi Tutup Shift (Z-Report)</span>`;
+        }
       });
     };
 
-    renderShiftBody();
-    btnCetak.disabled = false;
-    btnCetak.addEventListener('click', () => {
-      bukaModalPilihanCetakShift(reportData);
-    });
+    await muatDataShift(true);
+    await renderTampilanShift();
   }
 
   // Bind tombol Shift Kasir di Header POS Cart
-  container.querySelector('#btn-pos-shift')?.addEventListener('click', bukaModalShiftKasir);
+  container.querySelector('#btn-pos-shift')?.addEventListener('click', () => bukaModalShiftKasir('utama'));
   window.bukaModalShiftKasirGlobal = bukaModalShiftKasir;
 
   // ---------- Modal Kas Keluar Kasir (Petty Cash Laci) ----------
@@ -3106,7 +3547,8 @@ export function renderPosModule(container) {
           kategori: kat,
           nominal: nom,
           keterangan: ket,
-          sumber_dana: 'kas_kasir'
+          sumber_dana: 'kas_kasir',
+          shift_id: state.shiftAktif ? state.shiftAktif.id : ''
         });
         showToast(res.pesan || 'Kas keluar kasir berhasil dicatat!', 'success');
         modal.close();
@@ -3482,6 +3924,7 @@ export function renderPosModule(container) {
 
   // Inisialisasi awal
   muatDataKatalog();
+  muatStatusShiftAktif();
 
   // Return cleanup bila berganti rute
   return () => {
