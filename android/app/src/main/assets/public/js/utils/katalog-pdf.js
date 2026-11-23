@@ -1,11 +1,11 @@
 /**
  * katalog-pdf.js — Generator Katalog Produk PDF A4 Profesional untuk Toko Bangunan
  * Fitur:
- * - Pilih produk dari Mode Pilih / filter kategori / preset tersimpan
- * - 3 Layout A4: Brosur Kartu 2 Kolom (Detail), Brosur Kartu 3 Kolom (Kompak), & Price List Tabel Resmi
+ * - Memuat 100% seluruh produk aktif & daftar kategori lengkap (multi-page limit: 500, anti terpotong 50 produk)
+ * - Membaca seluruh varian (`nama_varian`, `harga_ritel`, `harga_grosir`, `stok`) & konversi satuan (`satuan`, `faktor`) secara akurat & lengkap
+ * - 3 Layout A4 Rapi: Brosur Kartu Horizontal Modern (2 Kolom), Grid Kompak (3 Kolom), & Daftar Harga Resmi (Price List Tabel)
  * - 4 Mode Harga: Ritel, Grosir/Proyek, Ritel + Grosir, atau Tanpa Harga ("Hubungi Kami")
- * - 4 Tema Warna Cetak: Teal Teknik, Oranye Bangunan, Biru Proyek, & Hitam-Putih Hemat Tinta
- * - Rincian Varian & Konversi Satuan, Pengelompokan Kategori Otomatis, Anti-Potong Halaman, & Live Preview A4
+ * - 4 Tema Warna Cetak + Preset Katalog Tersimpan + Pratinjau Live A4 + Simpan PDF / Bagikan WA
  */
 
 import { apiCall } from '../api.js';
@@ -19,8 +19,44 @@ const TEMA_KATALOG = {
   teal: { nama: 'Teal Teknik', primary: '#0f766e', soft: '#f0fdfa', border: '#99f6e4', ink: '#134e4a' },
   orange: { nama: 'Oranye Bangunan', primary: '#c2410c', soft: '#fff7ed', border: '#fed7aa', ink: '#7c2d12' },
   blue: { nama: 'Biru Proyek', primary: '#1d4ed8', soft: '#eff6ff', border: '#bfdbfe', ink: '#1e3a8a' },
-  bw: { nama: 'Hitam-Putih (Hemat Tinta)', primary: '#111827', soft: '#f9fafb', border: '#d1d5db', ink: '#111827' }
+  bw: { nama: 'Hitam-Putih (Hemat Tinta)', primary: '#111827', soft: '#f3f4f6', border: '#9ca3af', ink: '#111827' }
 };
+
+/** Ambil nama varian dari berbagai kemungkinan field (nama_varian / nama) */
+function ambilNamaVarian(v) {
+  if (!v) return '-';
+  const raw = v.nama_varian || v.nama || v.label || v.sku || '';
+  return String(raw).trim() || 'Standar';
+}
+
+/** Ambil daftar varian aktif lengkap untuk produk */
+function ambilDaftarVarianAktif(prd) {
+  if (!prd || !Array.isArray(prd.varian)) return [];
+  return prd.varian.filter((v) => v && !v.deleted && v.aktif !== false);
+}
+
+/** Ambil daftar satuan konversi lengkap untuk produk */
+function ambilDaftarKonversiAktif(prd) {
+  if (!prd || !Array.isArray(prd.satuan_konversi)) return [];
+  return prd.satuan_konversi
+    .filter((s) => s && !s.deleted)
+    .map((s) => ({
+      satuan: String(s.satuan || s.nama_satuan || '').trim(),
+      faktor: Number(s.faktor || s.isi_dalam_dasar || 0),
+      harga_ritel: Number(s.harga_ritel || 0),
+      harga_grosir: Number(s.harga_grosir || 0)
+    }))
+    .filter((s) => s.satuan && s.faktor > 0);
+}
+
+/** Cek apakah produk/variannya punya stok tersedia */
+function cekProdukReady(prd) {
+  const varianAktif = ambilDaftarVarianAktif(prd);
+  if (prd.punya_varian && varianAktif.length > 0) {
+    return varianAktif.some((v) => Number(v.stok || 0) > 0);
+  }
+  return Number(prd.stok || 0) > 0;
+}
 
 /** Ambil daftar preset katalog tersimpan di perangkat */
 export function ambilPresetKatalog() {
@@ -96,7 +132,7 @@ function formatBlokHargaKatalog(prd, modeHarga) {
   }
 
   const satuan = prd.satuan_dasar || 'PCS';
-  const varianAktif = Array.isArray(prd.varian) ? prd.varian.filter((v) => !v.deleted) : [];
+  const varianAktif = ambilDaftarVarianAktif(prd);
 
   if (prd.punya_varian && varianAktif.length > 0) {
     const fieldUtama = modeHarga === 'grosir' ? 'harga_grosir' : 'harga_ritel';
@@ -106,11 +142,15 @@ function formatBlokHargaKatalog(prd, modeHarga) {
       const maxH = Math.max(...hargaVals);
       const utama = minH === maxH
         ? `${formatRupiah(minH)} / ${satuan}`
-        : `${formatRupiah(minH)} - ${formatRupiah(maxH)}`;
+        : `${formatRupiah(minH)} – ${formatRupiah(maxH)}`;
       if (modeHarga === 'keduanya') {
         const gVals = varianAktif.map((v) => Number(v.harga_grosir || v.harga_ritel || 0)).filter((n) => n > 0);
         const minG = gVals.length ? Math.min(...gVals) : 0;
-        return { utama, sekunder: minG > 0 ? `Grosir mulai ${formatRupiah(minG)}` : '' };
+        const maxG = gVals.length ? Math.max(...gVals) : 0;
+        const teksG = minG > 0
+          ? (minG === maxG ? `Grosir: ${formatRupiah(minG)}` : `Grosir: ${formatRupiah(minG)} – ${formatRupiah(maxG)}`)
+          : '';
+        return { utama, sekunder: teksG };
       }
       return { utama, sekunder: modeHarga === 'grosir' ? 'Harga Grosir / Proyek' : `${varianAktif.length} pilihan varian` };
     }
@@ -136,6 +176,18 @@ function formatBlokHargaKatalog(prd, modeHarga) {
     };
   }
   return { utama: `${formatRupiah(hRitel)} / ${satuan}`, sekunder: '' };
+}
+
+/** Format harga 1 varian sesuai modeHarga */
+function formatHargaVarian(v, modeHarga) {
+  if (modeHarga === 'tanpa_harga') return 'Hubungi';
+  const ritel = Number(v.harga_ritel || 0);
+  const grosir = Number(v.harga_grosir || ritel || 0);
+  if (modeHarga === 'grosir') return formatRupiah(grosir);
+  if (modeHarga === 'keduanya' && grosir > 0 && grosir !== ritel) {
+    return `${formatRupiah(ritel)} / Grs ${formatRupiah(grosir)}`;
+  }
+  return formatRupiah(ritel);
 }
 
 /**
@@ -168,89 +220,125 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
     tanpa_harga: 'BROSUR PRODUK'
   };
 
-  // Kelompokkan produk per kategori jika diaktifkan
+  // Kelompokkan & urutkan produk A-Z agar katalog sangat rapi & mudah dicari pembeli
   const grupMap = new Map();
   (produkList || []).forEach((p) => {
-    const namaKat = groupByCategory
-      ? (petaKategori.get(p.kategori_id) || p.kategori_nama || 'Produk Lainnya')
-      : 'Daftar Produk Pilihan';
-    if (!grupMap.has(namaKat)) grupMap.set(namaKat, []);
-    grupMap.get(namaKat).push(p);
+    const namaKat = (petaKategori.get(p.kategori_id) || p.kategori_nama || 'Produk Lainnya').trim();
+    const kunciGrup = groupByCategory ? namaKat : 'Daftar Produk Pilihan';
+    if (!grupMap.has(kunciGrup)) grupMap.set(kunciGrup, []);
+    grupMap.get(kunciGrup).push({ ...p, _katNama: namaKat });
   });
 
-  const renderPlaceholderSvg = () => `
-    <div class="ph-img">
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6">
-        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
-        <path d="m3.3 7 8.7 5 8.7-5"/>
-        <path d="M12 22V12"/>
-      </svg>
-    </div>
-  `;
+  const grupEntries = Array.from(grupMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0], 'id'))
+    .map(([katNama, items]) => [
+      katNama,
+      items.sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id'))
+    ]);
 
-  const renderKartuProduk = (p) => {
-    const foto = showPhoto ? normalisasiUrlFotoKatalog(p.foto_url) : '';
-    const harga = formatBlokHargaKatalog(p, modeHarga);
-    const ready = Number(p.stok || 0) > 0 || (p.punya_varian && Array.isArray(p.varian) && p.varian.some((v) => !v.deleted && Number(v.stok || 0) > 0));
-    const varianList = showVariants && p.punya_varian && Array.isArray(p.varian)
-      ? p.varian.filter((v) => !v.deleted)
-      : [];
-    const konversiList = showVariants && Array.isArray(p.satuan_konversi)
-      ? p.satuan_konversi.filter((s) => !s.deleted)
-      : [];
+  const svgBoxPh = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`;
+
+  const renderFotoKotak = (foto, nama, extraClass = '') => {
+    if (!foto) return `<div class="ph-img ${extraClass}">${svgBoxPh}</div>`;
+    return `<img src="${escapeHtml(foto)}" alt="${escapeHtml(nama || '')}" crossorigin="anonymous" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="ph-img ${extraClass}" style="display:none;">${svgBoxPh}</div>`;
+  };
+
+  const renderVarianDanKemasan = (p) => {
+    const varianList = showVariants ? ambilDaftarVarianAktif(p) : [];
+    const konversiList = showVariants ? ambilDaftarKonversiAktif(p) : [];
 
     const varianHtml = varianList.length > 0 ? `
       <div class="var-box">
-        <div class="var-hdr">Pilihan Varian / Ukuran:</div>
+        <div class="var-hdr">Pilihan Varian / Ukuran (${varianList.length}):</div>
         <table class="var-tbl">
-          ${varianList.slice(0, layout === 'grid3' ? 4 : 8).map((v) => {
-            const vHarga = modeHarga === 'tanpa_harga'
-              ? 'Hubungi'
-              : formatRupiah(modeHarga === 'grosir' ? (v.harga_grosir || v.harga_ritel || 0) : (v.harga_ritel || 0));
-            return `<tr><td class="var-nm">${escapeHtml(v.nama || '-')}</td><td class="var-pr">${escapeHtml(vHarga)}</td></tr>`;
+          ${varianList.map((v) => {
+            const namaV = ambilNamaVarian(v);
+            const hargaV = formatHargaVarian(v, modeHarga);
+            const vReady = Number(v.stok || 0) > 0;
+            const dotStok = showStock ? `<span class="v-dot ${vReady ? 'v-ok' : 'v-no'}" title="${vReady ? 'Ready' : 'Inden'}"></span>` : '';
+            return `<tr><td class="var-nm">${dotStok}${escapeHtml(namaV)}</td><td class="var-pr">${escapeHtml(hargaV)}</td></tr>`;
           }).join('')}
-          ${varianList.length > (layout === 'grid3' ? 4 : 8) ? `<tr><td colspan="2" class="var-more">+ ${varianList.length - (layout === 'grid3' ? 4 : 8)} varian lainnya</td></tr>` : ''}
         </table>
       </div>
     ` : '';
 
     const konversiHtml = konversiList.length > 0 ? `
       <div class="conv-line">
-        Kemasan: ${konversiList.map((s) => {
-          const teksSat = `1 ${escapeHtml(s.nama_satuan)} = ${formatQty(s.isi_dalam_dasar)} ${escapeHtml(p.satuan_dasar || 'PCS')}`;
-          const hSat = modeHarga !== 'tanpa_harga' && Number(s.harga_ritel || 0) > 0 ? ` (${formatRupiah(modeHarga === 'grosir' ? (s.harga_grosir || s.harga_ritel) : s.harga_ritel)})` : '';
-          return teksSat + hSat;
+        <strong>Kemasan:</strong> ${konversiList.map((s) => {
+          const teksSat = `1 ${escapeHtml(s.satuan)} = ${formatQty(s.faktor)} ${escapeHtml(p.satuan_dasar || 'PCS')}`;
+          const hargaSat = modeHarga === 'grosir' ? (s.harga_grosir || s.harga_ritel) : s.harga_ritel;
+          const teksHarga = modeHarga !== 'tanpa_harga' && hargaSat > 0 ? ` (${formatRupiah(hargaSat)})` : '';
+          return teksSat + teksHarga;
         }).join(' &bull; ')}
       </div>
     ` : '';
 
+    return varianHtml + konversiHtml;
+  };
+
+  /** Kartu Horizontal 2 Kolom (Rapi, Padat, 0 Ruang Kosong, Detail Varian 100% Terbaca) */
+  const renderKartuGrid2 = (p) => {
+    const foto = showPhoto ? normalisasiUrlFotoKatalog(p.foto_url) : '';
+    const harga = formatBlokHargaKatalog(p, modeHarga);
+    const ready = cekProdukReady(p);
+    const ekstraHtml = renderVarianDanKemasan(p);
+
     return `
-      <div class="prod-card">
+      <article class="prod-card card-horiz">
+        <div class="card-top-row">
+          ${showPhoto ? `<div class="thumb-sq">${renderFotoKotak(foto, p.nama)}</div>` : ''}
+          <div class="card-info">
+            <div class="card-badges">
+              <span class="kat-pill">${escapeHtml(p._katNama)}</span>
+              ${showStock ? `<span class="stk-badge ${ready ? 'stk-ok' : 'stk-no'}">${ready ? 'Ready' : 'Inden'}</span>` : ''}
+            </div>
+            <div class="prod-name">${escapeHtml(p.nama || 'Produk')}</div>
+            ${showSku && p.sku ? `<div class="sku-tag">${escapeHtml(p.sku)}</div>` : ''}
+            <div class="price-box">
+              <div class="price-main">${escapeHtml(harga.utama)}</div>
+              ${harga.sekunder ? `<div class="price-sub">${escapeHtml(harga.sekunder)}</div>` : ''}
+            </div>
+          </div>
+        </div>
+        ${ekstraHtml ? `<div class="card-extra">${ekstraHtml}</div>` : ''}
+      </article>
+    `;
+  };
+
+  /** Kartu Grid 3 Kolom Kompak */
+  const renderKartuGrid3 = (p) => {
+    const foto = showPhoto ? normalisasiUrlFotoKatalog(p.foto_url) : '';
+    const harga = formatBlokHargaKatalog(p, modeHarga);
+    const ready = cekProdukReady(p);
+    const ekstraHtml = renderVarianDanKemasan(p);
+
+    return `
+      <article class="prod-card card-vert">
         ${showPhoto ? `
-          <div class="prod-img-wrap">
-            ${foto ? `<img src="${escapeHtml(foto)}" alt="${escapeHtml(p.nama || '')}" crossorigin="anonymous" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="ph-img" style="display:none;"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>` : renderPlaceholderSvg()}
+          <div class="thumb-top">
+            ${renderFotoKotak(foto, p.nama)}
             ${showStock ? `<span class="stk-pill ${ready ? 'stk-ok' : 'stk-no'}">${ready ? 'Ready' : 'Inden'}</span>` : ''}
           </div>
         ` : ''}
-        <div class="prod-body">
-          <div class="prod-meta-top">
-            ${showSku && p.sku ? `<span class="sku-tag">${escapeHtml(p.sku)}</span>` : '<span></span>'}
-            ${!showPhoto && showStock ? `<span class="stk-inline ${ready ? 'stk-ok' : 'stk-no'}">${ready ? 'Ready' : 'Inden'}</span>` : ''}
+        <div class="card-vert-body">
+          <div class="card-badges">
+            <span class="kat-pill">${escapeHtml(p._katNama)}</span>
+            ${!showPhoto && showStock ? `<span class="stk-badge ${ready ? 'stk-ok' : 'stk-no'}">${ready ? 'Ready' : 'Inden'}</span>` : ''}
           </div>
           <div class="prod-name">${escapeHtml(p.nama || 'Produk')}</div>
+          ${showSku && p.sku ? `<div class="sku-tag">${escapeHtml(p.sku)}</div>` : ''}
           <div class="price-box">
             <div class="price-main">${escapeHtml(harga.utama)}</div>
             ${harga.sekunder ? `<div class="price-sub">${escapeHtml(harga.sekunder)}</div>` : ''}
           </div>
-          ${varianHtml}
-          ${konversiHtml}
+          ${ekstraHtml}
         </div>
-      </div>
+      </article>
     `;
   };
 
   let nomorUrutTabel = 1;
-  const kontenGrupHtml = Array.from(grupMap.entries()).map(([namaKat, items]) => {
+  const kontenGrupHtml = grupEntries.map(([namaKat, items]) => {
     const headerKatHtml = groupByCategory ? `
       <div class="cat-bar">
         <span class="cat-name">${escapeHtml(namaKat)}</span>
@@ -263,14 +351,20 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
         const no = nomorUrutTabel++;
         const foto = showPhoto ? normalisasiUrlFotoKatalog(p.foto_url) : '';
         const harga = formatBlokHargaKatalog(p, modeHarga);
-        const ready = Number(p.stok || 0) > 0 || (p.punya_varian && Array.isArray(p.varian) && p.varian.some((v) => !v.deleted && Number(v.stok || 0) > 0));
-        const varianList = showVariants && p.punya_varian && Array.isArray(p.varian) ? p.varian.filter((v) => !v.deleted) : [];
-        const konversiList = showVariants && Array.isArray(p.satuan_konversi) ? p.satuan_konversi.filter((s) => !s.deleted) : [];
+        const ready = cekProdukReady(p);
+        const varianList = showVariants ? ambilDaftarVarianAktif(p) : [];
+        const konversiList = showVariants ? ambilDaftarKonversiAktif(p) : [];
+
         const detailVarian = varianList.length > 0
-          ? `<div class="tbl-sub">Varian: ${varianList.map((v) => `${escapeHtml(v.nama)}${modeHarga !== 'tanpa_harga' ? ` (${formatRupiah(modeHarga === 'grosir' ? (v.harga_grosir || v.harga_ritel || 0) : (v.harga_ritel || 0))})` : ''}`).join(' &bull; ')}</div>`
+          ? `<div class="tbl-var-list">${varianList.map((v) => {
+              const nm = ambilNamaVarian(v);
+              const pr = formatHargaVarian(v, modeHarga);
+              return `<span class="tbl-var-chip"><strong>${escapeHtml(nm)}</strong>${modeHarga !== 'tanpa_harga' ? `: ${escapeHtml(pr)}` : ''}</span>`;
+            }).join(' ')}</div>`
           : '';
+
         const detailKonv = konversiList.length > 0
-          ? `<div class="tbl-sub">Kemasan: ${konversiList.map((s) => `1 ${escapeHtml(s.nama_satuan)} = ${formatQty(s.isi_dalam_dasar)} ${escapeHtml(p.satuan_dasar || 'PCS')}`).join(' &bull; ')}</div>`
+          ? `<div class="tbl-sub">Kemasan: ${konversiList.map((s) => `1 ${escapeHtml(s.satuan)} = ${formatQty(s.faktor)} ${escapeHtml(p.satuan_dasar || 'PCS')}`).join(' &bull; ')}</div>`
           : '';
 
         return `
@@ -279,7 +373,7 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
             ${showPhoto ? `<td class="c">${foto ? `<img class="tbl-thumb" src="${escapeHtml(foto)}" alt="" crossorigin="anonymous" onerror="this.style.display='none'">` : '<div class="tbl-thumb-ph">-</div>'}</td>` : ''}
             <td>
               <div class="tbl-nm">${escapeHtml(p.nama || 'Produk')}</div>
-              ${showSku && p.sku ? `<div class="tbl-sku">SKU: ${escapeHtml(p.sku)}</div>` : ''}
+              <div class="tbl-meta">${!groupByCategory ? `${escapeHtml(p._katNama)}` : ''}${showSku && p.sku ? `${!groupByCategory ? ' &bull; ' : ''}SKU: ${escapeHtml(p.sku)}` : ''}</div>
               ${detailVarian}
               ${detailKonv}
             </td>
@@ -290,7 +384,7 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
             ` : `
               <td class="r"><strong>${escapeHtml(harga.utama)}</strong>${harga.sekunder ? `<div class="tbl-sub">${escapeHtml(harga.sekunder)}</div>` : ''}</td>
             `}
-            ${showStock ? `<td class="c"><span class="stk-inline ${ready ? 'stk-ok' : 'stk-no'}">${ready ? 'Ready' : 'Inden'}</span></td>` : ''}
+            ${showStock ? `<td class="c"><span class="stk-badge ${ready ? 'stk-ok' : 'stk-no'}">${ready ? 'Ready' : 'Inden'}</span></td>` : ''}
           </tr>
         `;
       }).join('');
@@ -301,14 +395,14 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
           <table class="pl-table">
             <thead>
               <tr>
-                <th class="c" style="width: 28px;">No</th>
-                ${showPhoto ? '<th class="c" style="width: 44px;">Foto</th>' : ''}
-                <th>Nama Produk &amp; Spesifikasi</th>
-                <th class="c" style="width: 56px;">Satuan</th>
+                <th class="c" style="width: 26px;">No</th>
+                ${showPhoto ? '<th class="c" style="width: 42px;">Foto</th>' : ''}
+                <th>Nama Produk, Varian &amp; Kemasan</th>
+                <th class="c" style="width: 50px;">Sat</th>
                 ${modeHarga === 'keduanya'
-                  ? '<th class="r" style="width: 88px;">Harga Ritel</th><th class="r" style="width: 88px;">Harga Grosir</th>'
-                  : `<th class="r" style="width: 112px;">${modeHarga === 'grosir' ? 'Harga Grosir' : (modeHarga === 'tanpa_harga' ? 'Keterangan' : 'Harga')}</th>`}
-                ${showStock ? '<th class="c" style="width: 54px;">Stok</th>' : ''}
+                  ? '<th class="r" style="width: 82px;">Ritel</th><th class="r" style="width: 82px;">Grosir</th>'
+                  : `<th class="r" style="width: 108px;">${modeHarga === 'grosir' ? 'Harga Grosir' : (modeHarga === 'tanpa_harga' ? 'Info' : 'Harga')}</th>`}
+                ${showStock ? '<th class="c" style="width: 48px;">Stok</th>' : ''}
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -321,7 +415,7 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
       <section class="cat-section">
         ${headerKatHtml}
         <div class="prod-grid ${layout === 'grid3' ? 'cols-3' : 'cols-2'}">
-          ${items.map(renderKartuProduk).join('')}
+          ${items.map(layout === 'grid3' ? renderKartuGrid3 : renderKartuGrid2).join('')}
         </div>
       </section>
     `;
@@ -333,7 +427,7 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
   <meta charset="UTF-8">
   <title>${escapeHtml(judul)} - ${escapeHtml(toko.nama)}</title>
   <style>
-    @page { size: A4 portrait; margin: 11mm 10mm 12mm 10mm; }
+    @page { size: A4 portrait; margin: 10mm 9mm; }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
@@ -341,63 +435,65 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
       background: #ffffff;
       color: #111827;
       font-family: 'Segoe UI', 'Roboto', Arial, Helvetica, sans-serif;
-      font-size: 10px;
-      line-height: 1.38;
+      font-size: 9.5px;
+      line-height: 1.35;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .doc { width: 100%; max-width: 190mm; margin: 0 auto; }
+    .doc { width: 100%; max-width: 192mm; margin: 0 auto; }
 
-    /* Kop / Header Katalog Profesional */
+    /* Kop / Header Katalog */
     .hero {
       border: 1.5px solid ${tema.primary};
-      border-top: 6px solid ${tema.primary};
+      border-top: 5px solid ${tema.primary};
       border-radius: 6px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
       background: ${tema.soft};
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 14px;
+      align-items: center;
+      gap: 12px;
     }
-    .hero-left { flex: 1.3; min-width: 0; }
+    .hero-left { flex: 1.35; min-width: 0; }
     .hero-right { flex: 0.9; text-align: right; }
-    .toko-name { font-size: 16px; font-weight: 800; color: ${tema.ink}; letter-spacing: 0.3px; }
-    .toko-meta { font-size: 9.5px; color: #374151; margin-top: 3px; white-space: pre-line; }
-    .cat-title { font-size: 13.5px; font-weight: 800; color: ${tema.primary}; letter-spacing: 0.4px; }
-    .cat-sub { font-size: 9.5px; font-weight: 600; color: #374151; margin-top: 2px; }
+    .toko-name { font-size: 15.5px; font-weight: 800; color: ${tema.ink}; letter-spacing: 0.3px; }
+    .toko-meta { font-size: 9px; color: #374151; margin-top: 2px; white-space: pre-line; }
+    .cat-title { font-size: 13px; font-weight: 800; color: ${tema.primary}; letter-spacing: 0.3px; }
+    .cat-sub { font-size: 9px; font-weight: 600; color: #374151; margin-top: 2px; }
     .cat-badge {
       display: inline-block;
-      margin-top: 5px;
+      margin-top: 4px;
       padding: 2px 8px;
       border-radius: 99px;
       background: ${tema.primary};
       color: #ffffff;
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 700;
       letter-spacing: 0.4px;
     }
 
-    /* Pembatas Kategori */
-    .cat-section { margin-bottom: 12px; }
+    /* Pembatas Kategori (Selalu Tegas & Rapi) */
+    .cat-section { margin-bottom: 10px; }
     .cat-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 5px 10px;
-      background: ${tema.primary};
-      color: #ffffff;
+      padding: 4.5px 10px;
+      background: ${tema.soft};
+      color: ${tema.ink};
+      border: 1px solid ${tema.border};
+      border-left: 5px solid ${tema.primary};
       border-radius: 4px;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
       page-break-after: avoid;
       break-after: avoid;
     }
-    .cat-name { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
-    .cat-cnt { font-size: 9px; font-weight: 600; opacity: 0.92; }
+    .cat-name { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: ${tema.ink}; }
+    .cat-cnt { font-size: 8.5px; font-weight: 700; color: ${tema.primary}; }
 
     /* Grid Kartu Produk */
-    .prod-grid { display: grid; gap: 8px; }
+    .prod-grid { display: grid; gap: 7px; align-items: start; }
     .prod-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .prod-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
@@ -406,29 +502,45 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
       border-radius: 6px;
       background: #ffffff;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
       page-break-inside: avoid;
       break-inside: avoid;
     }
-    .prod-img-wrap {
+
+    /* Layout 1: Kartu Horizontal Modern (2 Kolom) */
+    .card-horiz { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .card-top-row { display: flex; gap: 9px; align-items: flex-start; }
+    .thumb-sq {
+      width: 78px;
+      height: 78px;
+      flex-shrink: 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .thumb-sq img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+    .card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .card-extra { border-top: 1px dashed #d1d5db; padding-top: 5px; display: flex; flex-direction: column; gap: 4px; }
+
+    /* Layout 2: Kartu Vertikal Kompak (3 Kolom) */
+    .card-vert { display: flex; flex-direction: column; }
+    .thumb-top {
       position: relative;
       width: 100%;
-      height: ${layout === 'grid3' ? '92px' : '116px'};
-      background: #f9fafb;
+      height: 82px;
+      background: #ffffff;
       border-bottom: 1px solid #e5e7eb;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
     }
-    .prod-img-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      padding: 4px;
-      background: #ffffff;
-    }
+    .thumb-top img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+    .card-vert-body { padding: 6px 7px; display: flex; flex-direction: column; gap: 3px; }
+
     .ph-img {
       width: 100%;
       height: 100%;
@@ -438,103 +550,128 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
       color: #9ca3af;
       background: #f3f4f6;
     }
+
+    /* Badges & Typography */
+    .card-badges { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+    .kat-pill {
+      font-size: 7.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: ${tema.ink};
+      background: ${tema.soft};
+      border: 1px solid ${tema.border};
+      padding: 1px 5px;
+      border-radius: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 72%;
+    }
     .stk-pill {
       position: absolute;
-      top: 5px;
-      right: 5px;
-      padding: 1.5px 6px;
+      top: 4px;
+      right: 4px;
+      padding: 1px 5px;
       border-radius: 99px;
-      font-size: 8px;
+      font-size: 7.5px;
       font-weight: 700;
-      letter-spacing: 0.2px;
     }
-    .stk-inline {
+    .stk-badge {
       display: inline-block;
-      padding: 1px 6px;
+      padding: 1px 5px;
       border-radius: 99px;
-      font-size: 8px;
+      font-size: 7.5px;
       font-weight: 700;
+      flex-shrink: 0;
     }
     .stk-ok { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
     .stk-no { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
 
-    .prod-body { padding: ${layout === 'grid3' ? '7px 8px' : '8px 10px'}; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-    .prod-meta-top { display: flex; justify-content: space-between; align-items: center; gap: 4px; min-height: 12px; }
-    .sku-tag { font-family: 'Courier New', monospace; font-size: 8px; color: #6b7280; font-weight: 600; }
     .prod-name {
-      font-size: ${layout === 'grid3' ? '10px' : '11px'};
+      font-size: ${layout === 'grid3' ? '9.5px' : '10.5px'};
       font-weight: 800;
       color: #111827;
-      line-height: 1.28;
+      line-height: 1.24;
     }
+    .sku-tag { font-family: 'Courier New', monospace; font-size: 7.5px; color: #6b7280; font-weight: 600; }
+
     .price-box {
-      margin-top: 1px;
-      padding: 4px 7px;
+      margin-top: 2px;
+      padding: 3.5px 6px;
       border-radius: 4px;
       background: ${tema.soft};
       border: 1px solid ${tema.border};
     }
     .price-main {
-      font-size: ${layout === 'grid3' ? '10.5px' : '11.5px'};
+      font-size: ${layout === 'grid3' ? '10px' : '11px'};
       font-weight: 800;
       color: ${tema.primary};
       font-variant-numeric: tabular-nums;
     }
-    .price-sub { font-size: 8.5px; color: #4b5563; font-weight: 600; margin-top: 1px; }
+    .price-sub { font-size: 8px; color: #4b5563; font-weight: 600; margin-top: 1px; }
 
-    .var-box { margin-top: 2px; border-top: 1px dashed #d1d5db; padding-top: 3px; }
-    .var-hdr { font-size: 8px; font-weight: 700; color: #4b5563; text-transform: uppercase; margin-bottom: 2px; }
+    /* Rincian Varian & Kemasan */
+    .var-box { margin-top: 1px; }
+    .var-hdr { font-size: 7.8px; font-weight: 700; color: #4b5563; text-transform: uppercase; margin-bottom: 2px; }
     .var-tbl { width: 100%; border-collapse: collapse; font-size: 8.5px; }
-    .var-tbl td { padding: 1px 0; border-bottom: 1px dotted #e5e7eb; }
+    .var-tbl td { padding: 1.5px 2px; border-bottom: 1px dotted #e5e7eb; vertical-align: top; }
     .var-tbl tr:last-child td { border-bottom: 0; }
-    .var-nm { color: #374151; font-weight: 600; }
-    .var-pr { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .var-more { text-align: center; color: #6b7280; font-style: italic; padding-top: 2px; }
-    .conv-line { font-size: 8px; color: #4b5563; background: #f9fafb; border-radius: 3px; padding: 2px 5px; margin-top: 1px; }
+    .var-nm { color: #1f2937; font-weight: 600; }
+    .var-pr { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 6px; }
+    .v-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .v-ok { background: #16a34a; }
+    .v-no { background: #d97706; }
+    .conv-line { font-size: 8px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 3px; padding: 2.5px 5px; }
 
-    /* Layout Tabel Price List Resmi */
-    .pl-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+    /* Layout 3: Tabel Price List Resmi */
+    .pl-table { width: 100%; border-collapse: collapse; font-size: 9px; }
     .pl-table th {
       background: ${tema.soft};
       color: ${tema.ink};
       border: 1px solid ${tema.border};
-      padding: 5px 6px;
+      padding: 4.5px 6px;
       text-align: left;
       font-weight: 700;
     }
-    .pl-table td {
-      border: 1px solid #d1d5db;
-      padding: 5px 6px;
-      vertical-align: middle;
-    }
+    .pl-table td { border: 1px solid #d1d5db; padding: 4.5px 6px; vertical-align: middle; }
     .pl-table tr { page-break-inside: avoid; break-inside: avoid; }
     .pl-table tbody tr:nth-child(even) { background: #fafafa; }
-    .tbl-thumb { width: 34px; height: 34px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 3px; background: #fff; display: block; margin: 0 auto; }
-    .tbl-thumb-ph { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #9ca3af; border-radius: 3px; margin: 0 auto; font-size: 9px; }
-    .tbl-nm { font-weight: 700; color: #111827; font-size: 10px; }
-    .tbl-sku { font-family: 'Courier New', monospace; font-size: 8px; color: #6b7280; }
-    .tbl-sub { font-size: 8px; color: #4b5563; margin-top: 2px; line-height: 1.3; }
+    .tbl-thumb { width: 32px; height: 32px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 3px; background: #fff; display: block; margin: 0 auto; }
+    .tbl-thumb-ph { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #9ca3af; border-radius: 3px; margin: 0 auto; font-size: 8.5px; }
+    .tbl-nm { font-weight: 700; color: #111827; font-size: 9.5px; }
+    .tbl-meta { font-family: 'Courier New', monospace; font-size: 7.5px; color: #6b7280; margin-top: 1px; }
+    .tbl-var-list { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+    .tbl-var-chip {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: ${tema.soft};
+      border: 1px solid ${tema.border};
+      font-size: 7.8px;
+      color: #1f2937;
+    }
+    .tbl-sub { font-size: 7.8px; color: #4b5563; margin-top: 2px; line-height: 1.3; }
     .c { text-align: center; }
     .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
     /* Footer Katalog */
     .doc-footer {
-      margin-top: 14px;
-      padding: 8px 12px;
+      margin-top: 10px;
+      padding: 7px 10px;
       border: 1px solid ${tema.border};
       border-left: 4px solid ${tema.primary};
       border-radius: 4px;
       background: ${tema.soft};
-      font-size: 9px;
+      font-size: 8.5px;
       color: #374151;
       page-break-inside: avoid;
       break-inside: avoid;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
-    .doc-footer-meta { text-align: right; font-size: 8.5px; color: #6b7280; white-space: nowrap; }
+    .doc-footer-meta { text-align: right; font-size: 8px; color: #6b7280; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -561,6 +698,29 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
   </div>
 </body>
 </html>`;
+}
+
+/** Muat 100% seluruh produk aktif lintas halaman (limit: 500 per request) agar tidak terpotong 50 item */
+async function muatSeluruhProdukLengkap() {
+  const hasil = [];
+  const seen = new Set();
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore && page <= 20) {
+    const res = await apiCall('produk.list', { status: 'aktif', page, limit: 500 });
+    const items = Array.isArray(res?.items) ? res.items : [];
+    items.forEach((p) => {
+      if (p && p.id && !seen.has(p.id)) {
+        seen.add(p.id);
+        hasil.push(p);
+      }
+    });
+    const total = Number(res?.total || hasil.length);
+    hasMore = Boolean(res?.has_more) && hasil.length < total && items.length > 0;
+    page++;
+  }
+  return hasil;
 }
 
 /** Cetak / Simpan PDF A4 katalog via iframe tersembunyi (menunggu foto termuat dulu) */
@@ -590,7 +750,6 @@ function cetakHtmlKatalogA4(htmlDoc) {
     }
   };
 
-  // Tunggu semua gambar termuat (maksimal 2.5 detik agar tetap responsif)
   setTimeout(() => {
     const imgs = Array.from(doc.querySelectorAll('img'));
     if (!imgs.length) {
@@ -603,7 +762,7 @@ function cetakHtmlKatalogA4(htmlDoc) {
       selesai = true;
       eksekusiCetak();
     };
-    const timer = setTimeout(lanjut, 2500);
+    const timer = setTimeout(lanjut, 3000);
     let sisa = imgs.length;
     const cekSatu = () => {
       sisa--;
@@ -631,9 +790,13 @@ function cetakHtmlKatalogA4(htmlDoc) {
  */
 export async function bukaModalKatalogPdf(params = {}) {
   const awalTerpilih = Array.isArray(params.produkTerpilih) ? params.produkTerpilih : [];
-  const daftarKategori = Array.isArray(params.daftarKategori) ? params.daftarKategori : [];
+  let daftarKategori = Array.isArray(params.daftarKategori) ? [...params.daftarKategori] : [];
   const petaKategori = new Map();
-  daftarKategori.forEach((k) => { if (k && k.id) petaKategori.set(k.id, k.nama); });
+  const sinkronPetaKategori = () => {
+    petaKategori.clear();
+    daftarKategori.forEach((k) => { if (k && k.id) petaKategori.set(k.id, k.nama); });
+  };
+  sinkronPetaKategori();
 
   const toko = ambilInfoTokoKatalog();
   const bulanTahun = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -668,7 +831,7 @@ export async function bukaModalKatalogPdf(params = {}) {
       <div class="stack" style="gap: var(--sp-3);">
         <!-- Tab Navigasi -->
         <div class="row-between" style="gap: var(--sp-2); flex-wrap: wrap;">
-          <div class="segmented segmented-equal" id="tabs-katalog-pdf" style="max-width: 380px;">
+          <div class="segmented segmented-equal" id="tabs-katalog-pdf" style="max-width: 390px;">
             <button type="button" data-ktab="pilih" aria-pressed="${stateKat.tab === 'pilih'}">
               ${ICONS.check}
               <span>1. Pilih Produk (<span id="cnt-tab-pilih">${stateKat.terpilihIds.size}</span>)</span>
@@ -698,9 +861,9 @@ export async function bukaModalKatalogPdf(params = {}) {
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
             <div class="input-group grow" style="min-width: 180px;">
               <span class="input-icon">${ICONS.search}</span>
-              <input type="text" id="inp-kat-cari" class="input input-sm" placeholder="Cari produk / SKU untuk ditandai...">
+              <input type="text" id="inp-kat-cari" class="input input-sm" placeholder="Cari nama produk, varian, kategori, atau SKU...">
             </div>
-            <select id="sel-kat-filter" class="input input-sm" style="min-width: 160px;">
+            <select id="sel-kat-filter" class="input input-sm" style="min-width: 165px;">
               <option value="">Semua Kategori</option>
               ${daftarKategori.map((k) => `<option value="${escapeHtml(k.id)}" ${stateKat.filterKat === k.id ? 'selected' : ''}>${escapeHtml(k.nama)}</option>`).join('')}
             </select>
@@ -711,7 +874,7 @@ export async function bukaModalKatalogPdf(params = {}) {
           </div>
 
           <div class="row-between" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <div class="text-xs text-muted" id="lbl-status-muat-kat">Memuat daftar produk...</div>
+            <div class="text-xs text-muted" id="lbl-status-muat-kat">Memuat seluruh data produk &amp; varian...</div>
             <div class="row" style="gap: var(--sp-1); flex-wrap: wrap;">
               <button type="button" class="btn btn-secondary btn-xs" id="btn-kat-pilih-tampil">Pilih Semua Tampil</button>
               <button type="button" class="btn btn-ghost btn-xs" id="btn-kat-kosongkan">Kosongkan Pilihan</button>
@@ -735,8 +898,8 @@ export async function bukaModalKatalogPdf(params = {}) {
             <div>
               <label class="form-label text-xs fw-semibold" for="sel-kat-layout" style="margin-bottom: 2px;">Tata Letak A4</label>
               <select id="sel-kat-layout" class="input input-sm">
-                <option value="grid2" selected>Brosur Kartu Detail (2 Kolom)</option>
-                <option value="grid3">Brosur Kartu Kompak (3 Kolom)</option>
+                <option value="grid2" selected>Brosur Modern 2 Kolom (Rapi &amp; Detail)</option>
+                <option value="grid3">Brosur Kompak 3 Kolom</option>
                 <option value="table">Daftar Harga Resmi (Tabel + Foto)</option>
               </select>
             </div>
@@ -783,6 +946,13 @@ export async function bukaModalKatalogPdf(params = {}) {
             </div>
           </div>
 
+          <div class="alert alert-info" style="font-size: 12px; padding: var(--sp-2) var(--sp-3);">
+            ${ICONS.info}
+            <div>
+              <strong>Tips PDF Bersih:</strong> Di dialog <em>Save as PDF</em> browser, matikan centang <strong>Headers &amp; footers</strong> (agar alamat URL di pojok tidak ikut tercetak) dan aktifkan <strong>Background graphics</strong>.
+            </div>
+          </div>
+
           <div class="katalog-a4-stage" id="stage-katalog-a4">
             <iframe id="iframe-katalog-a4" title="Pratinjau Katalog Produk PDF A4"></iframe>
           </div>
@@ -812,6 +982,7 @@ export async function bukaModalKatalogPdf(params = {}) {
   const panelPreview = modal.el.querySelector('#panel-katalog-preview');
   const listPicker = modal.el.querySelector('#list-katalog-picker');
   const lblStatus = modal.el.querySelector('#lbl-status-muat-kat');
+  const selKatFilter = modal.el.querySelector('#sel-kat-filter');
   const selPreset = modal.el.querySelector('#sel-katalog-preset');
   const btnHapusPreset = modal.el.querySelector('#btn-hapus-preset-kat');
   const iframeA4 = modal.el.querySelector('#iframe-katalog-a4');
@@ -838,12 +1009,10 @@ export async function bukaModalKatalogPdf(params = {}) {
     const q = stateKat.filterQ.trim().toLowerCase();
     return stateKat.semuaProduk.filter((p) => {
       if (stateKat.filterKat && p.kategori_id !== stateKat.filterKat) return false;
-      if (stateKat.hanyaReady) {
-        const ready = Number(p.stok || 0) > 0 || (p.punya_varian && Array.isArray(p.varian) && p.varian.some((v) => !v.deleted && Number(v.stok || 0) > 0));
-        if (!ready) return false;
-      }
+      if (stateKat.hanyaReady && !cekProdukReady(p)) return false;
       if (q) {
-        const teks = `${p.nama || ''} ${p.sku || ''} ${p.barcode || ''} ${petaKategori.get(p.kategori_id) || ''}`.toLowerCase();
+        const namaVarianGabung = ambilDaftarVarianAktif(p).map(ambilNamaVarian).join(' ');
+        const teks = `${p.nama || ''} ${p.sku || ''} ${p.barcode || ''} ${petaKategori.get(p.kategori_id) || ''} ${namaVarianGabung}`.toLowerCase();
         if (!teks.includes(q)) return false;
       }
       return true;
@@ -862,9 +1031,12 @@ export async function bukaModalKatalogPdf(params = {}) {
     }
     listPicker.innerHTML = list.map((p) => {
       const checked = stateKat.terpilihIds.has(p.id);
-      const namaKat = petaKategori.get(p.kategori_id) || p.kategori_nama || 'Umum';
+      const namaKat = petaKategori.get(p.kategori_id) || p.kategori_nama || 'Produk Lainnya';
       const foto = normalisasiUrlFotoKatalog(p.foto_url);
-      const jmlVar = p.punya_varian && Array.isArray(p.varian) ? p.varian.filter((v) => !v.deleted).length : 0;
+      const varianAktif = ambilDaftarVarianAktif(p);
+      const ringkasVarian = varianAktif.length > 0
+        ? ` • Varian: ${varianAktif.map(ambilNamaVarian).slice(0, 3).join(', ')}${varianAktif.length > 3 ? ` (+${varianAktif.length - 3})` : ''}`
+        : '';
       return `
         <label class="katalog-picker-item ${checked ? 'is-selected' : ''}" data-kp-id="${escapeHtml(p.id)}">
           <input type="checkbox" class="chk-kp-item" value="${escapeHtml(p.id)}" ${checked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0;">
@@ -873,7 +1045,7 @@ export async function bukaModalKatalogPdf(params = {}) {
           </div>
           <div style="flex: 1; min-width: 0;">
             <div class="text-sm fw-semibold" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.nama || 'Produk')}</div>
-            <div class="text-xs text-muted">${escapeHtml(namaKat)}${p.sku ? ` • ${escapeHtml(p.sku)}` : ''}${jmlVar > 0 ? ` • ${jmlVar} varian` : ''}</div>
+            <div class="text-xs text-muted" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(namaKat)}${p.sku ? ` • ${escapeHtml(p.sku)}` : ''}${escapeHtml(ringkasVarian)}</div>
           </div>
           <div style="text-align: right; flex-shrink: 0;">
             <div class="text-sm fw-bold text-primary mono">${formatRupiah(p.harga_ritel || 0)}</div>
@@ -951,7 +1123,7 @@ export async function bukaModalKatalogPdf(params = {}) {
     stateKat.filterQ = e.target.value;
     renderPickerList();
   });
-  modal.el.querySelector('#sel-kat-filter')?.addEventListener('change', (e) => {
+  selKatFilter?.addEventListener('change', (e) => {
     stateKat.filterKat = e.target.value;
     renderPickerList();
   });
@@ -1088,7 +1260,11 @@ export async function bukaModalKatalogPdf(params = {}) {
       '--------------------------------',
       ...terpilih.map((p, i) => {
         const h = formatBlokHargaKatalog(p, stateKat.opsi.modeHarga);
-        return `${i + 1}. ${p.nama} — *${h.utama}*${h.sekunder ? ` (${h.sekunder})` : ''}`;
+        const varList = ambilDaftarVarianAktif(p);
+        const varTeks = varList.length > 0
+          ? `\n   Varian: ${varList.map((v) => `${ambilNamaVarian(v)} (${formatHargaVarian(v, stateKat.opsi.modeHarga)})`).join(', ')}`
+          : '';
+        return `${i + 1}. ${p.nama} — *${h.utama}*${h.sekunder ? ` (${h.sekunder})` : ''}${varTeks}`;
       }),
       '--------------------------------',
       stateKat.opsi.catatan
@@ -1102,13 +1278,22 @@ export async function bukaModalKatalogPdf(params = {}) {
   if (stateKat.tab === 'preview') renderPreviewA4();
   else renderPickerList();
 
-  // Muat seluruh produk aktif di latar belakang agar kasir bisa menambah/mengubah pilihan lintas halaman
+  // Muat 100% seluruh produk aktif & daftar kategori di latar belakang agar tidak terpotong 50 item
   try {
-    const res = await apiCall('produk.list', { status: 'aktif', page: 1, per_page: 500 });
-    const semua = res.items || [];
+    const [semua, resKat] = await Promise.all([
+      muatSeluruhProdukLengkap(),
+      daftarKategori.length ? Promise.resolve(null) : apiCall('kategori.list', {}).catch(() => null)
+    ]);
+    if (resKat && Array.isArray(resKat.items) && resKat.items.length) {
+      daftarKategori = resKat.items;
+      sinkronPetaKategori();
+      if (selKatFilter) {
+        selKatFilter.innerHTML = `<option value="">Semua Kategori</option>` +
+          daftarKategori.map((k) => `<option value="${escapeHtml(k.id)}" ${stateKat.filterKat === k.id ? 'selected' : ''}>${escapeHtml(k.nama)}</option>`).join('');
+      }
+    }
     const petaId = new Map();
     semua.forEach((p) => petaId.set(p.id, p));
-    // Pastikan produk terpilih awal (jika nonaktif sekalipun) tetap terjaga
     awalTerpilih.forEach((p) => {
       if (!petaId.has(p.id)) petaId.set(p.id, p);
     });
@@ -1117,7 +1302,7 @@ export async function bukaModalKatalogPdf(params = {}) {
     perbaruiCounter();
     if (stateKat.tab === 'pilih') renderPickerList();
     else renderPreviewA4();
-  } catch (err) {
+  } catch (_) {
     if (lblStatus) lblStatus.textContent = `Menampilkan ${stateKat.semuaProduk.length} produk lokal.`;
   }
 }

@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.120] - 2026-11-23
+### Diperbaiki & Ditingkatkan — Katalog Produk PDF A4 (Data 100% Lengkap & Layout Modern)
+- **Fix Nama Varian & Kemasan Konversi (`katalog-pdf.js`)**: Membaca field skema asli backend `v.nama_varian` (sebelumnya tampil `-`), status stok tiap varian, serta `s.satuan` & `s.faktor` pada konversi satuan tanpa pemotongan jumlah varian.
+- **Fix Terpotong 50 Produk (`katalog-pdf.js`)**: Menggunakan parameter `limit: 500` + multi-page loader (`while (hasMore)`) sehingga **100% seluruh produk toko** (58, ratusan, hingga ribuan produk) beserta seluruh kategorinya terbaca utuh tanpa ada yang tertinggal.
+- **Perombakan Layout Brosur Horizontal Modern 2 Kolom**: Foto kotak proporsional di sisi kiri + detail kategori/SKU/harga di kanan + rincian seluruh varian & kemasan di bawah (hemat ruang kosong, lebih padat, rapi, seimbang, dengan pembatas kategori tegas dan pengurutan A–Z otomatis).
+
 ## [1.0.119] - 2026-11-23
 ### Ditambahkan — Generator Katalog Produk PDF Profesional (A4)
 - **Tandai & Buat Katalog PDF (`katalog-pdf.js`, `produk.js`, `components.css`, `sw.js`)**: Pemilik toko dan kasir dapat menandai produk langsung dari **Mode Pilih** atau lewat tombol **Katalog PDF** di header halaman Produk, menyaring berdasarkan kategori/Ready Stok, dan menyimpannya sebagai **Preset Katalog** (harga otomatis selalu terbaru saat dicetak ulang).
