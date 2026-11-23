@@ -199,10 +199,22 @@ svg {
   flex-shrink: 0;
 }
 
-/* Pengaman global: cegah SVG apapun meledak jika tidak memiliki dimensi eksplisit */
-svg:not([width]):not([height]):not([style*="width"]):not([style*="height"]):not(.chart-svg):not(.chart-svg *) {
-  width: 20px;
-  height: 20px;
+/* Pengaman global ber-spesifisitas 0 (:where): cegah SVG meledak tanpa mengalahkan ukuran presisi komponen */
+:where(svg:not([width]):not([height]):not([style*="width"]):not([style*="height"]):not(.chart-svg):not(.chart-svg *)) {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-fit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-fit > svg {
+  width: 100%;
+  height: 100%;
 }
 
 button,

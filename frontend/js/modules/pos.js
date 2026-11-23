@@ -209,7 +209,7 @@ export function renderPosModule(container) {
         <div class="pos-cart-items" id="pos-cart-items">
           <div class="pos-cart-empty">
             <div class="pos-empty-icon-wrap">
-              <span style="width: 36px; height: 36px; display: inline-flex;">${ICONS.cart}</span>
+              <span class="icon-fit" style="width: 36px; height: 36px;">${ICONS.cart}</span>
             </div>
             <div class="pos-empty-title">Keranjang masih kosong</div>
             <div class="pos-empty-sub">Pilih produk dari katalog atau scan barcode<span class="d-none-mobile"> (F2)</span></div>
@@ -739,7 +739,7 @@ export function renderPosModule(container) {
       elProductArea.innerHTML = `
         <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted); width: 100%; border: 1px dashed var(--border); border-radius: var(--radius-xl); background: var(--surface);">
           <div style="margin-bottom: var(--sp-2); display: flex; justify-content: center; color: var(--text-muted); opacity: 0.4;">
-            <span style="width: 38px; height: 38px; display: inline-flex;">${ICONS.search}</span>
+            <span class="icon-fit" style="width: 38px; height: 38px;">${ICONS.search}</span>
           </div>
           <div class="fw-semibold text-base" style="color: var(--text);">Tidak ada produk yang cocok</div>
           <div class="text-xs text-muted" style="margin-top: 4px;">Coba ubah kata kunci pencarian atau pilih kategori lain</div>
@@ -905,9 +905,9 @@ export function renderPosModule(container) {
           <div class="pos-list-avatar">
             ${p.foto_url ? `
               <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
-              <span style="width: 24px; height: 24px; display: none; align-items: center; justify-content: center;">${ICONS.box}</span>
+              <span class="icon-fit" style="width: 24px; height: 24px; display: none;">${ICONS.box}</span>
             ` : `
-              <span style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;">${ICONS.box}</span>
+              <span class="icon-fit" style="width: 24px; height: 24px;">${ICONS.box}</span>
             `}
           </div>
 
@@ -1283,7 +1283,7 @@ export function renderPosModule(container) {
       elCartItems.innerHTML = `
         <div class="pos-cart-empty">
           <div class="pos-empty-icon-wrap">
-            <span style="width: 36px; height: 36px; display: inline-flex;">${ICONS.cart}</span>
+            <span class="icon-fit" style="width: 36px; height: 36px;">${ICONS.cart}</span>
           </div>
           <div class="pos-empty-title">Keranjang masih kosong</div>
           <div class="pos-empty-sub">Pilih produk dari katalog atau scan barcode (F2)</div>
@@ -1313,7 +1313,7 @@ export function renderPosModule(container) {
         badgeSatuanHtml = `
           <button type="button" class="badge badge-sm btn-ganti-satuan-item" data-idx="${idx}" title="Ganti Satuan Jual (${escapeHtml(it.satuan)})" style="cursor: pointer; background: var(--primary-soft); color: var(--primary-soft-text); border: 1px solid var(--primary); display: inline-flex; align-items: center; gap: 3px; font-weight: var(--fw-semibold);">
             <span>${escapeHtml(it.satuan)}</span>
-            <span style="width: 11px; height: 11px; display: inline-flex;">${ICONS.chevronDown}</span>
+            <span class="icon-fit" style="width: 11px; height: 11px;">${ICONS.chevronDown}</span>
           </button>
         `;
       }

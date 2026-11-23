@@ -423,7 +423,7 @@ function renderErrorState(pesan) {
   return `
     <div class="card" style="padding: var(--sp-6); text-align: center; border-color: var(--danger);">
       <div style="font-size: var(--fs-xl); color: var(--danger); margin-bottom: var(--sp-2); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-        <span style="width: 22px; height: 22px; display: inline-flex;">${ICONS.alertTriangle}</span>
+        <span class="icon-fit" style="width: 22px; height: 22px;">${ICONS.alertTriangle}</span>
         <span>Gagal Memuat Data</span>
       </div>
       <p style="color: var(--text-muted); font-size: var(--fs-sm);">${escapeHtml(pesan)}</p>
@@ -640,7 +640,7 @@ function renderTabDashboard(container, data) {
           <div class="dash-list">
             ${stokKritis.length === 0 ? `
               <div class="text-xs text-center" style="color: var(--success-text); padding: var(--sp-5); display: flex; align-items: center; justify-content: center; gap: 6px;">
-                ${ICONS.checkCircle}
+                <span class="icon-fit" style="width: 16px; height: 16px;">${ICONS.checkCircle}</span>
                 <span>Semua stok barang dalam batas aman</span>
               </div>
             ` : stokKritis.map((s, idx) => `
@@ -1069,7 +1069,7 @@ function konfirmasiVoidNota(penjualanId, noNota, totalFormatted, onSelesai) {
           </ul>
           ${isAdmin ? `
             <div style="margin-top: 6px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--fs-xs); display: flex; align-items: flex-start; gap: 6px;">
-              <span style="width: 14px; height: 14px; display: inline-flex; flex-shrink: 0; margin-top: 2px;">${ICONS.info}</span>
+              <span class="icon-fit" style="width: 14px; height: 14px; margin-top: 2px;">${ICONS.info}</span>
               <span><strong>Catatan Admin:</strong> Sesuai SOP, Admin hanya dapat membatalkan transaksi hari ini. Untuk transaksi tanggal lampau silakan hubungi Pemilik Toko.</span>
             </div>
           ` : ''}

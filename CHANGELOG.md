@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.123] - 2026-11-24
+### Diperbaiki — Presisi Ukuran Seluruh Ikon SVG (`:where()` & `.icon-fit`)
+- **Fix Spesifisitas CSS Pengaman Global SVG (`base.css`, `components.css`)**: Membungkus fallback ukuran global SVG dengan `:where(...)` (spesifisitas 0) agar tidak lagi menimpa ukuran spesifik tombol & komponen (`.btn` `16px`, `.btn-sm` `15px`, `.btn-xs` `13px`, `.badge` `13px`, `.stat-card-icon` `16px`, `.empty-icon` `30px`, `.pos-empty-icon-wrap` `36px`, `.splash-logo` `44px`).
+- **Helper `.icon-fit` (`base.css`, `pos.js`, `produk.js`, `laporan.js`)**: Memastikan seluruh ikon dalam kontainer berukuran khusus (`11px`, `14px`, `16px`, `22px`, `24px`, `26px`, `36px`, `38px`) mengisi wadahnya dengan ukuran 100% eksak dan proporsional.
+
 ## [1.0.122] - 2026-11-23
 ### Disempurnakan — Auto-Fit Pratinjau A4 Katalog PDF & Penyatuan 100% Ikon SVG
 - **Skala Auto-Fit Pratinjau Katalog PDF A4 di HP & PC (`katalog-pdf.js`, `components.css`)**: Pratinjau dokumen A4 (`794px`) kini otomatis menyesuaikan skala proporsional via `ResizeObserver` mengikuti lebar layar HP, tablet, maupun PC (0 scroll horizontal, mulus di-scroll vertikal, dan tinggi otomatis pas setelah foto termuat).

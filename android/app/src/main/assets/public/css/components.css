@@ -48,8 +48,48 @@
 }
 
 .btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-sm svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-xs svg {
+  width: 13px;
+  height: 13px;
+}
+
+.btn-lg svg {
   width: 18px;
   height: 18px;
+}
+
+.badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pos-card-add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pos-load-all-wrap svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pos-empty-icon-wrap svg {
+  width: 36px;
+  height: 36px;
+}
+
+.pos-floating-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .btn-primary {
