@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.111] - 2026-11-23
+
+### Changed
+- [UI] [POS-JUAL] [DASHBOARD] [CETAK] [PWA] [APK] **Pemolesan Antarmuka Mobile & Native-App (`components.css`, `pos.js`, `laporan.js`, `printer.js`)**:
+  - **Tab Laporan Native Horizontal Scroll (`#tabs-laporan`)**: Mengubah blok tab 2×4 yang memakan ruang vertikal di HP menjadi strip tab horizontal bergaya aplikasi native dengan *auto-center scroll*, sehingga KPI & data langsung tampil tanpa scroll panjang.
+  - **Grid KPI 2×2 Mobile Rapi (`.card-grid.stat-grid`)**: Menambahkan aturan `.card-grid[style*="minmax(210px"]` dan menyelaraskan `.stat-card-icon.icon-*` pada tab `Shift Kasir` & `Pengiriman` agar seluruh 4 kartu metrik tampil simetris 2×2 di layar HP.
+  - **Kartu Tabel Mobile 2-Kolom (`table-card-2col` + `.cell-stack` + `.table-actions` + `.card-filter-inline`)**: Merapikan tata letak baris multi-line (`Waktu Shift`, `Pelanggan & Alamat`, `Muatan Barang`), bar filter status + ekspor CSV, dan tombol aksi (`Cetak X/Z`, `Surat Jalan`, `Faktur A5`, `Update`).
+  - **Modal Shift Kasir & Pending/RAB (`.segmented-equal`, `.detail-kv-card`)**: Memperbaiki teks tab agar 100% simetris tanpa terpotong di layar 360px, membungkus rincian kas ke kartu terstruktur, merapikan tombol footer 50/50, menghapus duplikasi panah `←` di tombol kembali keranjang, dan menyelaraskan bayangan `.pos-btn-pay` dengan warna aksen dinamis (`var(--primary-rgb)`).
+  - **Pratinjau Dokumen A5 Proporsional di HP (`.a5-preview-stage` & `white-space: nowrap`)**: Pratinjau Faktur Besar A5 & Penawaran RAB A5 otomatis menskalakan proporsi kertas landscape 100% pas di lebar HP tanpa angka `Rp` terpotong atau turun baris.
+
 ## [1.0.110] - 2026-11-23
 
 ### Added

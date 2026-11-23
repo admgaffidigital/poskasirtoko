@@ -2119,12 +2119,12 @@ function buatHtmlFakturA5(data) {
     table.keep-table th { background: #f3f4f6; border: 1px solid #374151; padding: 4px 6px; text-align: left; font-weight: 700; }
     table.keep-table td { border: 1px solid #9ca3af; padding: 4px 6px; vertical-align: top; }
     .c { text-align: center; }
-    .r { text-align: right; font-family: 'Courier New', monospace; }
-    .bottom-wrap { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
-    .left-block { flex: 1.2; font-size: 9.5px; }
-    .right-block { flex: 1; }
-    .sum-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
-    .sum-total { display: flex; justify-content: space-between; padding: 5px 0; margin-top: 3px; border-top: 2px solid #111827; border-bottom: 2px solid #111827; font-size: 12px; font-weight: 800; }
+    .r { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .bottom-wrap { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+    .left-block { flex: 1.15; font-size: 9.5px; }
+    .right-block { flex: 1; min-width: 62mm; }
+    .sum-row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 10px; white-space: nowrap; }
+    .sum-total { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; margin-top: 3px; border-top: 2px solid #111827; border-bottom: 2px solid #111827; font-size: 12px; font-weight: 800; white-space: nowrap; }
     .ttd-wrap { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; text-align: center; }
     .ttd-box { flex: 1; }
     .ttd-sp { height: 36px; }
@@ -2222,6 +2222,29 @@ function buatHtmlFakturA5(data) {
 </html>`;
 }
 
+/** Helper pasang pratinjau dokumen A5 Landscape dengan skala otomatis proporsional (bebas kepotong di layar HP) */
+function pasangPreviewA5Proporsional(modalEl, viewportSelector, iframeSelector, htmlDoc) {
+  const viewport = modalEl.querySelector(viewportSelector);
+  const iframe = modalEl.querySelector(iframeSelector);
+  if (!viewport || !iframe) return;
+
+  const baseW = 760;
+  const baseH = 540;
+  iframe.srcdoc = htmlDoc;
+
+  const sesuaikanSkala = () => {
+    const availW = viewport.clientWidth || 320;
+    const scale = Math.min(1, availW / baseW);
+    iframe.style.width = `${baseW}px`;
+    iframe.style.height = `${baseH}px`;
+    iframe.style.transform = `scale(${scale})`;
+    viewport.style.height = `${Math.ceil(baseH * scale)}px`;
+  };
+
+  requestAnimationFrame(sesuaikanSkala);
+  setTimeout(sesuaikanSkala, 120);
+}
+
 /** Buka pratinjau & cetak Faktur Besar A5 (Proyek / Kontraktor / PDF) */
 export function cetakFakturA5(dataStruk) {
   const htmlDoc = buatHtmlFakturA5(dataStruk);
@@ -2236,15 +2259,17 @@ export function cetakFakturA5(dataStruk) {
           ${ICONS.clipboard}
           <div>Format <strong>Faktur Resmi A5 Landscape</strong> siap dicetak di printer kantor (Inkjet/Laser/Dot-Matrix) atau disimpan ke PDF.</div>
         </div>
-        <div style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2);">
-          <iframe id="iframe-preview-faktur-a5" title="Pratinjau Faktur A5" style="width: 100%; height: 420px; border: 0; background: #ffffff;"></iframe>
+        <div class="a5-preview-stage">
+          <div class="a5-preview-viewport" id="vp-preview-faktur-a5">
+            <iframe id="iframe-preview-faktur-a5" title="Pratinjau Faktur A5"></iframe>
+          </div>
         </div>
       </div>
     `,
     footer: `
-      <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
+      <div class="row" style="width: 100%; justify-content: space-between; align-items: center; gap: var(--sp-2);">
         <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-faktur-a5">Tutup</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-print-faktur-a5-now" style="display: inline-flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-print-faktur-a5-now" style="flex: 1; max-width: 240px; justify-content: center; gap: 6px;">
           ${ICONS.printer}
           <span>Cetak / Simpan PDF (A5)</span>
         </button>
@@ -2252,10 +2277,7 @@ export function cetakFakturA5(dataStruk) {
     `
   });
 
-  const iframePrev = modal.el.querySelector('#iframe-preview-faktur-a5');
-  if (iframePrev) {
-    iframePrev.srcdoc = htmlDoc;
-  }
+  pasangPreviewA5Proporsional(modal.el, '#vp-preview-faktur-a5', '#iframe-preview-faktur-a5', htmlDoc);
 
   modal.el.querySelector('#btn-tutup-faktur-a5')?.addEventListener('click', () => modal.close());
   modal.el.querySelector('#btn-print-faktur-a5-now')?.addEventListener('click', () => {
@@ -2337,12 +2359,12 @@ function buatHtmlPenawaranA5(rab) {
     table.keep-table th { background: #f3f4f6; border: 1px solid #374151; padding: 4px 6px; text-align: left; font-weight: 700; }
     table.keep-table td { border: 1px solid #9ca3af; padding: 4px 6px; vertical-align: top; }
     .c { text-align: center; }
-    .r { text-align: right; font-family: 'Courier New', monospace; }
-    .bottom-wrap { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
-    .left-block { flex: 1.25; font-size: 9.5px; }
-    .right-block { flex: 1; }
-    .sum-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
-    .sum-total { display: flex; justify-content: space-between; padding: 5px 0; margin-top: 3px; border-top: 2px solid #111827; border-bottom: 2px solid #111827; font-size: 12px; font-weight: 800; }
+    .r { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .bottom-wrap { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+    .left-block { flex: 1.2; font-size: 9.5px; }
+    .right-block { flex: 1; min-width: 62mm; }
+    .sum-row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 10px; white-space: nowrap; }
+    .sum-total { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; margin-top: 3px; border-top: 2px solid #111827; border-bottom: 2px solid #111827; font-size: 12px; font-weight: 800; white-space: nowrap; }
     .ttd-wrap { display: flex; justify-content: flex-start; gap: 24px; margin-top: 12px; text-align: center; }
     .ttd-box { width: 42mm; }
     .ttd-sp { height: 34px; }
@@ -2445,15 +2467,17 @@ export function cetakPenawaranA5(rab) {
           ${ICONS.clipboard}
           <div>Dokumen <strong>Penawaran Harga / RAB (A5 Landscape)</strong> siap dicetak atau disimpan menjadi file PDF untuk dikirim ke kontraktor/proyek.</div>
         </div>
-        <div style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2);">
-          <iframe id="iframe-preview-rab-a5" title="Pratinjau Penawaran A5" style="width: 100%; height: 420px; border: 0; background: #ffffff;"></iframe>
+        <div class="a5-preview-stage">
+          <div class="a5-preview-viewport" id="vp-preview-rab-a5">
+            <iframe id="iframe-preview-rab-a5" title="Pratinjau Penawaran A5"></iframe>
+          </div>
         </div>
       </div>
     `,
     footer: `
-      <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
+      <div class="row" style="width: 100%; justify-content: space-between; align-items: center; gap: var(--sp-2);">
         <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-rab-a5">Tutup</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-print-rab-a5-now" style="display: inline-flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-print-rab-a5-now" style="flex: 1; max-width: 240px; justify-content: center; gap: 6px;">
           ${ICONS.printer}
           <span>Cetak / Simpan PDF (A5)</span>
         </button>
@@ -2461,8 +2485,7 @@ export function cetakPenawaranA5(rab) {
     `
   });
 
-  const iframePrev = modal.el.querySelector('#iframe-preview-rab-a5');
-  if (iframePrev) iframePrev.srcdoc = htmlDoc;
+  pasangPreviewA5Proporsional(modal.el, '#vp-preview-rab-a5', '#iframe-preview-rab-a5', htmlDoc);
 
   modal.el.querySelector('#btn-tutup-rab-a5')?.addEventListener('click', () => modal.close());
   modal.el.querySelector('#btn-print-rab-a5-now')?.addEventListener('click', () => cetakHtmlViaIframe(htmlDoc));

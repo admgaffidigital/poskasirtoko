@@ -167,6 +167,9 @@ function pasangEventHeader(container) {
         stateLaporan.tabAktif = tabId;
         $$('#tabs-laporan button', container).forEach((b) => b.setAttribute('aria-pressed', 'false'));
         btn.setAttribute('aria-pressed', 'true');
+        if (typeof btn.scrollIntoView === 'function') {
+          btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
         muatDataTabAktif(container);
       });
     }
@@ -2062,18 +2065,18 @@ function renderTabShiftKasir(container, data, rootContainer) {
   const items = (data && Array.isArray(data.items)) ? data.items : [];
   const totalSelisih = Number(r.total_selisih || 0);
   const warnaSelisih = totalSelisih === 0 ? 'var(--success)' : (totalSelisih > 0 ? 'var(--info)' : 'var(--danger)');
-  const iconBgSelisih = totalSelisih === 0 ? 'var(--success-soft)' : (totalSelisih > 0 ? 'var(--info-soft)' : 'var(--danger-soft)');
+  const iconClsSelisih = totalSelisih === 0 ? 'icon-emerald' : (totalSelisih > 0 ? 'icon-blue' : 'icon-rose');
   const teksSelisihTotal = totalSelisih === 0
     ? 'Rp 0 (Pas)'
     : (totalSelisih > 0 ? `+${formatRupiah(totalSelisih)}` : `-${formatRupiah(Math.abs(totalSelisih))}`);
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+      <div class="card-grid stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
         <div class="stat-card-pro">
           <div class="stat-card-header">
             <span class="stat-card-title">Total Shift Kasir</span>
-            <span class="stat-card-icon" style="background: var(--primary-soft); color: var(--primary);">${ICONS.cashier}</span>
+            <div class="stat-card-icon icon-blue">${ICONS.cashier}</div>
           </div>
           <div class="stat-card-value mono">${formatAngka(r.total_shift || 0)} Shift</div>
           <div class="stat-card-desc">${r.shift_aktif || 0} aktif • ${r.shift_ditutup || 0} ditutup</div>
@@ -2082,25 +2085,25 @@ function renderTabShiftKasir(container, data, rootContainer) {
         <div class="stat-card-pro">
           <div class="stat-card-header">
             <span class="stat-card-title">Total Omset Shift</span>
-            <span class="stat-card-icon" style="background: var(--info-soft); color: var(--info);">${ICONS.chart}</span>
+            <div class="stat-card-icon icon-purple">${ICONS.chart}</div>
           </div>
-          <div class="stat-card-value mono">${formatRupiah(r.total_omset || 0)}</div>
-          <div class="stat-card-desc">Akumulasi penjualan seluruh shift</div>
+          <div class="stat-card-value mono" style="color: var(--primary);">${formatRupiah(r.total_omset || 0)}</div>
+          <div class="stat-card-desc">Akumulasi penjualan shift</div>
         </div>
 
         <div class="stat-card-pro">
           <div class="stat-card-header">
             <span class="stat-card-title">Kas Fisik Disetor</span>
-            <span class="stat-card-icon" style="background: var(--success-soft); color: var(--success);">${ICONS.wallet}</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.wallet}</div>
           </div>
           <div class="stat-card-value mono">${formatRupiah(r.total_kas_fisik || 0)}</div>
-          <div class="stat-card-desc">Dari ${r.shift_ditutup || 0} shift yang sudah ditutup</div>
+          <div class="stat-card-desc">Dari ${r.shift_ditutup || 0} shift ditutup</div>
         </div>
 
         <div class="stat-card-pro">
           <div class="stat-card-header">
-            <span class="stat-card-title">Akumulasi Selisih Laci</span>
-            <span class="stat-card-icon" style="background: ${iconBgSelisih}; color: ${warnaSelisih};">${ICONS.checkCircle}</span>
+            <span class="stat-card-title">Selisih Laci</span>
+            <div class="stat-card-icon ${iconClsSelisih}">${ICONS.checkCircle}</div>
           </div>
           <div class="stat-card-value mono" style="color: ${warnaSelisih};">${teksSelisihTotal}</div>
           <div class="stat-card-desc">${r.jumlah_pas || 0} pas • ${r.jumlah_lebih || 0} lebih • ${r.jumlah_kurang || 0} kurang</div>
@@ -2108,20 +2111,20 @@ function renderTabShiftKasir(container, data, rootContainer) {
       </div>
 
       <div class="card">
-        <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2);">
+        <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-3);">
           <div>
-            <h3 style="margin: 0; font-size: var(--fs-md);">Audit & Riwayat Buka/Tutup Shift Kasir</h3>
-            <p class="text-xs text-muted" style="margin: 2px 0 0;">Pantau modal awal, ekspektasi kas laci, uang fisik disetor, dan selisih kasir</p>
+            <h3 class="card-title" style="margin: 0;">${ICONS.cashier} Audit &amp; Riwayat Shift Kasir</h3>
+            <p class="text-xs text-muted" style="margin: 2px 0 0;">Pantau modal awal, kas sistem, uang fisik disetor, dan selisih laci</p>
           </div>
-          <div class="row no-print" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
-            <select id="sel-filter-status-shift" class="select select-sm" style="min-width: 130px;">
+          <div class="card-filter-inline no-print">
+            <select id="sel-filter-status-shift" class="select select-sm">
               <option value="semua" ${stateLaporan.filterShift.status === 'semua' ? 'selected' : ''}>Semua Status</option>
               <option value="aktif" ${stateLaporan.filterShift.status === 'aktif' ? 'selected' : ''}>Shift Aktif</option>
               <option value="ditutup" ${stateLaporan.filterShift.status === 'ditutup' ? 'selected' : ''}>Sudah Ditutup</option>
             </select>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-csv-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-csv-shift" style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
               ${ICONS.download}
-              <span>Ekspor CSV</span>
+              <span>CSV</span>
             </button>
           </div>
         </div>
@@ -2134,7 +2137,7 @@ function renderTabShiftKasir(container, data, rootContainer) {
             </div>
           ` : `
             <div class="table-wrap">
-              <table class="table">
+              <table class="table table-card-2col">
                 <thead>
                   <tr>
                     <th>No. Shift</th>
@@ -2162,16 +2165,22 @@ function renderTabShiftKasir(container, data, rootContainer) {
                     return `
                       <tr>
                         <td data-label="No. Shift">
-                          <div class="fw-bold mono text-sm">${escapeHtml(sh.no_shift)}</div>
-                          <div class="text-xs text-muted">${sh.total_transaksi || 0} nota • Omset ${formatRupiah(sh.total_penjualan || 0)}</div>
+                          <div class="cell-stack">
+                            <div class="fw-bold mono text-sm">${escapeHtml(sh.no_shift)}</div>
+                            <div class="text-xs text-muted">${sh.total_transaksi || 0} nota • Omset ${formatRupiah(sh.total_penjualan || 0)}</div>
+                          </div>
                         </td>
                         <td data-label="Kasir">
-                          <div class="fw-semibold">${escapeHtml(sh.kasir_nama || '-')}</div>
-                          ${sh.catatan_tutup ? `<div class="text-xs text-muted" style="max-width: 180px; white-space: normal;">${escapeHtml(sh.catatan_tutup)}</div>` : ''}
+                          <div class="cell-stack">
+                            <div class="fw-semibold">${escapeHtml(sh.kasir_nama || '-')}</div>
+                            ${sh.catatan_tutup ? `<div class="text-xs text-muted">${escapeHtml(sh.catatan_tutup)}</div>` : ''}
+                          </div>
                         </td>
                         <td data-label="Waktu Shift">
-                          <div class="text-xs mono">Buka: ${escapeHtml(formatTanggal(sh.waktu_buka, true))}</div>
-                          <div class="text-xs mono text-muted">Tutup: ${sh.waktu_tutup ? escapeHtml(formatTanggal(sh.waktu_tutup, true)) : '-'}</div>
+                          <div class="cell-stack">
+                            <div class="text-xs mono">Buka: ${escapeHtml(formatTanggal(sh.waktu_buka, true))}</div>
+                            <div class="text-xs mono text-muted">Tutup: ${sh.waktu_tutup ? escapeHtml(formatTanggal(sh.waktu_tutup, true)) : '-'}</div>
+                          </div>
                         </td>
                         <td data-label="Modal Awal" class="text-right mono">${formatRupiah(sh.modal_awal || 0)}</td>
                         <td data-label="Kas Sistem" class="text-right mono fw-semibold">${formatRupiah(sh.kas_sistem || 0)}</td>
@@ -2183,13 +2192,13 @@ function renderTabShiftKasir(container, data, rootContainer) {
                             : '<span class="badge badge-secondary">Ditutup</span>'}
                         </td>
                         <td data-label="Aksi" class="text-right no-print">
-                          <div class="row" style="justify-content: flex-end; gap: 6px;">
-                            <button type="button" class="btn btn-secondary btn-xs btn-cetak-shift-lap" data-id="${escapeHtml(sh.id)}" title="Cetak X/Z-Report" style="display: inline-flex; align-items: center; gap: 4px;">
+                          <div class="table-actions">
+                            <button type="button" class="btn btn-secondary btn-sm btn-cetak-shift-lap" data-id="${escapeHtml(sh.id)}" title="Cetak Rekap Shift">
                               ${ICONS.printer}
-                              <span>${isAktif ? 'X' : 'Z'}</span>
+                              <span>${isAktif ? 'Cetak X' : 'Cetak Z'}</span>
                             </button>
                             ${isAktif ? `
-                              <button type="button" class="btn btn-primary btn-xs btn-tutup-paksa-shift" data-id="${escapeHtml(sh.id)}" title="Tutup Shift Kasir Ini">
+                              <button type="button" class="btn btn-primary btn-sm btn-tutup-paksa-shift" data-id="${escapeHtml(sh.id)}" title="Tutup Shift Kasir Ini">
                                 Tutup Shift
                               </button>
                             ` : ''}
@@ -2333,52 +2342,52 @@ function renderTabPengiriman(container, data, rootContainer) {
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+      <div class="card-grid stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
         <div class="stat-card-pro">
           <div class="stat-card-header">
             <span class="stat-card-title">Menunggu Kirim</span>
-            <span class="stat-card-icon" style="background: var(--warning-soft); color: var(--warning);">${ICONS.package}</span>
+            <div class="stat-card-icon icon-amber">${ICONS.package}</div>
           </div>
           <div class="stat-card-value mono" style="color: var(--warning);">${formatAngka(r.belum_dikirim || 0)} Nota</div>
-          <div class="stat-card-desc">Siap muat &amp; cetak Surat Jalan</div>
+          <div class="stat-card-desc">Siap muat &amp; Surat Jalan</div>
         </div>
 
         <div class="stat-card-pro">
           <div class="stat-card-header">
             <span class="stat-card-title">Sedang Diantar</span>
-            <span class="stat-card-icon" style="background: var(--info-soft); color: var(--info);">${ICONS.truck}</span>
+            <div class="stat-card-icon icon-blue">${ICONS.truck}</div>
           </div>
           <div class="stat-card-value mono" style="color: var(--info);">${formatAngka(r.diantar || 0)} Nota</div>
-          <div class="stat-card-desc">Dalam perjalanan ke alamat proyek</div>
+          <div class="stat-card-desc">Dalam perjalanan proyek</div>
         </div>
 
         <div class="stat-card-pro">
           <div class="stat-card-header">
-            <span class="stat-card-title">Kirim Sebagian (Bon)</span>
-            <span class="stat-card-icon" style="background: var(--primary-soft); color: var(--primary);">${ICONS.clipboard}</span>
+            <span class="stat-card-title">Kirim Sebagian</span>
+            <div class="stat-card-icon icon-purple">${ICONS.clipboard}</div>
           </div>
           <div class="stat-card-value mono" style="color: var(--primary);">${formatAngka(r.sebagian || 0)} Nota</div>
-          <div class="stat-card-desc">Sebagian barang masih titip / sisa antar</div>
+          <div class="stat-card-desc">Bon barang / sisa antar</div>
         </div>
 
         <div class="stat-card-pro">
           <div class="stat-card-header">
             <span class="stat-card-title">Selesai Diterima</span>
-            <span class="stat-card-icon" style="background: var(--success-soft); color: var(--success);">${ICONS.checkCircle}</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.checkCircle}</div>
           </div>
           <div class="stat-card-value mono" style="color: var(--success);">${formatAngka(r.selesai || 0)} Nota</div>
-          <div class="stat-card-desc">Dari total ${formatAngka(r.total_antrean || 0)} pengiriman</div>
+          <div class="stat-card-desc">Total ${formatAngka(r.total_antrean || 0)} pengiriman</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2);">
+        <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-3);">
           <div>
-            <h3 style="margin: 0; font-size: var(--fs-md);">Antrean Pengiriman &amp; Surat Jalan</h3>
-            <p class="text-xs text-muted" style="margin: 2px 0 0;">Cetak Surat Jalan tanpa harga, Faktur Besar A5, dan kelola pengiriman bertahap (Bon Barang)</p>
+            <h3 class="card-title" style="margin: 0;">${ICONS.truck} Antrean Pengiriman &amp; Surat Jalan</h3>
+            <p class="text-xs text-muted" style="margin: 2px 0 0;">Cetak Surat Jalan tanpa harga, Faktur Besar A5, &amp; kirim bertahap</p>
           </div>
-          <div class="row no-print" style="gap: var(--sp-2); align-items: center;">
-            <select id="sel-filter-status-antar" class="select select-sm" style="min-width: 150px;">
+          <div class="card-filter-inline no-print">
+            <select id="sel-filter-status-antar" class="select select-sm">
               <option value="semua" ${stateLaporan.filterPengiriman.status_antar === 'semua' ? 'selected' : ''}>Semua Status</option>
               <option value="belum_dikirim" ${stateLaporan.filterPengiriman.status_antar === 'belum_dikirim' ? 'selected' : ''}>Menunggu Kirim</option>
               <option value="diantar" ${stateLaporan.filterPengiriman.status_antar === 'diantar' ? 'selected' : ''}>Sedang Diantar</option>
@@ -2396,7 +2405,7 @@ function renderTabPengiriman(container, data, rootContainer) {
             </div>
           ` : `
             <div class="table-wrap">
-              <table class="table">
+              <table class="table table-card-2col">
                 <thead>
                   <tr>
                     <th>No. Nota</th>
@@ -2413,31 +2422,37 @@ function renderTabPengiriman(container, data, rootContainer) {
                     return `
                       <tr>
                         <td data-label="No. Nota">
-                          <div class="fw-bold mono text-sm">${escapeHtml(k.no_nota)}</div>
-                          <div class="text-xs text-muted">${escapeHtml(formatTanggal(k.tanggal, true))}</div>
+                          <div class="cell-stack">
+                            <div class="fw-bold mono text-sm">${escapeHtml(k.no_nota)}</div>
+                            <div class="text-xs text-muted">${escapeHtml(formatTanggal(k.tanggal, true))}</div>
+                          </div>
                         </td>
                         <td data-label="Pelanggan & Alamat">
-                          <div class="fw-semibold">${escapeHtml(k.pelanggan_nama || 'Umum')}${k.pelanggan_hp ? ` <span class="text-xs text-muted mono">(${escapeHtml(k.pelanggan_hp)})</span>` : ''}</div>
-                          <div class="text-xs text-muted" style="max-width: 240px; white-space: normal;">${escapeHtml(k.alamat_kirim || '-')}</div>
+                          <div class="cell-stack">
+                            <div class="fw-semibold">${escapeHtml(k.pelanggan_nama || 'Umum')}${k.pelanggan_hp ? ` <span class="text-xs text-muted mono">(${escapeHtml(k.pelanggan_hp)})</span>` : ''}</div>
+                            <div class="text-xs text-muted">${escapeHtml(k.alamat_kirim || '-')}</div>
+                          </div>
                         </td>
                         <td data-label="Muatan Barang">
-                          <div class="text-xs" style="max-width: 240px; white-space: normal;">${ringkasItem}${ekstraItem}</div>
-                          ${k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa belum terkirim: ${formatQty(k.total_qty_sisa)} unit</div>` : ''}
+                          <div class="cell-stack">
+                            <div class="text-xs">${ringkasItem}${ekstraItem}</div>
+                            ${k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa belum dikirim: ${formatQty(k.total_qty_sisa)} unit</div>` : ''}
+                          </div>
                         </td>
                         <td data-label="Status">
                           ${badgeStatusAntar(k.status_antar)}
                         </td>
                         <td data-label="Aksi" class="text-right no-print">
-                          <div class="row" style="justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
-                            <button type="button" class="btn btn-secondary btn-xs btn-sj-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Surat Jalan (Tanpa Harga)" style="display: inline-flex; align-items: center; gap: 4px;">
+                          <div class="table-actions">
+                            <button type="button" class="btn btn-secondary btn-sm btn-sj-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Surat Jalan (Tanpa Harga)">
                               ${ICONS.truck}
                               <span>Surat Jalan</span>
                             </button>
-                            <button type="button" class="btn btn-secondary btn-xs btn-faktur-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Faktur Besar A5" style="display: inline-flex; align-items: center; gap: 4px;">
+                            <button type="button" class="btn btn-secondary btn-sm btn-faktur-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Faktur Besar A5">
                               ${ICONS.clipboard}
-                              <span>A5</span>
+                              <span>Faktur A5</span>
                             </button>
-                            <button type="button" class="btn btn-primary btn-xs btn-update-antrean" data-id="${escapeHtml(k.id)}" title="Update Status & Kirim Bertahap" style="display: inline-flex; align-items: center; gap: 4px;">
+                            <button type="button" class="btn btn-primary btn-sm btn-update-antrean" data-id="${escapeHtml(k.id)}" title="Update Status & Kirim Bertahap">
                               ${ICONS.edit}
                               <span>Update</span>
                             </button>

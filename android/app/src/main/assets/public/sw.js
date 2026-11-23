@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.110';
+const CACHE_NAME = 'pos-kasir-static-v1.0.111';
 
 const ASSETS = [
   './',

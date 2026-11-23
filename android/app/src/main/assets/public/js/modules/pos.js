@@ -142,8 +142,8 @@ export function renderPosModule(container) {
         <!-- Tombol Kembali ke Katalog (Mobile Saja) -->
         <div class="pos-cart-back-btn no-print" style="padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border); background: var(--surface-2);">
           <button type="button" class="btn btn-secondary btn-sm" id="btn-back-to-catalog" style="width: 100%; justify-content: center; gap: var(--sp-2); font-weight: var(--fw-semibold);">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            <span>← Kembali / Tambah Barang Lagi</span>
+            ${ICONS.chevronLeft}
+            <span>Kembali ke Katalog / Tambah Barang</span>
           </button>
         </div>
 
@@ -252,13 +252,13 @@ export function renderPosModule(container) {
 
           <!-- Action Buttons: RAB, Hold & Pay -->
           <div class="pos-cart-action-btns">
-            <button type="button" id="btn-buat-rab" class="btn btn-secondary btn-lg" style="flex: 0.9; padding-left: 10px; padding-right: 10px;" title="Simpan sebagai Penawaran Harga / Estimasi RAB (tanpa potong stok)">
+            <button type="button" id="btn-buat-rab" class="btn btn-secondary btn-lg pos-btn-rab" style="flex: 0.85;" title="Simpan sebagai Penawaran Harga / Estimasi RAB (tanpa potong stok)">
               ${ICONS.calculator} <span>RAB</span>
             </button>
             <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg pos-btn-hold" style="flex: 1;" title="Tahan Transaksi (F7)">
               ${ICONS.clipboard} <span>Tahan</span><span class="d-none-mobile"> (F7)</span>
             </button>
-            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg pos-btn-pay" style="flex: 1.8;" title="Bayar Sekarang (F4)">
+            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg pos-btn-pay" style="flex: 1.75;" title="Bayar Sekarang (F4)">
               ${ICONS.wallet} <span>BAYAR</span><span class="d-none-mobile"> (F4)</span>
             </button>
           </div>
@@ -2826,16 +2826,14 @@ export function renderPosModule(container) {
         </div>
       `,
       footer: `
-        <div class="row" style="width: 100%; justify-content: space-between; align-items: center; gap: var(--sp-2);" id="shift-modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-modal-shift">Tutup</button>
-          <div class="row" style="gap: var(--sp-2);" id="shift-footer-actions"></div>
+        <div class="row" style="width: 100%; justify-content: flex-end; align-items: center; gap: var(--sp-2);" id="shift-modal-footer">
+          <div class="row" style="width: 100%; gap: var(--sp-2);" id="shift-footer-actions"></div>
         </div>
       `
     });
 
     const elContainer = modal.el.querySelector('#shift-kasir-container');
     const elFooterActions = modal.el.querySelector('#shift-footer-actions');
-    modal.el.querySelector('#btn-tutup-modal-shift')?.addEventListener('click', () => modal.close());
 
     let shiftAktif = null;
     let ringkasanAktif = null;
@@ -2884,66 +2882,66 @@ export function renderPosModule(container) {
           <div class="text-xs text-muted">(${bagian.join(' ')})</div>
         </div>
 
-        <div class="stack" style="gap: 5px; font-size: var(--fs-sm);">
-          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-            <span class="text-muted">Modal Awal Laci (Float):</span>
+        <div class="detail-kv-card">
+          <div class="detail-kv-row">
+            <span class="text-muted">Modal Awal Laci (Float)</span>
             <span class="fw-bold mono">${formatRupiah(modalVal)}</span>
           </div>
-          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-            <span class="text-muted">Total Transaksi (Nota):</span>
+          <div class="detail-kv-row">
+            <span class="text-muted">Total Transaksi (Nota)</span>
             <span class="fw-bold">${rd.total_transaksi || 0} Penjualan</span>
           </div>
-          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-            <span class="text-muted">Penerimaan Tunai Penjualan:</span>
+          <div class="detail-kv-row">
+            <span class="text-muted">Penerimaan Tunai</span>
             <span class="fw-bold mono text-success">${formatRupiah(tunai)}</span>
           </div>
           ${totalPiutangTunai > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-success fw-semibold">(+) Pelunasan Piutang Tunai:</span>
+            <div class="detail-kv-row">
+              <span class="text-success fw-semibold">(+) Pelunasan Piutang Tunai</span>
               <span class="fw-bold mono text-success">+${formatRupiah(totalPiutangTunai)}</span>
             </div>
           ` : ''}
           ${totalDepositTunai > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-success fw-semibold">(+) Terima Titipan Tunai:</span>
+            <div class="detail-kv-row">
+              <span class="text-success fw-semibold">(+) Terima Titipan Tunai</span>
               <span class="fw-bold mono text-success">+${formatRupiah(totalDepositTunai)}</span>
             </div>
           ` : ''}
-          <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-            <span class="text-muted">Non-Tunai (Transfer / QRIS):</span>
+          <div class="detail-kv-row">
+            <span class="text-muted">Non-Tunai (Transfer / QRIS)</span>
             <span class="fw-bold mono text-info">${formatRupiah(rd.total_transfer || 0)}</span>
           </div>
           ${totalDepositPakai > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-muted">Pemakaian Saldo Titipan:</span>
+            <div class="detail-kv-row">
+              <span class="text-muted">Pemakaian Saldo Titipan</span>
               <span class="fw-bold mono">${formatRupiah(totalDepositPakai)}</span>
             </div>
           ` : ''}
           ${Number(rd.total_tempo || 0) > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-muted">Piutang Pelanggan (Tempo):</span>
+            <div class="detail-kv-row">
+              <span class="text-muted">Piutang Pelanggan (Tempo)</span>
               <span class="fw-bold mono text-warning">${formatRupiah(rd.total_tempo || 0)}</span>
             </div>
           ` : ''}
           ${totalTarikDepositTunai > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-danger fw-semibold">(-) Pengembalian Titipan Tunai:</span>
+            <div class="detail-kv-row">
+              <span class="text-danger fw-semibold">(-) Pengembalian Titipan</span>
               <span class="fw-bold mono text-danger">-${formatRupiah(totalTarikDepositTunai)}</span>
             </div>
           ` : ''}
           ${totalRefundTunai > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-danger fw-semibold">(-) Refund Retur Tunai:</span>
+            <div class="detail-kv-row">
+              <span class="text-danger fw-semibold">(-) Refund Retur Tunai</span>
               <span class="fw-bold mono text-danger">-${formatRupiah(totalRefundTunai)}</span>
             </div>
           ` : ''}
           ${totalBiayaKasir > 0 ? `
-            <div class="row" style="justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border);">
-              <span class="text-danger fw-semibold">(-) Kas Keluar Kasir:</span>
+            <div class="detail-kv-row">
+              <span class="text-danger fw-semibold">(-) Kas Keluar Kasir</span>
               <span class="fw-bold mono text-danger">-${formatRupiah(totalBiayaKasir)}</span>
             </div>
             ${Array.isArray(rd.rincian_biaya_kasir) && rd.rincian_biaya_kasir.length > 0 ? `
-              <div style="background: var(--danger-soft); border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs);">
+              <div style="background: var(--danger-soft); border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs); margin: 4px 0;">
                 ${rd.rincian_biaya_kasir.map((rb) => `
                   <div class="row" style="justify-content: space-between; padding: 2px 0;">
                     <span class="text-muted">${escapeHtml(rb.kategori)}${rb.keterangan ? ` (${escapeHtml(rb.keterangan)})` : ''}</span>
@@ -2953,8 +2951,8 @@ export function renderPosModule(container) {
               </div>
             ` : ''}
           ` : ''}
-          <div class="row" style="justify-content: space-between; padding: 6px 0; font-weight: bold; font-size: var(--fs-base);">
-            <span>Total Omset Penjualan:</span>
+          <div class="detail-kv-row" style="font-weight: bold; font-size: var(--fs-base); padding-top: 9px;">
+            <span>Total Omset Penjualan</span>
             <span class="mono" style="color: var(--primary);">${formatRupiah(rd.total_penjualan || 0)}</span>
           </div>
         </div>
@@ -2964,16 +2962,16 @@ export function renderPosModule(container) {
     const renderNavTab = () => {
       if (shiftAktif) {
         return `
-          <div class="segmented" style="width: 100%; box-sizing: border-box;">
-            <button type="button" class="btn btn-sm ${tabAktif === 'utama' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="utama" style="flex: 1;">
+          <div class="segmented segmented-equal">
+            <button type="button" class="btn btn-sm ${tabAktif === 'utama' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="utama">
               ${ICONS.chart}
-              <span>Rekap (X-Report)</span>
+              <span>X-Report</span>
             </button>
-            <button type="button" class="btn btn-sm ${tabAktif === 'tutup' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="tutup" style="flex: 1;">
+            <button type="button" class="btn btn-sm ${tabAktif === 'tutup' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="tutup">
               ${ICONS.checkCircle}
-              <span>Tutup Shift (Z)</span>
+              <span>Tutup (Z)</span>
             </button>
-            <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat" style="flex: 1;">
+            <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat">
               ${ICONS.clipboard}
               <span>Riwayat</span>
             </button>
@@ -2981,16 +2979,16 @@ export function renderPosModule(container) {
         `;
       }
       return `
-        <div class="segmented" style="width: 100%; box-sizing: border-box;">
-          <button type="button" class="btn btn-sm ${tabAktif === 'utama' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="utama" style="flex: 1;">
+        <div class="segmented segmented-equal">
+          <button type="button" class="btn btn-sm ${tabAktif === 'utama' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="utama">
             ${ICONS.wallet}
             <span>Buka Shift</span>
           </button>
-          <button type="button" class="btn btn-sm ${tabAktif === 'harian' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="harian" style="flex: 1;">
+          <button type="button" class="btn btn-sm ${tabAktif === 'harian' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="harian">
             ${ICONS.chart}
-            <span>Rekap Hari Ini</span>
+            <span>Harian</span>
           </button>
-          <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat" style="flex: 1;">
+          <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat">
             ${ICONS.clipboard}
             <span>Riwayat</span>
           </button>
@@ -3116,7 +3114,7 @@ export function renderPosModule(container) {
         `;
         pasangEventNavTab();
         elFooterActions.innerHTML = `
-          <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-xreport-harian" style="display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-xreport-harian" style="flex: 1; justify-content: center; gap: 6px;">
             ${ICONS.printer}
             <span>Cetak X-Report</span>
           </button>
@@ -3167,7 +3165,7 @@ export function renderPosModule(container) {
         pasangEventNavTab();
 
         elFooterActions.innerHTML = `
-          <button type="button" class="btn btn-primary btn-sm" id="btn-aksi-buka-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-aksi-buka-shift" style="flex: 1; justify-content: center; gap: 6px;">
             ${ICONS.checkCircle}
             <span>Buka Shift Kasir</span>
           </button>
@@ -3248,11 +3246,11 @@ export function renderPosModule(container) {
         });
 
         elFooterActions.innerHTML = `
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-xreport" style="display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-xreport" style="flex: 1; justify-content: center; gap: 6px;">
             ${ICONS.printer}
             <span>Cetak X-Report</span>
           </button>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-ke-tutup-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-ke-tutup-shift" style="flex: 1; justify-content: center; gap: 6px;">
             ${ICONS.checkCircle}
             <span>Tutup Shift</span>
           </button>
@@ -3344,7 +3342,7 @@ export function renderPosModule(container) {
       pasangEventNavTab();
 
       elFooterActions.innerHTML = `
-        <button type="button" class="btn btn-primary btn-sm" id="btn-konfirmasi-tutup-shift" style="display: inline-flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-konfirmasi-tutup-shift" style="flex: 1; justify-content: center; gap: 6px;">
           ${ICONS.checkCircle}
           <span>Konfirmasi Tutup Shift (Z-Report)</span>
         </button>
@@ -3841,14 +3839,14 @@ export function renderPosModule(container) {
 
     const renderIsiModal = () => {
       elRoot.innerHTML = `
-        <div class="segmented" style="width: 100%; box-sizing: border-box;">
-          <button type="button" class="btn btn-sm ${tabAktifList === 'pending' ? 'btn-primary' : 'btn-ghost'}" data-pr-tab="pending" style="flex: 1;">
+        <div class="segmented segmented-equal">
+          <button type="button" class="btn btn-sm ${tabAktifList === 'pending' ? 'btn-primary' : 'btn-ghost'}" data-pr-tab="pending">
             ${ICONS.clipboard}
             <span>Ditahan (${pendingItems.length})</span>
           </button>
-          <button type="button" class="btn btn-sm ${tabAktifList === 'rab' ? 'btn-primary' : 'btn-ghost'}" data-pr-tab="rab" style="flex: 1;">
+          <button type="button" class="btn btn-sm ${tabAktifList === 'rab' ? 'btn-primary' : 'btn-ghost'}" data-pr-tab="rab">
             ${ICONS.calculator}
-            <span>Penawaran RAB (${rabItems.length})</span>
+            <span>RAB (${rabItems.length})</span>
           </button>
         </div>
 

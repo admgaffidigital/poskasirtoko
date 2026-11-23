@@ -519,15 +519,7 @@ input[type="password"] {
     overflow: visible !important;
   }
 
-  #tabs-laporan {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    width: 100% !important;
-    overflow: visible !important;
-  }
-
-  #seg-periode button,
-  #tabs-laporan button {
+  #seg-periode button {
     width: 100% !important;
     min-width: 0 !important;
     padding: 0 var(--sp-2) !important;
@@ -535,12 +527,139 @@ input[type="password"] {
     justify-content: center !important;
   }
 
-  #tabs-laporan button span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.35;
+  /* Strip tab laporan bergaya native-app horizontal scroll agar hemat ruang vertikal di HP */
+  #tabs-laporan {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px !important;
+    padding: 4px !important;
+    width: 100% !important;
   }
+
+  #tabs-laporan::-webkit-scrollbar {
+    display: none;
+  }
+
+  #tabs-laporan button {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+    padding: 0 12px !important;
+    font-size: var(--fs-xs) !important;
+    min-height: 36px !important;
+    justify-content: center !important;
+  }
+
+  #tabs-laporan button span {
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+}
+
+/* Segmented 3-kolom simetris untuk modal (Shift Kasir, Pending/RAB) */
+.segmented.segmented-equal {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+.segmented.segmented-equal button {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 6px !important;
+  gap: 5px !important;
+  font-size: var(--fs-xs) !important;
+  min-height: 36px !important;
+}
+
+.segmented.segmented-equal button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segmented.segmented-equal button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Kotak rincian baris rapi bergaya aplikasi native */
+.detail-kv-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+}
+
+.detail-kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: var(--fs-sm);
+}
+
+.detail-kv-row:last-child {
+  border-bottom: 0;
+}
+
+/* Filter bar sejajar rapi pada kartu modul mobile */
+.card-filter-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.card-filter-inline .select,
+.card-filter-inline select {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .card-filter-inline {
+    width: auto;
+    flex-wrap: nowrap;
+  }
+}
+
+/* Pratinjau Dokumen A5 Landscape auto-fit pada layar HP */
+.a5-preview-stage {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  padding: var(--sp-2);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.a5-preview-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  background: #ffffff;
+}
+
+.a5-preview-viewport iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 760px;
+  height: 540px;
+  border: 0;
+  background: #ffffff;
+  transform-origin: top left;
 }
 
 /* ---------- Kartu ---------- */
@@ -704,6 +823,7 @@ input[type="password"] {
   }
 
   .card-grid[style*="minmax(200px"],
+  .card-grid[style*="minmax(210px"],
   .card-grid[style*="minmax(220px"],
   .stat-grid-auto,
   .card-grid.stat-grid {
@@ -4508,15 +4628,18 @@ a.list-item:hover {
 
 .pos-cart-action-btns {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: 4px;
 }
 
-.pos-btn-hold {
+.pos-btn-hold,
+.pos-btn-rab {
   height: 46px;
   border-radius: var(--radius-md);
   font-weight: var(--fw-semibold);
   font-size: var(--fs-sm);
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
 .pos-btn-pay {
@@ -4524,13 +4647,14 @@ a.list-item:hover {
   border-radius: var(--radius-md);
   font-weight: 700;
   font-size: var(--fs-base);
-  box-shadow: 0 4px 12px rgba(230, 81, 0, 0.22);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.24);
   transition: all var(--dur-fast) var(--ease);
+  white-space: nowrap;
 }
 
 .pos-btn-pay:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(230, 81, 0, 0.32);
+  box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.34);
 }
 
 @media (max-width: 640px) {
