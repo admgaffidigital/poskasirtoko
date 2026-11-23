@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.114] - 2026-11-23
+
+### Added
+- [POS-JUAL] [CETAK] [DASHBOARD] **Ceklist "Barang Dibawa Duluan vs Dikirim Menyusul" Anti Kirim Ganda (`pos.js`, `printer.js`, `laporan.js`)**:
+  - Menambahkan panel ceklist per barang langsung di modal Pembayaran POS saat memilih **Dikirim Toko**, lengkap dengan tombol cepat `Semua Dikirim` / `Semua Dibawa`, input jumlah kirim parsial (`Qty Dikirim`), dan ringkasan instan (*dibawa sekarang vs dikirim menyusul*).
+  - **Surat Jalan Anti Salah Muat (`printer.js`)**: Surat Jalan A5, Thermal 58/80mm, dan WA Sopir otomatis **hanya memuat barang yang belum dibawa pembeli** (`sisa_kirim > 0`) dengan catatan info jumlah item yang sudah dibawa pembeli, plus opsi centang opsional bila ingin menampilkan seluruh isi nota.
+  - **Keterangan Jelas di Struk Thermal & Faktur Besar A5**: Menampilkan penanda `[Sudah Dibawa Pembeli]`, `[Dikirim Toko]`, atau `[Dibawa: X, Kirim: Y]` pada setiap baris item pengiriman campuran.
+  - **Antrean Pengiriman (`laporan.js`)**: Kolom *Muatan Barang* kini otomatis memprioritaskan tampilan barang yang masih tersisa untuk dikirim beserta catatan jumlah item yang sudah dibawa pembeli.
+
 ## [1.0.113] - 2026-11-23
 
 ### Changed

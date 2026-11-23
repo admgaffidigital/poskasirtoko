@@ -2194,6 +2194,19 @@ export function renderPosModule(container) {
                 <label class="form-label" for="checkout-alamat">Alamat Pengiriman:</label>
                 <textarea id="checkout-alamat" class="textarea" rows="2" placeholder="Alamat lengkap tujuan pengiriman...">${escapeHtml(state.alamatKirim || (state.pelanggan?.alamat || ''))}</textarea>
               </div>
+
+              <!-- Ceklist Barang Dibawa Duluan vs Dikirim Menyusul -->
+              <div style="border-top: 1px dashed var(--border); padding-top: var(--sp-2);">
+                <div class="row" style="justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;">
+                  <span class="form-label fw-bold text-xs" style="margin: 0;">Ceklist Barang Dikirim vs Dibawa:</span>
+                  <div class="row" style="gap: 4px;">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btn-kirim-semua-item">Semua Dikirim</button>
+                    <button type="button" class="btn btn-ghost btn-xs" id="btn-bawa-semua-item">Semua Dibawa</button>
+                  </div>
+                </div>
+                <div id="list-ceklist-kirim-item" class="stack" style="gap: 6px; max-height: 210px; overflow-y: auto;"></div>
+                <div id="ringkasan-ceklist-kirim" class="text-xs text-muted" style="margin-top: 6px;"></div>
+              </div>
             </div>
 
             <div>
@@ -2451,7 +2464,124 @@ export function renderPosModule(container) {
     modal.el.querySelector('#komb-tunai')?.addEventListener('input', onKombInput);
     modal.el.querySelector('#komb-transfer')?.addEventListener('input', onKombInput);
 
-    // Pengiriman toggle (Ambil di Toko otomatis nolkan ongkir)
+    // ---------- Ceklist Barang Dibawa Duluan vs Dikirim Menyusul ----------
+    const elListCeklistKirim = modal.el.querySelector('#list-ceklist-kirim-item');
+    const elRingkasanCeklistKirim = modal.el.querySelector('#ringkasan-ceklist-kirim');
+
+    const inisialisasiStatusKirimItem = (mode) => {
+      if (mode === 'dikirim') {
+        const semuaMasihPenuh = state.keranjang.every((it) => it.qty_dibawa === undefined || Number(it.qty_dibawa) >= Number(it.qty));
+        if (semuaMasihPenuh) {
+          state.keranjang.forEach((it) => { it.qty_dibawa = 0; });
+        }
+      } else {
+        state.keranjang.forEach((it) => { it.qty_dibawa = it.qty; });
+      }
+    };
+
+    const perbaruiRingkasanCeklistKirim = () => {
+      if (!elRingkasanCeklistKirim) return;
+      let jmlKirim = 0;
+      let jmlBawa = 0;
+      let jmlParsial = 0;
+      state.keranjang.forEach((it) => {
+        const qty = Number(it.qty || 0);
+        const dibawa = Math.min(qty, Math.max(0, Number(it.qty_dibawa !== undefined ? it.qty_dibawa : 0)));
+        const kirim = Math.max(0, qty - dibawa);
+        if (kirim > 0 && dibawa > 0) jmlParsial++;
+        else if (kirim > 0) jmlKirim++;
+        else jmlBawa++;
+      });
+      const totalDikirim = jmlKirim + jmlParsial;
+      if (totalDikirim === 0) {
+        elRingkasanCeklistKirim.innerHTML = `<span class="text-warning fw-semibold">Semua barang ditandai dibawa langsung oleh pembeli (0 item masuk Surat Jalan).</span>`;
+      } else {
+        const bagian = [];
+        if (jmlBawa > 0) bagian.push(`<strong class="text-success">${jmlBawa} dibawa sekarang</strong>`);
+        if (jmlKirim > 0) bagian.push(`<strong class="text-primary">${jmlKirim} dikirim menyusul</strong>`);
+        if (jmlParsial > 0) bagian.push(`<strong class="text-warning">${jmlParsial} sebagian dibawa &amp; dikirim</strong>`);
+        elRingkasanCeklistKirim.innerHTML = `Ringkasan: ${bagian.join(' • ')}`;
+      }
+    };
+
+    const renderCeklistKirimItem = () => {
+      if (!elListCeklistKirim) return;
+      elListCeklistKirim.innerHTML = state.keranjang.map((it, idx) => {
+        const qty = Number(it.qty || 0);
+        const dibawa = Math.min(qty, Math.max(0, Number(it.qty_dibawa !== undefined ? it.qty_dibawa : 0)));
+        const kirim = Math.round(Math.max(0, qty - dibawa) * 1000) / 1000;
+        const dicentangKirim = kirim > 0;
+        const badgeSt = kirim <= 0
+          ? '<span class="badge badge-success text-xs">Dibawa</span>'
+          : (dibawa > 0
+            ? `<span class="badge badge-warning text-xs">Bawa ${formatQty(dibawa)} • Kirim ${formatQty(kirim)}</span>`
+            : `<span class="badge badge-primary text-xs">Dikirim</span>`);
+
+        return `
+          <div style="background: var(--surface); border: 1px solid ${dicentangKirim ? 'var(--primary)' : 'var(--border)'}; border-radius: var(--radius-sm); padding: 7px 9px;">
+            <div class="row" style="justify-content: space-between; align-items: center; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer;">
+                <input type="checkbox" class="chk-item-dikirim" data-idx="${idx}" ${dicentangKirim ? 'checked' : ''} style="width: 17px; height: 17px; accent-color: var(--primary); flex-shrink: 0;">
+                <div style="min-width: 0;">
+                  <div class="text-xs fw-semibold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(it.nama)}</div>
+                  <div class="text-xs text-muted">Total beli: <strong class="mono">${formatQty(qty)} ${escapeHtml(it.satuan || '')}</strong></div>
+                </div>
+              </label>
+              <div style="flex-shrink: 0;">${badgeSt}</div>
+            </div>
+            ${qty > 1 ? `
+              <div class="row" style="justify-content: flex-end; align-items: center; gap: 6px; margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--border);">
+                <span class="text-xs text-muted">Qty Dikirim:</span>
+                <input type="number" step="any" min="0" max="${qty}" class="input input-sm mono inp-qty-kirim-item" data-idx="${idx}" value="${kirim}" style="width: 72px; min-height: 28px; height: 28px; padding: 2px 6px; text-align: right;" />
+                <span class="text-xs text-muted">/ ${formatQty(qty)} ${escapeHtml(it.satuan || '')}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      elListCeklistKirim.querySelectorAll('.chk-item-dikirim').forEach((chk) => {
+        chk.addEventListener('change', () => {
+          const idx = Number(chk.getAttribute('data-idx'));
+          const it = state.keranjang[idx];
+          if (!it) return;
+          it.qty_dibawa = chk.checked ? 0 : Number(it.qty || 0);
+          renderCeklistKirimItem();
+        });
+      });
+
+      elListCeklistKirim.querySelectorAll('.inp-qty-kirim-item').forEach((inp) => {
+        inp.addEventListener('change', () => {
+          const idx = Number(inp.getAttribute('data-idx'));
+          const it = state.keranjang[idx];
+          if (!it) return;
+          const qty = Number(it.qty || 0);
+          let qKirim = Number(inp.value);
+          if (!isFinite(qKirim) || qKirim < 0) qKirim = 0;
+          if (qKirim > qty) qKirim = qty;
+          it.qty_dibawa = Math.round(Math.max(0, qty - qKirim) * 1000) / 1000;
+          renderCeklistKirimItem();
+        });
+      });
+
+      perbaruiRingkasanCeklistKirim();
+    };
+
+    modal.el.querySelector('#btn-kirim-semua-item')?.addEventListener('click', () => {
+      state.keranjang.forEach((it) => { it.qty_dibawa = 0; });
+      renderCeklistKirimItem();
+    });
+    modal.el.querySelector('#btn-bawa-semua-item')?.addEventListener('click', () => {
+      state.keranjang.forEach((it) => { it.qty_dibawa = Number(it.qty || 0); });
+      renderCeklistKirimItem();
+    });
+
+    if (state.pengiriman === 'dikirim') {
+      inisialisasiStatusKirimItem('dikirim');
+      renderCeklistKirimItem();
+    }
+
+    // Pengiriman toggle (Ambil di Toko otomatis nolkan ongkir & semua dibawa)
     modal.el.querySelectorAll('.btn-opt-kirim').forEach((b) => {
       b.addEventListener('click', () => {
         modal.el.querySelectorAll('.btn-opt-kirim').forEach((x) => x.className = 'btn btn-sm btn-secondary btn-opt-kirim');
@@ -2459,10 +2589,13 @@ export function renderPosModule(container) {
         state.pengiriman = b.getAttribute('data-kirim');
         if (state.pengiriman === 'dikirim') {
           boxKirim.style.display = 'flex';
+          inisialisasiStatusKirimItem('dikirim');
+          renderCeklistKirimItem();
         } else {
           boxKirim.style.display = 'none';
           state.ongkir = 0;
           if (inputOngkir) inputOngkir.value = '0';
+          inisialisasiStatusKirimItem('ambil');
         }
         perbaruiTotalCheckout(true);
       });
@@ -2619,11 +2752,13 @@ export function renderPosModule(container) {
 
         const alamatKirimVal = modal.el.querySelector('#checkout-alamat')?.value.trim() || '';
         const catatanVal = modal.el.querySelector('#checkout-catatan')?.value.trim() || '';
+        const semuaSudahDibawa = payloadItems.every((it) => Number(it.qty_dibawa) >= Number(it.qty));
 
         const payload = {
           pelanggan_id: state.pelanggan ? state.pelanggan.id : '',
           pengiriman: state.pengiriman,
           alamat_kirim: alamatKirimVal,
+          status_antar: state.pengiriman === 'dikirim' && semuaSudahDibawa ? 'selesai' : undefined,
           ongkir: getOngkirAktif(),
           catatan: catatanVal,
           items: payloadItems,

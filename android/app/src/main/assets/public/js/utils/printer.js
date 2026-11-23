@@ -129,10 +129,18 @@ export function susunTeksStruk(data, ukuran = '58') {
       baris.push(formatDuaKolom('  ' + diskonKet, '-' + formatRupiah(it.diskon), lebar));
     }
 
-    // Status pengiriman parsial bila ada barang belum dibawa
-    if (pj.pengiriman === 'dikirim' && it.qty_dibawa !== undefined && it.qty_dibawa < it.qty) {
-      const sisaAntar = it.qty - it.qty_dibawa;
-      baris.push(`  [Dibawa: ${formatQty(it.qty_dibawa)}, Sisa Antar: ${formatQty(sisaAntar)}]`);
+    // Status pengiriman / barang dibawa duluan vs dikirim menyusul
+    if (pj.pengiriman === 'dikirim' && it.qty_dibawa !== undefined) {
+      const qTot = Number(it.qty || 0);
+      const qBawa = Math.min(qTot, Math.max(0, Number(it.qty_dibawa)));
+      const sisaAntar = Math.round(Math.max(0, qTot - qBawa) * 1000) / 1000;
+      if (sisaAntar <= 0) {
+        baris.push('  [Sudah Dibawa Pembeli]');
+      } else if (qBawa <= 0) {
+        baris.push(`  [Dikirim Toko: ${formatQty(sisaAntar)} ${it.satuan || ''}]`);
+      } else {
+        baris.push(`  [Dibawa: ${formatQty(qBawa)}, Kirim: ${formatQty(sisaAntar)}]`);
+      }
     }
   });
 
@@ -849,8 +857,18 @@ export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
   pesan += `Tanggal : ${formatTanggal(pj.tanggal, true)}\n`;
   pesan += `--------------------------------\n`;
 
+  const adaCampuranKirim = pj.pengiriman === 'dikirim' && items.some((it) => Number(it.qty_dibawa || 0) > 0);
   items.forEach((it) => {
-    pesan += `• ${it.nama} (${formatQty(it.qty)} ${it.satuan})\n`;
+    let ketWa = '';
+    if (adaCampuranKirim && it.qty_dibawa !== undefined) {
+      const qTot = Number(it.qty || 0);
+      const qBawa = Math.min(qTot, Math.max(0, Number(it.qty_dibawa)));
+      const qSisa = Math.round(Math.max(0, qTot - qBawa) * 1000) / 1000;
+      if (qSisa <= 0) ketWa = ' _[Sudah Dibawa]_';
+      else if (qBawa <= 0) ketWa = ' _[Dikirim Toko]_';
+      else ketWa = ` _[Dibawa: ${formatQty(qBawa)}, Kirim: ${formatQty(qSisa)}]_`;
+    }
+    pesan += `• ${it.nama} (${formatQty(it.qty)} ${it.satuan})${ketWa}\n`;
     pesan += `  ${formatRupiah(it.subtotal)}\n`;
   });
 
@@ -1733,10 +1751,32 @@ function ambilInfoTokoDokumen(data) {
 }
 
 /**
+ * Saring item untuk Surat Jalan agar sopir/kuli HANYA memuat barang yang harus dikirim (anti kirim ganda barang yang sudah dibawa duluan).
+ */
+function saringItemSuratJalan(items, sertakanSudahDibawa = false) {
+  const normal = (items || []).map((it) => {
+    const qty = Number(it.qty || 0);
+    const dibawa = it.qty_dibawa !== undefined ? Math.min(qty, Math.max(0, Number(it.qty_dibawa))) : 0;
+    const sisa = Math.round(Math.max(0, qty - dibawa) * 1000) / 1000;
+    return { ...it, _qty: qty, _dibawa: dibawa, _sisa: sisa };
+  });
+  const hanyaSisa = normal.filter((it) => it._sisa > 0);
+  const sudahDibawaList = normal.filter((it) => it._sisa <= 0);
+  const adaSisa = hanyaSisa.length > 0;
+  return {
+    daftarTampil: (!sertakanSudahDibawa && adaSisa) ? hanyaSisa : normal,
+    hanyaSisa,
+    sudahDibawaList,
+    adaSisa,
+    adaCampuran: adaSisa && (sudahDibawaList.length > 0 || hanyaSisa.some((it) => it._dibawa > 0))
+  };
+}
+
+/**
  * Susun teks Surat Jalan Thermal 58mm/80mm (100% TANPA HARGA — khusus sopir/kuli & penerima)
  * @param {Object} data
  * @param {'58'|'80'} [ukuran='58']
- * @param {Object} [opsi={}] { sopir, noPlat, catatan }
+ * @param {Object} [opsi={}] { sopir, noPlat, catatan, sertakanSudahDibawa }
  */
 export function susunTeksSuratJalan(data, ukuran = '58', opsi = {}) {
   const lebar = LEBAR_KERTAS[ukuran] || 32;
@@ -1745,6 +1785,8 @@ export function susunTeksSuratJalan(data, ukuran = '58', opsi = {}) {
   const pel = data.pelanggan || null;
   const toko = ambilInfoTokoDokumen(data);
   const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+  const hasilSaring = saringItemSuratJalan(items, !!opsi.sertakanSudahDibawa);
+  const daftarMuat = hasilSaring.daftarTampil;
 
   const baris = [];
   baris.push(formatTengah((toko.nama || 'TOKO').toUpperCase(), lebar));
@@ -1772,19 +1814,27 @@ export function susunTeksSuratJalan(data, ukuran = '58', opsi = {}) {
   if (opsi.noPlat) baris.push(formatDuaKolom('Armada', opsi.noPlat, lebar));
   baris.push(buatGaris(lebar, '-'));
 
-  let totalBarisQty = 0;
-  items.forEach((it, idx) => {
-    const qty = Number(it.qty || 0);
-    const dibawa = it.qty_dibawa !== undefined ? Number(it.qty_dibawa) : qty;
-    const sisa = Math.max(0, qty - dibawa);
-    totalBarisQty += qty;
+  let totalUnitKirim = 0;
+  daftarMuat.forEach((it, idx) => {
+    const qtyMuat = hasilSaring.adaSisa ? it._sisa : it._qty;
+    totalUnitKirim += qtyMuat;
     baris.push(`${idx + 1}. ${it.nama || 'Barang'}`);
-    baris.push(formatDuaKolom(`   [ ] Qty: ${formatQty(qty)} ${it.satuan || ''}`, sisa > 0 ? `Sisa: ${formatQty(sisa)}` : 'OK', lebar));
+    if (hasilSaring.adaSisa && it._sisa <= 0) {
+      baris.push(formatDuaKolom(`   (Sudah dibawa pembeli)`, `${formatQty(it._qty)} ${it.satuan || ''}`, lebar));
+    } else if (it._dibawa > 0 && it._sisa > 0) {
+      baris.push(formatDuaKolom(`   [ ] KIRIM: ${formatQty(it._sisa)} ${it.satuan || ''}`, `(Bawa:${formatQty(it._dibawa)})`, lebar));
+    } else {
+      baris.push(formatDuaKolom(`   [ ] KIRIM: ${formatQty(qtyMuat)} ${it.satuan || ''}`, 'OK', lebar));
+    }
   });
 
   baris.push(buatGaris(lebar, '-'));
-  baris.push(formatDuaKolom('Total Jenis Item', `${items.length} Jenis`, lebar));
-  baris.push(formatDuaKolom('Total Unit/Qty', formatQty(totalBarisQty), lebar));
+  baris.push(formatDuaKolom('Total Jenis Muat', `${daftarMuat.length} Jenis`, lebar));
+  baris.push(formatDuaKolom('Total Unit Kirim', formatQty(totalUnitKirim), lebar));
+  if (!opsi.sertakanSudahDibawa && hasilSaring.sudahDibawaList.length > 0 && hasilSaring.adaSisa) {
+    baris.push(buatGaris(lebar, '.'));
+    baris.push(`Info: ${hasilSaring.sudahDibawaList.length} item lain di nota ini sudah dibawa pembeli.`);
+  }
   if (opsi.catatan || pj.catatan) {
     baris.push(buatGaris(lebar, '.'));
     baris.push('Catatan: ' + String(opsi.catatan || pj.catatan));
@@ -1810,6 +1860,8 @@ export function buatTautanWhatsAppSuratJalan(data, opsi = {}) {
   const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
   const alamat = pj.alamat_kirim || (pel && pel.alamat) || '-';
   const hpPel = (pel && pel.hp) || pj.pelanggan_hp || '';
+  const hasilSaring = saringItemSuratJalan(items, !!opsi.sertakanSudahDibawa);
+  const daftarMuat = hasilSaring.daftarTampil;
 
   let pesan = `*SURAT JALAN - ${(toko.nama || 'TOKO').toUpperCase()}*\n`;
   pesan += `No. SJ   : *${noSj}* (Ref: ${pj.no_nota || '-'})\n`;
@@ -1819,13 +1871,20 @@ export function buatTautanWhatsAppSuratJalan(data, opsi = {}) {
   if (opsi.sopir) pesan += `Sopir    : ${opsi.sopir}${opsi.noPlat ? ` (${opsi.noPlat})` : ''}\n`;
   pesan += `--------------------------------\n`;
   pesan += `*DAFTAR BARANG DIKIRIM:*\n`;
-  items.forEach((it, idx) => {
-    const qty = Number(it.qty || 0);
-    const dibawa = it.qty_dibawa !== undefined ? Number(it.qty_dibawa) : qty;
-    const sisa = Math.max(0, qty - dibawa);
-    pesan += `${idx + 1}. ${it.nama} — *${formatQty(qty)} ${it.satuan || ''}*${sisa > 0 ? ` (Sisa antar: ${formatQty(sisa)})` : ''}\n`;
+  daftarMuat.forEach((it, idx) => {
+    const qtyMuat = hasilSaring.adaSisa ? it._sisa : it._qty;
+    if (hasilSaring.adaSisa && it._sisa <= 0) {
+      pesan += `${idx + 1}. ${it.nama} — _Sudah dibawa pembeli (${formatQty(it._qty)} ${it.satuan || ''})_\n`;
+    } else if (it._dibawa > 0 && it._sisa > 0) {
+      pesan += `${idx + 1}. ${it.nama} — *KIRIM ${formatQty(it._sisa)} ${it.satuan || ''}* (dari total ${formatQty(it._qty)}, sudah dibawa ${formatQty(it._dibawa)})\n`;
+    } else {
+      pesan += `${idx + 1}. ${it.nama} — *${formatQty(qtyMuat)} ${it.satuan || ''}*\n`;
+    }
   });
   pesan += `--------------------------------\n`;
+  if (!opsi.sertakanSudahDibawa && hasilSaring.sudahDibawaList.length > 0 && hasilSaring.adaSisa) {
+    pesan += `_Catatan: ${hasilSaring.sudahDibawaList.length} barang lain pada nota ini sudah dibawa langsung oleh pembeli (tidak perlu dimuat)._\n`;
+  }
   if (opsi.catatan || pj.catatan) {
     pesan += `Catatan: ${opsi.catatan || pj.catatan}\n`;
   }
@@ -1842,7 +1901,9 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
   const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
   const alamat = pj.alamat_kirim || (pel && pel.alamat) || '-';
   const hpPel = (pel && pel.hp) || pj.pelanggan_hp || '-';
-  const adaParsial = items.some((it) => it.qty_dibawa !== undefined && Number(it.qty_dibawa) < Number(it.qty || 0));
+  const hasilSaring = saringItemSuratJalan(items, !!opsi.sertakanSudahDibawa);
+  const daftarMuat = hasilSaring.daftarTampil;
+  const tampilKolomBawa = hasilSaring.adaCampuran;
 
   return `<!DOCTYPE html>
 <html lang="id">
@@ -1869,8 +1930,8 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
     table.keep-table th { background: #f3f4f6; border: 1px solid #374151; padding: 5px 6px; text-align: left; font-weight: 700; }
     table.keep-table td { border: 1px solid #9ca3af; padding: 5px 6px; vertical-align: top; }
     .c { text-align: center; }
-    .r { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
-    .note-box { border: 1px dashed #6b7280; padding: 5px 8px; font-size: 10px; margin-bottom: 14px; }
+    .r { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; white-space: nowrap; }
+    .note-box { border: 1px dashed #6b7280; padding: 5px 8px; font-size: 10px; margin-bottom: 10px; }
     .ttd-grid { display: flex; justify-content: space-between; gap: 16px; margin-top: 12px; text-align: center; font-size: 10.5px; }
     .ttd-col { flex: 1; }
     .ttd-space { height: 42px; }
@@ -1911,30 +1972,33 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
         <tr>
           <th class="c" style="width: 28px;">No</th>
           <th>Nama Barang / Material</th>
-          <th class="c" style="width: 65px;">Satuan</th>
-          <th class="r" style="width: 65px;">Qty Pesan</th>
-          ${adaParsial ? `<th class="r" style="width: 68px;">Sudah Kirim</th><th class="r" style="width: 68px;">Sisa Antar</th>` : ''}
+          <th class="c" style="width: 60px;">Satuan</th>
+          ${tampilKolomBawa ? `<th class="r" style="width: 62px;">Pesan</th><th class="r" style="width: 66px;">Dibawa</th>` : ''}
+          <th class="r" style="width: 72px;">Qty Kirim</th>
           <th class="c" style="width: 55px;">Cek</th>
         </tr>
       </thead>
       <tbody>
-        ${items.map((it, i) => {
-          const qty = Number(it.qty || 0);
-          const dibawa = it.qty_dibawa !== undefined ? Number(it.qty_dibawa) : qty;
-          const sisa = Math.max(0, qty - dibawa);
+        ${daftarMuat.map((it, i) => {
+          const qtyMuat = hasilSaring.adaSisa ? it._sisa : it._qty;
+          const sudahBawaPenuh = hasilSaring.adaSisa && it._sisa <= 0;
           return `
-            <tr>
+            <tr style="${sudahBawaPenuh ? 'color: #6b7280;' : ''}">
               <td class="c">${i + 1}</td>
-              <td><strong>${escapeHtml(it.nama || 'Barang')}</strong></td>
+              <td><strong>${escapeHtml(it.nama || 'Barang')}</strong>${sudahBawaPenuh ? ' <em>(Sudah dibawa pembeli)</em>' : ''}</td>
               <td class="c">${escapeHtml(it.satuan || '-')}</td>
-              <td class="r">${formatQty(qty)}</td>
-              ${adaParsial ? `<td class="r">${formatQty(dibawa)}</td><td class="r">${formatQty(sisa)}</td>` : ''}
-              <td class="c">[ &nbsp;&nbsp; ]</td>
+              ${tampilKolomBawa ? `<td class="r">${formatQty(it._qty)}</td><td class="r">${formatQty(it._dibawa)}</td>` : ''}
+              <td class="r">${sudahBawaPenuh ? '0' : formatQty(qtyMuat)}</td>
+              <td class="c">${sudahBawaPenuh ? 'OK' : '[ &nbsp;&nbsp; ]'}</td>
             </tr>
           `;
         }).join('')}
       </tbody>
     </table>
+
+    ${(!opsi.sertakanSudahDibawa && hasilSaring.sudahDibawaList.length > 0 && hasilSaring.adaSisa) ? `
+      <div class="note-box"><strong>Info Muatan:</strong> ${hasilSaring.sudahDibawaList.length} jenis barang lain pada nota ${escapeHtml(pj.no_nota || '')} sudah dibawa langsung oleh pembeli dan tidak termasuk muatan sopir.</div>
+    ` : ''}
 
     ${(opsi.catatan || pj.catatan) ? `<div class="note-box"><strong>Catatan Pengiriman:</strong> ${escapeHtml(opsi.catatan || pj.catatan)}</div>` : ''}
 
@@ -1979,6 +2043,11 @@ export function bukaModalCetakSuratJalan(dataStruk) {
   const pel = dataStruk.pelanggan || null;
   const items = dataStruk.items || [];
   const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+  const infoSaring = saringItemSuratJalan(items, false);
+  const jmlKirimJenis = infoSaring.adaSisa ? infoSaring.hanyaSisa.length : items.length;
+  const jmlKirimUnit = infoSaring.adaSisa
+    ? infoSaring.hanyaSisa.reduce((s, x) => s + x._sisa, 0)
+    : items.reduce((s, x) => s + Number(x.qty || 0), 0);
 
   const modal = showModal({
     title: `Surat Jalan — ${noSj}`,
@@ -1993,8 +2062,18 @@ export function bukaModalCetakSuratJalan(dataStruk) {
         <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); font-size: var(--fs-xs);">
           <div><strong>Penerima:</strong> ${escapeHtml(pel ? pel.nama : (pj.pelanggan_nama || 'Pelanggan Umum'))}</div>
           <div><strong>Alamat:</strong> ${escapeHtml(pj.alamat_kirim || (pel && pel.alamat) || '-')}</div>
-          <div><strong>Muatan:</strong> ${items.length} jenis barang (${formatQty(items.reduce((s, x) => s + Number(x.qty || 0), 0))} total unit)</div>
+          <div><strong>Muatan Dikirim:</strong> <strong style="color: var(--primary);">${jmlKirimJenis} jenis barang (${formatQty(jmlKirimUnit)} unit)</strong></div>
+          ${(infoSaring.sudahDibawaList.length > 0 && infoSaring.adaSisa) ? `
+            <div class="text-success" style="margin-top: 2px;"><strong>Sudah Dibawa Pembeli:</strong> ${infoSaring.sudahDibawaList.length} jenis barang (otomatis tidak ikut muatan sopir)</div>
+          ` : ''}
         </div>
+
+        ${(infoSaring.sudahDibawaList.length > 0 && infoSaring.adaSisa) ? `
+          <label style="display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); cursor: pointer;">
+            <input type="checkbox" id="chk-sj-sertakan-dibawa" style="width: 16px; height: 16px; accent-color: var(--primary);">
+            <span>Sertakan juga barang yang sudah dibawa pembeli (sebagai info di Surat Jalan)</span>
+          </label>
+        ` : ''}
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-2);">
           <div>
@@ -2044,7 +2123,8 @@ export function bukaModalCetakSuratJalan(dataStruk) {
   const ambilOpsi = () => ({
     sopir: (modal.el.querySelector('#inp-sj-sopir')?.value || '').trim(),
     noPlat: (modal.el.querySelector('#inp-sj-plat')?.value || '').trim(),
-    catatan: (modal.el.querySelector('#inp-sj-catatan')?.value || '').trim()
+    catatan: (modal.el.querySelector('#inp-sj-catatan')?.value || '').trim(),
+    sertakanSudahDibawa: Boolean(modal.el.querySelector('#chk-sj-sertakan-dibawa')?.checked)
   });
 
   modal.el.querySelector('#btn-sj-cetak-a5')?.addEventListener('click', () => {
@@ -2173,17 +2253,28 @@ function buatHtmlFakturA5(data) {
         </tr>
       </thead>
       <tbody>
-        ${items.map((it, idx) => `
+        ${items.map((it, idx) => {
+          let ketKirimHtml = '';
+          if (pj.pengiriman === 'dikirim' && it.qty_dibawa !== undefined) {
+            const qTot = Number(it.qty || 0);
+            const qBawa = Math.min(qTot, Math.max(0, Number(it.qty_dibawa)));
+            const qSisa = Math.round(Math.max(0, qTot - qBawa) * 1000) / 1000;
+            if (qSisa <= 0) ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Sudah Dibawa Pembeli]</div>`;
+            else if (qBawa <= 0) ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Dikirim Toko]</div>`;
+            else ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Dibawa: ${formatQty(qBawa)}, Kirim: ${formatQty(qSisa)}]</div>`;
+          }
+          return `
           <tr>
             <td class="c">${idx + 1}</td>
-            <td><strong>${escapeHtml(it.nama || 'Barang')}</strong></td>
+            <td><strong>${escapeHtml(it.nama || 'Barang')}</strong>${ketKirimHtml}</td>
             <td class="r">${formatQty(it.qty || 0)}</td>
             <td class="c">${escapeHtml(it.satuan || '-')}</td>
             <td class="r">${formatRupiah(it.harga || 0)}</td>
             <td class="r">${Number(it.diskon || 0) > 0 ? '-' + formatRupiah(it.diskon) : '-'}</td>
             <td class="r"><strong>${formatRupiah(it.subtotal || 0)}</strong></td>
           </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </tbody>
     </table>
 

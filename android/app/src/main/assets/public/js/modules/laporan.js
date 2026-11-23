@@ -2417,8 +2417,15 @@ function renderTabPengiriman(container, data, rootContainer) {
                 </thead>
                 <tbody>
                   ${items.map((k) => {
-                    const ringkasItem = (k.items || []).slice(0, 2).map((it) => `${escapeHtml(it.nama)} (${formatQty(it.qty)} ${escapeHtml(it.satuan || '')})`).join(', ');
-                    const ekstraItem = (k.items || []).length > 2 ? ` +${k.items.length - 2} lainnya` : '';
+                    const semuaIt = k.items || [];
+                    const itBelumKirim = semuaIt.filter((it) => Number(it.sisa_kirim || 0) > 0);
+                    const jmlSudahBawa = semuaIt.length - itBelumKirim.length;
+                    const sumberTampil = itBelumKirim.length > 0 ? itBelumKirim : semuaIt;
+                    const ringkasItem = sumberTampil.slice(0, 2).map((it) => {
+                      const qShow = itBelumKirim.length > 0 ? it.sisa_kirim : it.qty;
+                      return `${escapeHtml(it.nama)} (${formatQty(qShow)} ${escapeHtml(it.satuan || '')})`;
+                    }).join(', ');
+                    const ekstraItem = sumberTampil.length > 2 ? ` +${sumberTampil.length - 2} lainnya` : '';
                     return `
                       <tr>
                         <td data-label="No. Nota">
@@ -2436,7 +2443,7 @@ function renderTabPengiriman(container, data, rootContainer) {
                         <td data-label="Muatan Barang">
                           <div class="cell-stack">
                             <div class="text-xs">${ringkasItem}${ekstraItem}</div>
-                            ${k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa belum dikirim: ${formatQty(k.total_qty_sisa)} unit</div>` : ''}
+                            ${k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa kirim: ${formatQty(k.total_qty_sisa)} unit${jmlSudahBawa > 0 ? ` (${jmlSudahBawa} item sudah dibawa)` : ''}</div>` : ''}
                           </div>
                         </td>
                         <td data-label="Status">
