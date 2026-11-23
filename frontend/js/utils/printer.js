@@ -2263,3 +2263,252 @@ export function cetakFakturA5(dataStruk) {
   });
 }
 
+/* ========================================================================== */
+/* MODUL PENAWARAN HARGA / ESTIMASI RAB (A5 LANDSCAPE & WHATSAPP)             */
+/* ========================================================================== */
+
+/** Buat tautan WhatsApp rincian Penawaran Harga / Estimasi RAB ke pelanggan / mandor */
+export function buatTautanWhatsAppPenawaran(rab, nomorHp = '') {
+  const toko = ambilInfoTokoDokumen(rab);
+  const items = Array.isArray(rab.items) ? rab.items : (Array.isArray(rab.items_json) ? rab.items_json : []);
+  const berlakuTgl = rab.berlaku_sampai ? formatTanggal(rab.berlaku_sampai) : '-';
+
+  let pesan = `*PENAWARAN HARGA / ESTIMASI RAB*\n`;
+  pesan += `*${(toko.nama || 'TOKO BANGUNAN').toUpperCase()}*\n`;
+  pesan += `No. RAB  : *${rab.no_penawaran || '-'}*\n`;
+  if (rab.judul_proyek) pesan += `Proyek   : *${rab.judul_proyek}*\n`;
+  pesan += `Kepada   : ${rab.pelanggan_nama || 'Bpk/Ibu Pelanggan'}\n`;
+  pesan += `Tanggal  : ${formatTanggal(rab.tanggal || new Date())}\n`;
+  pesan += `Berlaku  : s/d ${berlakuTgl}\n`;
+  pesan += `--------------------------------\n`;
+
+  items.forEach((it, idx) => {
+    pesan += `${idx + 1}. ${it.nama}\n`;
+    pesan += `   ${formatQty(it.qty)} ${it.satuan || ''} x ${formatRupiah(it.harga)} = *${formatRupiah(it.subtotal)}*\n`;
+  });
+
+  pesan += `--------------------------------\n`;
+  if (Number(rab.diskon || 0) > 0) pesan += `Diskon       : -${formatRupiah(rab.diskon)}\n`;
+  if (Number(rab.ongkir || 0) > 0) pesan += `Est. Ongkir  : ${formatRupiah(rab.ongkir)}\n`;
+  pesan += `*ESTIMASI TOTAL : ${formatRupiah(rab.total || 0)}*\n`;
+  if (rab.catatan) pesan += `\nCatatan: ${rab.catatan}\n`;
+  pesan += `\n_Harga berlaku s/d ${berlakuTgl} dan dapat berubah sewaktu-waktu. Apabila setuju, silakan konfirmasi agar segera kami proses._`;
+  if (toko.hp) pesan += `\nInfo & Order: ${toko.hp}`;
+
+  let hpBersih = String(nomorHp || rab.pelanggan_hp || '').replace(/[^0-9]/g, '');
+  if (hpBersih.startsWith('0')) hpBersih = '62' + hpBersih.substring(1);
+  const encoded = encodeURIComponent(pesan);
+  return hpBersih ? `https://wa.me/${hpBersih}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+}
+
+/** Susun HTML Dokumen Penawaran Harga / Estimasi RAB ukuran A5 Landscape */
+function buatHtmlPenawaranA5(rab) {
+  const toko = ambilInfoTokoDokumen(rab);
+  const items = Array.isArray(rab.items) ? rab.items : (Array.isArray(rab.items_json) ? rab.items_json : []);
+  const subtotal = Number(rab.subtotal || items.reduce((s, x) => s + Number(x.subtotal || 0), 0));
+  const diskon = Number(rab.diskon || 0);
+  const ongkir = Number(rab.ongkir || 0);
+  const total = Number(rab.total || 0);
+  const berlakuTgl = rab.berlaku_sampai ? formatTanggal(rab.berlaku_sampai) : '-';
+
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Penawaran Harga ${escapeHtml(rab.no_penawaran || '')}</title>
+  <style>
+    @page { size: A5 landscape; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 10.5px; line-height: 1.38; }
+    .doc { width: 100%; max-width: 194mm; margin: 0 auto; }
+    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 7px; margin-bottom: 8px; }
+    .toko-nama { font-size: 16px; font-weight: 800; }
+    .toko-sub { font-size: 9.5px; color: #374151; max-width: 95mm; white-space: pre-line; }
+    .rab-hdr { text-align: right; }
+    .rab-title { font-size: 15px; font-weight: 800; letter-spacing: 0.6px; }
+    .rab-no { font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; margin-top: 2px; }
+    .rab-badge { display: inline-block; margin-top: 3px; padding: 2px 8px; border: 1.5px solid #111827; font-size: 9px; font-weight: 800; }
+    .meta-row-wrap { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 10px; }
+    .meta-col { flex: 1; }
+    .meta-item { display: flex; gap: 6px; margin-bottom: 2px; }
+    .meta-lbl { width: 76px; color: #4b5563; flex-shrink: 0; }
+    .meta-val { font-weight: 600; flex: 1; }
+    table.keep-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
+    table.keep-table th { background: #f3f4f6; border: 1px solid #374151; padding: 4px 6px; text-align: left; font-weight: 700; }
+    table.keep-table td { border: 1px solid #9ca3af; padding: 4px 6px; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; font-family: 'Courier New', monospace; }
+    .bottom-wrap { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+    .left-block { flex: 1.25; font-size: 9.5px; }
+    .right-block { flex: 1; }
+    .sum-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
+    .sum-total { display: flex; justify-content: space-between; padding: 5px 0; margin-top: 3px; border-top: 2px solid #111827; border-bottom: 2px solid #111827; font-size: 12px; font-weight: 800; }
+    .ttd-wrap { display: flex; justify-content: flex-start; gap: 24px; margin-top: 12px; text-align: center; }
+    .ttd-box { width: 42mm; }
+    .ttd-sp { height: 34px; }
+    .ttd-ln { border-top: 1px solid #111827; padding-top: 2px; font-weight: 600; }
+    .syarat { margin-top: 6px; font-size: 9px; color: #4b5563; border-left: 2px solid #9ca3af; padding-left: 6px; }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <div class="hdr">
+      <div>
+        <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+        ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+        ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      </div>
+      <div class="rab-hdr">
+        <div class="rab-title">PENAWARAN HARGA / RAB</div>
+        <div class="rab-no">${escapeHtml(rab.no_penawaran || '-')}</div>
+        <div class="rab-badge">BERLAKU S/D ${escapeHtml(berlakuTgl.toUpperCase())}</div>
+      </div>
+    </div>
+
+    <div class="meta-row-wrap">
+      <div class="meta-col">
+        <div class="meta-item"><span class="meta-lbl">Kepada Yth</span><span class="meta-val">${escapeHtml(rab.pelanggan_nama || 'Pelanggan Umum')}</span></div>
+        ${rab.judul_proyek ? `<div class="meta-item"><span class="meta-lbl">Proyek / RAB</span><span class="meta-val">${escapeHtml(rab.judul_proyek)}</span></div>` : ''}
+        ${rab.alamat_kirim ? `<div class="meta-item"><span class="meta-lbl">Alamat</span><span class="meta-val">${escapeHtml(rab.alamat_kirim)}</span></div>` : ''}
+      </div>
+      <div class="meta-col">
+        <div class="meta-item"><span class="meta-lbl">Tanggal</span><span class="meta-val">${escapeHtml(formatTanggal(rab.tanggal || new Date()))}</span></div>
+        <div class="meta-item"><span class="meta-lbl">Petugas</span><span class="meta-val">${escapeHtml(rab.kasir_nama || 'Admin')}</span></div>
+        ${rab.pelanggan_hp ? `<div class="meta-item"><span class="meta-lbl">Telp / WA</span><span class="meta-val">${escapeHtml(rab.pelanggan_hp)}</span></div>` : ''}
+      </div>
+    </div>
+
+    <table class="keep-table">
+      <thead>
+        <tr>
+          <th class="c" style="width: 26px;">No</th>
+          <th>Nama Barang / Material</th>
+          <th class="r" style="width: 52px;">Qty</th>
+          <th class="c" style="width: 55px;">Satuan</th>
+          <th class="r" style="width: 82px;">Harga Satuan</th>
+          <th class="r" style="width: 65px;">Diskon</th>
+          <th class="r" style="width: 90px;">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((it, idx) => `
+          <tr>
+            <td class="c">${idx + 1}</td>
+            <td><strong>${escapeHtml(it.nama || 'Barang')}</strong></td>
+            <td class="r">${formatQty(it.qty || 0)}</td>
+            <td class="c">${escapeHtml(it.satuan || '-')}</td>
+            <td class="r">${formatRupiah(it.harga || 0)}</td>
+            <td class="r">${Number(it.diskon || 0) > 0 ? '-' + formatRupiah(it.diskon) : '-'}</td>
+            <td class="r"><strong>${formatRupiah(it.subtotal || 0)}</strong></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <div class="bottom-wrap">
+      <div class="left-block">
+        ${rab.catatan ? `<div><strong>Catatan:</strong> ${escapeHtml(rab.catatan)}</div>` : ''}
+        <div class="syarat">
+          Penawaran harga ini bukan bukti pembayaran &amp; belum memotong stok.<br>
+          Harga berlaku hingga <strong>${escapeHtml(berlakuTgl)}</strong> dan sewaktu-waktu dapat berubah mengikuti harga bahan bangunan.
+        </div>
+        <div class="ttd-wrap">
+          <div class="ttd-box">
+            <div>Hormat Kami,</div>
+            <div class="ttd-sp"></div>
+            <div class="ttd-ln">${escapeHtml(toko.nama || 'Toko')}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-block">
+        <div class="sum-row"><span>Subtotal Estimasi</span><span class="r">${formatRupiah(subtotal)}</span></div>
+        ${diskon > 0 ? `<div class="sum-row"><span>Diskon</span><span class="r">-${formatRupiah(diskon)}</span></div>` : ''}
+        ${ongkir > 0 ? `<div class="sum-row"><span>Estimasi Ongkir</span><span class="r">${formatRupiah(ongkir)}</span></div>` : ''}
+        <div class="sum-total"><span>TOTAL ESTIMASI</span><span class="r">${formatRupiah(total)}</span></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/** Buka pratinjau & cetak Penawaran Harga / Estimasi RAB A5 */
+export function cetakPenawaranA5(rab) {
+  const htmlDoc = buatHtmlPenawaranA5(rab);
+  const modal = showModal({
+    title: `Penawaran Harga A5 — ${rab.no_penawaran || ''}`,
+    size: 'lg',
+    body: `
+      <div class="stack" style="gap: var(--sp-3);">
+        <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
+          ${ICONS.clipboard}
+          <div>Dokumen <strong>Penawaran Harga / RAB (A5 Landscape)</strong> siap dicetak atau disimpan menjadi file PDF untuk dikirim ke kontraktor/proyek.</div>
+        </div>
+        <div style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2);">
+          <iframe id="iframe-preview-rab-a5" title="Pratinjau Penawaran A5" style="width: 100%; height: 420px; border: 0; background: #ffffff;"></iframe>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-rab-a5">Tutup</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-print-rab-a5-now" style="display: inline-flex; align-items: center; gap: 6px;">
+          ${ICONS.printer}
+          <span>Cetak / Simpan PDF (A5)</span>
+        </button>
+      </div>
+    `
+  });
+
+  const iframePrev = modal.el.querySelector('#iframe-preview-rab-a5');
+  if (iframePrev) iframePrev.srcdoc = htmlDoc;
+
+  modal.el.querySelector('#btn-tutup-rab-a5')?.addEventListener('click', () => modal.close());
+  modal.el.querySelector('#btn-print-rab-a5-now')?.addEventListener('click', () => cetakHtmlViaIframe(htmlDoc));
+}
+
+/** Modal hasil setelah membuat Penawaran Harga / RAB (langsung bisa Cetak A5 atau Kirim WA) */
+export function bukaModalHasilPenawaran(rab) {
+  const modal = showModal({
+    title: 'Penawaran Harga / RAB Tersimpan!',
+    size: 'sm',
+    body: `
+      <div class="stack" style="gap: var(--sp-3); text-align: center;">
+        <div style="display: flex; justify-content: center; color: var(--success);">
+          <div style="width: 42px; height: 42px;">${ICONS.checkCircle}</div>
+        </div>
+        <div>
+          <div class="text-xs text-muted">NOMOR PENAWARAN HARGA</div>
+          <div class="fw-bold mono text-lg">${escapeHtml(rab.no_penawaran || '-')}</div>
+          ${rab.judul_proyek ? `<div class="text-sm fw-semibold" style="margin-top: 2px;">${escapeHtml(rab.judul_proyek)}</div>` : ''}
+          <div class="text-xs text-muted" style="margin-top: 2px;">Kepada: <strong>${escapeHtml(rab.pelanggan_nama || 'Pelanggan Umum')}</strong></div>
+          <div class="text-sm fw-bold mono" style="color: var(--primary); margin-top: 4px;">Estimasi: ${formatRupiah(rab.total || 0)}</div>
+          <div class="text-xs text-muted">Stok tidak dipotong • Bisa dikonversi 1-klik ke kasir di menu Pending/RAB</div>
+        </div>
+        <div class="stack" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-rab-hasil-a5" style="width: 100%; justify-content: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak / Simpan PDF Penawaran (A5)</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-rab-hasil-wa" style="width: 100%; justify-content: center; gap: 6px;">
+            ${ICONS.messageCircle}
+            <span>Kirim Penawaran via WhatsApp</span>
+          </button>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-rab-hasil-tutup">Selesai</button>
+      </div>
+    `
+  });
+
+  modal.el.querySelector('#btn-rab-hasil-a5')?.addEventListener('click', () => cetakPenawaranA5(rab));
+  modal.el.querySelector('#btn-rab-hasil-wa')?.addEventListener('click', () => {
+    window.open(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''), '_blank');
+  });
+  modal.el.querySelector('#btn-rab-hasil-tutup')?.addEventListener('click', () => modal.close());
+}
+

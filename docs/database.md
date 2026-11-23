@@ -2,7 +2,7 @@
 
 Database POS Kasir Toko Bangunan menggunakan **Google Spreadsheet** dengan arsitektur 1 sheet per entitas. Seluruh definisi teknis skema terpusat di konstanta `SKEMA` pada `backend/src/00_konfig_skema_router.gs`.
 
-> **Versi Skema:** 1 · **Jumlah Sheet:** 29 · **Zona Waktu:** `Asia/Jakarta` (WIB) · **Migrasi:** Otomatis (*zero-migration* kolom & sheet baru)
+> **Versi Skema:** 1 · **Jumlah Sheet:** 30 · **Zona Waktu:** `Asia/Jakarta` (WIB) · **Migrasi:** Otomatis (*zero-migration* kolom & sheet baru)
 
 ---
 
@@ -22,7 +22,7 @@ Setiap sheet memiliki format kolom yang seragam:
 
 ---
 
-## 2. Rincian 29 Sheet & Tipe Kolom
+## 2. Rincian 30 Sheet & Tipe Kolom
 
 Keterangan tipe data:
 - `s` = Teks (String)
@@ -376,21 +376,41 @@ Catatan sesi buka/tutup shift kasir, modal awal (float), rekonsiliasi fisik laci
 - `ditutup_oleh` (s): ID pengguna penutup shift
 - `ditutup_oleh_nama` (s): Nama pengguna penutup shift
 
-### 27. `Pengaturan`
+### 27. `Penawaran`
+Dokumen Penawaran Harga / Estimasi RAB untuk proyek & kontraktor (tidak memotong stok, 1-klik konversi ke POS Kasir).
+- `no_penawaran` (s): Nomor penawaran `RAB-YYYYMMDD-0001`
+- `tanggal` (d): Tanggal pembuatan RAB
+- `berlaku_sampai` (d): Batas tanggal masa berlaku harga penawaran
+- `kasir_id` (s): Relasi ke `Users.id`
+- `kasir_nama` (s): Snapshot nama petugas
+- `pelanggan_id` (s): Relasi ke `Pelanggan.id` (opsional)
+- `pelanggan_nama` (s): Nama pelanggan / mandor penerima penawaran
+- `pelanggan_hp` (s): Nomor HP/WA penerima
+- `alamat_kirim` (s): Alamat proyek / pengiriman
+- `judul_proyek` (s): Nama proyek / judul RAB (opsional)
+- `subtotal` (n), `diskon_tipe` (s), `diskon_nilai` (n), `diskon` (n), `ongkir` (n), `total` (n): Rincian estimasi biaya
+- `pengiriman` (s): `ambil` | `dikirim`
+- `catatan` (s): Catatan penawaran
+- `items_json` (j): Daftar item barang, satuan, qty, harga, & diskon dalam format JSON
+- `status` (s): `aktif` | `dikonversi` | `batal`
+- `penjualan_id` (s): Relasi ke `Penjualan.id` bila sudah menjadi nota resmi
+- `no_nota_konversi` (s): Nomor nota `INV-...` hasil konversi
+
+### 28. `Pengaturan`
 Konfigurasi operasional toko (key-value JSON).
 - `key` (s): Kunci pengaturan (cth: `toko_nama`, `poin_per_rupiah`)
 - `value` (j): Nilai pengaturan tersimpan dalam format teks JSON
 
-### 28. `Log_Audit`
+### 29. `Log_Audit`
 Pencatatan jejak audit aksi sensitif sistem.
 - `user_id` (s): Pengguna yang melakukan aksi
-- `aksi` (s): Nama tindakan (misal: `void_penjualan`, `ganti_harga`, `reset_pin`, `deposit_tambah`, `shift_buka`, `shift_tutup`)
-- `modul` (s): Modul sistem (cth: `POS`, `PRODUK`, `USER`, `DEPOSIT`, `SHIFT`)
+- `aksi` (s): Nama tindakan (misal: `void_penjualan`, `ganti_harga`, `reset_pin`, `deposit_tambah`, `shift_buka`, `shift_tutup`, `penawaran_create`)
+- `modul` (s): Modul sistem (cth: `POS`, `PRODUK`, `USER`, `DEPOSIT`, `SHIFT`, `PENAWARAN`, `PENGIRIMAN`)
 - `ref_id` (s): ID entitas terkait
 - `detail_json` (j): Payload detail perubahan sebelum/sesudah
 
-### 29. `Counter`
+### 30. `Counter`
 Penghitung sekuensial nomor urut harian untuk mencegah nomor nota ganda/loncat.
-- `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`, `DEP-20261122`, `EXP-20261122`, `SHF-20261123`)
+- `key` (s): Kunci counter (cth: `INV-20261112`, `PB-20261112`, `DEP-20261122`, `EXP-20261122`, `SHF-20261123`, `RAB-20261123`)
 - `nilai` (n): Nomor urut terakhir hari tersebut
 

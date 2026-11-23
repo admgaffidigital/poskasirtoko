@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.110] - 2026-11-23
+
+### Added
+- [POS-JUAL] [HUTANG-PIUTANG] [CETAK] [BACKEND] [DB] **Penawaran Harga / Estimasi RAB (1-Klik Masuk Kasir) & Pengingat Jatuh Tempo Piutang H-3 / Lewat Tempo + Rekap Tagih WA (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `04_pos_penjualan.gs`, `09_setup_trigger_beautifier.gs`, `api.js`, `pos.js`, `printer.js`, `hutang-piutang.js`, `tests/test_debug_final.js`)**:
+  - **[MIGRASI OTOMATIS]** Menambahkan sheet `Penawaran` (sheet ke-30, *zero-migration* auto-create, nomor `RAB-YYYYMMDD-0001`, masuk L2 cache `MASTER_CACHE_SHEETS`) dan 4 endpoint: `penawaran.create`, `penawaran.list`, `penawaran.konversi`, dan `penawaran.delete`.
+  - **Penawaran Harga / Estimasi RAB di POS Kasir (`pos.js`, `printer.js`)**:
+    - Tombol cepat **`RAB`** di footer keranjang untuk menyimpan keranjang sebagai Estimasi Harga / RAB (dengan Judul Proyek, Masa Berlaku 3/7/14/30 hari, & Catatan) **tanpa memotong stok dan tanpa masuk omset**.
+    - Cetak resmi **Dokumen Penawaran Harga A5 Landscape (PDF/Printer)** dan **Kirim Penawaran via WhatsApp** terstruktur rapi untuk kontraktor/mandor.
+    - Tab **`Penawaran RAB`** di modal `Pending/RAB (F8)` dengan tombol **1-Klik Ke Kasir** (otomatis mengisi keranjang, pelanggan, diskon, pengiriman & ongkir, serta menandai RAB sebagai `Jadi Nota` secara otomatis saat checkout lunas).
+  - **Pengingat Jatuh Tempo Piutang Proaktif & Tagih WA Cerdas (`hutang-piutang.js`)**:
+    - Deteksi otomatis **Lewat X Hari**, **Jatuh Tempo Hari Ini**, dan **H-3 Segera Jatuh Tempo**, lengkap dengan **banner peringatan prioritas** & filter 1-klik `Perlu Ditagih (Lewat & H-3)`.
+    - Template pesan **Tagih WA** yang menyesuaikan otomatis (sopan & ramah untuk H-3, tegas sopan untuk lewat tempo), plus opsi **Rekap Gabungan Semua Nota Pelanggan** dalam 1 pesan WA bila pelanggan memiliki >1 nota belum lunas.
+  - Menambahkan **Test Audit #23** (`23/23 LULUS`) untuk seluruh skenario Penawaran Harga / RAB.
+
 ## [1.0.109] - 2026-11-23
 
 ### Added

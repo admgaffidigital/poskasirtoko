@@ -160,6 +160,11 @@ const SKEMA = {
     ['total_refund_tunai', 'n'], ['total_biaya_kasir', 'n'], ['kas_sistem', 'n'], ['kas_fisik', 'n'],
     ['selisih', 'n'], ['catatan_buka', 's'], ['catatan_tutup', 's'], ['ditutup_oleh', 's'],
     ['ditutup_oleh_nama', 's']],
+  Penawaran: [['no_penawaran', 's'], ['tanggal', 'd'], ['berlaku_sampai', 'd'], ['kasir_id', 's'], ['kasir_nama', 's'],
+    ['pelanggan_id', 's'], ['pelanggan_nama', 's'], ['pelanggan_hp', 's'], ['alamat_kirim', 's'], ['judul_proyek', 's'],
+    ['subtotal', 'n'], ['diskon_tipe', 's'], ['diskon_nilai', 'n'], ['diskon', 'n'], ['ongkir', 'n'], ['total', 'n'],
+    ['pengiriman', 's'], ['catatan', 's'], ['items_json', 'j'], ['status', 's'], ['penjualan_id', 's'],
+    ['no_nota_konversi', 's']],
   Pengaturan: [['key', 's'], ['value', 'j']],
   Log_Audit: [['user_id', 's'], ['aksi', 's'], ['modul', 's'], ['ref_id', 's'], ['detail_json', 'j']],
   Counter: [['key', 's'], ['nilai', 'n']]
@@ -345,7 +350,13 @@ const RUTE = {
 
   // Antrean Pengiriman, Surat Jalan, & Kirim Bertahap (Bon Barang)
   'pengiriman.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPengirimanList_ },
-  'pengiriman.updateStatus': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPengirimanUpdateStatus_ }
+  'pengiriman.updateStatus': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPengirimanUpdateStatus_ },
+
+  // Penawaran Harga / Estimasi RAB (Quotation -> 1-Klik Jadi Nota)
+  'penawaran.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPenawaranList_ },
+  'penawaran.create': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranCreate_ },
+  'penawaran.konversi': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranKonversi_ },
+  'penawaran.delete': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranDelete_ }
 };
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */

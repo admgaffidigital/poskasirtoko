@@ -1682,6 +1682,174 @@ function aksiPengirimanUpdateStatus_(ctx) {
 }
 
 /**
+ * penawaran.create — Buat Penawaran Harga / Estimasi RAB (tanpa memotong stok & tanpa masuk omset).
+ */
+function aksiPenawaranCreate_(ctx) {
+  const p = ctx.payload || {};
+  const rawItems = p.items;
+  if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
+    gagal_(KODE.VALIDATION, 'Daftar barang penawaran tidak boleh kosong.');
+  }
+
+  const user = ctx.user;
+  const pel = p.pelanggan_id ? cariById_('Pelanggan', String(p.pelanggan_id).trim()) : null;
+  const pelNama = V_.teks(p.pelanggan_nama || (pel ? pel.nama : 'Pelanggan Umum'), 'Nama pelanggan/penerima', { maks: 120 });
+  const pelHp = V_.teks(p.pelanggan_hp || (pel ? pel.hp : ''), 'HP pelanggan', { maks: 30 });
+  const alamatKirim = V_.teks(p.alamat_kirim || (pel ? pel.alamat : ''), 'Alamat proyek/kirim', { maks: 300 });
+  const judulProyek = V_.teks(p.judul_proyek || '', 'Judul proyek / RAB', { maks: 150 });
+  const catatan = V_.teks(p.catatan || '', 'Catatan penawaran', { maks: 400 });
+  const berlakuHari = Math.min(90, Math.max(1, Math.round(Number(p.berlaku_hari) || 7)));
+
+  let subtotalKotor = 0;
+  let totalDiskonItem = 0;
+  const itemsBersih = rawItems.map(function (it) {
+    const qty = bulatQty_(V_.angka(it.qty, 'Qty ' + (it.nama || 'item'), { min: 0.001 }));
+    const harga = Math.round(V_.nonNegatif(it.harga, 'Harga ' + (it.nama || 'item')));
+    const diskonItem = Math.round(Math.max(0, Number(it.diskon || 0)));
+    const subKotor = hitungSubtotal_(qty, harga);
+    const subNet = Math.max(0, subKotor - diskonItem);
+    subtotalKotor += subKotor;
+    totalDiskonItem += diskonItem;
+    return {
+      produk_id: String(it.produk_id || ''),
+      varian_id: String(it.varian_id || ''),
+      nama: String(it.nama || 'Barang'),
+      satuan: String(it.satuan || 'Pcs'),
+      faktor: Number(it.faktor) || 1,
+      qty: qty,
+      qty_dibawa: qty,
+      tipe_harga: String(it.tipe_harga || 'ritel'),
+      harga_asli: Math.round(Number(it.harga_asli || harga)),
+      harga: harga,
+      hpp: Math.round(Number(it.hpp || 0)),
+      diskon_tipe: String(it.diskon_tipe || ''),
+      diskon_nilai: Number(it.diskon_nilai || 0),
+      diskon: diskonItem,
+      subtotal: subNet
+    };
+  });
+
+  const diskonTipe = String(p.diskon_tipe || '').trim();
+  const diskonNilai = Math.max(0, Number(p.diskon_nilai || 0));
+  let diskonTrans = 0;
+  const subSetelahItem = Math.max(0, subtotalKotor - totalDiskonItem);
+  if (diskonTipe === 'persen') {
+    diskonTrans = Math.round(subSetelahItem * Math.min(100, diskonNilai) / 100);
+  } else if (diskonTipe === 'nominal') {
+    diskonTrans = Math.min(subSetelahItem, Math.round(diskonNilai));
+  } else if (p.diskon !== undefined) {
+    diskonTrans = Math.min(subSetelahItem, Math.max(0, Math.round(Number(p.diskon) || 0)));
+  }
+
+  const pengiriman = p.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
+  const ongkir = pengiriman === 'dikirim' ? Math.max(0, Math.round(Number(p.ongkir || 0))) : 0;
+  const totalDiskon = totalDiskonItem + diskonTrans;
+  const grandTotal = Math.max(0, subtotalKotor - totalDiskon) + ongkir;
+
+  const noPenawaran = nomorBerikut_('RAB');
+  const nowDt = new Date();
+  const tglSkrg = formatWaktu_(nowDt);
+  const tglBerlaku = formatWaktu_(new Date(nowDt.getTime() + berlakuHari * 86400000)).substring(0, 10) + ' 23:59:59';
+
+  const baru = tambahBaris_('Penawaran', [{
+    no_penawaran: noPenawaran,
+    tanggal: tglSkrg,
+    berlaku_sampai: tglBerlaku,
+    kasir_id: user.id,
+    kasir_nama: user.nama || user.username || 'Kasir',
+    pelanggan_id: pel ? pel.id : '',
+    pelanggan_nama: pelNama,
+    pelanggan_hp: pelHp,
+    alamat_kirim: alamatKirim,
+    judul_proyek: judulProyek,
+    subtotal: subtotalKotor,
+    diskon_tipe: diskonTipe,
+    diskon_nilai: diskonNilai,
+    diskon: totalDiskon,
+    ongkir: ongkir,
+    total: grandTotal,
+    pengiriman: pengiriman,
+    catatan: catatan,
+    items_json: itemsBersih,
+    status: 'aktif',
+    penjualan_id: '',
+    no_nota_konversi: ''
+  }], user.id)[0];
+
+  catatAudit_(user.id, 'penawaran_create', 'PENAWARAN', noPenawaran, {
+    pelanggan_nama: pelNama,
+    judul_proyek: judulProyek,
+    total: grandTotal,
+    item_count: itemsBersih.length
+  });
+
+  const hasil = Object.assign({}, baru);
+  hasil.items = itemsBersih;
+  return {
+    penawaran: hasil,
+    pesan: 'Penawaran Harga ' + noPenawaran + ' berhasil disimpan.'
+  };
+}
+
+/** penawaran.list — Daftar Penawaran Harga / RAB. */
+function aksiPenawaranList_(ctx) {
+  const p = ctx.payload || {};
+  const statusFilter = String(p.status || '').trim().toLowerCase();
+  const tglSkrg = sekarang_();
+
+  const semua = bacaSemua_('Penawaran').filter(function (q) {
+    if (q.deleted) return false;
+    if (statusFilter && statusFilter !== 'semua' && String(q.status || '').toLowerCase() !== statusFilter) return false;
+    return true;
+  }).map(function (q) {
+    const copy = Object.assign({}, q);
+    copy.items = Array.isArray(q.items_json) ? q.items_json : [];
+    copy.item_count = copy.items.length;
+    copy.kedaluwarsa = copy.status === 'aktif' && copy.berlaku_sampai && String(copy.berlaku_sampai) < tglSkrg;
+    return copy;
+  });
+
+  semua.sort(function (a, b) {
+    return String(b.tanggal || b.created_at || '').localeCompare(String(a.tanggal || a.created_at || ''));
+  });
+
+  return paginasi_(semua, p, ['no_penawaran', 'pelanggan_nama', 'judul_proyek', 'catatan']);
+}
+
+/** penawaran.konversi — Tandai Penawaran Harga sudah dikonversi menjadi Nota Penjualan resmi. */
+function aksiPenawaranKonversi_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Penawaran', { wajib: true });
+  const penjualanId = V_.teks(p.penjualan_id || '', 'ID Penjualan', { maks: 80 });
+  const noNota = V_.teks(p.no_nota || '', 'Nomor Nota', { maks: 80 });
+
+  const rab = cariById_('Penawaran', id);
+  if (!rab || rab.deleted) gagal_(KODE.NOT_FOUND, 'Penawaran tidak ditemukan.');
+
+  const baru = ubahBaris_('Penawaran', [{
+    id: rab.id,
+    data: {
+      status: 'dikonversi',
+      penjualan_id: penjualanId,
+      no_nota_konversi: noNota
+    }
+  }], ctx.user.id)[0];
+
+  return { penawaran: baru, pesan: 'Penawaran ' + rab.no_penawaran + ' ditandai sudah menjadi nota ' + noNota + '.' };
+}
+
+/** penawaran.delete — Hapus (soft delete) Penawaran Harga / RAB. */
+function aksiPenawaranDelete_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Penawaran', { wajib: true });
+  const rab = cariById_('Penawaran', id);
+  if (!rab || rab.deleted) gagal_(KODE.NOT_FOUND, 'Penawaran tidak ditemukan.');
+  hapusLunak_('Penawaran', rab.id, ctx.user.id);
+  catatAudit_(ctx.user.id, 'penawaran_delete', 'PENAWARAN', rab.no_penawaran, {});
+  return { id: rab.id, pesan: 'Penawaran ' + rab.no_penawaran + ' berhasil dihapus.' };
+}
+
+/**
  * penjualan.void — Batalkan transaksi final (Owner & Admin).
  * Aturan Bisnis #13:
  * - Admin hanya transaksi hari ini; Owner kapan saja.

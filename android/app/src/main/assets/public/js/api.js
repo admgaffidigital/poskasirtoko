@@ -49,6 +49,7 @@ const CACHE_CONFIG = {
   'shift.aktif': 45000,            // 45 detik
   'shift.list': 60000,             // 1 menit
   'pengiriman.list': 45000,        // 45 detik
+  'penawaran.list': 45000,         // 45 detik
   'piutang.list': 60000,           // 1 menit
   'piutang.detail': 60000,         // 1 menit
   'hutang.list': 60000,            // 1 menit
@@ -90,6 +91,7 @@ const MUTATION_PATTERNS = [
   { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'shift.', 'pengiriman.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
   { trigger: 'shift.', targets: ['shift.', 'penjualan.', 'laporan.'] },
   { trigger: 'pengiriman.', targets: ['pengiriman.', 'penjualan.', 'laporan.'] },
+  { trigger: 'penawaran.', targets: ['penawaran.'] },
   { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'kartuStok.', 'laporan.'] },
   { trigger: 'opname.', targets: ['produk.', 'opname.', 'kartuStok.', 'laporan.'] },
   { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'kartuStok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'shift.', 'member.', 'deposit.'] },

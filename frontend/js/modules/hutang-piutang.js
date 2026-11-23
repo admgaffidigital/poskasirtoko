@@ -87,13 +87,19 @@ export async function renderHutangPiutangModule(container) {
               </div>
             </div>
 
-            <div class="field filter-extra-field">
+            <div class="field filter-extra-field" style="display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center;">
               <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
                 <input type="checkbox" id="check-pt-overdue" style="width: 16px; height: 16px; accent-color: var(--danger);">
-                <span class="fw-semibold text-danger">Hanya Jatuh Tempo Lewat</span>
+                <span class="fw-semibold text-danger">Hanya Lewat Tempo</span>
+              </label>
+              <label style="display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer;">
+                <input type="checkbox" id="check-pt-segera" style="width: 16px; height: 16px; accent-color: var(--warning);">
+                <span class="fw-semibold text-warning">Perlu Ditagih (Lewat &amp; H-3)</span>
               </label>
             </div>
           </div>
+
+          <div id="banner-pengingat-piutang"></div>
 
           <div id="area-tabel-piutang" style="margin-top: var(--sp-2);">
             ${renderSkeleton(4)}
@@ -210,6 +216,7 @@ export async function renderHutangPiutangModule(container) {
   const inputSearchPt = $('#search-pt', container);
   const selStatusPt = $('#filter-pt-status', container);
   const chkOverduePt = $('#check-pt-overdue', container);
+  const chkSegeraPt = $('#check-pt-segera', container);
 
   const triggerMuatPt = () => muatDataPiutang(container);
 
@@ -218,7 +225,14 @@ export async function renderHutangPiutangModule(container) {
     timeoutCariPt = setTimeout(triggerMuatPt, 300);
   });
   selStatusPt?.addEventListener('change', triggerMuatPt);
-  chkOverduePt?.addEventListener('change', triggerMuatPt);
+  chkOverduePt?.addEventListener('change', () => {
+    if (chkOverduePt.checked && chkSegeraPt) chkSegeraPt.checked = false;
+    triggerMuatPt();
+  });
+  chkSegeraPt?.addEventListener('change', () => {
+    if (chkSegeraPt.checked && chkOverduePt) chkOverduePt.checked = false;
+    triggerMuatPt();
+  });
 
   // Event Listeners Filter Hutang (jika owner/admin)
   if (isOwnerOrAdmin) {
@@ -249,13 +263,26 @@ export async function renderHutangPiutangModule(container) {
 /* LOGIKA DATA PIUTANG PELANGGAN                                              */
 /* ========================================================================== */
 
+function hitungSelisihHariTempo(jatuhTempoStr) {
+  if (!jatuhTempoStr) return null;
+  const tglStr = String(jatuhTempoStr).trim().substring(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tglStr)) return null;
+  const now = new Date();
+  const hariIni = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const [y, m, d] = tglStr.split('-').map(Number);
+  const target = new Date(y, m - 1, d).getTime();
+  return Math.round((target - hariIni) / 86400000);
+}
+
 async function muatDataPiutang(container) {
   const area = $('#area-tabel-piutang', container);
+  const banner = $('#banner-pengingat-piutang', container);
   if (!area) return;
 
   const cari = $('#search-pt', container)?.value.trim() || '';
   const status = $('#filter-pt-status', container)?.value || '';
   const jatuh_tempo_lewat = $('#check-pt-overdue', container)?.checked || false;
+  const hanyaSegeraAtauLewat = $('#check-pt-segera', container)?.checked || false;
 
   area.innerHTML = renderSkeleton(4);
 
@@ -269,18 +296,67 @@ async function muatDataPiutang(container) {
       limit: 100
     });
 
-    const items = (res.items || []).map((it) => ({
-      ...it,
-      sisa: Number(it.sisa != null ? it.sisa : (it.sisa_piutang != null ? it.sisa_piutang : (Number(it.total || 0) - Number(it.terbayar || 0)))),
-      nama_pelanggan: it.nama_pelanggan || it.pelanggan_nama || 'Pelanggan Umum',
-      hp_pelanggan: it.hp_pelanggan || it.pelanggan_hp || '',
-      tanggal_nota: it.tanggal_nota || it.tanggal_penjualan || it.created_at,
-      jatuh_tempo_lewat: Boolean(it.jatuh_tempo_lewat || it.lewat_jatuh_tempo)
-    }));
+    const semuaItems = (res.items || []).map((it) => {
+      const sisa = Number(it.sisa != null ? it.sisa : (it.sisa_piutang != null ? it.sisa_piutang : (Number(it.total || 0) - Number(it.terbayar || 0))));
+      const selisihHari = it.status !== 'lunas' && sisa > 0 ? hitungSelisihHariTempo(it.jatuh_tempo) : null;
+      const isOverdue = Boolean(it.jatuh_tempo_lewat || it.lewat_jatuh_tempo || (selisihHari !== null && selisihHari < 0));
+      const isSegera = !isOverdue && selisihHari !== null && selisihHari >= 0 && selisihHari <= 3;
+      return {
+        ...it,
+        sisa,
+        selisih_hari: selisihHari,
+        segera_tempo: isSegera,
+        nama_pelanggan: it.nama_pelanggan || it.pelanggan_nama || 'Pelanggan Umum',
+        hp_pelanggan: it.hp_pelanggan || it.pelanggan_hp || '',
+        tanggal_nota: it.tanggal_nota || it.tanggal_penjualan || it.created_at,
+        jatuh_tempo_lewat: isOverdue
+      };
+    });
 
-    const sumSisaPiutang = items.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
+    const items = hanyaSegeraAtauLewat
+      ? semuaItems.filter((it) => it.status !== 'lunas' && it.sisa > 0 && (it.jatuh_tempo_lewat || it.segera_tempo))
+      : semuaItems;
+
+    const sumSisaPiutang = semuaItems.reduce((acc, it) => acc + (it.status !== 'lunas' ? (Number(it.sisa) || 0) : 0), 0);
     const totalSisa = (Number(res.total_sisa_piutang) || Number(res.total_piutang_berjalan) || sumSisaPiutang);
-    const overdueCount = items.filter((it) => it.jatuh_tempo_lewat && it.status !== 'lunas').length;
+    const daftarOverdue = semuaItems.filter((it) => it.jatuh_tempo_lewat && it.status !== 'lunas' && it.sisa > 0);
+    const daftarSegera = semuaItems.filter((it) => it.segera_tempo && it.status !== 'lunas' && it.sisa > 0);
+    const overdueCount = daftarOverdue.length;
+
+    // Render Banner Peringatan Proaktif (Lewat Tempo & H-3 Segera Jatuh Tempo)
+    if (banner) {
+      if (daftarOverdue.length > 0 || daftarSegera.length > 0) {
+        const nominalPrioritas = [...daftarOverdue, ...daftarSegera].reduce((s, x) => s + Number(x.sisa || 0), 0);
+        banner.innerHTML = `
+          <div class="alert ${daftarOverdue.length > 0 ? 'alert-danger' : 'alert-warning'}" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2); margin: 0;">
+            <div class="row" style="gap: 8px; align-items: center;">
+              ${ICONS.alertTriangle}
+              <div class="text-xs">
+                <strong>Pengingat Jatuh Tempo Piutang:</strong>
+                ${daftarOverdue.length > 0 ? `<strong>${daftarOverdue.length} nota lewat tempo</strong>` : ''}${daftarOverdue.length > 0 && daftarSegera.length > 0 ? ' &amp; ' : ''}${daftarSegera.length > 0 ? `<strong>${daftarSegera.length} nota H-3 jatuh tempo</strong>` : ''}
+                (Total: <strong class="mono">${formatRupiah(nominalPrioritas)}</strong>).
+              </div>
+            </div>
+            ${!hanyaSegeraAtauLewat ? `
+              <button type="button" class="btn btn-sm btn-secondary" id="btn-banner-filter-segera" style="flex-shrink: 0;">
+                Tampilkan Prioritas Tagih
+              </button>
+            ` : ''}
+          </div>
+        `;
+        banner.querySelector('#btn-banner-filter-segera')?.addEventListener('click', () => {
+          const chkSegera = $('#check-pt-segera', container);
+          const chkOverdue = $('#check-pt-overdue', container);
+          if (chkOverdue) chkOverdue.checked = false;
+          if (chkSegera) {
+            chkSegera.checked = true;
+            muatDataPiutang(container);
+          }
+        });
+      } else {
+        banner.innerHTML = '';
+      }
+    }
 
     // Perbarui stat cards
     const statTotal = $('#stat-piutang-total', container);
@@ -296,7 +372,7 @@ async function muatDataPiutang(container) {
     if (statPelanggan) statPelanggan.textContent = `${setPelangganUnik.size} Pelanggan terkait`;
 
     if (items.length === 0) {
-      area.innerHTML = renderEmpty('Tidak ada data piutang ditemukan', 'Semua tagihan lunas atau belum ada penjualan tempo');
+      area.innerHTML = renderEmpty('Tidak ada data piutang ditemukan', 'Semua tagihan lunas atau belum ada penjualan tempo sesuai filter');
       return;
     }
 
@@ -321,7 +397,18 @@ async function muatDataPiutang(container) {
               if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
 
               const isOverdue = it.jatuh_tempo_lewat && it.status !== 'lunas';
+              const isSegera = it.segera_tempo && it.status !== 'lunas';
               const tglJatuhTempo = it.jatuh_tempo ? formatTanggal(it.jatuh_tempo) : '-';
+
+              let badgeTempoHtml = '';
+              if (isOverdue) {
+                const hariLewat = it.selisih_hari !== null && it.selisih_hari < 0 ? Math.abs(it.selisih_hari) : 0;
+                badgeTempoHtml = `<span class="badge badge-danger text-xs">${hariLewat > 0 ? `Lewat ${hariLewat} Hari` : 'Lewat Tempo'}</span>`;
+              } else if (isSegera) {
+                badgeTempoHtml = it.selisih_hari === 0
+                  ? '<span class="badge badge-danger text-xs">Tempo Hari Ini</span>'
+                  : `<span class="badge badge-warning text-xs">H-${it.selisih_hari} (Segera)</span>`;
+              }
 
               return `
                 <tr data-id="${escapeHtml(it.id)}">
@@ -342,10 +429,10 @@ async function muatDataPiutang(container) {
                   <td data-label="Status">${badgeStatus}</td>
                   <td data-label="Jatuh Tempo">
                     <div class="cell-stack">
-                      <div class="${isOverdue ? 'text-danger fw-bold' : ''}">
+                      <div class="${isOverdue ? 'text-danger fw-bold' : (isSegera ? 'text-warning fw-bold' : '')}">
                         ${tglJatuhTempo}
                       </div>
-                      ${isOverdue ? '<span class="badge badge-danger text-xs">Lewat Tempo</span>' : ''}
+                      ${badgeTempoHtml}
                     </div>
                   </td>
                   <td style="text-align: right;" data-label="Aksi">
@@ -356,8 +443,9 @@ async function muatDataPiutang(container) {
                         </button>
                       ` : ''}
                       ${it.sisa > 0 && it.hp_pelanggan ? `
-                        <button type="button" class="btn btn-sm btn-secondary btn-wa-pt" data-id="${escapeHtml(it.id)}" title="Kirim Tagihan via WhatsApp">
-                          WA
+                        <button type="button" class="btn btn-sm ${(isOverdue || isSegera) ? 'btn-warning' : 'btn-secondary'} btn-wa-pt" data-id="${escapeHtml(it.id)}" title="Kirim Pengingat Tagihan via WhatsApp" style="display: inline-flex; align-items: center; gap: 4px;">
+                          ${ICONS.messageCircle}
+                          <span>Tagih WA</span>
                         </button>
                       ` : ''}
                       <button type="button" class="btn btn-sm btn-secondary btn-detail-pt" data-id="${escapeHtml(it.id)}" title="Lihat Rincian & Riwayat Cicilan">
@@ -386,7 +474,12 @@ async function muatDataPiutang(container) {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         const piutang = items.find((x) => x.id === id);
-        if (piutang) kirimPesanWhatsAppTagihan(piutang);
+        if (piutang) {
+          const semuaAktifPelanggan = semuaItems.filter((x) =>
+            x.pelanggan_id && x.pelanggan_id === piutang.pelanggan_id && x.status !== 'lunas' && x.sisa > 0
+          );
+          kirimPesanWhatsAppTagihan(piutang, semuaAktifPelanggan);
+        }
       });
     });
 
@@ -1076,7 +1169,7 @@ async function bukaModalDetailHutang(hutangId) {
 /* PENGINGAT WHATSAPP TAGIHAN PIUTANG                                         */
 /* ========================================================================== */
 
-function kirimPesanWhatsAppTagihan(piutang) {
+function kirimPesanWhatsAppTagihan(piutang, semuaPiutangPelanggan = []) {
   const hpPelanggan = piutang.hp_pelanggan || piutang.pelanggan_hp;
   const namaPelanggan = piutang.nama_pelanggan || piutang.pelanggan_nama || 'Pelanggan';
 
@@ -1085,7 +1178,6 @@ function kirimPesanWhatsAppTagihan(piutang) {
     return;
   }
 
-  // Normalisasi no hp: 0812... -> 62812...
   let hp = String(hpPelanggan).replace(/[^0-9]/g, '');
   if (hp.startsWith('0')) {
     hp = '62' + hp.substring(1);
@@ -1093,11 +1185,68 @@ function kirimPesanWhatsAppTagihan(piutang) {
     hp = '62' + hp;
   }
 
-  const tglJatuhTempo = piutang.jatuh_tempo ? formatTanggal(piutang.jatuh_tempo) : 'segera';
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
-  const pesan = `Halo Bpk/Ibu *${namaPelanggan}*,\n\nKami dari *${namaToko}* ingin menginformasikan tagihan transaksi belanja tempo dengan rincian berikut:\n- No Nota: *${piutang.no_nota || '-'}*\n- Total Belanja: *${formatRupiah(piutang.total)}*\n- Sisa Tagihan: *${formatRupiah(piutang.sisa)}*\n- Jatuh Tempo: *${tglJatuhTempo}*\n\nPembayaran dapat dilakukan melalui kasir toko kami atau transfer bank. Mohon konfirmasi apabila pembayaran telah dilakukan.\n\nTerima kasih banyak atas kerja sama dan kepercayaan Anda.`;
+  const bukaWa = (teks) => window.open(`https://wa.me/${hp}?text=${encodeURIComponent(teks)}`, '_blank');
 
-  const url = `https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`;
-  window.open(url, '_blank');
+  const buatPesanSatuNota = () => {
+    const tglJatuhTempo = piutang.jatuh_tempo ? formatTanggal(piutang.jatuh_tempo) : 'segera';
+    const selHari = piutang.selisih_hari;
+    let kalimatPembuka = `Kami dari *${namaToko}* ingin menginformasikan rincian tagihan transaksi belanja tempo Anda:`;
+    if (selHari !== null && selHari < 0) {
+      kalimatPembuka = `Kami dari *${namaToko}* ingin mengingatkan dengan hormat bahwa tagihan transaksi berikut telah *melewati jatuh tempo ${Math.abs(selHari)} hari* (jatuh tempo ${tglJatuhTempo}):`;
+    } else if (selHari === 0) {
+      kalimatPembuka = `Kami dari *${namaToko}* ingin mengingatkan dengan hormat bahwa tagihan transaksi berikut *jatuh tempo HARI INI (${tglJatuhTempo})*:`;
+    } else if (selHari !== null && selHari > 0 && selHari <= 3) {
+      kalimatPembuka = `Kami dari *${namaToko}* ingin mengingatkan secara ramah bahwa tagihan transaksi berikut akan jatuh tempo dalam *${selHari} hari lagi (${tglJatuhTempo})*:`;
+    }
+    return `Halo Bpk/Ibu *${namaPelanggan}*,\n\n${kalimatPembuka}\n- No Nota: *${piutang.no_nota || '-'}*\n- Total Belanja: ${formatRupiah(piutang.total)}\n- Sisa Tagihan: *${formatRupiah(piutang.sisa)}*\n- Jatuh Tempo: *${tglJatuhTempo}*\n\nPembayaran dapat dilakukan langsung di kasir toko kami atau melalui transfer bank. Mohon konfirmasi apabila pembayaran sudah dilakukan.\n\nTerima kasih banyak atas kerja sama dan kepercayaan Anda.`;
+  };
+
+  if (Array.isArray(semuaPiutangPelanggan) && semuaPiutangPelanggan.length > 1) {
+    const totalSemua = semuaPiutangPelanggan.reduce((s, x) => s + Number(x.sisa || 0), 0);
+    const modal = showModal({
+      title: `Kirim Pengingat WA — ${namaPelanggan}`,
+      size: 'sm',
+      body: `
+        <div class="stack" style="gap: var(--sp-3);">
+          <div class="text-sm text-muted">
+            Pelanggan ini memiliki <strong>${semuaPiutangPelanggan.length} nota belum lunas</strong> dengan total sisa tagihan <strong class="mono text-danger">${formatRupiah(totalSemua)}</strong>.
+          </div>
+          <div class="stack" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-wa-rekap-semua" style="width: 100%; justify-content: center; gap: 6px;">
+              ${ICONS.messageCircle}
+              <span>Kirim Rekap Gabungan (${semuaPiutangPelanggan.length} Nota)</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-wa-nota-ini" style="width: 100%; justify-content: center; gap: 6px;">
+              ${ICONS.clipboard}
+              <span>Kirim Nota ${escapeHtml(piutang.no_nota || '')} Saja</span>
+            </button>
+          </div>
+        </div>
+      `,
+      footer: `
+        <div class="row" style="width: 100%; justify-content: flex-end;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-batal-wa-pt">Batal</button>
+        </div>
+      `
+    });
+
+    modal.el.querySelector('#btn-wa-rekap-semua')?.addEventListener('click', () => {
+      const daftarBaris = semuaPiutangPelanggan.map((x, idx) =>
+        `${idx + 1}. *${x.no_nota || '-'}* — Sisa *${formatRupiah(x.sisa)}* (Tempo: ${x.jatuh_tempo ? formatTanggal(x.jatuh_tempo) : '-'})`
+      ).join('\n');
+      const pesanGabung = `Halo Bpk/Ibu *${namaPelanggan}*,\n\nKami dari *${namaToko}* ingin mengirimkan rekap tagihan belanja tempo yang masih berjalan:\n\n${daftarBaris}\n\n*TOTAL SISA TAGIHAN: ${formatRupiah(totalSemua)}*\n\nPembayaran dapat dilakukan di kasir toko atau transfer bank. Mohon konfirmasi apabila sudah melakukan pembayaran.\n\nTerima kasih atas kerja sama Anda.`;
+      bukaWa(pesanGabung);
+      modal.close();
+    });
+    modal.el.querySelector('#btn-wa-nota-ini')?.addEventListener('click', () => {
+      bukaWa(buatPesanSatuNota());
+      modal.close();
+    });
+    modal.el.querySelector('#btn-batal-wa-pt')?.addEventListener('click', () => modal.close());
+    return;
+  }
+
+  bukaWa(buatPesanSatuNota());
 }
 

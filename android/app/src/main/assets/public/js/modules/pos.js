@@ -23,7 +23,7 @@ import { api, apiCall } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
-import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift } from '../utils/printer.js';
+import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
 
@@ -60,7 +60,8 @@ export function renderPosModule(container) {
     isLoadingMore: false,
     multiSelectMode: false,
     multiSelectedMap: new Map(),
-    shiftAktif: null
+    shiftAktif: null,
+    penawaranAktifId: ''
   };
 
   const isOwnerAtauAdmin = state.user.role === 'owner' || state.user.role === 'admin';
@@ -180,9 +181,9 @@ export function renderPosModule(container) {
               ${ICONS.settings}
               <span>Printer</span>
             </button>
-            <button type="button" id="btn-pending-list" class="pos-quick-btn position-relative" title="Daftar Transaksi Tertahan (F8)">
+            <button type="button" id="btn-pending-list" class="pos-quick-btn position-relative" title="Daftar Transaksi Ditahan & Penawaran Harga RAB (F8)">
               ${ICONS.clipboard}
-              <span>Pending <span class="pos-kbd-hint">(F8)</span></span>
+              <span>Pending/RAB <span class="pos-kbd-hint">(F8)</span></span>
               <span class="badge badge-warning badge-sm" id="pending-badge" style="display: none;">0</span>
             </button>
           </div>
@@ -249,12 +250,15 @@ export function renderPosModule(container) {
             <div class="fw-bold pos-grand-total mono" id="cart-grand-total">Rp 0</div>
           </div>
 
-          <!-- Action Buttons: Hold & Pay -->
+          <!-- Action Buttons: RAB, Hold & Pay -->
           <div class="pos-cart-action-btns">
+            <button type="button" id="btn-buat-rab" class="btn btn-secondary btn-lg" style="flex: 0.9; padding-left: 10px; padding-right: 10px;" title="Simpan sebagai Penawaran Harga / Estimasi RAB (tanpa potong stok)">
+              ${ICONS.calculator} <span>RAB</span>
+            </button>
             <button type="button" id="btn-hold-cart" class="btn btn-secondary btn-lg pos-btn-hold" style="flex: 1;" title="Tahan Transaksi (F7)">
               ${ICONS.clipboard} <span>Tahan</span><span class="d-none-mobile"> (F7)</span>
             </button>
-            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg pos-btn-pay" style="flex: 2;" title="Bayar Sekarang (F4)">
+            <button type="button" id="btn-checkout-pay" class="btn btn-primary btn-lg pos-btn-pay" style="flex: 1.8;" title="Bayar Sekarang (F4)">
               ${ICONS.wallet} <span>BAYAR</span><span class="d-none-mobile"> (F4)</span>
             </button>
           </div>
@@ -2676,6 +2680,17 @@ export function renderPosModule(container) {
           showToast(`+${poinBaruDapat.toLocaleString('id-ID')} Poin ditambahkan ke ${pelTerbaru.nama} (Saldo: ${Number(pelTerbaru.poin || 0).toLocaleString('id-ID')} Poin)`, 'success', 3500);
         }
 
+        // Jika transaksi ini berasal dari Penawaran Harga (RAB), tandai otomatis sudah dikonversi
+        if (state.penawaranAktifId) {
+          const rabIdKonversi = state.penawaranAktifId;
+          state.penawaranAktifId = '';
+          apiCall('penawaran.konversi', {
+            id: rabIdKonversi,
+            penjualan_id: res.data?.penjualan?.id || '',
+            no_nota: res.data?.penjualan?.no_nota || ''
+          }).catch(() => {});
+        }
+
         // Tampilkan modal struk sukses
         bukaModalStrukSukses(res.data);
 
@@ -3589,46 +3604,155 @@ export function renderPosModule(container) {
     tampilkanModalKoneksiPrinter();
   });
 
-  // ---------- Daftar Transaksi Tahan (Pending List / F8) ----------
-  elBtnPendingList?.addEventListener('click', bukaModalDaftarPending);
+  // ---------- Buat Penawaran Harga / Estimasi RAB (Tanpa Potong Stok) ----------
+  container.querySelector('#btn-buat-rab')?.addEventListener('click', bukaModalBuatPenawaran);
 
-  async function bukaModalDaftarPending() {
-    let pendingItems = [];
-    try {
-      const res = await api.post('penjualan.pending.list');
-      if (res.ok) pendingItems = res.data.items || [];
-    } catch (err) {
-      showToast('Gagal memuat pending: ' + err.message, 'error');
+  function bukaModalBuatPenawaran() {
+    if (state.keranjang.length === 0) {
+      showToast('Keranjang masih kosong. Tambahkan barang terlebih dahulu untuk membuat RAB.', 'warning');
       return;
     }
 
+    const totalRingkas = hitungTotalKeranjang();
+    const pel = state.pelanggan || null;
+
     const modal = showModal({
-      title: 'Daftar Transaksi Ditahan (Pending)',
+      title: 'Buat Penawaran Harga / Estimasi RAB',
+      size: 'sm',
+      body: `
+        <div class="stack" style="gap: var(--sp-3);">
+          <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
+            ${ICONS.info}
+            <div>Penawaran Harga (RAB) <strong>tidak memotong stok</strong> dan dapat dikirim via PDF A5 / WhatsApp, lalu dikonversi 1-klik ke kasir saat pelanggan setuju.</div>
+          </div>
+
+          <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); font-size: var(--fs-xs);">
+            <div class="row" style="justify-content: space-between;">
+              <span class="text-muted">Jumlah Barang:</span>
+              <span class="fw-bold">${state.keranjang.length} Jenis Item</span>
+            </div>
+            <div class="row" style="justify-content: space-between; margin-top: 2px;">
+              <span class="text-muted">Total Estimasi:</span>
+              <span class="fw-bold mono" style="color: var(--primary);">${formatRupiah(totalRingkas.grandTotal)}</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-rab-pel-nama">Nama Pelanggan / Mandor</label>
+            <input type="text" id="inp-rab-pel-nama" class="input input-sm" value="${escapeHtml(pel ? pel.nama : '')}" placeholder="Contoh: Pak Hendra (Kontraktor)" />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2);">
+            <div>
+              <label class="form-label text-xs fw-semibold" for="inp-rab-pel-hp">No. HP / WhatsApp</label>
+              <input type="tel" id="inp-rab-pel-hp" class="input input-sm" value="${escapeHtml(pel ? (pel.hp || '') : '')}" placeholder="08..." />
+            </div>
+            <div>
+              <label class="form-label text-xs fw-semibold" for="sel-rab-berlaku">Masa Berlaku</label>
+              <select id="sel-rab-berlaku" class="select select-sm w-full">
+                <option value="3">3 Hari</option>
+                <option value="7" selected>7 Hari (Standar)</option>
+                <option value="14">14 Hari</option>
+                <option value="30">30 Hari</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-rab-proyek">Judul Proyek / RAB (Opsional)</label>
+            <input type="text" id="inp-rab-proyek" class="input input-sm" placeholder="Contoh: Renovasi Atap & Plafon Ruko" />
+          </div>
+
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-rab-catatan">Catatan Tambahan (Opsional)</label>
+            <textarea id="inp-rab-catatan" class="input" rows="2" placeholder="Contoh: Sudah termasuk ongkir area kota">${escapeHtml(state.catatan || '')}</textarea>
+          </div>
+        </div>
+      `,
+      footer: `
+        <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-batal-rab">Batal</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-simpan-rab" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.checkCircle}
+            <span>Simpan &amp; Cetak RAB</span>
+          </button>
+        </div>
+      `
+    });
+
+    modal.el.querySelector('#btn-batal-rab')?.addEventListener('click', () => modal.close());
+
+    const btnSimpanRab = modal.el.querySelector('#btn-simpan-rab');
+    btnSimpanRab?.addEventListener('click', async () => {
+      const pelNama = (modal.el.querySelector('#inp-rab-pel-nama')?.value || '').trim() || 'Pelanggan Umum';
+      const pelHp = (modal.el.querySelector('#inp-rab-pel-hp')?.value || '').trim();
+      const berlakuHari = Number(modal.el.querySelector('#sel-rab-berlaku')?.value || 7);
+      const judulProyek = (modal.el.querySelector('#inp-rab-proyek')?.value || '').trim();
+      const catatanRab = (modal.el.querySelector('#inp-rab-catatan')?.value || '').trim();
+
+      btnSimpanRab.disabled = true;
+      btnSimpanRab.textContent = 'Menyimpan RAB...';
+      try {
+        const res = await apiCall('penawaran.create', {
+          pelanggan_id: pel ? pel.id : '',
+          pelanggan_nama: pelNama,
+          pelanggan_hp: pelHp,
+          alamat_kirim: state.alamatKirim || (pel ? (pel.alamat || '') : ''),
+          judul_proyek: judulProyek,
+          berlaku_hari: berlakuHari,
+          diskon_tipe: state.diskonTransaksi.tipe || '',
+          diskon_nilai: Number(state.diskonTransaksi.nilai) || 0,
+          pengiriman: state.pengiriman,
+          ongkir: state.pengiriman === 'dikirim' ? (Number(state.ongkir) || 0) : 0,
+          catatan: catatanRab,
+          items: state.keranjang.map((it) => ({
+            produk_id: it.produk_id,
+            varian_id: it.varian_id || '',
+            nama: it.nama,
+            satuan: it.satuan,
+            faktor: it.faktor || 1,
+            qty: it.qty,
+            tipe_harga: it.tipe_harga || 'ritel',
+            harga_asli: it.harga_asli || it.harga,
+            harga: it.harga,
+            hpp: it.hpp || 0,
+            diskon_tipe: it.diskon_tipe || '',
+            diskon_nilai: it.diskon_nilai || 0,
+            diskon: it.diskon || 0
+          }))
+        });
+
+        haptic.success();
+        showToast(res.pesan || 'Penawaran Harga berhasil disimpan!', 'success');
+        modal.close();
+        if (res && res.penawaran) {
+          bukaModalHasilPenawaran(res.penawaran);
+        }
+      } catch (err) {
+        showToast(err.message || 'Gagal menyimpan penawaran harga', 'error');
+        btnSimpanRab.disabled = false;
+        btnSimpanRab.innerHTML = `${ICONS.checkCircle}<span>Simpan &amp; Cetak RAB</span>`;
+      }
+    });
+  }
+
+  // ---------- Daftar Transaksi Tahan & Penawaran Harga RAB (Pending / F8) ----------
+  elBtnPendingList?.addEventListener('click', () => bukaModalDaftarPending('pending'));
+
+  async function bukaModalDaftarPending(tabAwal = 'pending') {
+    let tabAktifList = tabAwal;
+    let pendingItems = [];
+    let rabItems = [];
+
+    const modal = showModal({
+      title: 'Daftar Pending & Penawaran Harga (RAB)',
       size: 'md',
       body: `
-        <div class="stack" style="gap: var(--sp-3);" id="pending-modal-list">
-          ${pendingItems.length === 0 ? `
-            <div class="empty-state text-center" style="padding: var(--sp-6); color: var(--text-muted);">
-              Tidak ada transaksi yang sedang ditahan.
-            </div>
-          ` : pendingItems.map((p) => `
-            <div class="card" style="background: var(--surface-2); padding: var(--sp-3);">
-              <div class="row" style="justify-content: space-between; align-items: flex-start;">
-                <div>
-                  <div class="fw-bold">${escapeHtml(p.no_nota)}</div>
-                  <div class="text-xs text-muted">Pelanggan: <b>${escapeHtml(p.pelanggan_nama || 'Umum')}</b> • ${p.item_count || 0} Barang</div>
-                  <div class="text-xs text-muted">${formatTanggal(p.created_at, true)}</div>
-                </div>
-                <div class="text-right">
-                  <div class="fw-bold mono text-sm" style="color: var(--primary);">${formatRupiah(p.total)}</div>
-                  <div class="row" style="gap: var(--sp-1); margin-top: 4px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-draft" data-id="${p.id}">Hapus</button>
-                    <button type="button" class="btn btn-primary btn-sm btn-muat-draft" data-id="${p.id}">Muat</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `).join('')}
+        <div class="stack" style="gap: var(--sp-3);" id="pending-rab-root">
+          <div class="text-center" style="padding: var(--sp-5);">
+            <div class="spinner spinner-primary" style="margin: 0 auto var(--sp-2);"></div>
+            <div class="text-muted text-sm">Memuat daftar transaksi ditahan &amp; penawaran RAB...</div>
+          </div>
         </div>
       `,
       footer: `
@@ -3638,84 +3762,239 @@ export function renderPosModule(container) {
       `
     });
 
+    const elRoot = modal.el.querySelector('#pending-rab-root');
     modal.el.querySelector('#btn-tutup-pending')?.addEventListener('click', () => modal.close());
 
-    // Muat Draft ke Keranjang
-    modal.el.querySelectorAll('.btn-muat-draft').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        const draft = pendingItems.find((x) => x.id === id);
-        if (!draft) return;
+    try {
+      const [resPending, resRab] = await Promise.all([
+        api.post('penjualan.pending.list').catch(() => ({ ok: false })),
+        apiCall('penawaran.list', { limit: 50 }).catch(() => ({ items: [] }))
+      ]);
+      if (resPending && resPending.ok) pendingItems = resPending.data.items || [];
+      rabItems = (resRab && Array.isArray(resRab.items)) ? resRab.items : [];
+    } catch (err) {
+      showToast('Gagal memuat daftar: ' + err.message, 'error');
+    }
 
-        // Pasang ke keranjang
-        state.keranjang = (draft.items || []).map((it) => {
-          const pr = state.katalog.find((x) => x.id === it.produk_id) || {};
-          return {
-            produk_id: it.produk_id,
-            varian_id: it.varian_id || '',
-            nama: it.nama,
-            satuan: it.satuan,
-            faktor: it.faktor || 1,
-            qty: it.qty,
-            qty_dibawa: it.qty_dibawa,
-            tipe_harga: it.tipe_harga || 'ritel',
-            harga_asli: it.harga_asli || it.harga,
-            harga: it.harga,
-            hpp: it.hpp || 0,
-            diskon_tipe: it.diskon_tipe || '',
-            diskon_nilai: it.diskon_nilai || 0,
-            diskon: it.diskon || 0,
-            subtotal: it.subtotal,
-            _pr: pr,
-            _var: null
-          };
-        });
-
-        // Pulihkan pelanggan, diskon transaksi, opsi pengiriman & ongkir jika tersimpan di draft
-        if (draft.pelanggan_id) {
-          const pelCocok = (state.daftarPelanggan || []).find((pl) => pl.id === draft.pelanggan_id) || null;
-          if (pelCocok) {
-            state.pelanggan = pelCocok;
-          } else {
-            try {
-              const resPel = await api.post('pelanggan.detail', { id: draft.pelanggan_id });
-              if (resPel.ok && resPel.data?.pelanggan) state.pelanggan = resPel.data.pelanggan;
-            } catch (_) { }
-          }
-          perbaruiTampilanPelanggan();
-        }
-        state.diskonTransaksi = {
-          tipe: draft.diskon_tipe || '',
-          nilai: Number(draft.diskon_nilai) || 0
+    const muatItemsKeKeranjang = async (sumber, adalahRab = false) => {
+      state.keranjang = (sumber.items || []).map((it) => {
+        const pr = state.katalog.find((x) => x.id === it.produk_id) || {};
+        return {
+          produk_id: it.produk_id,
+          varian_id: it.varian_id || '',
+          nama: it.nama,
+          satuan: it.satuan,
+          faktor: it.faktor || 1,
+          qty: it.qty,
+          qty_dibawa: it.qty_dibawa !== undefined ? it.qty_dibawa : it.qty,
+          tipe_harga: it.tipe_harga || 'ritel',
+          harga_asli: it.harga_asli || it.harga,
+          harga: it.harga,
+          hpp: it.hpp || 0,
+          diskon_tipe: it.diskon_tipe || '',
+          diskon_nilai: it.diskon_nilai || 0,
+          diskon: it.diskon || 0,
+          subtotal: it.subtotal,
+          _pr: pr,
+          _var: null
         };
-        state.pengiriman = draft.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
-        state.alamatKirim = draft.alamat_kirim || '';
-        state.ongkir = state.pengiriman === 'dikirim' ? (Number(draft.ongkir) || 0) : 0;
-        state.catatan = draft.catatan || '';
+      });
 
-        // Hapus draft yang sudah dimuat dari list pending backend
-        await api.post('penjualan.pending.delete', { id: draft.id });
+      if (sumber.pelanggan_id) {
+        const pelCocok = (state.daftarPelanggan || []).find((pl) => pl.id === sumber.pelanggan_id) || null;
+        if (pelCocok) {
+          state.pelanggan = pelCocok;
+        } else {
+          try {
+            const resPel = await api.post('pelanggan.detail', { id: sumber.pelanggan_id });
+            if (resPel.ok && resPel.data?.pelanggan) state.pelanggan = resPel.data.pelanggan;
+          } catch (_) { }
+        }
+        perbaruiTampilanPelanggan();
+      }
+      state.diskonTransaksi = {
+        tipe: sumber.diskon_tipe || '',
+        nilai: Number(sumber.diskon_nilai) || 0
+      };
+      state.pengiriman = sumber.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
+      state.alamatKirim = sumber.alamat_kirim || '';
+      state.ongkir = state.pengiriman === 'dikirim' ? (Number(sumber.ongkir) || 0) : 0;
+      state.catatan = sumber.catatan || '';
+      state.penawaranAktifId = adalahRab ? sumber.id : '';
 
+      if (!adalahRab) {
+        await api.post('penjualan.pending.delete', { id: sumber.id });
         state.pendingCount = Math.max(0, state.pendingCount - 1);
         perbaruiBadgePending();
-        renderKeranjang();
-        modal.close();
-        if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('cart');
-        showToast('Draft transaksi berhasil dimuat kembali ke keranjang.', 'success');
-      });
-    });
+      }
 
-    // Hapus Draft
-    modal.el.querySelectorAll('.btn-hapus-draft').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        await api.post('penjualan.pending.delete', { id });
-        state.pendingCount = Math.max(0, state.pendingCount - 1);
-        perbaruiBadgePending();
-        modal.close();
-        showToast('Draft transaksi berhasil dihapus.', 'info');
+      renderKeranjang();
+      modal.close();
+      if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('cart');
+      showToast(
+        adalahRab
+          ? `Penawaran ${sumber.no_penawaran} siap diproses di kasir! Klik BAYAR untuk menyelesaikan nota.`
+          : 'Draft transaksi berhasil dimuat kembali ke keranjang.',
+        'success'
+      );
+    };
+
+    const renderIsiModal = () => {
+      elRoot.innerHTML = `
+        <div class="segmented" style="width: 100%; box-sizing: border-box;">
+          <button type="button" class="btn btn-sm ${tabAktifList === 'pending' ? 'btn-primary' : 'btn-ghost'}" data-pr-tab="pending" style="flex: 1;">
+            ${ICONS.clipboard}
+            <span>Ditahan (${pendingItems.length})</span>
+          </button>
+          <button type="button" class="btn btn-sm ${tabAktifList === 'rab' ? 'btn-primary' : 'btn-ghost'}" data-pr-tab="rab" style="flex: 1;">
+            ${ICONS.calculator}
+            <span>Penawaran RAB (${rabItems.length})</span>
+          </button>
+        </div>
+
+        <div class="stack" style="gap: var(--sp-2); max-height: 380px; overflow-y: auto;">
+          ${tabAktifList === 'pending' ? (
+            pendingItems.length === 0 ? `
+              <div class="empty-state text-center" style="padding: var(--sp-6); color: var(--text-muted);">
+                Tidak ada transaksi yang sedang ditahan.
+              </div>
+            ` : pendingItems.map((p) => `
+              <div class="card" style="background: var(--surface-2); padding: var(--sp-3);">
+                <div class="row" style="justify-content: space-between; align-items: flex-start; gap: var(--sp-2);">
+                  <div>
+                    <div class="fw-bold mono text-sm">${escapeHtml(p.no_nota)}</div>
+                    <div class="text-xs text-muted">Pelanggan: <b>${escapeHtml(p.pelanggan_nama || 'Umum')}</b> • ${p.item_count || 0} Barang</div>
+                    <div class="text-xs text-muted">${formatTanggal(p.created_at, true)}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="fw-bold mono text-sm" style="color: var(--primary);">${formatRupiah(p.total)}</div>
+                    <div class="row" style="gap: var(--sp-1); margin-top: 6px; justify-content: flex-end;">
+                      <button type="button" class="btn btn-ghost btn-xs text-danger btn-hapus-draft" data-id="${p.id}">Hapus</button>
+                      <button type="button" class="btn btn-primary btn-xs btn-muat-draft" data-id="${p.id}">Muat</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')
+          ) : (
+            rabItems.length === 0 ? `
+              <div class="empty-state text-center" style="padding: var(--sp-6); color: var(--text-muted);">
+                Belum ada Penawaran Harga (RAB) tersimpan. Klik tombol <strong>RAB</strong> di bawah keranjang untuk membuat estimasi harga proyek.
+              </div>
+            ` : rabItems.map((q) => {
+              const badgeSt = q.status === 'dikonversi'
+                ? `<span class="badge badge-success">Jadi Nota ${escapeHtml(q.no_nota_konversi || '')}</span>`
+                : (q.kedaluwarsa
+                  ? '<span class="badge badge-warning">Kedaluwarsa</span>'
+                  : '<span class="badge badge-info">Aktif</span>');
+              return `
+                <div class="card" style="background: var(--surface-2); padding: var(--sp-3);">
+                  <div class="row" style="justify-content: space-between; align-items: flex-start; gap: var(--sp-2);">
+                    <div>
+                      <div class="row" style="align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span class="fw-bold mono text-sm">${escapeHtml(q.no_penawaran)}</span>
+                        ${badgeSt}
+                      </div>
+                      ${q.judul_proyek ? `<div class="text-xs fw-semibold" style="margin-top: 2px;">${escapeHtml(q.judul_proyek)}</div>` : ''}
+                      <div class="text-xs text-muted">Kepada: <b>${escapeHtml(q.pelanggan_nama || 'Umum')}</b> • ${q.item_count || 0} Item</div>
+                      <div class="text-xs text-muted">Berlaku s/d ${formatTanggal(q.berlaku_sampai)}</div>
+                    </div>
+                    <div class="text-right">
+                      <div class="fw-bold mono text-sm" style="color: var(--primary);">${formatRupiah(q.total)}</div>
+                    </div>
+                  </div>
+                  <div class="row" style="gap: 6px; margin-top: 8px; justify-content: flex-end; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary btn-xs btn-rab-cetak" data-id="${escapeHtml(q.id)}" style="display: inline-flex; align-items: center; gap: 4px;">
+                      ${ICONS.printer}
+                      <span>A5</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-xs btn-rab-wa" data-id="${escapeHtml(q.id)}" style="display: inline-flex; align-items: center; gap: 4px;">
+                      ${ICONS.messageCircle}
+                      <span>WA</span>
+                    </button>
+                    <button type="button" class="btn btn-ghost btn-xs text-danger btn-rab-hapus" data-id="${escapeHtml(q.id)}">Hapus</button>
+                    <button type="button" class="btn btn-primary btn-xs btn-rab-ke-kasir" data-id="${escapeHtml(q.id)}" style="display: inline-flex; align-items: center; gap: 4px;">
+                      ${ICONS.cart}
+                      <span>Ke Kasir</span>
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          )}
+        </div>
+      `;
+
+      elRoot.querySelectorAll('[data-pr-tab]').forEach((b) => {
+        b.addEventListener('click', () => {
+          tabAktifList = b.getAttribute('data-pr-tab');
+          renderIsiModal();
+        });
       });
-    });
+
+      elRoot.querySelectorAll('.btn-muat-draft').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const draft = pendingItems.find((x) => x.id === btn.getAttribute('data-id'));
+          if (draft) muatItemsKeKeranjang(draft, false);
+        });
+      });
+
+      elRoot.querySelectorAll('.btn-hapus-draft').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          await api.post('penjualan.pending.delete', { id });
+          pendingItems = pendingItems.filter((x) => x.id !== id);
+          state.pendingCount = Math.max(0, state.pendingCount - 1);
+          perbaruiBadgePending();
+          renderIsiModal();
+          showToast('Draft transaksi berhasil dihapus.', 'info');
+        });
+      });
+
+      elRoot.querySelectorAll('.btn-rab-cetak').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const q = rabItems.find((x) => x.id === btn.getAttribute('data-id'));
+          if (q) cetakPenawaranA5(q);
+        });
+      });
+
+      elRoot.querySelectorAll('.btn-rab-wa').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const q = rabItems.find((x) => x.id === btn.getAttribute('data-id'));
+          if (q) window.open(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''), '_blank');
+        });
+      });
+
+      elRoot.querySelectorAll('.btn-rab-hapus').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const yakin = await showConfirm({
+            title: 'Hapus Penawaran Harga',
+            message: 'Yakin ingin menghapus dokumen Penawaran Harga (RAB) ini?',
+            confirmText: 'Ya, Hapus',
+            danger: true
+          });
+          if (!yakin) return;
+          try {
+            await apiCall('penawaran.delete', { id });
+            rabItems = rabItems.filter((x) => x.id !== id);
+            renderIsiModal();
+            showToast('Penawaran berhasil dihapus.', 'info');
+          } catch (err) {
+            showToast(err.message || 'Gagal menghapus penawaran', 'error');
+          }
+        });
+      });
+
+      elRoot.querySelectorAll('.btn-rab-ke-kasir').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const q = rabItems.find((x) => x.id === btn.getAttribute('data-id'));
+          if (q) muatItemsKeKeranjang(q, true);
+        });
+      });
+    };
+
+    renderIsiModal();
   }
 
   // ---------- Kosongkan / Reset Keranjang ----------

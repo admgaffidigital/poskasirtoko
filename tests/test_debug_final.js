@@ -1769,6 +1769,58 @@ async function runAudit() {
       'Setelah selesai, total_qty_sisa wajib 0 dan masuk ringkasan selesai');
   });
 
+  // =========================================================================
+  // TEST 23: PENAWARAN HARGA / ESTIMASI RAB (TANPA POTONG STOK & KONVERSI NOTA)
+  // =========================================================================
+  test('23. Penawaran Harga / Estimasi RAB: Buat RAB Tanpa Potong Stok, List, Konversi ke Nota, & Hapus', () => {
+    const envRab = setupMockEnv();
+    envRab.setupDatabase();
+    const ownerRow = envRab.bacaSemua_('Users').find((u) => u.role === 'owner');
+    const prod = envRab.tambahBaris_('Produk', [{
+      sku: 'SKU-RAB-1', nama: 'Besi Beton 10mm', satuan_dasar: 'BTG',
+      hpp: 58000, harga_ritel: 72000, stok: 80, aktif: true
+    }], ownerRow.id)[0];
+
+    // 23a. Buat RAB 20 batang + ongkir Rp 40.000 -> total = 1.440.000 + 40.000 = 1.480.000, stok TETAP 80
+    const buat = envRab.aksiPenawaranCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_nama: 'Pak Hendra Mandor',
+        pelanggan_hp: '081234567899',
+        judul_proyek: 'Cor Dak Lantai 2',
+        berlaku_hari: 7,
+        pengiriman: 'dikirim',
+        ongkir: 40000,
+        items: [{ produk_id: prod.id, nama: prod.nama, satuan: 'BTG', faktor: 1, qty: 20, harga: 72000 }]
+      }
+    });
+    assert(buat.penawaran && /^RAB-\d{8}-\d{4}$/.test(buat.penawaran.no_penawaran),
+      `Nomor RAB wajib format RAB-YYYYMMDD-0001, aktual: ${buat.penawaran && buat.penawaran.no_penawaran}`);
+    assert(buat.penawaran.total === 1480000, `Total RAB wajib Rp 1.480.000, aktual: ${buat.penawaran.total}`);
+    assert(envRab.cariById_('Produk', prod.id).stok === 80, 'Pembuatan RAB TIDAK BOLEH memotong stok produk');
+
+    // 23b. Pastikan RAB tidak masuk omset laporan penjualan
+    const lap = envRab.aksiLaporanPenjualan_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lap.ringkasan.total_omset === 0, 'Penawaran RAB tidak boleh masuk omset penjualan');
+
+    // 23c. List RAB & konversi menjadi nota resmi
+    const list1 = envRab.aksiPenawaranList_({ user: ownerRow, payload: {} });
+    assert(list1.items.length === 1 && list1.items[0].items.length === 1 && list1.items[0].status === 'aktif',
+      'penawaran.list wajib menampilkan 1 RAB aktif lengkap dengan array items');
+
+    const konv = envRab.aksiPenawaranKonversi_({
+      user: ownerRow,
+      payload: { id: buat.penawaran.id, penjualan_id: 'pj-dummy-1', no_nota: 'INV-20261123-0001' }
+    });
+    assert(konv.penawaran.status === 'dikonversi' && konv.penawaran.no_nota_konversi === 'INV-20261123-0001',
+      'penawaran.konversi wajib menandai status dikonversi dan menyimpan nomor nota');
+
+    // 23d. Hapus RAB
+    envRab.aksiPenawaranDelete_({ user: ownerRow, payload: { id: buat.penawaran.id } });
+    const list2 = envRab.aksiPenawaranList_({ user: ownerRow, payload: {} });
+    assert(list2.items.length === 0, 'RAB yang dihapus tidak boleh muncul di penawaran.list');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

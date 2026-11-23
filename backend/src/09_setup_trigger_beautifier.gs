@@ -296,6 +296,7 @@ function percantikTampilanSpreadsheet() {
     'Penjualan_Item': '#10B981',
     'Penjualan_Bayar': '#34D399',
     'Shift_Kasir': '#0D9488',
+    'Penawaran': '#0284C7',
 
     // 3. Pengadaan & Pembelian (Oranye Hangat)
     'Pembelian': '#EA580C',
