@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.116] - 2026-11-23
+### Ditingkatkan — Mesin Cetak Thermal Web Presisi 203 DPI
+- **Template Struk HTML 203 DPI Hitam Pekat Anti-Buram (`printer.js`)**: Cetak thermal dari Web Browser untuk **Struk Penjualan, Faktur Pembelian, Rekap Shift X/Z-Report, & Surat Jalan** kini menggunakan layout HTML semantik khusus printer thermal 203 DPI (font tebal crisp `#000000` tanpa dithering abu-abu, angka tabular sejajar, garis pemisah solid/dashed nyata) menggantikan plain-text `Courier New 10px`.
+- **Presisi Lebar Area Cetak Riil & Auto-Height `@page` Eksak (`printer.js`, `components.css`)**: Mengunci lebar ke area cetak riil head thermal (`48mm` untuk kertas `58mm`, `72mm` untuk kertas `80mm`) dan mengukur tinggi aktual struk dalam `mm` sebelum mencetak (`@page { size: 58mm <tinggiExact>mm; margin: 0; }`) sehingga panjang kertas berhenti pas di akhir struk (tidak lagi keluar kertas kosong panjang atau terpotong halaman 2).
+- **Panel Kalibrasi Cepat & Direct USB Serial ESC/POS (`printer.js`)**: Modal pratinjau cetak browser kini dilengkapi kalibrasi langsung (Kertas 58/80mm, Lebar Cetak `44–54mm`/`68–78mm`, Ukuran Huruf, Sisa Potong Bawah) yang tersimpan otomatis per perangkat, serta tombol **Direct USB (ESC/POS)** via Web Serial API di Chrome/Edge Desktop untuk ketajaman native hardware tanpa dialog print.
+
 ## [1.0.115] - 2026-11-23
 ### Diperbaiki & Disempurnakan
 - **Word-Wrap Otomatis Header & Alamat Struk Thermal (`printer.js`)**: `formatTengah()` kini otomatis membungkus teks panjang per kata sesuai lebar kertas (32 kolom / 58mm atau 48 kolom / 80mm) sehingga alamat toko panjang dan footer nota tidak lagi terpotong di Struk Penjualan, Pembelian, Surat Jalan, maupun Rekap Shift X/Z-Report.

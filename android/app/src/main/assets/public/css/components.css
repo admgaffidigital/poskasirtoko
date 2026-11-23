@@ -691,6 +691,25 @@ input[type="password"] {
   box-shadow: var(--shadow-sm);
 }
 
+.thermal-wysiwyg-frame {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  display: block;
+  max-width: 100%;
+}
+
+.thermal-cal-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
 /* ---------- Kartu ---------- */
 .card {
   background: var(--surface);

@@ -293,6 +293,688 @@ export function teksKeEscPos(teksStruk) {
 let bluetoothDevice = null;
 let bluetoothCharacteristic = null;
 
+/** Cache port printer Web Serial (USB / Bluetooth COM Desktop) */
+let serialPortAktif = null;
+
+const KEY_KALIBRASI_THERMAL = 'pos_thermal_web_cal_v1';
+
+/**
+ * Ambil pengaturan kalibrasi cetak thermal web untuk perangkat ini
+ */
+export function ambilKalibrasiThermal() {
+  const def = {
+    lebar58Mm: 48,   // Area cetak riil kertas 58mm (head thermal 48mm)
+    lebar80Mm: 72,   // Area cetak riil kertas 80mm (head thermal 72mm)
+    ukuranFont: 'normal', // 'kecil' | 'normal' | 'besar'
+    feedBawahMm: 10, // Ruang aman potong/sobek kertas di bawah struk
+    baudRate: 9600
+  };
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY_KALIBRASI_THERMAL) : null;
+    if (!raw) return def;
+    const parsed = JSON.parse(raw);
+    return {
+      lebar58Mm: Number(parsed.lebar58Mm) || def.lebar58Mm,
+      lebar80Mm: Number(parsed.lebar80Mm) || def.lebar80Mm,
+      ukuranFont: ['kecil', 'normal', 'besar'].includes(parsed.ukuranFont) ? parsed.ukuranFont : def.ukuranFont,
+      feedBawahMm: Number.isFinite(Number(parsed.feedBawahMm)) ? Number(parsed.feedBawahMm) : def.feedBawahMm,
+      baudRate: Number(parsed.baudRate) || def.baudRate
+    };
+  } catch (_) {
+    return def;
+  }
+}
+
+/**
+ * Simpan pengaturan kalibrasi cetak thermal web untuk perangkat ini
+ */
+export function simpanKalibrasiThermal(patch) {
+  const cur = ambilKalibrasiThermal();
+  const next = { ...cur, ...(patch || {}) };
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(KEY_KALIBRASI_THERMAL, JSON.stringify(next));
+    }
+  } catch (_) {}
+  return next;
+}
+
+/**
+ * Cek dukungan Web Serial API (Chrome/Edge Desktop untuk Direct USB/COM ESC/POS)
+ */
+export function dukungWebSerial() {
+  return typeof navigator !== 'undefined' && 'serial' in navigator;
+}
+
+/**
+ * Kirim buffer biner ESC/POS langsung ke printer thermal USB/COM (Web Serial API)
+ * Hasil 100% tajam native hardware, panjang eksak, auto-cut aktif, tanpa dialog Chrome.
+ * @param {Uint8Array} escposBytes
+ * @returns {Promise<boolean>}
+ */
+export async function kirimEscPosKeSerial(escposBytes) {
+  if (!dukungWebSerial()) {
+    showToast('Direct USB Serial hanya didukung di Chrome / Edge Desktop.', 'warning', 4000);
+    return false;
+  }
+  const cal = ambilKalibrasiThermal();
+  try {
+    if (!serialPortAktif) {
+      showToast('Pilih port USB/COM printer thermal pada dialog browser...', 'info', 3000);
+      serialPortAktif = await navigator.serial.requestPort();
+    }
+    if (!serialPortAktif.readable && !serialPortAktif.writable) {
+      await serialPortAktif.open({ baudRate: cal.baudRate || 9600 });
+    }
+    const writer = serialPortAktif.writable.getWriter();
+    try {
+      const CHUNK = 256;
+      for (let i = 0; i < escposBytes.length; i += CHUNK) {
+        await writer.write(escposBytes.slice(i, i + CHUNK));
+      }
+    } finally {
+      writer.releaseLock();
+    }
+    showToast('Struk berhasil dikirim langsung ke printer USB/Serial (ESC/POS).', 'success');
+    return true;
+  } catch (err) {
+    if (err && err.name === 'NotFoundError') {
+      return false;
+    }
+    // Reset port jika terputus agar pemilihan berikutnya bersih
+    try {
+      if (serialPortAktif) await serialPortAktif.close();
+    } catch (_) {}
+    serialPortAktif = null;
+    showToast('Gagal kirim ke printer USB Serial: ' + (err?.message || 'Port sibuk/terputus'), 'error', 4500);
+    return false;
+  }
+}
+
+/**
+ * Susun CSS khusus cetak thermal 203 DPI hitam pekat (#000) & tajam anti-buram
+ */
+function buatCssThermal203Dpi(ukuran = '58', kalibrasi = null, tinggiPageMm = null) {
+  const cal = kalibrasi || ambilKalibrasiThermal();
+  const is80 = String(ukuran) === '80';
+  const lebarKertasMm = is80 ? 80 : 58;
+  const lebarCetakMm = is80 ? cal.lebar80Mm : cal.lebar58Mm;
+  const fontMap = {
+    kecil: is80 ? 9.2 : 8.2,
+    normal: is80 ? 10.2 : 9.2,
+    besar: is80 ? 11.2 : 10.0
+  };
+  const basePt = fontMap[cal.ukuranFont] || fontMap.normal;
+  const headPt = Number((basePt + 2.0).toFixed(1));
+  const subPt = Number(Math.max(7.4, basePt - 1.0).toFixed(1));
+  const totalPt = Number((basePt + 1.4).toFixed(1));
+  const feedMm = Math.max(2, Number(cal.feedBawahMm ?? 10));
+
+  const pageRule = tinggiPageMm
+    ? `@page { size: ${lebarKertasMm}mm ${tinggiPageMm}mm; margin: 0; }`
+    : `@page { size: ${lebarKertasMm}mm auto; margin: 0; }`;
+
+  return `
+    ${pageRule}
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      width: ${lebarCetakMm}mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      -webkit-font-smoothing: none;
+      text-rendering: geometricPrecision;
+    }
+    body {
+      font-family: 'Segoe UI', 'Roboto', 'Arial', 'Helvetica Neue', sans-serif;
+      font-size: ${basePt}pt;
+      font-weight: 600;
+      line-height: 1.32;
+      padding: 1.5mm 0.8mm ${feedMm}mm 0.8mm;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .rcpt-root { width: 100%; }
+    .rcpt-center { text-align: center; }
+    .rcpt-toko { font-size: ${headPt}pt; font-weight: 800; letter-spacing: 0.2px; line-height: 1.2; text-transform: uppercase; }
+    .rcpt-sub { font-size: ${subPt}pt; font-weight: 600; line-height: 1.28; margin-top: 1px; }
+    .rcpt-title { font-size: ${basePt}pt; font-weight: 800; text-align: center; letter-spacing: 0.3px; margin: 2px 0; text-transform: uppercase; }
+    .rcpt-hr-solid { border: 0; border-top: 1.5px solid #000000; margin: 4px 0; }
+    .rcpt-hr-dash { border: 0; border-top: 1px dashed #000000; margin: 4px 0; }
+    .rcpt-hr-dot { border: 0; border-top: 1px dotted #000000; margin: 3px 0; }
+    .rcpt-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; margin: 1.5px 0; }
+    .rcpt-row-label { flex: 1 1 auto; min-width: 0; }
+    .rcpt-row-val { flex: 0 0 auto; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+    .rcpt-meta { font-size: ${subPt}pt; }
+    .rcpt-meta .rcpt-row-label { font-weight: 600; }
+    .rcpt-meta .rcpt-row-val { font-weight: 700; white-space: normal; text-align: right; max-width: 64%; }
+    .rcpt-item { margin: 3.5px 0; }
+    .rcpt-item-nama { font-weight: 700; line-height: 1.25; }
+    .rcpt-item-detail { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; padding-left: 6px; font-size: ${subPt}pt; }
+    .rcpt-item-qty { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .rcpt-item-sub { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+    .rcpt-item-tag { padding-left: 6px; font-size: ${subPt}pt; font-weight: 700; }
+    .rcpt-total-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: ${totalPt}pt; font-weight: 800; margin: 3px 0; }
+    .rcpt-total-row .rcpt-row-val { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .rcpt-footer { text-align: center; font-size: ${subPt}pt; font-weight: 600; line-height: 1.3; margin-top: 4px; white-space: pre-line; }
+    .rcpt-note { font-size: ${subPt}pt; font-weight: 600; margin: 3px 0; }
+    .rcpt-ttd { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; text-align: center; font-size: ${subPt}pt; font-weight: 700; }
+    .rcpt-ttd-col { flex: 1; }
+    .rcpt-ttd-sp { height: 26px; }
+    .rcpt-ttd-ln { border-top: 1px dashed #000000; padding-top: 2px; }
+  `;
+}
+
+/** Bungkus isi struk HTML menjadi dokumen cetak thermal lengkap */
+function bungkusDokumenThermalHtml(judul, bodyHtml, ukuran = '58', kalibrasi = null, tinggiPageMm = null) {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(judul || 'Struk Thermal')}</title>
+  <style>${buatCssThermal203Dpi(ukuran, kalibrasi, tinggiPageMm)}</style>
+</head>
+<body>
+  <div class="rcpt-root">${bodyHtml}</div>
+</body>
+</html>`;
+}
+
+/**
+ * Cetak dokumen thermal HTML ke printer browser dengan pengukuran tinggi halaman EXACT (mm)
+ * sehingga panjang kertas berhenti presisi di akhir struk (tidak keluar kertas kosong panjang).
+ */
+function cetakHtmlThermalAutoHeight(judul, bodyHtml, ukuran = '58', kalibrasi = null) {
+  const cal = kalibrasi || ambilKalibrasiThermal();
+  const is80 = String(ukuran) === '80';
+  const lebarKertasMm = is80 ? 80 : 58;
+  const lebarCetakMm = is80 ? cal.lebar80Mm : cal.lebar58Mm;
+
+  const printFrame = document.createElement('iframe');
+  printFrame.style.position = 'fixed';
+  printFrame.style.left = '-9999px';
+  printFrame.style.top = '0';
+  printFrame.style.width = `${lebarCetakMm}mm`;
+  printFrame.style.height = '1000mm';
+  printFrame.style.border = '0';
+  printFrame.style.visibility = 'hidden';
+  document.body.appendChild(printFrame);
+
+  const doc = printFrame.contentWindow.document;
+  doc.open();
+  doc.write(bungkusDokumenThermalHtml(judul, bodyHtml, ukuran, cal, null));
+  doc.close();
+
+  setTimeout(() => {
+    try {
+      const rootEl = doc.querySelector('.rcpt-root') || doc.body;
+      const bodyStyle = printFrame.contentWindow.getComputedStyle(doc.body);
+      const padTop = parseFloat(bodyStyle.paddingTop) || 0;
+      const padBottom = parseFloat(bodyStyle.paddingBottom) || 0;
+      const kontenPx = Math.ceil((rootEl.getBoundingClientRect().height || rootEl.scrollHeight || 200) + padTop + padBottom);
+      // Konversi presisi CSS px (96 dpi) ke mm (25.4 mm/inch) + margin pengaman 2mm
+      const tinggiExactMm = Math.max(45, Math.ceil((kontenPx * 25.4) / 96) + 2);
+
+      // Suntikkan @page size exact (lebar x tinggi mm) agar Chrome/Edge memotong kertas pas di akhir struk
+      const styleExact = doc.createElement('style');
+      styleExact.textContent = `@page { size: ${lebarKertasMm}mm ${tinggiExactMm}mm; margin: 0; }`;
+      doc.head.appendChild(styleExact);
+    } catch (_) {}
+
+    setTimeout(() => {
+      printFrame.contentWindow.focus();
+      printFrame.contentWindow.print();
+      setTimeout(() => {
+        if (printFrame.parentElement) printFrame.remove();
+      }, 1500);
+    }, 80);
+  }, 180);
+}
+
+/** Susun HTML thermal 203 DPI untuk Struk Penjualan */
+function buatHtmlThermalPenjualan(data) {
+  const pj = data.penjualan || {};
+  const items = data.items || [];
+  const pembayaran = data.pembayaran || [];
+  const toko = ambilInfoTokoDokumen(data);
+  const kasir = data.kasir || { nama: pj.kasir_nama || 'Kasir' };
+  const pelanggan = data.pelanggan || null;
+
+  let pakaiDeposit = String(pj.metode_bayar || '').toLowerCase() === 'deposit';
+  const bayarHtml = pembayaran.map((byr) => {
+    const mLow = String(byr.metode || 'tunai').toLowerCase();
+    if (mLow === 'deposit') pakaiDeposit = true;
+    const labelMetode = mLow === 'deposit' ? 'SALDO TITIPAN' : mLow.toUpperCase();
+    return `<div class="rcpt-row"><span class="rcpt-row-label">Bayar (${escapeHtml(labelMetode)})</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(byr.jumlah))}</span></div>`;
+  }).join('');
+
+  const itemsHtml = items.map((it) => {
+    let namaLengkap = it.nama || 'Barang';
+    if (it.satuan) namaLengkap += ` (${it.satuan})`;
+    const diskonHtml = Number(it.diskon || 0) > 0
+      ? `<div class="rcpt-item-detail"><span>${it.diskon_tipe === 'persen' ? `(Diskon ${it.diskon_nilai}%)` : '(Potongan)'}</span><span class="rcpt-item-sub">-${escapeHtml(formatRupiah(it.diskon))}</span></div>`
+      : '';
+    let tagKirim = '';
+    if (pj.pengiriman === 'dikirim' && it.qty_dibawa !== undefined) {
+      const qTot = Number(it.qty || 0);
+      const qBawa = Math.min(qTot, Math.max(0, Number(it.qty_dibawa)));
+      const sisa = Math.round(Math.max(0, qTot - qBawa) * 1000) / 1000;
+      if (sisa <= 0) tagKirim = `<div class="rcpt-item-tag">[Sudah Dibawa Pembeli]</div>`;
+      else if (qBawa <= 0) tagKirim = `<div class="rcpt-item-tag">[Dikirim Toko: ${escapeHtml(formatQty(sisa))} ${escapeHtml(it.satuan || '')}]</div>`;
+      else tagKirim = `<div class="rcpt-item-tag">[Dibawa: ${escapeHtml(formatQty(qBawa))}, Kirim: ${escapeHtml(formatQty(sisa))}]</div>`;
+    }
+    return `
+      <div class="rcpt-item">
+        <div class="rcpt-item-nama">${escapeHtml(namaLengkap)}</div>
+        <div class="rcpt-item-detail">
+          <span class="rcpt-item-qty">${escapeHtml(formatQty(it.qty))} x ${escapeHtml(formatRupiah(it.harga, false))}</span>
+          <span class="rcpt-item-sub">${escapeHtml(formatRupiah(it.subtotal))}</span>
+        </div>
+        ${diskonHtml}
+        ${tagKirim}
+      </div>
+    `;
+  }).join('');
+
+  const footerText = toko.nota_footer || 'Terima kasih atas kunjungan Anda.\nBarang yang sudah dibeli dapat diretur sesuai ketentuan.';
+
+  return `
+    <div class="rcpt-center">
+      <div class="rcpt-toko">${escapeHtml(toko.nama || 'TOKO')}</div>
+      ${toko.alamat ? `<div class="rcpt-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+      ${toko.hp ? `<div class="rcpt-sub">Telp/WA: ${escapeHtml(toko.hp)}</div>` : ''}
+    </div>
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-meta">
+      <div class="rcpt-row"><span class="rcpt-row-label">No. Nota</span><span class="rcpt-row-val">${escapeHtml(pj.no_nota || '-')}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Tanggal</span><span class="rcpt-row-val">${escapeHtml(formatTanggal(pj.tanggal, true))}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Kasir</span><span class="rcpt-row-val">${escapeHtml(kasir.nama || 'Kasir')}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Pelanggan</span><span class="rcpt-row-val">${escapeHtml(pelanggan ? pelanggan.nama : (pj.pelanggan_nama || 'Umum'))}</span></div>
+      ${pj.pengiriman === 'dikirim' ? `<div class="rcpt-row"><span class="rcpt-row-label">Pengiriman</span><span class="rcpt-row-val">Dikirim Toko</span></div>` : ''}
+      ${pj.pengiriman === 'dikirim' && pj.alamat_kirim ? `<div class="rcpt-note">Alamat: ${escapeHtml(pj.alamat_kirim)}</div>` : ''}
+    </div>
+    <hr class="rcpt-hr-dash">
+    ${itemsHtml}
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-row"><span class="rcpt-row-label">Subtotal</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.subtotal))}</span></div>
+    ${Number(pj.diskon || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">${pj.diskon_tipe === 'persen' ? `Diskon (${pj.diskon_nilai}%)` : 'Diskon'}</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(pj.diskon))}</span></div>` : ''}
+    ${Number(pj.pajak || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">PPN</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.pajak))}</span></div>` : ''}
+    ${Number(pj.ongkir || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Ongkos Kirim</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.ongkir))}</span></div>` : ''}
+    ${Number(pj.pembulatan || 0) !== 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Pembulatan</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.pembulatan))}</span></div>` : ''}
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-total-row"><span>TOTAL</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.total))}</span></div>
+    <hr class="rcpt-hr-dash">
+    ${bayarHtml}
+    ${Number(pj.kembalian || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Kembalian</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.kembalian))}</span></div>` : ''}
+    ${pakaiDeposit && pelanggan && pelanggan.saldo_deposit !== undefined ? `<div class="rcpt-row"><span class="rcpt-row-label">Sisa Saldo Titipan</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pelanggan.saldo_deposit))}</span></div>` : ''}
+    ${Number(pj.poin_didapat || 0) > 0 && pelanggan ? `
+      <hr class="rcpt-hr-dot">
+      <div class="rcpt-row"><span class="rcpt-row-label">Poin Didapat</span><span class="rcpt-row-val">+${escapeHtml(String(pj.poin_didapat))} Poin</span></div>
+      ${pelanggan.poin !== undefined ? `<div class="rcpt-row"><span class="rcpt-row-label">Total Saldo Poin</span><span class="rcpt-row-val">${escapeHtml(String(pelanggan.poin))} Poin</span></div>` : ''}
+    ` : ''}
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-footer">${escapeHtml(footerText)}</div>
+  `;
+}
+
+/** Susun HTML thermal 203 DPI untuk Faktur Pembelian */
+function buatHtmlThermalPembelian(data) {
+  const pb = data.pembelian || {};
+  const items = data.items || [];
+  const sup = data.supplier || { nama: 'Supplier Umum' };
+  const hutang = data.hutang || null;
+  const toko = ambilInfoTokoDokumen(data);
+  const petugas = data.petugas || store.get('user') || { nama: 'Petugas' };
+  const sisaHutang = hutang ? hutang.sisa : Math.max(0, Number(pb.total || 0) - Number(pb.bayar || 0));
+  const jatuhTempoTgl = pb.jatuh_tempo || (hutang ? hutang.jatuh_tempo : '');
+
+  const itemsHtml = items.map((it) => {
+    let namaBarang = it.nama || 'Barang';
+    if (it.satuan) namaBarang += ` (${it.satuan})`;
+    const adaDiskon = Number(it.diskon_persen) > 0 || Number(it.diskon_item) > 0;
+    const diskonRp = Number(it.diskon_item) || Math.round(Number(it.qty || 0) * Number(it.harga_beli || 0) * (Number(it.diskon_persen || 0) / 100));
+    return `
+      <div class="rcpt-item">
+        <div class="rcpt-item-nama">${escapeHtml(namaBarang)}</div>
+        <div class="rcpt-item-detail">
+          <span class="rcpt-item-qty">${escapeHtml(formatQty(it.qty))} x ${escapeHtml(formatRupiah(it.harga_beli, false))}</span>
+          <span class="rcpt-item-sub">${escapeHtml(formatRupiah(it.subtotal))}</span>
+        </div>
+        ${adaDiskon ? `<div class="rcpt-item-detail"><span>${Number(it.diskon_persen) > 0 ? `(Disk ${formatQty(it.diskon_persen)}%)` : '(Potongan)'}</span><span class="rcpt-item-sub">-${escapeHtml(formatRupiah(diskonRp))}</span></div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="rcpt-center">
+      <div class="rcpt-toko">${escapeHtml(toko.nama || 'TOKO')}</div>
+      ${toko.alamat ? `<div class="rcpt-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+      ${toko.hp ? `<div class="rcpt-sub">Telp/WA: ${escapeHtml(toko.hp)}</div>` : ''}
+    </div>
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-title">FAKTUR PEMBELIAN / BARANG MASUK</div>
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-meta">
+      <div class="rcpt-row"><span class="rcpt-row-label">No. Faktur</span><span class="rcpt-row-val">${escapeHtml(pb.no_faktur || '-')}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Tanggal</span><span class="rcpt-row-val">${escapeHtml(formatTanggal(pb.tanggal, true))}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Supplier</span><span class="rcpt-row-val">${escapeHtml(sup.nama || '-')}</span></div>
+      ${pb.no_faktur_supplier ? `<div class="rcpt-row"><span class="rcpt-row-label">Ref Asli</span><span class="rcpt-row-val">${escapeHtml(pb.no_faktur_supplier)}</span></div>` : ''}
+      <div class="rcpt-row"><span class="rcpt-row-label">Petugas</span><span class="rcpt-row-val">${escapeHtml(petugas.nama || 'Petugas')}</span></div>
+    </div>
+    <hr class="rcpt-hr-dash">
+    ${itemsHtml}
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-row"><span class="rcpt-row-label">Subtotal Kotor</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pb.subtotal))}</span></div>
+    ${Number(pb.diskon_item || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Diskon Supplier</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(pb.diskon_item))}</span></div>` : ''}
+    ${Number(pb.diskon || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Diskon Faktur</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(pb.diskon))}</span></div>` : ''}
+    ${Number(pb.ongkir || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">${pb.biaya_masuk_hutang === false ? 'Ongkir (Terpisah)' : 'Ongkos Kirim'}</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pb.ongkir))}</span></div>` : ''}
+    ${Number(pb.biaya_bongkar || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">${pb.biaya_masuk_hutang === false ? 'Bongkar (Terpisah)' : 'Biaya Bongkar'}</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pb.biaya_bongkar))}</span></div>` : ''}
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-total-row"><span>TOTAL TAGIHAN</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pb.total))}</span></div>
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-row"><span class="rcpt-row-label">Dibayar</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pb.bayar || 0))}</span></div>
+    <div class="rcpt-row"><span class="rcpt-row-label">Status Bayar</span><span class="rcpt-row-val">${escapeHtml(String(pb.status_bayar || 'lunas').toUpperCase())}</span></div>
+    ${sisaHutang > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Sisa Hutang</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(sisaHutang))}</span></div>` : ''}
+    ${sisaHutang > 0 && jatuhTempoTgl ? `<div class="rcpt-row"><span class="rcpt-row-label">Jatuh Tempo</span><span class="rcpt-row-val">${escapeHtml(formatTanggal(jatuhTempoTgl))}</span></div>` : ''}
+    ${pb.catatan ? `<hr class="rcpt-hr-dot"><div class="rcpt-note">Catatan: ${escapeHtml(pb.catatan)}</div>` : ''}
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-footer">Bukti Sah Verifikasi Stok Masuk\nTerima kasih atas kerja samanya</div>
+  `;
+}
+
+/** Susun HTML thermal 203 DPI untuk Rekap Shift Kasir (X-Report / Z-Report) */
+function buatHtmlThermalShift(data) {
+  const toko = ambilInfoTokoDokumen(data);
+  const kasir = data.kasir || { nama: data.kasir_nama || 'Kasir' };
+  const isZReport = data.status === 'ditutup' || data.tipe_laporan === 'Z-REPORT';
+  const modalAwal = Number(data.modal_awal || 0);
+  const totalTransaksi = Number(data.total_transaksi || 0);
+  const totalTunai = Number(data.total_tunai || 0);
+  const totalTransfer = Number(data.total_transfer || 0);
+  const totalTempo = Number(data.total_tempo || 0);
+  const totalDepositPakai = Number(data.total_deposit_pakai || 0);
+  const totalPenjualan = Number(data.total_penjualan || 0);
+  const totalPiutangTunai = Number(data.total_piutang_tunai || 0);
+  const totalDepositTunai = Number(data.total_deposit_tunai || 0);
+  const totalTarikDepositTunai = Number(data.total_tarik_deposit_tunai || 0);
+  const totalRefundTunai = Number(data.total_refund_tunai || 0);
+  const totalBiayaKasir = Number(data.total_biaya_kasir || 0);
+  const kasSistem = Number(data.kas_sistem !== undefined ? data.kas_sistem : (data.total_laci !== undefined ? data.total_laci : Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai)));
+  const kasFisik = Number(data.kas_fisik || 0);
+  const selisih = Number(data.selisih !== undefined ? data.selisih : (kasFisik - kasSistem));
+  const teksSelisih = selisih === 0 ? 'PAS (Rp 0)' : (selisih > 0 ? 'LEBIH +' + formatRupiah(selisih) : 'KURANG -' + formatRupiah(Math.abs(selisih)));
+
+  const rincianBiayaHtml = (totalBiayaKasir > 0 && Array.isArray(data.rincian_biaya_kasir))
+    ? data.rincian_biaya_kasir.map((rb) => `<div class="rcpt-item-detail"><span>${escapeHtml(rb.kategori + (rb.keterangan ? ' ' + rb.keterangan : ''))}</span><span class="rcpt-item-sub">-${escapeHtml(formatRupiah(rb.nominal))}</span></div>`).join('')
+    : '';
+
+  return `
+    <div class="rcpt-center">
+      <div class="rcpt-toko">${escapeHtml(toko.nama || 'TOKO')}</div>
+      ${toko.alamat ? `<div class="rcpt-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+      ${toko.hp ? `<div class="rcpt-sub">Telp/WA: ${escapeHtml(toko.hp)}</div>` : ''}
+    </div>
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-title">${isZReport ? 'LAPORAN TUTUP SHIFT (Z-REPORT)' : 'REKAP SHIFT KASIR (X-REPORT)'}</div>
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-meta">
+      ${data.no_shift ? `<div class="rcpt-row"><span class="rcpt-row-label">No. Shift</span><span class="rcpt-row-val">${escapeHtml(data.no_shift)}</span></div>` : ''}
+      <div class="rcpt-row"><span class="rcpt-row-label">Petugas/Kasir</span><span class="rcpt-row-val">${escapeHtml(kasir.nama || kasir.username || 'Kasir')}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">${data.waktu_buka ? 'Waktu Buka' : 'Tanggal Shift'}</span><span class="rcpt-row-val">${escapeHtml(data.waktu_buka ? formatTanggal(data.waktu_buka, true) : (data.tanggal || formatTanggal(new Date()).substring(0, 10)))}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">${isZReport && data.waktu_tutup ? 'Waktu Tutup' : 'Waktu Cetak'}</span><span class="rcpt-row-val">${escapeHtml(isZReport && data.waktu_tutup ? formatTanggal(data.waktu_tutup, true) : formatTanggal(new Date(), true))}</span></div>
+    </div>
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-row"><span class="rcpt-row-label">Modal Awal Laci</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(modalAwal))}</span></div>
+    <div class="rcpt-row"><span class="rcpt-row-label">Total Transaksi</span><span class="rcpt-row-val">${escapeHtml(`${totalTransaksi} Nota`)}</span></div>
+    <hr class="rcpt-hr-dot">
+    <div class="rcpt-row"><span class="rcpt-row-label">Penerimaan Tunai</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(totalTunai))}</span></div>
+    ${totalPiutangTunai > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">(+) Piutang Tunai</span><span class="rcpt-row-val">+${escapeHtml(formatRupiah(totalPiutangTunai))}</span></div>` : ''}
+    ${totalDepositTunai > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">(+) Titipan Tunai</span><span class="rcpt-row-val">+${escapeHtml(formatRupiah(totalDepositTunai))}</span></div>` : ''}
+    <div class="rcpt-row"><span class="rcpt-row-label">Non-Tunai (QRIS/Bank)</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(totalTransfer))}</span></div>
+    ${totalDepositPakai > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Pakai Saldo Titipan</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(totalDepositPakai))}</span></div>` : ''}
+    ${totalTempo > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Piutang (Tempo Bon)</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(totalTempo))}</span></div>` : ''}
+    ${totalTarikDepositTunai > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">(-) Tarik Titipan</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(totalTarikDepositTunai))}</span></div>` : ''}
+    ${totalRefundTunai > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">(-) Refund Retur</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(totalRefundTunai))}</span></div>` : ''}
+    ${totalBiayaKasir > 0 ? `<hr class="rcpt-hr-dot"><div class="rcpt-row"><span class="rcpt-row-label">(-) Kas Keluar Kasir</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(totalBiayaKasir))}</span></div>${rincianBiayaHtml}` : ''}
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-total-row"><span>TOTAL OMSET</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(totalPenjualan))}</span></div>
+    <hr class="rcpt-hr-solid">
+    ${isZReport ? `
+      <div class="rcpt-title">REKONSILIASI FISIK LACI</div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Kas Menurut Sistem</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(kasSistem))}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Kas Fisik Dihitung</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(kasFisik))}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Selisih Laci</span><span class="rcpt-row-val">${escapeHtml(teksSelisih)}</span></div>
+      ${data.catatan_tutup ? `<hr class="rcpt-hr-dot"><div class="rcpt-note">Catatan: ${escapeHtml(data.catatan_tutup)}</div>` : ''}
+      ${data.ditutup_oleh_nama && data.ditutup_oleh_nama !== (kasir.nama || '') ? `<div class="rcpt-row"><span class="rcpt-row-label">Ditutup Oleh</span><span class="rcpt-row-val">${escapeHtml(data.ditutup_oleh_nama)}</span></div>` : ''}
+    ` : `
+      <div class="rcpt-total-row"><span>UANG FISIK LACI</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(kasSistem))}</span></div>
+      <div class="rcpt-center rcpt-sub">${totalBiayaKasir > 0 ? '(Modal + Tunai - Kas Keluar)' : '(Modal Awal + Kas Tunai)'}</div>
+    `}
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-ttd">
+      <div class="rcpt-ttd-col"><div>Kasir</div><div class="rcpt-ttd-sp"></div><div class="rcpt-ttd-ln">${escapeHtml(kasir.nama || '')}</div></div>
+      <div class="rcpt-ttd-col"><div>Supervisor</div><div class="rcpt-ttd-sp"></div><div class="rcpt-ttd-ln">Penerima</div></div>
+    </div>
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-footer">POS KASIR TOKO BANGUNAN</div>
+  `;
+}
+
+/** Susun HTML thermal 203 DPI untuk Surat Jalan (TANPA HARGA — khusus sopir/kuli) */
+function buatHtmlThermalSuratJalan(data, opsi = {}) {
+  const pj = data.penjualan || {};
+  const items = data.items || [];
+  const pel = data.pelanggan || null;
+  const toko = ambilInfoTokoDokumen(data);
+  const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+  const hasilSaring = saringItemSuratJalan(items, !!opsi.sertakanSudahDibawa);
+  const daftarMuat = hasilSaring.daftarTampil;
+  const hpPel = (pel && pel.hp) || pj.pelanggan_hp || '';
+  const alamat = pj.alamat_kirim || (pel && pel.alamat) || '';
+
+  let totalUnitKirim = 0;
+  const itemsHtml = daftarMuat.map((it, idx) => {
+    const qtyMuat = hasilSaring.adaSisa ? it._sisa : it._qty;
+    totalUnitKirim += qtyMuat;
+    let detailHtml = '';
+    if (hasilSaring.adaSisa && it._sisa <= 0) {
+      detailHtml = `<div class="rcpt-item-detail"><span>(Sudah dibawa pembeli)</span><span class="rcpt-item-sub">${escapeHtml(formatQty(it._qty))} ${escapeHtml(it.satuan || '')}</span></div>`;
+    } else if (it._dibawa > 0 && it._sisa > 0) {
+      detailHtml = `<div class="rcpt-item-detail"><span>[ ] KIRIM: ${escapeHtml(formatQty(it._sisa))} ${escapeHtml(it.satuan || '')}</span><span class="rcpt-item-sub">Bawa: ${escapeHtml(formatQty(it._dibawa))}</span></div>`;
+    } else {
+      detailHtml = `<div class="rcpt-item-detail"><span>[ ] KIRIM: ${escapeHtml(formatQty(qtyMuat))} ${escapeHtml(it.satuan || '')}</span><span class="rcpt-item-sub">OK</span></div>`;
+    }
+    return `
+      <div class="rcpt-item">
+        <div class="rcpt-item-nama">${idx + 1}. ${escapeHtml(it.nama || 'Barang')}</div>
+        ${detailHtml}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="rcpt-center">
+      <div class="rcpt-toko">${escapeHtml(toko.nama || 'TOKO')}</div>
+      ${toko.alamat ? `<div class="rcpt-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+      ${toko.hp ? `<div class="rcpt-sub">Telp/WA: ${escapeHtml(toko.hp)}</div>` : ''}
+    </div>
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-title">SURAT JALAN BARANG</div>
+    <div class="rcpt-center rcpt-sub">(TANPA HARGA / CEK MUATAN)</div>
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-meta">
+      <div class="rcpt-row"><span class="rcpt-row-label">No. SJ</span><span class="rcpt-row-val">${escapeHtml(noSj)}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Ref Nota</span><span class="rcpt-row-val">${escapeHtml(pj.no_nota || '-')}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Tanggal</span><span class="rcpt-row-val">${escapeHtml(formatTanggal(pj.tanggal || new Date(), true))}</span></div>
+      <div class="rcpt-row"><span class="rcpt-row-label">Penerima</span><span class="rcpt-row-val">${escapeHtml(pel ? pel.nama : (pj.pelanggan_nama || 'Umum'))}</span></div>
+      ${hpPel ? `<div class="rcpt-row"><span class="rcpt-row-label">HP/WA</span><span class="rcpt-row-val">${escapeHtml(hpPel)}</span></div>` : ''}
+      ${opsi.sopir ? `<div class="rcpt-row"><span class="rcpt-row-label">Sopir</span><span class="rcpt-row-val">${escapeHtml(opsi.sopir)}</span></div>` : ''}
+      ${opsi.noPlat ? `<div class="rcpt-row"><span class="rcpt-row-label">Armada</span><span class="rcpt-row-val">${escapeHtml(opsi.noPlat)}</span></div>` : ''}
+      ${alamat ? `<div class="rcpt-note">Alamat Kirim: ${escapeHtml(alamat)}</div>` : ''}
+    </div>
+    <hr class="rcpt-hr-dash">
+    ${itemsHtml}
+    <hr class="rcpt-hr-dash">
+    <div class="rcpt-row"><span class="rcpt-row-label">Total Jenis Muat</span><span class="rcpt-row-val">${daftarMuat.length} Jenis</span></div>
+    <div class="rcpt-row"><span class="rcpt-row-label">Total Unit Kirim</span><span class="rcpt-row-val">${escapeHtml(formatQty(totalUnitKirim))}</span></div>
+    ${!opsi.sertakanSudahDibawa && hasilSaring.sudahDibawaList.length > 0 && hasilSaring.adaSisa ? `<hr class="rcpt-hr-dot"><div class="rcpt-note">Info: ${hasilSaring.sudahDibawaList.length} item lain di nota ini sudah dibawa pembeli.</div>` : ''}
+    ${(opsi.catatan || pj.catatan) ? `<hr class="rcpt-hr-dot"><div class="rcpt-note">Catatan: ${escapeHtml(opsi.catatan || pj.catatan)}</div>` : ''}
+    <hr class="rcpt-hr-solid">
+    <div class="rcpt-center rcpt-sub">Barang diterima dalam kondisi baik</div>
+    <div class="rcpt-ttd">
+      <div class="rcpt-ttd-col"><div>Pengirim</div><div class="rcpt-ttd-sp"></div><div class="rcpt-ttd-ln">Gudang/Sopir</div></div>
+      <div class="rcpt-ttd-col"><div>Penerima</div><div class="rcpt-ttd-sp"></div><div class="rcpt-ttd-ln">Pembeli</div></div>
+    </div>
+  `;
+}
+
+/**
+ * Modal Pratinjau & Cetak Thermal Web Presisi (203 DPI + Auto-Height + Kalibrasi + Direct USB Serial)
+ */
+function bukaModalPratinjauThermalWeb({ judulModal, judulDokumen, bodyHtml, ukuranAwal = '58', ambilTeksEscPos = null }) {
+  let ukuranAktif = String(ukuranAwal) === '80' ? '80' : '58';
+  let cal = ambilKalibrasiThermal();
+  const adaSerial = dukungWebSerial() && typeof ambilTeksEscPos === 'function';
+
+  const lebarOpsiHtml = (uk, aktifVal) => {
+    const daftar = uk === '80' ? [68, 70, 72, 74, 76, 78] : [44, 46, 48, 50, 52, 54];
+    return daftar.map((v) => `<option value="${v}" ${Number(aktifVal) === v ? 'selected' : ''}>${v} mm${(uk === '80' ? v === 72 : v === 48) ? ' (Std)' : ''}</option>`).join('');
+  };
+
+  const modal = showModal({
+    title: judulModal || 'Pratinjau Cetak Thermal Presisi',
+    size: 'md',
+    body: `
+      <div class="stack" style="gap: var(--sp-3);">
+        <div class="thermal-cal-bar">
+          <div>
+            <label class="form-label text-xs fw-semibold" for="cal-th-kertas" style="margin-bottom: 2px;">Kertas</label>
+            <select id="cal-th-kertas" class="input input-sm">
+              <option value="58" ${ukuranAktif === '58' ? 'selected' : ''}>58 mm</option>
+              <option value="80" ${ukuranAktif === '80' ? 'selected' : ''}>80 mm</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label text-xs fw-semibold" for="cal-th-lebar" style="margin-bottom: 2px;">Lebar Cetak</label>
+            <select id="cal-th-lebar" class="input input-sm">
+              ${lebarOpsiHtml(ukuranAktif, ukuranAktif === '80' ? cal.lebar80Mm : cal.lebar58Mm)}
+            </select>
+          </div>
+          <div>
+            <label class="form-label text-xs fw-semibold" for="cal-th-font" style="margin-bottom: 2px;">Ukuran Huruf</label>
+            <select id="cal-th-font" class="input input-sm">
+              <option value="kecil" ${cal.ukuranFont === 'kecil' ? 'selected' : ''}>Kecil</option>
+              <option value="normal" ${cal.ukuranFont === 'normal' ? 'selected' : ''}>Normal (Tajam)</option>
+              <option value="besar" ${cal.ukuranFont === 'besar' ? 'selected' : ''}>Besar (Tebal)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label text-xs fw-semibold" for="cal-th-feed" style="margin-bottom: 2px;">Sisa Potong</label>
+            <select id="cal-th-feed" class="input input-sm">
+              ${[4, 8, 10, 14, 18].map((v) => `<option value="${v}" ${cal.feedBawahMm === v ? 'selected' : ''}>${v} mm${v === 10 ? ' (Std)' : ''}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="thermal-preview-stage" style="max-height: 360px;">
+          <iframe id="iframe-preview-thermal" class="thermal-wysiwyg-frame" title="Pratinjau Struk Thermal"></iframe>
+        </div>
+
+        <div class="alert alert-info" style="font-size: 12px; padding: var(--sp-2) var(--sp-3);">
+          ${ICONS.info}
+          <div>
+            <strong>Tips Cetak Presisi dari Browser:</strong> Di dialog Print Chrome/Edge, pastikan <strong>Margins: None</strong>, <strong>Scale: 100%</strong>, dan matikan <strong>Headers &amp; footers</strong>. Panjang kertas otomatis disesuaikan persis dengan isi struk.
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap;">
+        <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-pratinjau-th">Tutup</button>
+        <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+          ${adaSerial ? `
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-serial-th" style="display: inline-flex; align-items: center; gap: 6px;">
+              ${ICONS.zap}
+              <span>Direct USB (ESC/POS)</span>
+            </button>
+          ` : ''}
+          <button type="button" class="btn btn-primary btn-sm" id="btn-eksekusi-cetak-th" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak Presisi (${ukuranAktif}mm)</span>
+          </button>
+        </div>
+      </div>
+    `
+  });
+
+  const iframe = modal.el.querySelector('#iframe-preview-thermal');
+  const selKertas = modal.el.querySelector('#cal-th-kertas');
+  const selLebar = modal.el.querySelector('#cal-th-lebar');
+  const selFont = modal.el.querySelector('#cal-th-font');
+  const selFeed = modal.el.querySelector('#cal-th-feed');
+  const btnCetak = modal.el.querySelector('#btn-eksekusi-cetak-th');
+
+  const renderPratinjau = () => {
+    const lebarCetakMm = ukuranAktif === '80' ? cal.lebar80Mm : cal.lebar58Mm;
+    const lebarPx = Math.round((lebarCetakMm * 96) / 25.4) + 12;
+    iframe.style.width = `${lebarPx}px`;
+    iframe.style.height = '320px';
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(bungkusDokumenThermalHtml(judulDokumen, bodyHtml, ukuranAktif, cal, null));
+    doc.close();
+    setTimeout(() => {
+      try {
+        const h = Math.ceil((doc.body.scrollHeight || 300) + 8);
+        iframe.style.height = `${Math.max(180, Math.min(h, 680))}px`;
+      } catch (_) {}
+    }, 60);
+    if (btnCetak) {
+      btnCetak.innerHTML = `${ICONS.printer} <span>Cetak Presisi (${ukuranAktif}mm)</span>`;
+    }
+  };
+
+  renderPratinjau();
+
+  selKertas?.addEventListener('change', () => {
+    ukuranAktif = selKertas.value === '80' ? '80' : '58';
+    selLebar.innerHTML = lebarOpsiHtml(ukuranAktif, ukuranAktif === '80' ? cal.lebar80Mm : cal.lebar58Mm);
+    renderPratinjau();
+  });
+
+  selLebar?.addEventListener('change', () => {
+    const val = Number(selLebar.value) || (ukuranAktif === '80' ? 72 : 48);
+    cal = simpanKalibrasiThermal(ukuranAktif === '80' ? { lebar80Mm: val } : { lebar58Mm: val });
+    renderPratinjau();
+  });
+
+  selFont?.addEventListener('change', () => {
+    cal = simpanKalibrasiThermal({ ukuranFont: selFont.value });
+    renderPratinjau();
+  });
+
+  selFeed?.addEventListener('change', () => {
+    cal = simpanKalibrasiThermal({ feedBawahMm: Number(selFeed.value) });
+    renderPratinjau();
+  });
+
+  btnCetak?.addEventListener('click', () => {
+    cetakHtmlThermalAutoHeight(judulDokumen, bodyHtml, ukuranAktif, cal);
+  });
+
+  modal.el.querySelector('#btn-cetak-serial-th')?.addEventListener('click', async () => {
+    if (typeof ambilTeksEscPos === 'function') {
+      const teks = ambilTeksEscPos(ukuranAktif);
+      await kirimEscPosKeSerial(teksKeEscPos(teks));
+    }
+  });
+
+  modal.el.querySelector('#btn-tutup-pratinjau-th')?.addEventListener('click', () => modal.close());
+}
+
 /**
  * Kirim buffer bytes ESC/POS ke printer Web Bluetooth
  * @param {Uint8Array} escposBytes
@@ -801,86 +1483,13 @@ export function tampilkanModalKoneksiPrinter() {
  * @param {'58'|'80'} [ukuran='58']
  */
 export function cetakBrowser(dataStruk, ukuran = '58') {
-  const teksStruk = susunTeksStruk(dataStruk, ukuran);
-  const lebarPx = ukuran === '80' ? '300px' : '230px';
-
-  const modal = showModal({
-    title: 'Pratinjau Struk Cetak',
-    size: 'sm',
-    body: `
-      <div class="thermal-receipt-container" style="display: flex; justify-content: center; background: var(--surface-3); padding: var(--sp-4); border-radius: var(--radius-md);">
-        <div id="print-area-thermal" class="thermal-receipt-sheet" style="
-          width: ${lebarPx};
-          background: #ffffff;
-          color: #000000;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: ${ukuran === '80' ? '12px' : '11px'};
-          line-height: 1.25;
-          padding: 16px 12px;
-          box-shadow: var(--shadow-md);
-          white-space: pre;
-          overflow-x: hidden;
-        ">${teksStruk}</div>
-      </div>
-    `,
-    footer: `
-      <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-struk">Tutup</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-eksekusi-print">
-          ${ICONS.printer} Cetak Struk
-        </button>
-      </div>
-    `
-  });
-
-  modal.el.querySelector('#btn-tutup-struk')?.addEventListener('click', () => modal.close());
-  modal.el.querySelector('#btn-eksekusi-print')?.addEventListener('click', () => {
-    // Siapkan print iframe atau print window
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    document.body.appendChild(printFrame);
-
-    const doc = printFrame.contentWindow.document;
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Cetak Nota ${dataStruk.penjualan?.no_nota || ''}</title>
-        <style>
-          @page {
-            size: ${ukuran === '80' ? '80mm auto' : '58mm auto'};
-            margin: 0;
-          }
-          body {
-            margin: 0;
-            padding: 8px 6px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: ${ukuran === '80' ? '12px' : '10px'};
-            line-height: 1.25;
-            color: #000;
-            background: #fff;
-            white-space: pre;
-          }
-        </style>
-      </head>
-      <body>${teksStruk}</body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      printFrame.contentWindow.focus();
-      printFrame.contentWindow.print();
-      setTimeout(() => {
-        if (printFrame.parentElement) printFrame.remove();
-      }, 1000);
-    }, 250);
+  const htmlBody = buatHtmlThermalPenjualan(dataStruk);
+  bukaModalPratinjauThermalWeb({
+    judulModal: `Pratinjau Cetak Thermal — ${dataStruk.penjualan?.no_nota || 'Nota'}`,
+    judulDokumen: `Cetak Nota ${dataStruk.penjualan?.no_nota || ''}`,
+    bodyHtml: htmlBody,
+    ukuranAwal: ukuran,
+    ambilTeksEscPos: (uk) => susunTeksStruk(dataStruk, uk)
   });
 }
 
@@ -1251,86 +1860,14 @@ export async function cetakBluetoothPembelian(dataPembelian, ukuran = '58') {
  * @param {'58'|'80'} [ukuran='58']
  */
 export function cetakBrowserPembelian(dataPembelian, ukuran = '58') {
-  const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
-  const lebarPx = ukuran === '80' ? '300px' : '230px';
   const pb = dataPembelian.pembelian || {};
-
-  const modal = showModal({
-    title: `Pratinjau Faktur Pembelian: ${pb.no_faktur || ''}`,
-    size: 'sm',
-    body: `
-      <div class="thermal-receipt-container" style="display: flex; justify-content: center; background: var(--surface-3); padding: var(--sp-4); border-radius: var(--radius-md);">
-        <div id="print-area-thermal-beli" class="thermal-receipt-sheet" style="
-          width: ${lebarPx};
-          background: #ffffff;
-          color: #000000;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: ${ukuran === '80' ? '12px' : '11px'};
-          line-height: 1.25;
-          padding: 16px 12px;
-          box-shadow: var(--shadow-md);
-          white-space: pre;
-          overflow-x: hidden;
-        ">${teksStruk}</div>
-      </div>
-    `,
-    footer: `
-      <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-struk-beli">Tutup</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-eksekusi-print-beli">
-          ${ICONS.printer} Cetak Faktur
-        </button>
-      </div>
-    `
-  });
-
-  modal.el.querySelector('#btn-tutup-struk-beli')?.addEventListener('click', () => modal.close());
-  modal.el.querySelector('#btn-eksekusi-print-beli')?.addEventListener('click', () => {
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    document.body.appendChild(printFrame);
-
-    const doc = printFrame.contentWindow.document;
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Faktur Pembelian ${pb.no_faktur || ''}</title>
-        <style>
-          @page {
-            size: ${ukuran === '80' ? '80mm auto' : '58mm auto'};
-            margin: 0;
-          }
-          body {
-            margin: 0;
-            padding: 8px 6px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: ${ukuran === '80' ? '12px' : '10px'};
-            line-height: 1.25;
-            color: #000;
-            background: #fff;
-            white-space: pre;
-          }
-        </style>
-      </head>
-      <body>${teksStruk}</body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      printFrame.contentWindow.focus();
-      printFrame.contentWindow.print();
-      setTimeout(() => {
-        if (printFrame.parentElement) printFrame.remove();
-      }, 1000);
-    }, 250);
+  const htmlBody = buatHtmlThermalPembelian(dataPembelian);
+  bukaModalPratinjauThermalWeb({
+    judulModal: `Pratinjau Faktur Pembelian — ${pb.no_faktur || ''}`,
+    judulDokumen: `Faktur Pembelian ${pb.no_faktur || ''}`,
+    bodyHtml: htmlBody,
+    ukuranAwal: ukuran,
+    ambilTeksEscPos: (uk) => susunTeksStrukPembelian(dataPembelian, uk)
   });
 }
 
@@ -1652,24 +2189,18 @@ export async function cetakBluetoothShift(dataReport, ukuran = '58') {
 }
 
 /**
- * Cetak X-Report / Z-Report shift via browser print dialog (iframe tersembunyi, anti popup-blocker)
+ * Cetak X-Report / Z-Report shift via browser print dialog (HTML 203 DPI Presisi + Auto-Height)
  */
 export function cetakBrowserShift(dataReport, ukuran = '58') {
   const isZReport = dataReport && (dataReport.status === 'ditutup' || dataReport.tipe_laporan === 'Z-REPORT');
-  const teks = susunTeksXReport(dataReport, ukuran);
-  const htmlDoc = `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>${isZReport ? 'Laporan Tutup Shift (Z-Report)' : 'Rekap Shift (X-Report)'}</title>
-    <style>
-      @page { size: ${ukuran === '80' ? '80mm' : '58mm'} auto; margin: 2mm; }
-      body { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.35; white-space: pre; padding: 4px; margin: 0; color: #000; }
-    </style>
-  </head>
-  <body>${escapeHtml(teks)}</body>
-</html>`;
-  cetakHtmlViaIframe(htmlDoc);
+  const htmlBody = buatHtmlThermalShift(dataReport);
+  bukaModalPratinjauThermalWeb({
+    judulModal: isZReport ? 'Pratinjau Z-Report (Thermal Presisi)' : 'Pratinjau X-Report (Thermal Presisi)',
+    judulDokumen: isZReport ? 'Laporan Tutup Shift (Z-Report)' : 'Rekap Shift (X-Report)',
+    bodyHtml: htmlBody,
+    ukuranAwal: ukuran,
+    ambilTeksEscPos: (uk) => susunTeksXReport(dataReport, uk)
+  });
 }
 
 /**
@@ -2086,6 +2617,19 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
 </html>`;
 }
 
+/** Cetak Surat Jalan Thermal Web (58/80mm Presisi 203 DPI + Auto-Height) */
+export function cetakSuratJalanThermalBrowser(dataStruk, ukuran = '58', opsi = {}) {
+  const noSj = String(dataStruk?.penjualan?.no_nota || '-').replace(/^INV-/, 'SJ-');
+  const htmlBody = buatHtmlThermalSuratJalan(dataStruk, opsi);
+  bukaModalPratinjauThermalWeb({
+    judulModal: `Surat Jalan Thermal — ${noSj}`,
+    judulDokumen: `Surat Jalan ${noSj}`,
+    bodyHtml: htmlBody,
+    ukuranAwal: ukuran,
+    ambilTeksEscPos: (uk) => susunTeksSuratJalan(dataStruk, uk, opsi)
+  });
+}
+
 /** Cetak langsung Surat Jalan A5 (Printer Biasa / PDF) */
 export function cetakSuratJalanA5(dataStruk, opsi = {}) {
   const htmlDoc = buatHtmlSuratJalanA5(dataStruk, opsi);
@@ -2154,13 +2698,17 @@ export function bukaModalCetakSuratJalan(dataStruk) {
             <span>Cetak Surat Jalan Resmi (A5 / PDF)</span>
           </button>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-thermal-web" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.printer}
+              <span>Thermal Web (${ukuran}mm)</span>
+            </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.smartphone}
-              <span>Thermal RawBT (${ukuran}mm)</span>
+              <span>RawBT (${ukuran}mm)</span>
             </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.bluetooth}
-              <span>Bluetooth Direct</span>
+              <span>Bluetooth</span>
             </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.messageCircle}
@@ -2172,7 +2720,7 @@ export function bukaModalCetakSuratJalan(dataStruk) {
     `,
     footer: `
       <div class="row" style="width: 100%; justify-content: flex-end;">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-sj">Tutup</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-modal-sj">Tutup</button>
       </div>
     `
   });
@@ -2187,11 +2735,14 @@ export function bukaModalCetakSuratJalan(dataStruk) {
   modal.el.querySelector('#btn-sj-cetak-a5')?.addEventListener('click', () => {
     cetakSuratJalanA5(dataStruk, ambilOpsi());
   });
+  modal.el.querySelector('#btn-sj-thermal-web')?.addEventListener('click', () => {
+    cetakSuratJalanThermalBrowser(dataStruk, ukuran, ambilOpsi());
+  });
   modal.el.querySelector('#btn-sj-rawbt')?.addEventListener('click', () => {
     const teks = susunTeksSuratJalan(dataStruk, ukuran, ambilOpsi());
     if (!adalahPerangkatAndroid()) {
-      showToast('RawBT khusus Android. Membuka cetak Surat Jalan A5...', 'info', 2500);
-      cetakSuratJalanA5(dataStruk, ambilOpsi());
+      showToast('RawBT khusus Android. Membuka cetak Thermal Web presisi...', 'info', 2500);
+      cetakSuratJalanThermalBrowser(dataStruk, ukuran, ambilOpsi());
       return;
     }
     kirimEscPosKeRawBT(teksKeEscPos(teks), 'surat jalan');
