@@ -184,8 +184,8 @@ function renderFormInputBeli() {
         </div>
 
         <!-- Tabel Daftar Item Masuk -->
-        <div class="card card-body stack" style="gap: var(--sp-2);">
-          <div class="beli-diskon-massal">
+        <div class="card card-body stack" style="gap: var(--sp-3);">
+          <div class="beli-diskon-massal" style="padding-bottom: var(--sp-2); border-bottom: 1px solid var(--border);">
             <label class="text-sm fw-semibold" for="beli-diskon-semua">Diskon supplier untuk semua barang (%)</label>
             <div class="beli-diskon-massal-aksi">
               <input type="number" class="input tabular" id="beli-diskon-semua" min="0" max="100" step="any" placeholder="cth: 5" inputmode="decimal">
@@ -294,10 +294,10 @@ function renderFormInputBeli() {
 
         <div class="row-between text-sm" id="row-status-bayar">
           <span class="text-muted">Status Pembayaran:</span>
-          <span class="badge badge-warning" id="badge-status-bayar">Hutang</span>
+          <span class="badge badge-secondary" id="badge-status-bayar">Belum Ada Item</span>
         </div>
 
-        <div class="field" id="field-jatuh-tempo">
+        <div class="field" id="field-jatuh-tempo" style="display: none;">
           <label class="field-label" for="beli-jatuh-tempo">Tanggal Jatuh Tempo Hutang</label>
           <input type="date" class="input" id="beli-jatuh-tempo">
         </div>
@@ -994,6 +994,15 @@ function updateStatusBayarUI(container) {
   const fieldJatuhTempo = $('#field-jatuh-tempo', container);
 
   let status = 'lunas';
+  if (total <= 0) {
+    status = 'belum';
+    if (badge) {
+      badge.className = 'badge badge-secondary';
+      badge.textContent = 'Belum Ada Item';
+    }
+    if (fieldJatuhTempo) fieldJatuhTempo.style.display = 'none';
+    return status;
+  }
   if (bayar >= total && total > 0) {
     status = 'lunas';
     badge.className = 'badge badge-success';

@@ -1715,7 +1715,7 @@ function renderTabLabaRugi(container, data) {
         <!-- Rincian Pengeluaran Biaya Operasional -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title" style="color: var(--danger);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Rincian Biaya Operasional per Kategori</h3>
+            <h3 class="card-title" style="color: var(--danger);">${ICONS.calculator} Rincian Biaya Operasional per Kategori</h3>
           </div>
           <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">

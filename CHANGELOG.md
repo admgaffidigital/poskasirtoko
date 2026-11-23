@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.113] - 2026-11-23
+
+### Changed
+- [UI] [DASHBOARD] [PRODUK] [POS-BELI] **Pemolesan Antarmuka Desktop & Varian Produk (`components.css`, `laporan.js`, `produk.js`, `pembelian.js`)**:
+  - **Laba Rugi & Margin (`.lap-grid-2col`)**: Menghapus paksaan `min-width: 960px` pada tabel ringkas di dalam grid 50/50 agar kolom `Kategori`, `Omset`, `Laba Kotor`, & `Margin` serta `Rincian Biaya Operasional` tampil penuh 100% tanpa scrollbar horizontal; menyelaraskan ikon biaya ke `ICONS.calculator`.
+  - **Modal Ubah/Tambah Produk (`produk.js`)**: Memindahkan tombol footer ke slot `footer` resmi `showModal` (`form="form-produk"`) agar tidak lagi menimpa/memotong teks `Konversi Satuan Kemasan`; merapikan baris Varian menjadi grid 4 kolom (**HPP Varian**, **Harga Ritel**, **Harga Grosir**, **Stok** + tombol ikon `ICONS.trash`) sehingga HPP & harga grosir per varian tersimpan akurat tanpa menimpa satu sama lain.
+  - **POS Pembelian (`pembelian.js`)**: Status pembayaran menampilkan `Belum Ada Item` (netral) dan menyembunyikan field jatuh tempo saat keranjang masih kosong, serta menambah pemisah rapi pada area diskon massal.
+
 ## [1.0.112] - 2026-11-23
 
 ### Fixed

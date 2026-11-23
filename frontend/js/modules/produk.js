@@ -2075,7 +2075,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
 
         <div class="divider"></div>
 
-        <div class="stack">
+        <div class="stack" style="padding-bottom: var(--sp-2);">
           <div class="row-between">
             <span class="section-title">Konversi Satuan Kemasan (Multi Satuan)</span>
             <button type="button" class="btn btn-secondary btn-sm" id="btn-tambah-baris-satuan">${ICONS.plus}<span>Satuan Kemasan</span></button>
@@ -2084,15 +2084,16 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <div id="wadah-satuan" class="stack-sm"></div>
         </div>
       </div>
-
-      <!-- Footer Tombol -->
-      <div class="dialog-footer" style="padding: 0; margin-top: var(--sp-3);">
-        <button type="button" class="btn btn-ghost btn-close-modal" id="btn-batal-produk">Batal</button>
-        <button type="submit" class="btn btn-primary" id="btn-simpan-produk">
-          ${isDuplikat ? 'Simpan Produk Salinan' : (isEdit ? 'Simpan Perubahan' : 'Tambah Produk')}
-        </button>
-      </div>
     </form>
+  `;
+
+  const footerHtml = `
+    <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
+      <button type="button" class="btn btn-secondary btn-close-modal" id="btn-batal-produk">Batal</button>
+      <button type="submit" form="form-produk" class="btn btn-primary" id="btn-simpan-produk">
+        ${isDuplikat ? 'Simpan Produk Salinan' : (isEdit ? 'Simpan Perubahan' : 'Tambah Produk')}
+      </button>
+    </div>
   `;
 
   let modalTitle = 'Tambah Produk Baru';
@@ -2105,6 +2106,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
   const modal = showModal({
     title: modalTitle,
     body: bodyHtml,
+    footer: footerHtml,
     size: 'lg'
   });
 
@@ -2374,22 +2376,40 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <input type="text" class="input mono var-barcode" placeholder="Auto Barcode" value="${escapeHtml(v.barcode || '')}" title="Kosongkan jika ingin dibuat otomatis">
         </div>
       </div>
-      <div class="row" style="margin-top: var(--sp-2); gap: var(--sp-2); align-items: flex-end;">
-        <div class="grow">
-          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Harga Jual Ritel Varian (Rp) *</label>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); align-items: end;">
+        <div>
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">HPP / Modal Varian</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="text" class="input input-num var-hpp" placeholder="Ikut Induk" value="${v.hpp ? formatRupiah(v.hpp, false) : ''}">
+          </div>
+        </div>
+        <div>
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Harga Ritel Varian *</label>
           <div class="input-prefix">
             <span>Rp</span>
             <input type="text" class="input input-num var-ritel" placeholder="0" value="${v.harga_ritel ? formatRupiah(v.harga_ritel, false) : ''}">
           </div>
         </div>
-        <div style="max-width: 120px;">
-          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Stok Awal</label>
-          <input type="number" class="input input-num var-stok" placeholder="0" value="${v.stok !== undefined ? v.stok : ''}">
+        <div>
+          <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Harga Grosir Varian</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="text" class="input input-num var-grosir" placeholder="Sama Ritel" value="${v.harga_grosir ? formatRupiah(v.harga_grosir, false) : ''}">
+          </div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm text-danger btn-hapus-baris-varian" title="Hapus Varian" style="height: 38px; margin-bottom: 1px;">Hapus</button>
+        <div class="row" style="gap: 6px; align-items: flex-end;">
+          <div style="flex: 1; min-width: 0;">
+            <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Stok Varian</label>
+            <input type="number" step="any" class="input input-num var-stok" placeholder="0" value="${v.stok !== undefined ? v.stok : ''}">
+          </div>
+          <button type="button" class="btn btn-outline-danger btn-icon btn-sm btn-hapus-baris-varian" title="Hapus Varian" aria-label="Hapus Varian" style="height: 38px; width: 38px; flex-shrink: 0;">${ICONS.trash}</button>
+        </div>
       </div>
     `;
+    formatInputRp(row.querySelector('.var-hpp'));
     formatInputRp(row.querySelector('.var-ritel'));
+    formatInputRp(row.querySelector('.var-grosir'));
     row.querySelector('.btn-hapus-baris-varian').addEventListener('click', () => row.remove());
     wadahVarian.appendChild(row);
   };
@@ -2544,7 +2564,11 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
       }
       for (const b of barisVarian) {
         const vNama = b.querySelector('.var-nama').value.trim();
+        const vHppInput = parseRupiah(b.querySelector('.var-hpp')?.value || '');
+        const vHpp = vHppInput > 0 ? vHppInput : hpp;
         const vRitel = parseRupiah(b.querySelector('.var-ritel').value);
+        const vGrosirInput = parseRupiah(b.querySelector('.var-grosir')?.value || '');
+        const vGrosir = vGrosirInput > 0 ? vGrosirInput : vRitel;
         if (!vNama) {
           switchTab('varian');
           b.querySelector('.var-nama').focus();
@@ -2557,10 +2581,16 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           showToast(`Harga ritel varian "${vNama}" wajib diisi!`, 'error');
           return;
         }
-        if (hpp > 0 && vRitel < hpp) {
+        if (vHpp > 0 && vRitel < vHpp) {
           switchTab('varian');
           b.querySelector('.var-ritel').focus();
-          showToast(`Harga varian "${vNama}" tidak boleh di bawah HPP!`, 'error');
+          showToast(`Harga varian "${vNama}" tidak boleh di bawah HPP (${formatRupiah(vHpp)})!`, 'error');
+          return;
+        }
+        if (vHpp > 0 && vGrosir < vHpp) {
+          switchTab('varian');
+          b.querySelector('.var-grosir')?.focus();
+          showToast(`Harga grosir varian "${vNama}" tidak boleh di bawah HPP (${formatRupiah(vHpp)})!`, 'error');
           return;
         }
 
@@ -2574,9 +2604,9 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           nama_varian: vNama,
           sku: vSku,
           barcode: vBarcode,
-          hpp: hpp,
+          hpp: vHpp,
           harga_ritel: vRitel,
-          harga_grosir: vRitel,
+          harga_grosir: vGrosir,
           stok: parseFloat(b.querySelector('.var-stok').value) || 0
         });
       }
@@ -2632,7 +2662,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
       varian, satuan_konversi
     };
 
-    const btnSimpan = $('#btn-simpan-produk', form);
+    const btnSimpan = $('#btn-simpan-produk', modal.el);
     btnSimpan.setAttribute('aria-busy', 'true');
     btnSimpan.disabled = true;
     isSubmitting = true;

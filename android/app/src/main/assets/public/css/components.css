@@ -1153,6 +1153,12 @@ input[type="password"] {
   .table-wrap:not(.keep-table) .table {
     min-width: 960px;
   }
+
+  /* Tabel ringkas 2-4 kolom di dalam grid 50/50 Laba Rugi/Dashboard tidak boleh dipaksa 960px agar bebas scrollbar horizontal */
+  .lap-grid-2col .table-wrap:not(.keep-table) .table {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* Container nilai sel bertumpuk rapi (rata kiri default, rata kanan hanya pada kolom angka desktop) */
