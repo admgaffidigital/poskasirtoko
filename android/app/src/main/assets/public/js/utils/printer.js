@@ -1437,7 +1437,7 @@ export function pasangAplikasiRawBT() {
     return;
   }
   const url = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
-  window.open(url, '_blank');
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 /**
@@ -2051,7 +2051,7 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
   modal.el.querySelector('#btn-share-jual-wa')?.addEventListener('click', () => {
     const noHp = pel ? pel.hp : (dataStruk.pelanggan_hp || '');
     const urlWa = buatTautanWhatsApp(dataStruk, noHp);
-    window.open(urlWa, '_blank');
+    window.open(urlWa, '_blank', 'noopener,noreferrer');
   });
 
   modal.el.querySelector('#btn-print-jual-faktur-a5')?.addEventListener('click', () => {
@@ -2346,7 +2346,7 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
   modal.el.querySelector('#btn-share-beli-wa')?.addEventListener('click', () => {
     const noHp = sup.hp || '';
     const urlWa = buatTautanWhatsAppPembelian(dataPembelian, noHp);
-    window.open(urlWa, '_blank');
+    window.open(urlWa, '_blank', 'noopener,noreferrer');
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-beli')?.addEventListener('click', () => {
@@ -2681,7 +2681,7 @@ export function bukaModalPilihanCetakShift(dataReport) {
   });
 
   modal.el.querySelector('#btn-share-shift-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppShift(dataReport), '_blank');
+    window.open(buatTautanWhatsAppShift(dataReport), '_blank', 'noopener,noreferrer');
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-shift')?.addEventListener('click', () => {
@@ -3155,7 +3155,7 @@ export function bukaModalCetakSuratJalan(dataStruk) {
     await kirimBytesKeBluetooth(teksKeEscPos(teks));
   });
   modal.el.querySelector('#btn-sj-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()), '_blank');
+    window.open(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()), '_blank', 'noopener,noreferrer');
   });
   modal.el.querySelector('#btn-tutup-modal-sj')?.addEventListener('click', () => modal.close());
 }
@@ -3632,7 +3632,7 @@ export function bukaModalHasilPenawaran(rab) {
 
   modal.el.querySelector('#btn-rab-hasil-a5')?.addEventListener('click', () => cetakPenawaranA5(rab));
   modal.el.querySelector('#btn-rab-hasil-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''), '_blank');
+    window.open(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''), '_blank', 'noopener,noreferrer');
   });
   modal.el.querySelector('#btn-rab-hasil-tutup')?.addEventListener('click', () => modal.close());
 }

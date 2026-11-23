@@ -377,7 +377,7 @@ export function simpanKalibrasiThermal(patch) {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(KEY_KALIBRASI_THERMAL, JSON.stringify(next));
     }
-  } catch (_) {}
+  } catch (_) { }
   return next;
 }
 
@@ -629,7 +629,7 @@ export async function kirimEscPosKeSerial(escposBytes) {
     // Reset port jika terputus agar pemilihan berikutnya bersih
     try {
       if (serialPortAktif) await serialPortAktif.close();
-    } catch (_) {}
+    } catch (_) { }
     serialPortAktif = null;
     showToast('Gagal kirim ke printer USB Serial: ' + (err?.message || 'Port sibuk/terputus'), 'error', 4500);
     return false;
@@ -767,7 +767,7 @@ function cetakHtmlThermalAutoHeight(judul, bodyHtml, ukuran = '58', kalibrasi = 
       const styleExact = doc.createElement('style');
       styleExact.textContent = `@page { size: ${lebarKertasMm}mm ${tinggiExactMm}mm; margin: 0; }`;
       doc.head.appendChild(styleExact);
-    } catch (_) {}
+    } catch (_) { }
 
     setTimeout(() => {
       printFrame.contentWindow.focus();
@@ -1175,7 +1175,7 @@ function bukaModalPratinjauThermalWeb({ judulModal, judulDokumen, bodyHtml, ukur
       try {
         const h = Math.ceil((doc.body.scrollHeight || 300) + 8);
         iframe.style.height = `${Math.max(180, Math.min(h, 680))}px`;
-      } catch (_) {}
+      } catch (_) { }
     }, 60);
     if (btnCetak) {
       btnCetak.innerHTML = `${ICONS.printer} <span>Cetak Browser (${ukuranAktif}mm)</span>`;
@@ -1437,7 +1437,7 @@ export function pasangAplikasiRawBT() {
     return;
   }
   const url = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
-  window.open(url, '_blank');
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 /**
@@ -2051,7 +2051,7 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
   modal.el.querySelector('#btn-share-jual-wa')?.addEventListener('click', () => {
     const noHp = pel ? pel.hp : (dataStruk.pelanggan_hp || '');
     const urlWa = buatTautanWhatsApp(dataStruk, noHp);
-    window.open(urlWa, '_blank');
+    window.open(urlWa, '_blank', 'noopener,noreferrer');
   });
 
   modal.el.querySelector('#btn-print-jual-faktur-a5')?.addEventListener('click', () => {
@@ -2346,7 +2346,7 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
   modal.el.querySelector('#btn-share-beli-wa')?.addEventListener('click', () => {
     const noHp = sup.hp || '';
     const urlWa = buatTautanWhatsAppPembelian(dataPembelian, noHp);
-    window.open(urlWa, '_blank');
+    window.open(urlWa, '_blank', 'noopener,noreferrer');
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-beli')?.addEventListener('click', () => {
@@ -2681,7 +2681,7 @@ export function bukaModalPilihanCetakShift(dataReport) {
   });
 
   modal.el.querySelector('#btn-share-shift-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppShift(dataReport), '_blank');
+    window.open(buatTautanWhatsAppShift(dataReport), '_blank', 'noopener,noreferrer');
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-shift')?.addEventListener('click', () => {
@@ -2961,9 +2961,9 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
       </thead>
       <tbody>
         ${daftarMuat.map((it, i) => {
-          const qtyMuat = hasilSaring.adaSisa ? it._sisa : it._qty;
-          const sudahBawaPenuh = hasilSaring.adaSisa && it._sisa <= 0;
-          return `
+    const qtyMuat = hasilSaring.adaSisa ? it._sisa : it._qty;
+    const sudahBawaPenuh = hasilSaring.adaSisa && it._sisa <= 0;
+    return `
             <tr style="${sudahBawaPenuh ? 'color: #6b7280;' : ''}">
               <td class="c">${i + 1}</td>
               <td><strong>${escapeHtml(it.nama || 'Barang')}</strong>${sudahBawaPenuh ? ' <em>(Sudah dibawa pembeli)</em>' : ''}</td>
@@ -2973,7 +2973,7 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
               <td class="c">${sudahBawaPenuh ? 'OK' : '[ &nbsp;&nbsp; ]'}</td>
             </tr>
           `;
-        }).join('')}
+  }).join('')}
       </tbody>
     </table>
 
@@ -3155,7 +3155,7 @@ export function bukaModalCetakSuratJalan(dataStruk) {
     await kirimBytesKeBluetooth(teksKeEscPos(teks));
   });
   modal.el.querySelector('#btn-sj-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()), '_blank');
+    window.open(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()), '_blank', 'noopener,noreferrer');
   });
   modal.el.querySelector('#btn-tutup-modal-sj')?.addEventListener('click', () => modal.close());
 }
@@ -3265,16 +3265,16 @@ function buatHtmlFakturA5(data) {
       </thead>
       <tbody>
         ${items.map((it, idx) => {
-          let ketKirimHtml = '';
-          if (pj.pengiriman === 'dikirim' && it.qty_dibawa !== undefined) {
-            const qTot = Number(it.qty || 0);
-            const qBawa = Math.min(qTot, Math.max(0, Number(it.qty_dibawa)));
-            const qSisa = Math.round(Math.max(0, qTot - qBawa) * 1000) / 1000;
-            if (qSisa <= 0) ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Sudah Dibawa Pembeli]</div>`;
-            else if (qBawa <= 0) ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Dikirim Toko]</div>`;
-            else ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Dibawa: ${formatQty(qBawa)}, Kirim: ${formatQty(qSisa)}]</div>`;
-          }
-          return `
+    let ketKirimHtml = '';
+    if (pj.pengiriman === 'dikirim' && it.qty_dibawa !== undefined) {
+      const qTot = Number(it.qty || 0);
+      const qBawa = Math.min(qTot, Math.max(0, Number(it.qty_dibawa)));
+      const qSisa = Math.round(Math.max(0, qTot - qBawa) * 1000) / 1000;
+      if (qSisa <= 0) ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Sudah Dibawa Pembeli]</div>`;
+      else if (qBawa <= 0) ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Dikirim Toko]</div>`;
+      else ketKirimHtml = `<div style="font-size: 8.5px; color: #374151;">[Dibawa: ${formatQty(qBawa)}, Kirim: ${formatQty(qSisa)}]</div>`;
+    }
+    return `
           <tr>
             <td class="c">${idx + 1}</td>
             <td><strong>${escapeHtml(it.nama || 'Barang')}</strong>${ketKirimHtml}</td>
@@ -3285,7 +3285,7 @@ function buatHtmlFakturA5(data) {
             <td class="r"><strong>${formatRupiah(it.subtotal || 0)}</strong></td>
           </tr>
         `;
-        }).join('')}
+  }).join('')}
       </tbody>
     </table>
 
@@ -3632,7 +3632,7 @@ export function bukaModalHasilPenawaran(rab) {
 
   modal.el.querySelector('#btn-rab-hasil-a5')?.addEventListener('click', () => cetakPenawaranA5(rab));
   modal.el.querySelector('#btn-rab-hasil-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''), '_blank');
+    window.open(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''), '_blank', 'noopener,noreferrer');
   });
   modal.el.querySelector('#btn-rab-hasil-tutup')?.addEventListener('click', () => modal.close());
 }

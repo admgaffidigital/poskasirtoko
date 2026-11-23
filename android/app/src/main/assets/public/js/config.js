@@ -9,11 +9,11 @@ const LOCAL_OVERRIDE_URL = typeof localStorage !== 'undefined' ? localStorage.ge
 export const CONFIG = {
   APP_NAME: 'POS Kasir Toko Bangunan',
   APP_SHORT_NAME: 'POS Toko',
-  VERSION: '1.0.117',
+  VERSION: '1.0.118',
   // URL deployment Web App live
   API_URL: LOCAL_OVERRIDE_URL || DEFAULT_API_URL,
   API_TIMEOUT_MS: 30000,
-  DEBUG: true
+  DEBUG: false
 };
 
 /**

@@ -4094,7 +4094,7 @@ export function renderPosModule(container) {
       elRoot.querySelectorAll('.btn-rab-wa').forEach((btn) => {
         btn.addEventListener('click', () => {
           const q = rabItems.find((x) => x.id === btn.getAttribute('data-id'));
-          if (q) window.open(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''), '_blank');
+          if (q) window.open(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''), '_blank', 'noopener,noreferrer');
         });
       });
 

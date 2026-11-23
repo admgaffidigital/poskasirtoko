@@ -1153,7 +1153,7 @@ function bukaChatWhatsApp(hp, nama) {
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
   const pesan = `Halo Bpk/Ibu *${nama || ''}*, salam dari *${namaToko}*. Ada yang dapat kami bantu seputar kebutuhan belanja / pesanan Anda?`;
   const url = `https://wa.me/${cleanHp}?text=${encodeURIComponent(pesan)}`;
-  window.open(url, '_blank');
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 /* ========================================================================== */
@@ -1180,7 +1180,7 @@ function bukaBuktiTitipanWA(pel, dataBukti, jenis) {
 
   const encoded = encodeURIComponent(pesan);
   const url = cleanHp ? `https://wa.me/${cleanHp}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-  window.open(url, '_blank');
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function bukaModalTerimaTitipan(pel, onSuccess) {

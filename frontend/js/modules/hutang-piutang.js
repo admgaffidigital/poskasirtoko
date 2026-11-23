@@ -1186,7 +1186,7 @@ function kirimPesanWhatsAppTagihan(piutang, semuaPiutangPelanggan = []) {
   }
 
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
-  const bukaWa = (teks) => window.open(`https://wa.me/${hp}?text=${encodeURIComponent(teks)}`, '_blank');
+  const bukaWa = (teks) => window.open(`https://wa.me/${hp}?text=${encodeURIComponent(teks)}`, '_blank', 'noopener,noreferrer');
 
   const buatPesanSatuNota = () => {
     const tglJatuhTempo = piutang.jatuh_tempo ? formatTanggal(piutang.jatuh_tempo) : 'segera';

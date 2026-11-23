@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.117';
+const CACHE_NAME = 'pos-kasir-static-v1.0.118';
 
 const ASSETS = [
   './',
@@ -117,13 +117,18 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // Jangan pernah cache request ke Google Script API atau domain luar non-statis
-  if (url.hostname.includes('script.google.com') || url.hostname.includes('googleusercontent.com')) {
+  // Jangan pernah cache request ke Google Script API, localhost/POS USB Bridge, atau domain luar non-statis
+  if (
+    url.hostname.includes('script.google.com') ||
+    url.hostname.includes('googleusercontent.com') ||
+    url.hostname === '127.0.0.1' ||
+    url.hostname === 'localhost'
+  ) {
     return;
   }
 
-  // Jangan cache file biner instalasi APK
-  if (url.pathname.endsWith('.apk')) {
+  // Jangan cache file biner instalasi APK atau paket unduhan Bridge Windows
+  if (url.pathname.endsWith('.apk') || url.pathname.endsWith('.bat')) {
     return;
   }
 

@@ -2823,7 +2823,7 @@ export function renderPosModule(container) {
             id: rabIdKonversi,
             penjualan_id: res.data?.penjualan?.id || '',
             no_nota: res.data?.penjualan?.no_nota || ''
-          }).catch(() => {});
+          }).catch(() => { });
         }
 
         // Tampilkan modal struk sukses
@@ -3987,7 +3987,7 @@ export function renderPosModule(container) {
 
         <div class="stack" style="gap: var(--sp-2); max-height: 380px; overflow-y: auto;">
           ${tabAktifList === 'pending' ? (
-            pendingItems.length === 0 ? `
+          pendingItems.length === 0 ? `
               <div class="empty-state text-center" style="padding: var(--sp-6); color: var(--text-muted);">
                 Tidak ada transaksi yang sedang ditahan.
               </div>
@@ -4009,18 +4009,18 @@ export function renderPosModule(container) {
                 </div>
               </div>
             `).join('')
-          ) : (
-            rabItems.length === 0 ? `
+        ) : (
+          rabItems.length === 0 ? `
               <div class="empty-state text-center" style="padding: var(--sp-6); color: var(--text-muted);">
                 Belum ada Penawaran Harga (RAB) tersimpan. Klik tombol <strong>RAB</strong> di bawah keranjang untuk membuat estimasi harga proyek.
               </div>
             ` : rabItems.map((q) => {
-              const badgeSt = q.status === 'dikonversi'
-                ? `<span class="badge badge-success">Jadi Nota ${escapeHtml(q.no_nota_konversi || '')}</span>`
-                : (q.kedaluwarsa
-                  ? '<span class="badge badge-warning">Kedaluwarsa</span>'
-                  : '<span class="badge badge-info">Aktif</span>');
-              return `
+            const badgeSt = q.status === 'dikonversi'
+              ? `<span class="badge badge-success">Jadi Nota ${escapeHtml(q.no_nota_konversi || '')}</span>`
+              : (q.kedaluwarsa
+                ? '<span class="badge badge-warning">Kedaluwarsa</span>'
+                : '<span class="badge badge-info">Aktif</span>');
+            return `
                 <div class="card" style="background: var(--surface-2); padding: var(--sp-3);">
                   <div class="row" style="justify-content: space-between; align-items: flex-start; gap: var(--sp-2);">
                     <div>
@@ -4053,8 +4053,8 @@ export function renderPosModule(container) {
                   </div>
                 </div>
               `;
-            }).join('')
-          )}
+          }).join('')
+        )}
         </div>
       `;
 
@@ -4094,7 +4094,7 @@ export function renderPosModule(container) {
       elRoot.querySelectorAll('.btn-rab-wa').forEach((btn) => {
         btn.addEventListener('click', () => {
           const q = rabItems.find((x) => x.id === btn.getAttribute('data-id'));
-          if (q) window.open(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''), '_blank');
+          if (q) window.open(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''), '_blank', 'noopener,noreferrer');
         });
       });
 

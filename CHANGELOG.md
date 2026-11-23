@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.118] - 2026-11-23
+### Maintenance & Perawatan Total Website + Aplikasi
+- **Service Worker Bypass POS USB Bridge & Unduhan (`sw.js`)**: Request ke `127.0.0.1` / `localhost` (POS USB Bridge Windows) serta file unduhan `.bat` kini dibypass langsung dari Service Worker agar status koneksi printer lokal selalu real-time dan unduhan bridge selalu versi terbaru.
+- **Hardening Keamanan Web (`hutang-piutang.js`, `pelanggan.js`, `pos.js`, `printer.js`, `config.js`)**: Menambahkan `noopener,noreferrer` pada seluruh 10 tautan eksternal `window.open(..., '_blank')` (anti-tabnabbing) dan menonaktifkan flag `CONFIG.DEBUG` untuk mode produksi bersih.
+- **Optimasi Repositori & Audit Menyeluruh**: Terverifikasi live backend GAS (`db_siap: true`, 30 sheet), 0 kerentanan dependensi produksi (`npm audit --omit=dev`), 43/43 precache PWA sinkron, serta kompresi & pembersihan objek Git (`git gc --prune=now`).
+
 ## [1.0.117] - 2026-11-23
 ### Ditambahkan — Direct POS USB (ESC/POS Native) untuk Desktop Kasir
 - **POS USB Bridge Windows Tanpa Install (`tools/pos-usb-bridge/`, `frontend/download/POS-Kasir-USB-Bridge.bat`)**: Bridge lokal ultra-ringan berbasis Windows PowerShell + Win32 `winspool.drv` RAW ESC/POS passthrough (0 dependensi, tanpa Node.js/Java/QZ Tray/ganti driver Zadig) untuk mencetak 1-klik langsung ke printer thermal USB Windows (Eppos, Panda, VSC, Blueprint, Xprinter, Epson TM-T82, POS-58, POS-80).
