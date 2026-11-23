@@ -989,7 +989,9 @@ export async function bukaModalKatalogPdf(params = {}) {
           </div>
 
           <div class="katalog-a4-stage" id="stage-katalog-a4">
-            <iframe id="iframe-katalog-a4" title="Pratinjau Katalog Produk PDF A4"></iframe>
+            <div class="katalog-a4-viewport" id="viewport-katalog-a4">
+              <iframe id="iframe-katalog-a4" title="Pratinjau Katalog Produk PDF A4"></iframe>
+            </div>
           </div>
         </div>
       </div>
@@ -1020,6 +1022,8 @@ export async function bukaModalKatalogPdf(params = {}) {
   const selKatFilter = modal.el.querySelector('#sel-kat-filter');
   const selPreset = modal.el.querySelector('#sel-katalog-preset');
   const btnHapusPreset = modal.el.querySelector('#btn-hapus-preset-kat');
+  const stageA4 = modal.el.querySelector('#stage-katalog-a4');
+  const viewportA4 = modal.el.querySelector('#viewport-katalog-a4');
   const iframeA4 = modal.el.querySelector('#iframe-katalog-a4');
 
   const ambilDaftarTerpilih = () => stateKat.semuaProduk.filter((p) => stateKat.terpilihIds.has(p.id));
@@ -1135,6 +1139,36 @@ export async function bukaModalKatalogPdf(params = {}) {
     stateKat.opsi.showSku = Boolean(modal.el.querySelector('#chk-kat-sku')?.checked);
   };
 
+  /** Sesuaikan skala proporsional A4 (794px) agar pas di layar HP maupun PC tanpa geser horizontal */
+  const sesuaikanSkalaPreviewA4 = () => {
+    if (!stageA4 || !viewportA4 || !iframeA4) return;
+    const lebarStage = Math.max(240, (stageA4.clientWidth || 320) - 18);
+    const lebarA4Px = 794;
+    const scale = Math.min(1, lebarStage / lebarA4Px);
+    let tinggiKonten = 560;
+    try {
+      const doc = iframeA4.contentWindow?.document;
+      if (doc && doc.body) {
+        tinggiKonten = Math.max(420, Math.ceil((doc.documentElement?.scrollHeight || doc.body.scrollHeight || 560) + 16));
+      }
+    } catch (_) {}
+    iframeA4.style.width = `${lebarA4Px}px`;
+    iframeA4.style.height = `${tinggiKonten}px`;
+    iframeA4.style.transform = `scale(${scale.toFixed(4)})`;
+    viewportA4.style.width = `${Math.round(lebarA4Px * scale)}px`;
+    viewportA4.style.height = `${Math.round(tinggiKonten * scale)}px`;
+  };
+
+  let resizeObsA4 = null;
+  if (typeof ResizeObserver !== 'undefined' && stageA4) {
+    resizeObsA4 = new ResizeObserver(() => {
+      if (stateKat.tab === 'preview') sesuaikanSkalaPreviewA4();
+    });
+    resizeObsA4.observe(stageA4);
+  }
+  const onResizeA4 = () => { if (stateKat.tab === 'preview') sesuaikanSkalaPreviewA4(); };
+  window.addEventListener('resize', onResizeA4);
+
   const renderPreviewA4 = () => {
     if (!iframeA4) return;
     bacaOpsiForm();
@@ -1147,6 +1181,14 @@ export async function bukaModalKatalogPdf(params = {}) {
       doc.write(buatHtmlKatalogPdf(terpilih, stateKat.opsi, petaKategori));
     }
     doc.close();
+    // Skala ulang setelah render & setelah gambar termuat agar tinggi A4 100% pas
+    setTimeout(sesuaikanSkalaPreviewA4, 50);
+    setTimeout(sesuaikanSkalaPreviewA4, 350);
+    try {
+      doc.querySelectorAll('img').forEach((im) => {
+        im.addEventListener('load', sesuaikanSkalaPreviewA4, { once: true });
+      });
+    } catch (_) {}
   };
 
   const pindahTab = (tabNama) => {
@@ -1319,7 +1361,11 @@ export async function bukaModalKatalogPdf(params = {}) {
     window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener,noreferrer');
   });
 
-  modal.el.querySelector('#btn-tutup-katalog-pdf')?.addEventListener('click', () => modal.close());
+  modal.el.querySelector('#btn-tutup-katalog-pdf')?.addEventListener('click', () => {
+    if (resizeObsA4) resizeObsA4.disconnect();
+    window.removeEventListener('resize', onResizeA4);
+    modal.close();
+  });
 
   perbaruiCounter();
   if (stateKat.tab === 'preview') renderPreviewA4();

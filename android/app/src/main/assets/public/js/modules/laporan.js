@@ -233,7 +233,7 @@ function pasangEventHeader(container) {
       const badgeAktif = $('#badge-periode-aktif', container);
       if (badgeAktif) {
         badgeAktif.innerHTML = `
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          ${ICONS.calendar}
           <span>${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}</span>
         `;
       }
@@ -274,7 +274,7 @@ function pasangEventHeader(container) {
       const badgeAktif = $('#badge-periode-aktif', container);
       if (badgeAktif) {
         badgeAktif.innerHTML = `
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          ${ICONS.calendar}
           <span>${formatTanggal(stateLaporan.dari)} s/d ${formatTanggal(stateLaporan.sampai)}</span>
         `;
       }
@@ -423,7 +423,7 @@ function renderErrorState(pesan) {
   return `
     <div class="card" style="padding: var(--sp-6); text-align: center; border-color: var(--danger);">
       <div style="font-size: var(--fs-xl); color: var(--danger); margin-bottom: var(--sp-2); display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+        <span style="width: 22px; height: 22px; display: inline-flex;">${ICONS.alertTriangle}</span>
         <span>Gagal Memuat Data</span>
       </div>
       <p style="color: var(--text-muted); font-size: var(--fs-sm);">${escapeHtml(pesan)}</p>
@@ -640,7 +640,7 @@ function renderTabDashboard(container, data) {
           <div class="dash-list">
             ${stokKritis.length === 0 ? `
               <div class="text-xs text-center" style="color: var(--success-text); padding: var(--sp-5); display: flex; align-items: center; justify-content: center; gap: 6px;">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                ${ICONS.checkCircle}
                 <span>Semua stok barang dalam batas aman</span>
               </div>
             ` : stokKritis.map((s, idx) => `
@@ -1069,7 +1069,7 @@ function konfirmasiVoidNota(penjualanId, noNota, totalFormatted, onSelesai) {
           </ul>
           ${isAdmin ? `
             <div style="margin-top: 6px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--fs-xs); display: flex; align-items: flex-start; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <span style="width: 14px; height: 14px; display: inline-flex; flex-shrink: 0; margin-top: 2px;">${ICONS.info}</span>
               <span><strong>Catatan Admin:</strong> Sesuai SOP, Admin hanya dapat membatalkan transaksi hari ini. Untuk transaksi tanggal lampau silakan hubungi Pemilik Toko.</span>
             </div>
           ` : ''}

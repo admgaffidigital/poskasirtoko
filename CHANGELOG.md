@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.122] - 2026-11-23
+### Disempurnakan — Auto-Fit Pratinjau A4 Katalog PDF & Penyatuan 100% Ikon SVG
+- **Skala Auto-Fit Pratinjau Katalog PDF A4 di HP & PC (`katalog-pdf.js`, `components.css`)**: Pratinjau dokumen A4 (`794px`) kini otomatis menyesuaikan skala proporsional via `ResizeObserver` mengikuti lebar layar HP, tablet, maupun PC (0 scroll horizontal, mulus di-scroll vertikal, dan tinggi otomatis pas setelah foto termuat).
+- **Penyatuan 100% Ikon SVG ke `ICONS.*` (`ui.js` + seluruh 8 modul)**: Menambahkan 5 ikon baru (`chevronsUpDown`, `chevronsDownUp`, `arrowRight`, `image`, `camera`) ke kamus terpusat `ICONS` dan mengganti seluruh 58 ikon `<svg>` inline yang tersisa di `kartu-stok.js`, `kategori.js`, `laporan.js`, `pelanggan.js`, `pembelian.js`, `pengaturan.js`, `pos.js`, dan `produk.js` (0 ikon duplikat manual).
+
 ## [1.0.121] - 2026-11-23
 ### Disempurnakan — Presisi Edge-Case & Tata Letak Katalog PDF A4
 - **Filter Kategori Induk + Sub-Kategori (`katalog-pdf.js`)**: Memilih kategori induk pada Generator Katalog PDF kini otomatis menyertakan seluruh sub-kategorinya dengan label hierarki rapi (`Induk › Sub`).

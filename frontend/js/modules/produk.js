@@ -192,19 +192,19 @@ export async function renderProdukModule(container) {
               Semua Produk
             </button>
             <button type="button" class="btn btn-xs ${filterState.sort === 'terbaru' && !filterState.filter_stok ? 'btn-primary' : 'btn-secondary'}" data-chip="terbaru" style="display: inline-flex; align-items: center; gap: 4px;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              ${ICONS.zap}
               <span>Terbaru</span>
             </button>
             <button type="button" class="btn btn-xs ${filterState.filter_stok === 'menipis' ? 'btn-warning' : 'btn-secondary'}" data-chip="menipis" style="display: inline-flex; align-items: center; gap: 4px;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              ${ICONS.alertTriangle}
               <span>Stok Menipis</span>
             </button>
             <button type="button" class="btn btn-xs ${filterState.filter_stok === 'habis' ? 'btn-danger' : 'btn-secondary'}" data-chip="habis" style="display: inline-flex; align-items: center; gap: 4px;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+              ${ICONS.xCircle}
               <span>Stok Habis</span>
             </button>
             <button type="button" class="btn btn-xs ${filterState.filter_stok === 'tersedia' ? 'btn-primary' : 'btn-secondary'}" data-chip="tersedia" style="display: inline-flex; align-items: center; gap: 4px;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              ${ICONS.checkCircle}
               <span>Ada Stok</span>
             </button>
           </div>
@@ -814,19 +814,19 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               <td style="text-align: right; width: 175px; min-width: 170px; white-space: nowrap;" data-label="Aksi">
                 <div class="table-actions" style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px;">
                   <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    ${ICONS.zap}
                     <span>Cepat</span>
                   </button>
                   <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px; border: 1px solid var(--border-strong);">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    ${ICONS.edit}
                     <span>Ubah</span>
                   </button>
                   <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    ${ICONS.copy}
                     <span>Salin</span>
                   </button>
                   <button type="button" class="btn btn-outline-danger btn-xs btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="padding: 0 5px; height: 26px; min-height: 26px;">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    ${ICONS.trash}
                     <span class="d-none-desktop">Hapus</span>
                   </button>
                 </div>
@@ -898,19 +898,19 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             ${canEdit ? `
               <div class="table-actions" style="display: flex; align-items: center; width: 100%; gap: 4px; margin-top: var(--sp-2);">
                 <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  ${ICONS.zap}
                   <span>Cepat</span>
                 </button>
                 <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px; border: 1px solid var(--border-strong);">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                  ${ICONS.edit}
                   <span>Ubah</span>
                 </button>
                 <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  ${ICONS.copy}
                   <span>Salin</span>
                 </button>
                 <button type="button" class="btn btn-outline-danger btn-xs btn-del-prd" data-id="${p.id}" data-nama="${escapeHtml(p.nama)}" title="Hapus Produk" style="width: 32px; height: 32px; flex-shrink: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  ${ICONS.trash}
                 </button>
               </div>
             ` : ''}
@@ -1837,7 +1837,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
             <div id="prd-foto-preview-box" style="width: 90px; height: 90px; border-radius: var(--radius-lg); border: 2px dashed var(--border); display: grid; place-items: center; overflow: hidden; background: var(--surface-2); position: relative; flex-shrink: 0;">
               <img src="${hasData && pData.foto_url ? escapeHtml(pData.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${hasData && pData.foto_url ? '' : 'display: none;'}">
               <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${hasData && pData.foto_url ? 'display: none;' : ''}">
-                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                <span style="width: 26px; height: 26px; display: inline-flex;">${ICONS.image}</span>
                 <div style="font-size: 9px; margin-top: 2px;">Belum Ada</div>
               </div>
               <div id="prd-foto-loading" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.65); place-items: center; color: #fff; font-size: 11px; font-weight: 500;">
@@ -1849,15 +1849,15 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
             <div class="stack" style="gap: var(--sp-1); flex: 1; min-width: 200px;">
               <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-pilih-foto" style="display: inline-flex; align-items: center; gap: 6px;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  ${ICONS.image}
                   <span>Pilih Galeri</span>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-kamera-foto" style="display: inline-flex; align-items: center; gap: 6px;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                  ${ICONS.camera}
                   <span>Kamera</span>
                 </button>
                 <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-hapus-foto" style="${hasData && pData.foto_url ? '' : 'display: none;'} display: inline-flex; align-items: center; gap: 4px;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  ${ICONS.trash}
                   <span>Hapus</span>
                 </button>
               </div>
@@ -1878,7 +1878,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <div class="field">
             <div class="row items-center justify-between" style="margin-bottom: 4px;">
               <label class="field-label" for="prd-sku" style="margin-bottom: 0;">Kode SKU</label>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>
             </div>
             <input type="text" class="input mono uppercase" id="prd-sku" value="${isEdit ? escapeHtml(pData.sku || '') : ''}" placeholder="Auto (cth: SKU-20261113-0001)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
@@ -1886,7 +1886,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <div class="field">
             <div class="row items-center justify-between" style="margin-bottom: 4px;">
               <label class="field-label" for="prd-barcode" style="margin-bottom: 0;">Barcode</label>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg><span>Auto</span></button>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>
             </div>
             <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(pData.barcode || '') : ''}" placeholder="Auto (13 digit EAN-13)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>

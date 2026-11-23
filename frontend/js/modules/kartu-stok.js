@@ -65,7 +65,7 @@ export async function renderKartuStokModule(container) {
           <div class="row items-center" style="gap: var(--sp-2);">
             ${isOwner ? `
               <button type="button" class="btn btn-outline-danger btn-sm" id="btn-bersihkan-sampah-ks" title="Bersihkan Mutasi Produk Terhapus (Khusus Owner)" style="display: inline-flex; align-items: center; gap: 6px; height: 40px; white-space: nowrap; padding: 0 12px;">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                ${ICONS.trash}
                 <span>Bersihkan Sampah</span>
               </button>
             ` : ''}
@@ -305,7 +305,7 @@ async function muatDataKartuStok(container) {
             <td data-label="Aksi" style="text-align: center; white-space: nowrap;">
               <div class="table-actions">
                 <button type="button" class="btn btn-outline-danger btn-xs btn-del-ks" data-id="${ks.id}" data-nama="${escapeHtml(ks.produk_nama)}" data-ref="${escapeHtml(ks.ref_id || '-')}" title="Hapus Catatan Mutasi (Khusus Owner)" style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 4px 8px; border-radius: var(--radius-sm);">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  ${ICONS.trash}
                   <span class="d-none-desktop">Hapus Catatan Mutasi</span>
                 </button>
               </div>

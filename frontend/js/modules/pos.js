@@ -71,11 +71,11 @@ export function renderPosModule(container) {
     <!-- Navigasi Tab Mobile (Hanya muncul di HP / Layar < 992px) -->
     <div class="pos-mobile-nav segmented no-print" role="tablist">
       <button type="button" id="pos-tab-catalog" class="active" aria-pressed="true">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        ${ICONS.grid}
         <span>Katalog</span>
       </button>
       <button type="button" id="pos-tab-cart" aria-pressed="false">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        ${ICONS.cart}
         <span>Keranjang</span>
         <span class="badge badge-primary" id="mobile-cart-badge" style="display: none; padding: 2px 7px; font-size: 11px;">0</span>
       </button>
@@ -98,7 +98,7 @@ export function renderPosModule(container) {
               </button>
             </div>
             <button type="button" id="btn-scan-camera" class="btn btn-secondary btn-icon" style="border-radius: var(--radius-full); width: var(--control-h); height: var(--control-h); flex-shrink: 0;" title="Scan Barcode Kamera">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="6" x="7" y="9" rx="1"/></svg>
+              ${ICONS.scan}
             </button>
           </div>
 
@@ -170,7 +170,7 @@ export function renderPosModule(container) {
               <span id="dot-pos-shift-aktif" style="display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0;"></span>
             </button>
             <button type="button" id="btn-pos-kas-keluar" class="pos-quick-btn" title="Catat Pengeluaran Kasir / Petty Cash">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              ${ICONS.tag}
               <span>Biaya</span>
             </button>
             <button type="button" id="btn-pos-reprint" class="pos-quick-btn" title="Cetak Ulang Transaksi Terakhir (F9)">
@@ -209,7 +209,7 @@ export function renderPosModule(container) {
         <div class="pos-cart-items" id="pos-cart-items">
           <div class="pos-cart-empty">
             <div class="pos-empty-icon-wrap">
-              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+              <span style="width: 36px; height: 36px; display: inline-flex;">${ICONS.cart}</span>
             </div>
             <div class="pos-empty-title">Keranjang masih kosong</div>
             <div class="pos-empty-sub">Pilih produk dari katalog atau scan barcode<span class="d-none-mobile"> (F2)</span></div>
@@ -285,7 +285,7 @@ export function renderPosModule(container) {
     <div class="pos-mobile-floating-cart no-print" id="pos-floating-cart" style="display: none;">
       <div class="row" style="align-items: center; gap: var(--sp-3);">
         <div class="pos-floating-icon" style="background: var(--primary-soft); color: var(--primary); width: 38px; height: 38px; border-radius: var(--radius-md); display: grid; place-items: center; flex-shrink: 0;">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          ${ICONS.cart}
         </div>
         <div>
           <div class="fw-bold mono" id="floating-cart-total" style="font-size: var(--fs-md); color: var(--primary); line-height: 1.2;">Rp 0</div>
@@ -294,7 +294,7 @@ export function renderPosModule(container) {
       </div>
       <button type="button" class="btn btn-primary" id="btn-floating-view-cart" style="font-weight: var(--fw-bold); padding: 7px 15px; border-radius: var(--radius-full); box-shadow: var(--shadow-sm);">
         <span>Bayar / Cek</span>
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        ${ICONS.arrowRight}
       </button>
     </div>
   `;
@@ -739,7 +739,7 @@ export function renderPosModule(container) {
       elProductArea.innerHTML = `
         <div class="empty-state text-center" style="padding: var(--sp-8); color: var(--text-muted); width: 100%; border: 1px dashed var(--border); border-radius: var(--radius-xl); background: var(--surface);">
           <div style="margin-bottom: var(--sp-2); display: flex; justify-content: center; color: var(--text-muted); opacity: 0.4;">
-            <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <span style="width: 38px; height: 38px; display: inline-flex;">${ICONS.search}</span>
           </div>
           <div class="fw-semibold text-base" style="color: var(--text);">Tidak ada produk yang cocok</div>
           <div class="text-xs text-muted" style="margin-top: 4px;">Coba ubah kata kunci pencarian atau pilih kategori lain</div>
@@ -797,19 +797,11 @@ export function renderPosModule(container) {
             ${p.foto_url ? `
               <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
               <div class="pos-card-icon-wrap" style="display: none;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                </svg>
+                ${ICONS.box}
               </div>
             ` : `
               <div class="pos-card-icon-wrap">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                </svg>
+                ${ICONS.box}
               </div>
             `}
             ${infoOpsi ? `<div class="pos-card-badges-left">${infoOpsi}</div>` : ''}
@@ -840,7 +832,7 @@ export function renderPosModule(container) {
               </div>
 
               <button type="button" class="pos-card-add-btn" data-id="${p.id}" title="Tambah" aria-label="Tambah">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                ${ICONS.plus}
               </button>
             </div>
           </div>
@@ -853,7 +845,7 @@ export function renderPosModule(container) {
       html += `
         <div class="pos-load-more-wrap" style="grid-column: 1 / -1; width: 100%; text-align: center; padding: var(--sp-4) var(--sp-2);">
           <button type="button" class="btn btn-secondary btn-pos-load-more" id="btn-load-more-pos" style="min-width: 250px; font-weight: 600; padding: 12px 24px; border-radius: var(--radius-lg); gap: 8px; box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; justify-content: center;">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            ${ICONS.plus}
             <span>Muat Lebih Banyak (${items.length} dari ${state.totalProduk || items.length} produk)</span>
           </button>
         </div>
@@ -861,7 +853,7 @@ export function renderPosModule(container) {
     } else if (items.length > 0 && state.totalProduk > state.pageSize) {
       html += `
         <div class="pos-load-all-wrap text-center text-xs text-muted" style="grid-column: 1 / -1; width: 100%; padding: var(--sp-3); display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          ${ICONS.check}
           <span>Semua ${items.length} produk telah dimuat</span>
         </div>
       `;
@@ -913,17 +905,9 @@ export function renderPosModule(container) {
           <div class="pos-list-avatar">
             ${p.foto_url ? `
               <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" style="display: none;">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                <line x1="12" y1="22.08" x2="12" y2="12"></line>
-              </svg>
+              <span style="width: 24px; height: 24px; display: none; align-items: center; justify-content: center;">${ICONS.box}</span>
             ` : `
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                <line x1="12" y1="22.08" x2="12" y2="12"></line>
-              </svg>
+              <span style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;">${ICONS.box}</span>
             `}
           </div>
 
@@ -948,7 +932,7 @@ export function renderPosModule(container) {
               <span class="pos-list-unit">/${escapeHtml(p.satuan_dasar)}</span>
             </div>
             <button type="button" class="btn btn-primary btn-sm pos-btn-tambah-pill" data-id="${p.id}">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              ${ICONS.plus}
               <span>Tambah</span>
             </button>
           </div>
@@ -961,7 +945,7 @@ export function renderPosModule(container) {
       html += `
         <div class="pos-load-more-wrap" style="width: 100%; text-align: center; padding: var(--sp-4) var(--sp-2);">
           <button type="button" class="btn btn-secondary btn-pos-load-more" id="btn-load-more-pos" style="min-width: 250px; font-weight: 600; padding: 12px 24px; border-radius: var(--radius-lg); gap: 8px; box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; justify-content: center;">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            ${ICONS.plus}
             <span>Muat Lebih Banyak (${items.length} dari ${state.totalProduk || items.length} produk)</span>
           </button>
         </div>
@@ -969,7 +953,7 @@ export function renderPosModule(container) {
     } else if (items.length > 0 && state.totalProduk > state.pageSize) {
       html += `
         <div class="pos-load-all-wrap text-center text-xs text-muted" style="width: 100%; padding: var(--sp-3); display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          ${ICONS.check}
           <span>Semua ${items.length} produk telah dimuat</span>
         </div>
       `;
@@ -1299,7 +1283,7 @@ export function renderPosModule(container) {
       elCartItems.innerHTML = `
         <div class="pos-cart-empty">
           <div class="pos-empty-icon-wrap">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            <span style="width: 36px; height: 36px; display: inline-flex;">${ICONS.cart}</span>
           </div>
           <div class="pos-empty-title">Keranjang masih kosong</div>
           <div class="pos-empty-sub">Pilih produk dari katalog atau scan barcode (F2)</div>
@@ -1329,7 +1313,7 @@ export function renderPosModule(container) {
         badgeSatuanHtml = `
           <button type="button" class="badge badge-sm btn-ganti-satuan-item" data-idx="${idx}" title="Ganti Satuan Jual (${escapeHtml(it.satuan)})" style="cursor: pointer; background: var(--primary-soft); color: var(--primary-soft-text); border: 1px solid var(--primary); display: inline-flex; align-items: center; gap: 3px; font-weight: var(--fw-semibold);">
             <span>${escapeHtml(it.satuan)}</span>
-            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+            <span style="width: 11px; height: 11px; display: inline-flex;">${ICONS.chevronDown}</span>
           </button>
         `;
       }
@@ -1951,7 +1935,7 @@ export function renderPosModule(container) {
         <div class="stack" style="gap: var(--sp-3);">
           <div class="row" style="gap: var(--sp-2);">
             <button type="button" class="btn btn-sm ${!state.pelanggan ? 'btn-primary' : 'btn-secondary'}" id="btn-pilih-umum" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              ${ICONS.user}
               <span>Pelanggan Umum (Tanpa Member)</span>
             </button>
           </div>
@@ -2166,11 +2150,11 @@ export function renderPosModule(container) {
               <label class="form-label fw-bold">Opsi Pengiriman:</label>
               <div class="row" style="gap: var(--sp-2);">
                 <button type="button" class="btn btn-sm ${state.pengiriman === 'ambil' ? 'btn-primary' : 'btn-secondary'} btn-opt-kirim" data-kirim="ambil" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
+                  ${ICONS.store}
                   <span>Ambil di Toko</span>
                 </button>
                 <button type="button" class="btn btn-sm ${state.pengiriman === 'dikirim' ? 'btn-primary' : 'btn-secondary'} btn-opt-kirim" data-kirim="dikirim" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+                  ${ICONS.truck}
                   <span>Dikirim Toko</span>
                 </button>
               </div>

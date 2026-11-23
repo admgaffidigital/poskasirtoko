@@ -115,11 +115,11 @@ export async function renderKategoriModule(container) {
 
           <div class="row" style="gap: 6px; align-items: center;">
             <button type="button" class="btn btn-ghost btn-xs text-muted" id="btn-expand-all" title="Buka Semua Sub Kategori">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+              ${ICONS.chevronsUpDown}
               <span>Buka Semua</span>
             </button>
             <button type="button" class="btn btn-ghost btn-xs text-muted" id="btn-collapse-all" title="Lipat Semua Sub Kategori">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 5-5 5 5"/><path d="m7 13 5 5 5-5"/></svg>
+              ${ICONS.chevronsDownUp}
               <span>Lipat Semua</span>
             </button>
           </div>
