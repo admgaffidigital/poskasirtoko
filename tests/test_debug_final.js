@@ -1695,6 +1695,80 @@ async function runAudit() {
       `shift.list wajib merangkum 1 shift ditutup dengan selisih -5000, aktual: ${JSON.stringify(listOwner.ringkasan)}`);
   });
 
+  // =========================================================================
+  // TEST 22: ANTREAN PENGIRIMAN, SURAT JALAN, & KIRIM BERTAHAP (BON BARANG)
+  // =========================================================================
+  test('22. Antrean Pengiriman & Bon Barang Bertahap: Status Menunggu -> Sebagian -> Selesai', () => {
+    const envKrm = setupMockEnv();
+    envKrm.setupDatabase();
+    const ownerRow = envKrm.bacaSemua_('Users').find((u) => u.role === 'owner');
+    const prod = envKrm.tambahBaris_('Produk', [{
+      sku: 'SKU-KRM-1', nama: 'Semen Tiga Roda 50kg', satuan_dasar: 'SAK',
+      hpp: 55000, harga_ritel: 70000, stok: 100, aktif: true
+    }], ownerRow.id)[0];
+
+    // 22a. Penjualan dikirim 50 sak -> otomatis status_antar = 'belum_dikirim' & muncul di pengiriman.list
+    const jualKirim = envKrm.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pengiriman: 'dikirim',
+        alamat_kirim: 'Proyek Ruko Jl. Merdeka No. 8',
+        ongkir: 50000,
+        items: [{ produk_id: prod.id, satuan: 'SAK', faktor: 1, qty: 50, qty_dibawa: 0, harga: 70000, tipe_harga: 'ritel' }],
+        pembayaran: [{ metode: 'tunai', jumlah: 3550000 }]
+      }
+    });
+    assert(jualKirim.penjualan.status_antar === 'belum_dikirim',
+      `Penjualan dikirim wajib berstatus awal belum_dikirim, aktual: ${jualKirim.penjualan.status_antar}`);
+
+    const antrean1 = envKrm.aksiPengirimanList_({ user: ownerRow, payload: {} });
+    assert(antrean1.items.length === 1 && antrean1.ringkasan.belum_dikirim === 1 && antrean1.items[0].total_qty_sisa === 50,
+      'Antrean pengiriman wajib mencatat 1 nota menunggu kirim dengan sisa 50 sak');
+
+    // 22b. Kirim bertahap 20 sak dulu (status 'sebagian') -> qty_dibawa = 20, sisa_kirim = 30
+    const itemId = antrean1.items[0].items[0].id;
+    const updSebagian = envKrm.aksiPengirimanUpdateStatus_({
+      user: ownerRow,
+      payload: {
+        id: jualKirim.penjualan.id,
+        status_antar: 'sebagian',
+        sopir: 'Pak Budi',
+        catatan_kirim: 'Kirim kloter 1',
+        items_kirim: [{ item_id: itemId, qty_dibawa: 20 }]
+      }
+    });
+    assert(updSebagian.penjualan.status_antar === 'sebagian', 'Status wajib berubah menjadi sebagian');
+    const antrean2 = envKrm.aksiPengirimanList_({ user: ownerRow, payload: {} });
+    assert(antrean2.items[0].total_qty_sisa === 30 && antrean2.ringkasan.sebagian === 1,
+      `Sisa kirim setelah kloter 1 (20 sak) wajib 30 sak, aktual: ${antrean2.items[0].total_qty_sisa}`);
+
+    // 22c. Cegah kirim melebihi qty pesanan (60 > 50)
+    let gagalLebih = false;
+    try {
+      envKrm.aksiPengirimanUpdateStatus_({
+        user: ownerRow,
+        payload: {
+          id: jualKirim.penjualan.id,
+          status_antar: 'sebagian',
+          items_kirim: [{ item_id: itemId, qty_dibawa: 60 }]
+        }
+      });
+    } catch (e) {
+      gagalLebih = e.code === 'VALIDATION';
+    }
+    assert(gagalLebih === true, 'Input qty dikirim melebihi qty pesanan wajib ditolak');
+
+    // 22d. Tandai selesai -> qty_dibawa otomatis penuh 50 & sisa = 0
+    const updSelesai = envKrm.aksiPengirimanUpdateStatus_({
+      user: ownerRow,
+      payload: { id: jualKirim.penjualan.id, status_antar: 'selesai', sopir: 'Pak Budi', catatan_kirim: 'Lunas terima kloter 2' }
+    });
+    assert(updSelesai.penjualan.status_antar === 'selesai', 'Status pengiriman wajib selesai');
+    const antrean3 = envKrm.aksiPengirimanList_({ user: ownerRow, payload: {} });
+    assert(antrean3.items[0].total_qty_sisa === 0 && antrean3.ringkasan.selesai === 1,
+      'Setelah selesai, total_qty_sisa wajib 0 dan masuk ringkasan selesai');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

@@ -7,14 +7,14 @@
 import { kirimRequest, hasUsableApiCache } from '../api.js';
 import { store } from '../state.js';
 import { $, $$, escapeHtml, renderSkeleton } from '../utils/dom.js';
-import { formatRupiah, parseRupiah, formatTanggal, formatAngka } from '../utils/format.js';
+import { formatRupiah, parseRupiah, formatQty, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { haptic } from '../utils/native.js';
-import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift } from '../utils/printer.js';
+import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift, cetakFakturA5, bukaModalCetakSuratJalan } from '../utils/printer.js';
 
 // State lokal modul laporan
 let stateLaporan = {
-  tabAktif: 'dashboard', // 'dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift'
+  tabAktif: 'dashboard', // 'dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift', 'pengiriman'
   periode: '30_hari',
   dari: '',
   sampai: '',
@@ -25,10 +25,12 @@ let stateLaporan = {
   dataLabaRugi: null,
   dataStokValuasi: null,
   dataShift: null,
+  dataPengiriman: null,
   filterStok: { status_stok: 'semua', kategori_id: '', q: '' },
   filterPenjualan: { status_bayar: '', metode_bayar: '' },
   filterPembelian: { status_bayar: '', supplier_id: '' },
-  filterShift: { status: 'semua' }
+  filterShift: { status: 'semua' },
+  filterPengiriman: { status_antar: 'semua' }
 };
 
 /**
@@ -120,6 +122,10 @@ export async function renderLaporanModule(container) {
           ${ICONS.cashier}
           <span>Shift Kasir</span>
         </button>
+        <button type="button" id="tab-btn-pengiriman" class="btn btn-sm" aria-pressed="${stateLaporan.tabAktif === 'pengiriman'}">
+          ${ICONS.truck}
+          <span>Pengiriman</span>
+        </button>
       </div>
 
       <!-- Wadah Konten Tab Aktif -->
@@ -153,7 +159,7 @@ function inisialisasiTanggalDefault() {
 /** Pasang event listener kontrol header */
 function pasangEventHeader(container) {
   // Tombol Tab
-  const daftarTab = ['dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift'];
+  const daftarTab = ['dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift', 'pengiriman'];
   daftarTab.forEach((tabId) => {
     const btn = $(`#tab-btn-${tabId}`, container);
     if (btn) {
@@ -314,6 +320,14 @@ async function muatDataTabAktif(container) {
       status: stateLaporan.filterShift.status === 'semua' ? '' : stateLaporan.filterShift.status,
       limit: 150
     };
+  } else if (stateLaporan.tabAktif === 'pengiriman') {
+    targetAction = 'pengiriman.list';
+    targetPayload = {
+      dari: stateLaporan.dari,
+      sampai: stateLaporan.sampai,
+      status_antar: stateLaporan.filterPengiriman.status_antar === 'semua' ? '' : stateLaporan.filterPengiriman.status_antar,
+      limit: 150
+    };
   }
 
   if (!hasUsableApiCache(targetAction, targetPayload)) {
@@ -387,6 +401,13 @@ async function muatDataTabAktif(container) {
         renderTabShiftKasir(target, res.data, container);
       } else {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat riwayat shift kasir');
+      }
+    } else if (stateLaporan.tabAktif === 'pengiriman') {
+      if (res && res.ok) {
+        stateLaporan.dataPengiriman = res.data;
+        renderTabPengiriman(target, res.data, container);
+      } else {
+        target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat antrean pengiriman');
       }
     }
   } catch (err) {
@@ -2291,6 +2312,283 @@ function bukaModalTutupShiftAdmin(sh, rootContainer) {
       showToast(err.message || 'Gagal menutup shift', 'error');
       btnSimpan.disabled = false;
       btnSimpan.textContent = 'Tutup Shift';
+    }
+  });
+}
+
+/* ========================================================================== */
+/* 8. RENDER TAB: ANTREAN PENGIRIMAN, SURAT JALAN & KIRIM BERTAHAP            */
+/* ========================================================================== */
+function renderTabPengiriman(container, data, rootContainer) {
+  const r = (data && data.ringkasan) || {};
+  const items = (data && Array.isArray(data.items)) ? data.items : [];
+
+  const badgeStatusAntar = (st) => {
+    if (st === 'belum_dikirim') return '<span class="badge badge-warning">Menunggu Kirim</span>';
+    if (st === 'diantar') return '<span class="badge badge-info">Sedang Diantar</span>';
+    if (st === 'sebagian') return '<span class="badge badge-primary">Kirim Sebagian</span>';
+    if (st === 'selesai') return '<span class="badge badge-success">Selesai</span>';
+    return `<span class="badge badge-secondary">${escapeHtml(st || '-')}</span>`;
+  };
+
+  container.innerHTML = `
+    <div class="stack" style="gap: var(--sp-4);">
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Menunggu Kirim</span>
+            <span class="stat-card-icon" style="background: var(--warning-soft); color: var(--warning);">${ICONS.package}</span>
+          </div>
+          <div class="stat-card-value mono" style="color: var(--warning);">${formatAngka(r.belum_dikirim || 0)} Nota</div>
+          <div class="stat-card-desc">Siap muat &amp; cetak Surat Jalan</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Sedang Diantar</span>
+            <span class="stat-card-icon" style="background: var(--info-soft); color: var(--info);">${ICONS.truck}</span>
+          </div>
+          <div class="stat-card-value mono" style="color: var(--info);">${formatAngka(r.diantar || 0)} Nota</div>
+          <div class="stat-card-desc">Dalam perjalanan ke alamat proyek</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Kirim Sebagian (Bon)</span>
+            <span class="stat-card-icon" style="background: var(--primary-soft); color: var(--primary);">${ICONS.clipboard}</span>
+          </div>
+          <div class="stat-card-value mono" style="color: var(--primary);">${formatAngka(r.sebagian || 0)} Nota</div>
+          <div class="stat-card-desc">Sebagian barang masih titip / sisa antar</div>
+        </div>
+
+        <div class="stat-card-pro">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Selesai Diterima</span>
+            <span class="stat-card-icon" style="background: var(--success-soft); color: var(--success);">${ICONS.checkCircle}</span>
+          </div>
+          <div class="stat-card-value mono" style="color: var(--success);">${formatAngka(r.selesai || 0)} Nota</div>
+          <div class="stat-card-desc">Dari total ${formatAngka(r.total_antrean || 0)} pengiriman</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2);">
+          <div>
+            <h3 style="margin: 0; font-size: var(--fs-md);">Antrean Pengiriman &amp; Surat Jalan</h3>
+            <p class="text-xs text-muted" style="margin: 2px 0 0;">Cetak Surat Jalan tanpa harga, Faktur Besar A5, dan kelola pengiriman bertahap (Bon Barang)</p>
+          </div>
+          <div class="row no-print" style="gap: var(--sp-2); align-items: center;">
+            <select id="sel-filter-status-antar" class="select select-sm" style="min-width: 150px;">
+              <option value="semua" ${stateLaporan.filterPengiriman.status_antar === 'semua' ? 'selected' : ''}>Semua Status</option>
+              <option value="belum_dikirim" ${stateLaporan.filterPengiriman.status_antar === 'belum_dikirim' ? 'selected' : ''}>Menunggu Kirim</option>
+              <option value="diantar" ${stateLaporan.filterPengiriman.status_antar === 'diantar' ? 'selected' : ''}>Sedang Diantar</option>
+              <option value="sebagian" ${stateLaporan.filterPengiriman.status_antar === 'sebagian' ? 'selected' : ''}>Kirim Sebagian (Bon)</option>
+              <option value="selesai" ${stateLaporan.filterPengiriman.status_antar === 'selesai' ? 'selected' : ''}>Selesai</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card-body" style="padding: 0;">
+          ${items.length === 0 ? `
+            <div class="empty-state" style="padding: var(--sp-6);">
+              ${ICONS.truck}
+              <p class="text-muted text-sm">Belum ada antrean pengiriman pada periode dan filter ini.</p>
+            </div>
+          ` : `
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>No. Nota</th>
+                    <th>Pelanggan &amp; Alamat</th>
+                    <th>Muatan Barang</th>
+                    <th>Status</th>
+                    <th class="text-right no-print">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.map((k) => {
+                    const ringkasItem = (k.items || []).slice(0, 2).map((it) => `${escapeHtml(it.nama)} (${formatQty(it.qty)} ${escapeHtml(it.satuan || '')})`).join(', ');
+                    const ekstraItem = (k.items || []).length > 2 ? ` +${k.items.length - 2} lainnya` : '';
+                    return `
+                      <tr>
+                        <td data-label="No. Nota">
+                          <div class="fw-bold mono text-sm">${escapeHtml(k.no_nota)}</div>
+                          <div class="text-xs text-muted">${escapeHtml(formatTanggal(k.tanggal, true))}</div>
+                        </td>
+                        <td data-label="Pelanggan & Alamat">
+                          <div class="fw-semibold">${escapeHtml(k.pelanggan_nama || 'Umum')}${k.pelanggan_hp ? ` <span class="text-xs text-muted mono">(${escapeHtml(k.pelanggan_hp)})</span>` : ''}</div>
+                          <div class="text-xs text-muted" style="max-width: 240px; white-space: normal;">${escapeHtml(k.alamat_kirim || '-')}</div>
+                        </td>
+                        <td data-label="Muatan Barang">
+                          <div class="text-xs" style="max-width: 240px; white-space: normal;">${ringkasItem}${ekstraItem}</div>
+                          ${k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa belum terkirim: ${formatQty(k.total_qty_sisa)} unit</div>` : ''}
+                        </td>
+                        <td data-label="Status">
+                          ${badgeStatusAntar(k.status_antar)}
+                        </td>
+                        <td data-label="Aksi" class="text-right no-print">
+                          <div class="row" style="justify-content: flex-end; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary btn-xs btn-sj-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Surat Jalan (Tanpa Harga)" style="display: inline-flex; align-items: center; gap: 4px;">
+                              ${ICONS.truck}
+                              <span>Surat Jalan</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-xs btn-faktur-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Faktur Besar A5" style="display: inline-flex; align-items: center; gap: 4px;">
+                              ${ICONS.clipboard}
+                              <span>A5</span>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-xs btn-update-antrean" data-id="${escapeHtml(k.id)}" title="Update Status & Kirim Bertahap" style="display: inline-flex; align-items: center; gap: 4px;">
+                              ${ICONS.edit}
+                              <span>Update</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+
+  $('#sel-filter-status-antar', container)?.addEventListener('change', (e) => {
+    stateLaporan.filterPengiriman.status_antar = e.target.value;
+    muatDataTabAktif(rootContainer);
+  });
+
+  const ambilDetailDanJalankan = async (id, fn) => {
+    try {
+      const res = await kirimRequest('penjualan.detail', { id });
+      if (!res || !res.ok || !res.data) throw new Error((res && res.error) || 'Gagal memuat detail nota');
+      fn(res.data);
+    } catch (err) {
+      showToast(err.message || 'Gagal memuat detail nota', 'error');
+    }
+  };
+
+  $$('.btn-sj-antrean', container).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      ambilDetailDanJalankan(btn.getAttribute('data-id'), (d) => bukaModalCetakSuratJalan(d));
+    });
+  });
+
+  $$('.btn-faktur-antrean', container).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      ambilDetailDanJalankan(btn.getAttribute('data-id'), (d) => cetakFakturA5(d));
+    });
+  });
+
+  $$('.btn-update-antrean', container).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = items.find((x) => x.id === btn.getAttribute('data-id'));
+      if (target) bukaModalUpdatePengiriman(target, rootContainer);
+    });
+  });
+}
+
+function bukaModalUpdatePengiriman(k, rootContainer) {
+  const modal = showModal({
+    title: `Update Pengiriman — ${k.no_nota}`,
+    size: 'md',
+    body: `
+      <div class="stack" style="gap: var(--sp-3);">
+        <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); font-size: var(--fs-xs);">
+          <div><strong>Pelanggan:</strong> ${escapeHtml(k.pelanggan_nama || 'Umum')}</div>
+          <div><strong>Alamat:</strong> ${escapeHtml(k.alamat_kirim || '-')}</div>
+        </div>
+
+        <div>
+          <label class="form-label required text-xs fw-bold" for="sel-upd-status-antar">Status Pengiriman</label>
+          <select id="sel-upd-status-antar" class="select w-full">
+            <option value="belum_dikirim" ${k.status_antar === 'belum_dikirim' ? 'selected' : ''}>Menunggu Kirim</option>
+            <option value="diantar" ${k.status_antar === 'diantar' ? 'selected' : ''}>Sedang Diantar (Dalam Perjalanan)</option>
+            <option value="sebagian" ${k.status_antar === 'sebagian' ? 'selected' : ''}>Kirim Sebagian (Bon Barang / Bertahap)</option>
+            <option value="selesai" ${k.status_antar === 'selesai' ? 'selected' : ''}>Selesai Diterima Penuh</option>
+          </select>
+        </div>
+
+        <div id="box-qty-parsial" class="stack" style="gap: 6px; ${k.status_antar === 'sebagian' ? '' : 'display: none;'}">
+          <div class="text-xs fw-bold">Atur Jumlah Barang Sudah Dikirim / Diambil:</div>
+          ${(k.items || []).map((it) => `
+            <div class="row" style="justify-content: space-between; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 10px;">
+              <div style="flex: 1; min-width: 0;">
+                <div class="text-xs fw-semibold">${escapeHtml(it.nama)}</div>
+                <div class="text-xs text-muted">Pesan: ${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</div>
+              </div>
+              <div class="row" style="align-items: center; gap: 4px; flex-shrink: 0;">
+                <span class="text-xs text-muted">Dikirim:</span>
+                <input type="number" step="any" min="0" max="${it.qty}" class="input input-sm mono inp-qty-dibawa" data-item-id="${escapeHtml(it.id)}" value="${it.qty_dibawa}" style="width: 78px; text-align: right;" />
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-2);">
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-upd-sopir">Nama Sopir / Kurir</label>
+            <input type="text" id="inp-upd-sopir" class="input input-sm" placeholder="Opsional" />
+          </div>
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-upd-cat-kirim">Catatan Kirim</label>
+            <input type="text" id="inp-upd-cat-kirim" class="input input-sm" placeholder="Misal: Diterima mandor" />
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end; gap: var(--sp-2);">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-batal-upd-kirim">Batal</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-simpan-upd-kirim">Simpan Status</button>
+      </div>
+    `
+  });
+
+  const selStatus = modal.el.querySelector('#sel-upd-status-antar');
+  const boxParsial = modal.el.querySelector('#box-qty-parsial');
+  selStatus?.addEventListener('change', () => {
+    if (boxParsial) boxParsial.style.display = selStatus.value === 'sebagian' ? '' : 'none';
+  });
+
+  modal.el.querySelector('#btn-batal-upd-kirim')?.addEventListener('click', () => modal.close());
+
+  const btnSimpan = modal.el.querySelector('#btn-simpan-upd-kirim');
+  btnSimpan?.addEventListener('click', async () => {
+    const statusAntar = selStatus?.value || 'belum_dikirim';
+    const sopir = (modal.el.querySelector('#inp-upd-sopir')?.value || '').trim();
+    const catatanKirim = (modal.el.querySelector('#inp-upd-cat-kirim')?.value || '').trim();
+    const itemsKirim = [];
+    if (statusAntar === 'sebagian') {
+      modal.el.querySelectorAll('.inp-qty-dibawa').forEach((inp) => {
+        itemsKirim.push({
+          item_id: inp.getAttribute('data-item-id'),
+          qty_dibawa: Number(inp.value || 0)
+        });
+      });
+    }
+
+    btnSimpan.disabled = true;
+    btnSimpan.textContent = 'Menyimpan...';
+    try {
+      const res = await kirimRequest('pengiriman.updateStatus', {
+        id: k.id,
+        status_antar: statusAntar,
+        sopir,
+        catatan_kirim: catatanKirim,
+        items_kirim: itemsKirim
+      });
+      if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal memperbarui status pengiriman');
+      haptic.success();
+      showToast(res.data?.pesan || 'Status pengiriman diperbarui!', 'success');
+      modal.close();
+      muatDataTabAktif(rootContainer);
+    } catch (err) {
+      showToast(err.message || 'Gagal memperbarui pengiriman', 'error');
+      btnSimpan.disabled = false;
+      btnSimpan.textContent = 'Simpan Status';
     }
   });
 }

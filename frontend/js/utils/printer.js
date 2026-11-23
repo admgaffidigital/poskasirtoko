@@ -953,12 +953,24 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
           </div>
           <div class="row" style="gap: var(--sp-2);">
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-jual-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-              <span>Cetak / Browser</span>
+              ${ICONS.printer}
+              <span>Thermal Browser</span>
             </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-jual-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              ${ICONS.messageCircle}
               <span>WhatsApp</span>
+            </button>
+          </div>
+          <div class="divider" style="margin: 2px 0;"></div>
+          <div class="fw-bold text-xs text-muted" style="text-align: left;">DOKUMEN PROYEK & PENGIRIMAN:</div>
+          <div class="row" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-jual-faktur-a5" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.clipboard}
+              <span>Faktur Besar (A5)</span>
+            </button>
+            <button type="button" class="btn ${pj.pengiriman === 'dikirim' ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-jual-surat-jalan" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.truck}
+              <span>Surat Jalan</span>
             </button>
           </div>
         </div>
@@ -998,6 +1010,14 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
     const noHp = pel ? pel.hp : (dataStruk.pelanggan_hp || '');
     const urlWa = buatTautanWhatsApp(dataStruk, noHp);
     window.open(urlWa, '_blank');
+  });
+
+  modal.el.querySelector('#btn-print-jual-faktur-a5')?.addEventListener('click', () => {
+    cetakFakturA5(dataStruk);
+  });
+
+  modal.el.querySelector('#btn-print-jual-surat-jalan')?.addEventListener('click', () => {
+    bukaModalCetakSuratJalan(dataStruk);
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-jual')?.addEventListener('click', () => {
@@ -1667,6 +1687,579 @@ export function bukaModalPilihanCetakShift(dataReport) {
 
   modal.el.querySelector('#btn-tutup-modal-cetak-shift')?.addEventListener('click', () => {
     modal.close();
+  });
+}
+
+/* ========================================================================== */
+/* MODUL SURAT JALAN (TANPA HARGA) & FAKTUR BESAR A5 (PROYEK / KONTRAKTOR)    */
+/* ========================================================================== */
+
+/** Helper cetak dokumen HTML via iframe tersembunyi (anti-popup blocker) */
+function cetakHtmlViaIframe(htmlDoc) {
+  const printFrame = document.createElement('iframe');
+  printFrame.style.position = 'fixed';
+  printFrame.style.right = '0';
+  printFrame.style.bottom = '0';
+  printFrame.style.width = '0';
+  printFrame.style.height = '0';
+  printFrame.style.border = '0';
+  document.body.appendChild(printFrame);
+
+  const doc = printFrame.contentWindow.document;
+  doc.open();
+  doc.write(htmlDoc);
+  doc.close();
+
+  setTimeout(() => {
+    printFrame.contentWindow.focus();
+    printFrame.contentWindow.print();
+    setTimeout(() => {
+      if (printFrame.parentElement) printFrame.remove();
+    }, 1500);
+  }, 300);
+}
+
+/** Helper ambil profil toko untuk dokumen A5/Surat Jalan */
+function ambilInfoTokoDokumen(data) {
+  const cfg = store.get('pengaturan') || {};
+  const tokoStore = store.get('toko') || {};
+  const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO BANGUNAN';
+  return (data && data.toko) || {
+    nama: cfg.toko_nama || tokoStore.nama || namaFallback,
+    alamat: cfg.toko_alamat || tokoStore.alamat || '',
+    hp: cfg.toko_hp || tokoStore.hp || '',
+    nota_footer: cfg.nota_footer || tokoStore.nota_footer || ''
+  };
+}
+
+/**
+ * Susun teks Surat Jalan Thermal 58mm/80mm (100% TANPA HARGA — khusus sopir/kuli & penerima)
+ * @param {Object} data
+ * @param {'58'|'80'} [ukuran='58']
+ * @param {Object} [opsi={}] { sopir, noPlat, catatan }
+ */
+export function susunTeksSuratJalan(data, ukuran = '58', opsi = {}) {
+  const lebar = LEBAR_KERTAS[ukuran] || 32;
+  const pj = data.penjualan || {};
+  const items = data.items || [];
+  const pel = data.pelanggan || null;
+  const toko = ambilInfoTokoDokumen(data);
+  const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+
+  const baris = [];
+  baris.push(formatTengah((toko.nama || 'TOKO').toUpperCase(), lebar));
+  if (toko.alamat) {
+    toko.alamat.split('\n').forEach((al) => baris.push(formatTengah(al, lebar)));
+  }
+  if (toko.hp) baris.push(formatTengah('Telp/WA: ' + toko.hp, lebar));
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatTengah('SURAT JALAN BARANG', lebar));
+  baris.push(formatTengah('(TANPA HARGA / CEK MUATAN)', lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  baris.push(formatDuaKolom('No. SJ', noSj, lebar));
+  baris.push(formatDuaKolom('Ref Nota', pj.no_nota || '-', lebar));
+  baris.push(formatDuaKolom('Tanggal', formatTanggal(pj.tanggal || new Date(), true), lebar));
+  baris.push(formatDuaKolom('Penerima', (pel ? pel.nama : (pj.pelanggan_nama || 'Umum')), lebar));
+  const hpPel = (pel && pel.hp) || pj.pelanggan_hp || '';
+  if (hpPel) baris.push(formatDuaKolom('HP/WA', hpPel, lebar));
+  const alamat = pj.alamat_kirim || (pel && pel.alamat) || '';
+  if (alamat) {
+    baris.push('Alamat Kirim:');
+    baris.push('  ' + alamat);
+  }
+  if (opsi.sopir) baris.push(formatDuaKolom('Sopir', opsi.sopir, lebar));
+  if (opsi.noPlat) baris.push(formatDuaKolom('Armada', opsi.noPlat, lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  let totalBarisQty = 0;
+  items.forEach((it, idx) => {
+    const qty = Number(it.qty || 0);
+    const dibawa = it.qty_dibawa !== undefined ? Number(it.qty_dibawa) : qty;
+    const sisa = Math.max(0, qty - dibawa);
+    totalBarisQty += qty;
+    baris.push(`${idx + 1}. ${it.nama || 'Barang'}`);
+    baris.push(formatDuaKolom(`   [ ] Qty: ${formatQty(qty)} ${it.satuan || ''}`, sisa > 0 ? `Sisa: ${formatQty(sisa)}` : 'OK', lebar));
+  });
+
+  baris.push(buatGaris(lebar, '-'));
+  baris.push(formatDuaKolom('Total Jenis Item', `${items.length} Jenis`, lebar));
+  baris.push(formatDuaKolom('Total Unit/Qty', formatQty(totalBarisQty), lebar));
+  if (opsi.catatan || pj.catatan) {
+    baris.push(buatGaris(lebar, '.'));
+    baris.push('Catatan: ' + String(opsi.catatan || pj.catatan));
+  }
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatTengah('Barang diterima dlm kondisi baik', lebar));
+  baris.push('');
+  baris.push(formatDuaKolom(' ( Pengirim )', '( Penerima ) ', lebar));
+  baris.push('');
+  baris.push('');
+  baris.push(formatDuaKolom('  ..........', '..........  ', lebar));
+  baris.push(buatGaris(lebar, '-'));
+
+  return baris.join('\n');
+}
+
+/** Buat tautan WhatsApp Surat Jalan tanpa harga (siap kirim ke sopir / kuli / penerima proyek) */
+export function buatTautanWhatsAppSuratJalan(data, opsi = {}) {
+  const pj = data.penjualan || {};
+  const items = data.items || [];
+  const pel = data.pelanggan || null;
+  const toko = ambilInfoTokoDokumen(data);
+  const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+  const alamat = pj.alamat_kirim || (pel && pel.alamat) || '-';
+  const hpPel = (pel && pel.hp) || pj.pelanggan_hp || '';
+
+  let pesan = `*SURAT JALAN - ${(toko.nama || 'TOKO').toUpperCase()}*\n`;
+  pesan += `No. SJ   : *${noSj}* (Ref: ${pj.no_nota || '-'})\n`;
+  pesan += `Tanggal  : ${formatTanggal(pj.tanggal || new Date(), true)}\n`;
+  pesan += `Penerima : *${pel ? pel.nama : (pj.pelanggan_nama || 'Pelanggan Umum')}*${hpPel ? ` (${hpPel})` : ''}\n`;
+  pesan += `Alamat   : ${alamat}\n`;
+  if (opsi.sopir) pesan += `Sopir    : ${opsi.sopir}${opsi.noPlat ? ` (${opsi.noPlat})` : ''}\n`;
+  pesan += `--------------------------------\n`;
+  pesan += `*DAFTAR BARANG DIKIRIM:*\n`;
+  items.forEach((it, idx) => {
+    const qty = Number(it.qty || 0);
+    const dibawa = it.qty_dibawa !== undefined ? Number(it.qty_dibawa) : qty;
+    const sisa = Math.max(0, qty - dibawa);
+    pesan += `${idx + 1}. ${it.nama} — *${formatQty(qty)} ${it.satuan || ''}*${sisa > 0 ? ` (Sisa antar: ${formatQty(sisa)})` : ''}\n`;
+  });
+  pesan += `--------------------------------\n`;
+  if (opsi.catatan || pj.catatan) {
+    pesan += `Catatan: ${opsi.catatan || pj.catatan}\n`;
+  }
+  pesan += `Mohon dicek jumlah & kondisi barang saat diterima.`;
+  return `https://wa.me/?text=${encodeURIComponent(pesan)}`;
+}
+
+/** Susun HTML dokumen resmi Surat Jalan A5 Landscape (100% Tanpa Harga) */
+function buatHtmlSuratJalanA5(data, opsi = {}) {
+  const pj = data.penjualan || {};
+  const items = data.items || [];
+  const pel = data.pelanggan || null;
+  const toko = ambilInfoTokoDokumen(data);
+  const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+  const alamat = pj.alamat_kirim || (pel && pel.alamat) || '-';
+  const hpPel = (pel && pel.hp) || pj.pelanggan_hp || '-';
+  const adaParsial = items.some((it) => it.qty_dibawa !== undefined && Number(it.qty_dibawa) < Number(it.qty || 0));
+
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Surat Jalan ${escapeHtml(noSj)}</title>
+  <style>
+    @page { size: A5 landscape; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 11px; line-height: 1.4; }
+    .doc { width: 100%; max-width: 194mm; margin: 0 auto; }
+    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 8px; margin-bottom: 10px; }
+    .toko-nama { font-size: 16px; font-weight: 800; letter-spacing: 0.3px; }
+    .toko-sub { font-size: 10px; color: #374151; max-width: 95mm; white-space: pre-line; }
+    .doc-badge { text-align: right; }
+    .doc-title { font-size: 17px; font-weight: 800; letter-spacing: 1px; border: 2px solid #111827; padding: 3px 10px; display: inline-block; }
+    .doc-no { font-family: 'Courier New', monospace; font-size: 11px; font-weight: 700; margin-top: 4px; }
+    .meta-grid { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 10.5px; }
+    .meta-box { flex: 1; border: 1px solid #d1d5db; border-radius: 4px; padding: 6px 8px; }
+    .meta-row { display: flex; gap: 6px; margin-bottom: 2px; }
+    .meta-lbl { width: 72px; color: #4b5563; flex-shrink: 0; }
+    .meta-val { font-weight: 600; flex: 1; }
+    table.keep-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10.5px; }
+    table.keep-table th { background: #f3f4f6; border: 1px solid #374151; padding: 5px 6px; text-align: left; font-weight: 700; }
+    table.keep-table td { border: 1px solid #9ca3af; padding: 5px 6px; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; font-family: 'Courier New', monospace; font-weight: 700; }
+    .note-box { border: 1px dashed #6b7280; padding: 5px 8px; font-size: 10px; margin-bottom: 14px; }
+    .ttd-grid { display: flex; justify-content: space-between; gap: 16px; margin-top: 12px; text-align: center; font-size: 10.5px; }
+    .ttd-col { flex: 1; }
+    .ttd-space { height: 42px; }
+    .ttd-line { border-top: 1px solid #111827; padding-top: 3px; font-weight: 600; }
+    .foot { margin-top: 10px; font-size: 9px; color: #4b5563; border-top: 1px solid #d1d5db; padding-top: 4px; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <div class="hdr">
+      <div>
+        <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+        ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+        ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      </div>
+      <div class="doc-badge">
+        <div class="doc-title">SURAT JALAN</div>
+        <div class="doc-no">${escapeHtml(noSj)}</div>
+        <div style="font-size: 9.5px; color: #4b5563;">Ref. Nota: ${escapeHtml(pj.no_nota || '-')}</div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box">
+        <div class="meta-row"><span class="meta-lbl">Kepada Yth</span><span class="meta-val">${escapeHtml(pel ? pel.nama : (pj.pelanggan_nama || 'Pelanggan Umum'))}</span></div>
+        <div class="meta-row"><span class="meta-lbl">Telp / WA</span><span class="meta-val">${escapeHtml(hpPel)}</span></div>
+        <div class="meta-row"><span class="meta-lbl">Alamat Kirim</span><span class="meta-val">${escapeHtml(alamat)}</span></div>
+      </div>
+      <div class="meta-box">
+        <div class="meta-row"><span class="meta-lbl">Tanggal</span><span class="meta-val">${escapeHtml(formatTanggal(pj.tanggal || new Date(), true))}</span></div>
+        <div class="meta-row"><span class="meta-lbl">Sopir / Kurir</span><span class="meta-val">${escapeHtml(opsi.sopir || '...........................')}</span></div>
+        <div class="meta-row"><span class="meta-lbl">Armada / Plat</span><span class="meta-val">${escapeHtml(opsi.noPlat || '...........................')}</span></div>
+      </div>
+    </div>
+
+    <table class="keep-table">
+      <thead>
+        <tr>
+          <th class="c" style="width: 28px;">No</th>
+          <th>Nama Barang / Material</th>
+          <th class="c" style="width: 65px;">Satuan</th>
+          <th class="r" style="width: 65px;">Qty Pesan</th>
+          ${adaParsial ? `<th class="r" style="width: 68px;">Sudah Kirim</th><th class="r" style="width: 68px;">Sisa Antar</th>` : ''}
+          <th class="c" style="width: 55px;">Cek</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((it, i) => {
+          const qty = Number(it.qty || 0);
+          const dibawa = it.qty_dibawa !== undefined ? Number(it.qty_dibawa) : qty;
+          const sisa = Math.max(0, qty - dibawa);
+          return `
+            <tr>
+              <td class="c">${i + 1}</td>
+              <td><strong>${escapeHtml(it.nama || 'Barang')}</strong></td>
+              <td class="c">${escapeHtml(it.satuan || '-')}</td>
+              <td class="r">${formatQty(qty)}</td>
+              ${adaParsial ? `<td class="r">${formatQty(dibawa)}</td><td class="r">${formatQty(sisa)}</td>` : ''}
+              <td class="c">[ &nbsp;&nbsp; ]</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+
+    ${(opsi.catatan || pj.catatan) ? `<div class="note-box"><strong>Catatan Pengiriman:</strong> ${escapeHtml(opsi.catatan || pj.catatan)}</div>` : ''}
+
+    <div class="ttd-grid">
+      <div class="ttd-col">
+        <div>Hormat Kami (Gudang / Admin)</div>
+        <div class="ttd-space"></div>
+        <div class="ttd-line">( .................................... )</div>
+      </div>
+      <div class="ttd-col">
+        <div>Pengirim / Sopir</div>
+        <div class="ttd-space"></div>
+        <div class="ttd-line">( ${opsi.sopir ? escapeHtml(opsi.sopir) : '....................................'} )</div>
+      </div>
+      <div class="ttd-col">
+        <div>Penerima Barang</div>
+        <div class="ttd-space"></div>
+        <div class="ttd-line">( Nama Terang &amp; Stempel )</div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>Mohon periksa jumlah &amp; kondisi barang saat diterima. Barang yang sudah ditandatangani dianggap lengkap &amp; baik.</span>
+      <span>Dokumen Pengiriman (Tanpa Harga)</span>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/** Cetak langsung Surat Jalan A5 (Printer Biasa / PDF) */
+export function cetakSuratJalanA5(dataStruk, opsi = {}) {
+  const htmlDoc = buatHtmlSuratJalanA5(dataStruk, opsi);
+  cetakHtmlViaIframe(htmlDoc);
+}
+
+/** Dialog Cetak Surat Jalan (Isi Sopir/Armada opsional -> A5 / Thermal RawBT / Bluetooth / WA Sopir) */
+export function bukaModalCetakSuratJalan(dataStruk) {
+  const cfg = store.get('pengaturan') || {};
+  const ukuran = (cfg.printer_ukuran === '80' || cfg.printer_lebar === '80') ? '80' : '58';
+  const pj = dataStruk.penjualan || {};
+  const pel = dataStruk.pelanggan || null;
+  const items = dataStruk.items || [];
+  const noSj = String(pj.no_nota || '-').replace(/^INV-/, 'SJ-');
+
+  const modal = showModal({
+    title: `Surat Jalan — ${noSj}`,
+    size: 'md',
+    body: `
+      <div class="stack" style="gap: var(--sp-3);">
+        <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
+          ${ICONS.truck}
+          <div><strong>Surat Jalan Tanpa Harga</strong> — Khusus sopir, kuli muat, dan tanda terima barang di lokasi proyek.</div>
+        </div>
+
+        <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3); font-size: var(--fs-xs);">
+          <div><strong>Penerima:</strong> ${escapeHtml(pel ? pel.nama : (pj.pelanggan_nama || 'Pelanggan Umum'))}</div>
+          <div><strong>Alamat:</strong> ${escapeHtml(pj.alamat_kirim || (pel && pel.alamat) || '-')}</div>
+          <div><strong>Muatan:</strong> ${items.length} jenis barang (${formatQty(items.reduce((s, x) => s + Number(x.qty || 0), 0))} total unit)</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-2);">
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-sj-sopir">Nama Sopir / Kurir (Opsional)</label>
+            <input type="text" id="inp-sj-sopir" class="input input-sm" placeholder="Contoh: Pak Budi" />
+          </div>
+          <div>
+            <label class="form-label text-xs fw-semibold" for="inp-sj-plat">Armada / No. Plat (Opsional)</label>
+            <input type="text" id="inp-sj-plat" class="input input-sm" placeholder="Contoh: Pickup L300" />
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label text-xs fw-semibold" for="inp-sj-catatan">Catatan Untuk Sopir / Penerima (Opsional)</label>
+          <input type="text" id="inp-sj-catatan" class="input input-sm" value="${escapeHtml(pj.catatan || '')}" placeholder="Contoh: Turunkan di dekat pagar proyek" />
+        </div>
+
+        <div class="stack" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-sj-cetak-a5" style="width: 100%; justify-content: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak Surat Jalan Resmi (A5 / PDF)</span>
+          </button>
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.smartphone}
+              <span>Thermal RawBT (${ukuran}mm)</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.bluetooth}
+              <span>Bluetooth Direct</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.messageCircle}
+              <span>Kirim WA Sopir</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-sj">Tutup</button>
+      </div>
+    `
+  });
+
+  const ambilOpsi = () => ({
+    sopir: (modal.el.querySelector('#inp-sj-sopir')?.value || '').trim(),
+    noPlat: (modal.el.querySelector('#inp-sj-plat')?.value || '').trim(),
+    catatan: (modal.el.querySelector('#inp-sj-catatan')?.value || '').trim()
+  });
+
+  modal.el.querySelector('#btn-sj-cetak-a5')?.addEventListener('click', () => {
+    cetakSuratJalanA5(dataStruk, ambilOpsi());
+  });
+  modal.el.querySelector('#btn-sj-rawbt')?.addEventListener('click', () => {
+    const teks = susunTeksSuratJalan(dataStruk, ukuran, ambilOpsi());
+    if (!adalahPerangkatAndroid()) {
+      showToast('RawBT khusus Android. Membuka cetak Surat Jalan A5...', 'info', 2500);
+      cetakSuratJalanA5(dataStruk, ambilOpsi());
+      return;
+    }
+    kirimEscPosKeRawBT(teksKeEscPos(teks), 'surat jalan');
+  });
+  modal.el.querySelector('#btn-sj-bt')?.addEventListener('click', async () => {
+    const teks = susunTeksSuratJalan(dataStruk, ukuran, ambilOpsi());
+    await kirimBytesKeBluetooth(teksKeEscPos(teks));
+  });
+  modal.el.querySelector('#btn-sj-wa')?.addEventListener('click', () => {
+    window.open(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()), '_blank');
+  });
+  modal.el.querySelector('#btn-tutup-modal-sj')?.addEventListener('click', () => modal.close());
+}
+
+/** Susun HTML Faktur / Nota Besar Resmi ukuran A5 Landscape (untuk Proyek, Kontraktor, & Instansi) */
+function buatHtmlFakturA5(data) {
+  const pj = data.penjualan || {};
+  const items = data.items || [];
+  const pembayaran = Array.isArray(data.pembayaran) ? data.pembayaran : [];
+  const pel = data.pelanggan || null;
+  const kasir = data.kasir || { nama: pj.kasir_nama || 'Kasir' };
+  const toko = ambilInfoTokoDokumen(data);
+
+  const statusBayar = String(pj.status_bayar || 'lunas').toLowerCase();
+  const labelStatus = statusBayar === 'lunas' ? 'LUNAS' : (statusBayar === 'sebagian' ? 'BAYAR SEBAGIAN' : 'BELUM LUNAS / TEMPO');
+  const subtotal = Number(pj.subtotal || items.reduce((s, x) => s + Number(x.subtotal || 0), 0));
+  const diskon = Number(pj.diskon || 0);
+  const pajak = Number(pj.pajak || 0);
+  const ongkir = Number(pj.ongkir || 0);
+  const total = Number(pj.total || 0);
+  const bayar = Number(pj.bayar || 0);
+  const kembalian = Number(pj.kembalian || 0);
+  const pakaiDeposit = String(pj.metode_bayar || '').toLowerCase() === 'deposit' || pembayaran.some((b) => String(b.metode || '').toLowerCase() === 'deposit');
+
+  const labelMetode = pembayaran.length > 0
+    ? pembayaran.map((b) => `${String(b.metode || 'tunai').toUpperCase()} (${formatRupiah(b.jumlah)})`).join(', ')
+    : String(pj.metode_bayar || 'TUNAI').toUpperCase();
+
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Faktur ${escapeHtml(pj.no_nota || '')}</title>
+  <style>
+    @page { size: A5 landscape; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 10.5px; line-height: 1.38; }
+    .doc { width: 100%; max-width: 194mm; margin: 0 auto; }
+    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 7px; margin-bottom: 8px; }
+    .toko-nama { font-size: 16px; font-weight: 800; }
+    .toko-sub { font-size: 9.5px; color: #374151; max-width: 95mm; white-space: pre-line; }
+    .faktur-hdr { text-align: right; }
+    .faktur-title { font-size: 15px; font-weight: 800; letter-spacing: 0.6px; }
+    .faktur-no { font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; margin-top: 2px; }
+    .st-badge { display: inline-block; margin-top: 3px; padding: 2px 8px; border: 1.5px solid #111827; font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px; }
+    .meta-row-wrap { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 10px; }
+    .meta-col { flex: 1; }
+    .meta-item { display: flex; gap: 6px; margin-bottom: 2px; }
+    .meta-lbl { width: 68px; color: #4b5563; flex-shrink: 0; }
+    .meta-val { font-weight: 600; flex: 1; }
+    table.keep-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
+    table.keep-table th { background: #f3f4f6; border: 1px solid #374151; padding: 4px 6px; text-align: left; font-weight: 700; }
+    table.keep-table td { border: 1px solid #9ca3af; padding: 4px 6px; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; font-family: 'Courier New', monospace; }
+    .bottom-wrap { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+    .left-block { flex: 1.2; font-size: 9.5px; }
+    .right-block { flex: 1; }
+    .sum-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
+    .sum-total { display: flex; justify-content: space-between; padding: 5px 0; margin-top: 3px; border-top: 2px solid #111827; border-bottom: 2px solid #111827; font-size: 12px; font-weight: 800; }
+    .ttd-wrap { display: flex; justify-content: space-between; gap: 16px; margin-top: 14px; text-align: center; }
+    .ttd-box { flex: 1; }
+    .ttd-sp { height: 36px; }
+    .ttd-ln { border-top: 1px solid #111827; padding-top: 2px; font-weight: 600; }
+    .foot-note { margin-top: 6px; color: #4b5563; font-size: 9px; white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <div class="hdr">
+      <div>
+        <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+        ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+        ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      </div>
+      <div class="faktur-hdr">
+        <div class="faktur-title">FAKTUR PENJUALAN</div>
+        <div class="faktur-no">${escapeHtml(pj.no_nota || '-')}</div>
+        <div class="st-badge">${escapeHtml(labelStatus)}</div>
+      </div>
+    </div>
+
+    <div class="meta-row-wrap">
+      <div class="meta-col">
+        <div class="meta-item"><span class="meta-lbl">Pelanggan</span><span class="meta-val">${escapeHtml(pel ? pel.nama : (pj.pelanggan_nama || 'Pelanggan Umum'))}</span></div>
+        ${((pel && pel.hp) || pj.pelanggan_hp) ? `<div class="meta-item"><span class="meta-lbl">Telp / WA</span><span class="meta-val">${escapeHtml((pel && pel.hp) || pj.pelanggan_hp)}</span></div>` : ''}
+        ${(pj.alamat_kirim || (pel && pel.alamat)) ? `<div class="meta-item"><span class="meta-lbl">Alamat</span><span class="meta-val">${escapeHtml(pj.alamat_kirim || (pel && pel.alamat))}</span></div>` : ''}
+      </div>
+      <div class="meta-col">
+        <div class="meta-item"><span class="meta-lbl">Tanggal</span><span class="meta-val">${escapeHtml(formatTanggal(pj.tanggal || new Date(), true))}</span></div>
+        <div class="meta-item"><span class="meta-lbl">Kasir</span><span class="meta-val">${escapeHtml(kasir.nama || 'Kasir')}</span></div>
+        <div class="meta-item"><span class="meta-lbl">Pengiriman</span><span class="meta-val">${pj.pengiriman === 'dikirim' ? 'Dikirim Toko' : 'Ambil di Toko'}</span></div>
+      </div>
+    </div>
+
+    <table class="keep-table">
+      <thead>
+        <tr>
+          <th class="c" style="width: 26px;">No</th>
+          <th>Nama Barang</th>
+          <th class="r" style="width: 52px;">Qty</th>
+          <th class="c" style="width: 55px;">Satuan</th>
+          <th class="r" style="width: 82px;">Harga</th>
+          <th class="r" style="width: 65px;">Diskon</th>
+          <th class="r" style="width: 90px;">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((it, idx) => `
+          <tr>
+            <td class="c">${idx + 1}</td>
+            <td><strong>${escapeHtml(it.nama || 'Barang')}</strong></td>
+            <td class="r">${formatQty(it.qty || 0)}</td>
+            <td class="c">${escapeHtml(it.satuan || '-')}</td>
+            <td class="r">${formatRupiah(it.harga || 0)}</td>
+            <td class="r">${Number(it.diskon || 0) > 0 ? '-' + formatRupiah(it.diskon) : '-'}</td>
+            <td class="r"><strong>${formatRupiah(it.subtotal || 0)}</strong></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <div class="bottom-wrap">
+      <div class="left-block">
+        <div><strong>Pembayaran:</strong> ${escapeHtml(labelMetode)}</div>
+        ${pakaiDeposit && pel && pel.saldo_deposit !== undefined ? `<div><strong>Sisa Saldo Titipan:</strong> ${formatRupiah(pel.saldo_deposit)}</div>` : ''}
+        ${pj.catatan ? `<div><strong>Catatan:</strong> ${escapeHtml(pj.catatan)}</div>` : ''}
+        <div class="ttd-wrap">
+          <div class="ttd-box">
+            <div>Penerima / Pembeli</div>
+            <div class="ttd-sp"></div>
+            <div class="ttd-ln">( ........................... )</div>
+          </div>
+          <div class="ttd-box">
+            <div>Hormat Kami</div>
+            <div class="ttd-sp"></div>
+            <div class="ttd-ln">( ${escapeHtml(toko.nama || 'Toko')} )</div>
+          </div>
+        </div>
+        ${toko.nota_footer ? `<div class="foot-note">${escapeHtml(toko.nota_footer)}</div>` : ''}
+      </div>
+
+      <div class="right-block">
+        <div class="sum-row"><span>Subtotal</span><span class="r">${formatRupiah(subtotal)}</span></div>
+        ${diskon > 0 ? `<div class="sum-row"><span>Total Diskon</span><span class="r">-${formatRupiah(diskon)}</span></div>` : ''}
+        ${pajak > 0 ? `<div class="sum-row"><span>PPN / Pajak</span><span class="r">${formatRupiah(pajak)}</span></div>` : ''}
+        ${ongkir > 0 ? `<div class="sum-row"><span>Ongkos Kirim</span><span class="r">${formatRupiah(ongkir)}</span></div>` : ''}
+        <div class="sum-total"><span>GRAND TOTAL</span><span class="r">${formatRupiah(total)}</span></div>
+        ${bayar > 0 ? `<div class="sum-row"><span>Dibayar</span><span class="r">${formatRupiah(bayar)}</span></div>` : ''}
+        ${kembalian > 0 ? `<div class="sum-row"><span>Kembalian</span><span class="r">${formatRupiah(kembalian)}</span></div>` : ''}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/** Buka pratinjau & cetak Faktur Besar A5 (Proyek / Kontraktor / PDF) */
+export function cetakFakturA5(dataStruk) {
+  const htmlDoc = buatHtmlFakturA5(dataStruk);
+  const pj = dataStruk.penjualan || {};
+
+  const modal = showModal({
+    title: `Faktur Besar A5 — ${pj.no_nota || ''}`,
+    size: 'lg',
+    body: `
+      <div class="stack" style="gap: var(--sp-3);">
+        <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
+          ${ICONS.clipboard}
+          <div>Format <strong>Faktur Resmi A5 Landscape</strong> siap dicetak di printer kantor (Inkjet/Laser/Dot-Matrix) atau disimpan ke PDF.</div>
+        </div>
+        <div style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2);">
+          <iframe id="iframe-preview-faktur-a5" title="Pratinjau Faktur A5" style="width: 100%; height: 420px; border: 0; background: #ffffff;"></iframe>
+        </div>
+      </div>
+    `,
+    footer: `
+      <div class="row" style="width: 100%; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-faktur-a5">Tutup</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-print-faktur-a5-now" style="display: inline-flex; align-items: center; gap: 6px;">
+          ${ICONS.printer}
+          <span>Cetak / Simpan PDF (A5)</span>
+        </button>
+      </div>
+    `
+  });
+
+  const iframePrev = modal.el.querySelector('#iframe-preview-faktur-a5');
+  if (iframePrev) {
+    iframePrev.srcdoc = htmlDoc;
+  }
+
+  modal.el.querySelector('#btn-tutup-faktur-a5')?.addEventListener('click', () => modal.close());
+  modal.el.querySelector('#btn-print-faktur-a5-now')?.addEventListener('click', () => {
+    cetakHtmlViaIframe(htmlDoc);
   });
 }
 

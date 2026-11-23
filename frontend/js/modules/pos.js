@@ -3022,16 +3022,16 @@ export function renderPosModule(container) {
           ` : `
             <div class="stack" style="gap: var(--sp-2); max-height: 360px; overflow-y: auto;">
               ${riwayatShift.map((sh) => {
-                const isAktif = sh.status === 'aktif';
-                const sel = Number(sh.selisih || 0);
-                const badgeSelisih = isAktif
-                  ? `<span class="badge badge-info">Aktif</span>`
-                  : (sel === 0
-                    ? `<span class="badge badge-success">PAS Rp 0</span>`
-                    : (sel > 0
-                      ? `<span class="badge badge-info">Lebih +${formatRupiah(sel)}</span>`
-                      : `<span class="badge badge-danger">Kurang -${formatRupiah(Math.abs(sel))}</span>`));
-                return `
+          const isAktif = sh.status === 'aktif';
+          const sel = Number(sh.selisih || 0);
+          const badgeSelisih = isAktif
+            ? `<span class="badge badge-info">Aktif</span>`
+            : (sel === 0
+              ? `<span class="badge badge-success">PAS Rp 0</span>`
+              : (sel > 0
+                ? `<span class="badge badge-info">Lebih +${formatRupiah(sel)}</span>`
+                : `<span class="badge badge-danger">Kurang -${formatRupiah(Math.abs(sel))}</span>`));
+          return `
                   <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-3);">
                     <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-2); margin-bottom: 4px;">
                       <div class="fw-bold mono text-sm">${escapeHtml(sh.no_shift)}</div>
@@ -3049,7 +3049,7 @@ export function renderPosModule(container) {
                     </div>
                   </div>
                 `;
-              }).join('')}
+        }).join('')}
             </div>
           `}
         `;

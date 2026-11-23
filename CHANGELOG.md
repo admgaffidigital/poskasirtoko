@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.109] - 2026-11-23
+
+### Added
+- [POS-JUAL] [DASHBOARD] [CETAK] [BACKEND] **Surat Jalan (Tanpa Harga), Faktur Besar A5 (Proyek/Kontraktor), & Antrean Pengiriman Bertahap (`00_konfig_skema_router.gs`, `04_pos_penjualan.gs`, `api.js`, `printer.js`, `laporan.js`, `tests/test_debug_final.js`)**:
+  - Menambahkan 2 endpoint baru: `pengiriman.list` dan `pengiriman.updateStatus` untuk memantau antrean pengiriman toko (`Menunggu Kirim` -> `Sedang Diantar` -> `Kirim Sebagian / Bon Barang` -> `Selesai`) lengkap dengan pelacakan `qty_dibawa` per item dan catatan sopir.
+  - Memperbaiki status awal `status_antar` pada `penjualan.create` agar transaksi `pengiriman: 'dikirim'` otomatis masuk antrean sebagai `belum_dikirim`.
+  - Menambahkan modul cetak dokumen resmi di `printer.js`:
+    - **Surat Jalan (100% Tanpa Harga)**: tersedia dalam format **A5 Landscape (PDF/Printer Biasa)** dengan 3 kolom tanda tangan (Gudang, Sopir, Penerima + Stempel), **Thermal 58/80mm** (RawBT & Bluetooth Direct), serta **Kirim WA Sopir**.
+    - **Faktur Besar A5 Landscape**: format faktur resmi proyek/kontraktor/instansi dengan kop toko, badge status bayar, rincian harga/diskon/ongkir, kolom tanda tangan & cap toko, serta pratinjau langsung sebelum cetak/simpan PDF.
+    - Integrasi 1-klik tombol **`Faktur Besar (A5)`** dan **`Surat Jalan`** langsung di dialog selesai transaksi POS & cetak ulang nota.
+  - Menambahkan tab **`Pengiriman`** di halaman **Dashboard & Laporan Usaha** (4 `.stat-card-pro`, filter status, cetak Surat Jalan/Faktur A5, & modal Update Status / Kirim Bertahap).
+  - Menambahkan **Test Audit #22** (`22/22 LULUS`) untuk seluruh skenario antrean pengiriman dan kirim bertahap (Bon Barang).
+
 ## [1.0.108] - 2026-11-23
 
 ### Added

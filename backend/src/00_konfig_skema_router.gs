@@ -341,7 +341,11 @@ const RUTE = {
   'shift.aktif': { publik: false, roles: SEMUA_ROLE, handler: aksiShiftAktif_ },
   'shift.buka': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiShiftBuka_ },
   'shift.tutup': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiShiftTutup_ },
-  'shift.list': { publik: false, roles: SEMUA_ROLE, handler: aksiShiftList_ }
+  'shift.list': { publik: false, roles: SEMUA_ROLE, handler: aksiShiftList_ },
+
+  // Antrean Pengiriman, Surat Jalan, & Kirim Bertahap (Bon Barang)
+  'pengiriman.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPengirimanList_ },
+  'pengiriman.updateStatus': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPengirimanUpdateStatus_ }
 };
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */

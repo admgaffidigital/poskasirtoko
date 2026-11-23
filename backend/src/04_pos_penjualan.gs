@@ -378,6 +378,8 @@ function aksiPenjualanCreate_(ctx) {
   let statusAntar = 'selesai';
   if (adaBelumDibawa) {
     statusAntar = adaSudahDibawa ? 'sebagian' : 'belum_dikirim';
+  } else if (pengiriman === 'dikirim') {
+    statusAntar = payload.status_antar === 'selesai' ? 'selesai' : 'belum_dikirim';
   }
 
   // Tentukan Metode Bayar Utama & Status Bayar
@@ -1466,6 +1468,217 @@ function aksiShiftList_(ctx) {
     jumlah_kurang: jumlahKurang
   };
   return hasilPag;
+}
+
+/**
+ * pengiriman.list — Daftar antrean pengiriman toko & barang titipan/ambil bertahap (Bon Barang).
+ */
+function aksiPengirimanList_(ctx) {
+  const p = ctx.payload || {};
+  const dari = String(p.dari || '').trim().substring(0, 10);
+  const sampai = String(p.sampai || '').trim().substring(0, 10);
+  const statusFilter = String(p.status_antar || p.status || '').trim().toLowerCase();
+
+  const pelPeta = {};
+  bacaSemua_('Pelanggan').forEach(function (pl) { pelPeta[pl.id] = pl; });
+  const userPeta = {};
+  bacaSemua_('Users').forEach(function (u) { userPeta[u.id] = u.nama || u.username; });
+
+  const itemsByPj = {};
+  bacaSemua_('Penjualan_Item').forEach(function (it) {
+    if (it.deleted) return;
+    if (!itemsByPj[it.penjualan_id]) itemsByPj[it.penjualan_id] = [];
+    itemsByPj[it.penjualan_id].push(it);
+  });
+
+  const semua = bacaSemua_('Penjualan').filter(function (pj) {
+    if (pj.deleted || pj.status === 'void' || pj.status === 'pending') return false;
+    const adalahKirim = pj.pengiriman === 'dikirim';
+    const belumSelesai = pj.status_antar && pj.status_antar !== 'selesai';
+    if (!adalahKirim && !belumSelesai) return false;
+    const tgl = String(pj.tanggal || pj.created_at || '').substring(0, 10);
+    if (dari && tgl && tgl < dari) return false;
+    if (sampai && tgl && tgl > sampai) return false;
+    return true;
+  });
+
+  semua.sort(function (a, b) {
+    return String(b.tanggal || b.created_at || '').localeCompare(String(a.tanggal || a.created_at || ''));
+  });
+
+  let cntBelum = 0;
+  let cntDiantar = 0;
+  let cntSebagian = 0;
+  let cntSelesai = 0;
+
+  const lengkap = semua.map(function (pj) {
+    const st = String(pj.status_antar || 'belum_dikirim').toLowerCase();
+    if (st === 'belum_dikirim') cntBelum++;
+    else if (st === 'diantar') cntDiantar++;
+    else if (st === 'sebagian') cntSebagian++;
+    else if (st === 'selesai') cntSelesai++;
+
+    const pel = pj.pelanggan_id ? pelPeta[pj.pelanggan_id] : null;
+    const daftarItem = (itemsByPj[pj.id] || []).map(function (it) {
+      const qty = bulatQty_(Number(it.qty || 0));
+      const dibawa = bulatQty_(Number(it.qty_dibawa !== undefined ? it.qty_dibawa : qty));
+      const sisa = bulatQty_(Math.max(0, qty - dibawa));
+      return {
+        id: it.id,
+        produk_id: it.produk_id,
+        varian_id: it.varian_id || '',
+        nama: it.nama,
+        satuan: it.satuan,
+        qty: qty,
+        qty_dibawa: dibawa,
+        sisa_kirim: sisa
+      };
+    });
+
+    let totalQtyPesan = 0;
+    let totalQtySisa = 0;
+    daftarItem.forEach(function (it) {
+      totalQtyPesan += it.qty;
+      totalQtySisa += it.sisa_kirim;
+    });
+
+    return {
+      id: pj.id,
+      no_nota: pj.no_nota,
+      tanggal: pj.tanggal,
+      pengiriman: pj.pengiriman,
+      alamat_kirim: pj.alamat_kirim || (pel ? pel.alamat : '') || '',
+      status_antar: st,
+      ongkir: Number(pj.ongkir || 0),
+      total: Number(pj.total || 0),
+      status_bayar: pj.status_bayar || 'lunas',
+      catatan: pj.catatan || '',
+      pelanggan_id: pj.pelanggan_id || '',
+      pelanggan_nama: pel ? pel.nama : 'Pelanggan Umum',
+      pelanggan_hp: pel ? (pel.hp || '') : '',
+      kasir_nama: userPeta[pj.kasir_id] || 'Kasir',
+      jumlah_item: daftarItem.length,
+      total_qty_pesan: bulatQty_(totalQtyPesan),
+      total_qty_sisa: bulatQty_(totalQtySisa),
+      items: daftarItem
+    };
+  });
+
+  const tersaring = statusFilter && statusFilter !== 'semua'
+    ? lengkap.filter(function (x) { return x.status_antar === statusFilter; })
+    : lengkap;
+
+  const hasilPag = paginasi_(tersaring, p, ['no_nota', 'pelanggan_nama', 'alamat_kirim', 'catatan']);
+  hasilPag.ringkasan = {
+    total_antrean: lengkap.length,
+    belum_dikirim: cntBelum,
+    diantar: cntDiantar,
+    sebagian: cntSebagian,
+    selesai: cntSelesai
+  };
+  return hasilPag;
+}
+
+/**
+ * pengiriman.updateStatus — Perbarui status pengiriman (Menunggu -> Diantar -> Sebagian -> Selesai)
+ * serta mendukung pencatatan pengiriman/pengambilan bertahap per item (qty_dibawa).
+ */
+function aksiPengirimanUpdateStatus_(ctx) {
+  const p = ctx.payload || {};
+  const id = V_.teks(p.id, 'ID Penjualan', { wajib: true });
+  const statusBaru = String(p.status_antar || '').trim().toLowerCase();
+  if (['belum_dikirim', 'diantar', 'sebagian', 'selesai'].indexOf(statusBaru) === -1) {
+    gagal_(KODE.VALIDATION, 'Status pengiriman tidak valid.');
+  }
+  const sopir = V_.teks(p.sopir || '', 'Nama sopir/pengirim', { maks: 100 });
+  const catatanKirim = V_.teks(p.catatan_kirim || '', 'Catatan pengiriman', { maks: 250 });
+
+  const pj = cariById_('Penjualan', id);
+  if (!pj || pj.deleted) gagal_(KODE.NOT_FOUND, 'Transaksi penjualan tidak ditemukan.');
+  if (pj.status === 'void') gagal_(KODE.CONFLICT, 'Transaksi sudah dibatalkan (void) dan tidak dapat dikirim.');
+
+  const semuaItem = bacaSemua_('Penjualan_Item').filter(function (it) {
+    return !it.deleted && it.penjualan_id === pj.id;
+  });
+
+  const perubahanItem = [];
+  const itemPeta = {};
+  semuaItem.forEach(function (it) { itemPeta[it.id] = it; });
+
+  if (statusBaru === 'selesai') {
+    // Jika ditandai Selesai, pastikan seluruh item tercatat qty_dibawa = qty penuh
+    semuaItem.forEach(function (it) {
+      if (bulatQty_(Number(it.qty_dibawa || 0)) < bulatQty_(Number(it.qty || 0))) {
+        perubahanItem.push({ id: it.id, data: { qty_dibawa: bulatQty_(Number(it.qty || 0)) } });
+      }
+    });
+  } else if (Array.isArray(p.items_kirim) && p.items_kirim.length > 0) {
+    p.items_kirim.forEach(function (ik) {
+      const target = itemPeta[ik.item_id || ik.id];
+      if (!target) return;
+      const qtyMaks = bulatQty_(Number(target.qty || 0));
+      let qtyBaru;
+      if (ik.qty_dibawa !== undefined && ik.qty_dibawa !== null) {
+        qtyBaru = bulatQty_(V_.nonNegatif(ik.qty_dibawa, 'Qty dikirim ' + target.nama));
+      } else if (ik.qty_kirim_tambah !== undefined && ik.qty_kirim_tambah !== null) {
+        const tambah = bulatQty_(V_.nonNegatif(ik.qty_kirim_tambah, 'Qty kirim tambahan ' + target.nama));
+        qtyBaru = bulatQty_(Number(target.qty_dibawa || 0) + tambah);
+      } else {
+        return;
+      }
+      if (qtyBaru > qtyMaks) {
+        gagal_(KODE.VALIDATION, 'Total qty dikirim untuk "' + target.nama + '" (' + qtyBaru + ') melebihi qty pesanan (' + qtyMaks + ').');
+      }
+      if (qtyBaru !== bulatQty_(Number(target.qty_dibawa || 0))) {
+        perubahanItem.push({ id: target.id, data: { qty_dibawa: qtyBaru } });
+        target.qty_dibawa = qtyBaru;
+      }
+    });
+  }
+
+  if (perubahanItem.length > 0) {
+    ubahBaris_('Penjualan_Item', perubahanItem, ctx.user.id);
+  }
+
+  // Evaluasi status akhir bila semua item sudah tercapai saat input parsial
+  let statusFinal = statusBaru;
+  if (statusBaru === 'sebagian' && semuaItem.length > 0) {
+    const semuaTerkirim = semuaItem.every(function (it) {
+      return bulatQty_(Number(it.qty_dibawa || 0)) >= bulatQty_(Number(it.qty || 0));
+    });
+    if (semuaTerkirim) statusFinal = 'selesai';
+  }
+
+  const dataUpdatePj = { status_antar: statusFinal };
+  if (sopir || catatanKirim) {
+    const infoBaru = '[' + sekarang_().substring(0, 16) + '] ' +
+      (sopir ? 'Sopir: ' + sopir + (catatanKirim ? ' - ' : '') : '') +
+      (catatanKirim || '');
+    const catLama = String(pj.catatan || '').trim();
+    dataUpdatePj.catatan = (catLama ? catLama + ' | ' + infoBaru : infoBaru).substring(0, 500);
+  }
+
+  const pjBaru = ubahBaris_('Penjualan', [{ id: pj.id, data: dataUpdatePj }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'pengiriman_update', 'PENGIRIMAN', pj.no_nota, {
+    status_lama: pj.status_antar,
+    status_baru: statusFinal,
+    sopir: sopir,
+    catatan_kirim: catatanKirim
+  });
+
+  const labelStatus = {
+    belum_dikirim: 'Menunggu Kirim',
+    diantar: 'Sedang Diantar',
+    sebagian: 'Dikirim Sebagian',
+    selesai: 'Selesai Diterima'
+  };
+
+  return {
+    penjualan: pjBaru,
+    items: semuaItem,
+    pesan: 'Status pengiriman ' + pj.no_nota + ' diperbarui menjadi "' + (labelStatus[statusFinal] || statusFinal) + '".'
+  };
 }
 
 /**
