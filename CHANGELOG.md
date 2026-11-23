@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.115] - 2026-11-23
+### Diperbaiki & Disempurnakan
+- **Word-Wrap Otomatis Header & Alamat Struk Thermal (`printer.js`)**: `formatTengah()` kini otomatis membungkus teks panjang per kata sesuai lebar kertas (32 kolom / 58mm atau 48 kolom / 80mm) sehingga alamat toko panjang dan footer nota tidak lagi terpotong di Struk Penjualan, Pembelian, Surat Jalan, maupun Rekap Shift X/Z-Report.
+- **Tampilan Pratinjau Struk Thermal Proporsional & Kirim WA Shift (`components.css`, `printer.js`)**: Pratinjau struk X-Report / Z-Report kini tampil rapi di tengah menyerupai kertas struk asli (`.thermal-preview-stage` & `.thermal-preview-paper`), tombol cetak Browser/PDF bebas popup-blocker via iframe, tombol footer `Tutup` diseragamkan ke `btn-outline`, serta ditambah tombol **Kirim WA** untuk setor rekap shift ke Owner.
+
 ## [1.0.114] - 2026-11-23
 
 ### Added

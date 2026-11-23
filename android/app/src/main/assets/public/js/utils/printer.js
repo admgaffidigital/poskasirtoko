@@ -48,17 +48,61 @@ export function buatGaris(lebar, karakter = '-') {
 }
 
 /**
- * Format teks di tengah (center aligned)
+ * Format teks di tengah (center aligned) dengan word-wrap otomatis agar alamat/judul panjang tidak terpotong
  * @param {string} teks
  * @param {number} lebar
  * @returns {string}
  */
 export function formatTengah(teks, lebar) {
   const t = String(teks || '').trim();
-  if (t.length >= lebar) return t.substring(0, lebar);
-  const spasiKiri = Math.floor((lebar - t.length) / 2);
-  const spasiKanan = lebar - t.length - spasiKiri;
-  return ' '.repeat(spasiKiri) + t + ' '.repeat(spasiKanan);
+  if (!t) return '';
+
+  const rataSatuBaris = (str) => {
+    const s = str.trim();
+    if (s.length >= lebar) return s.substring(0, lebar);
+    const spasiKiri = Math.floor((lebar - s.length) / 2);
+    const spasiKanan = lebar - s.length - spasiKiri;
+    return ' '.repeat(spasiKiri) + s + ' '.repeat(spasiKanan);
+  };
+
+  if (t.length <= lebar) return rataSatuBaris(t);
+
+  const kataList = t.split(/\s+/);
+  const hasilBaris = [];
+  let barisAktif = '';
+
+  kataList.forEach((kata) => {
+    if (!barisAktif) {
+      if (kata.length <= lebar) {
+        barisAktif = kata;
+      } else {
+        // Pecah kata yang lebih panjang dari lebar kertas
+        let sisa = kata;
+        while (sisa.length > lebar) {
+          hasilBaris.push(rataSatuBaris(sisa.substring(0, lebar)));
+          sisa = sisa.substring(lebar);
+        }
+        barisAktif = sisa;
+      }
+    } else if ((barisAktif.length + 1 + kata.length) <= lebar) {
+      barisAktif += ' ' + kata;
+    } else {
+      hasilBaris.push(rataSatuBaris(barisAktif));
+      if (kata.length <= lebar) {
+        barisAktif = kata;
+      } else {
+        let sisa = kata;
+        while (sisa.length > lebar) {
+          hasilBaris.push(rataSatuBaris(sisa.substring(0, lebar)));
+          sisa = sisa.substring(lebar);
+        }
+        barisAktif = sisa;
+      }
+    }
+  });
+
+  if (barisAktif) hasilBaris.push(rataSatuBaris(barisAktif));
+  return hasilBaris.join('\n');
 }
 
 /**
@@ -1608,39 +1652,39 @@ export async function cetakBluetoothShift(dataReport, ukuran = '58') {
 }
 
 /**
- * Cetak X-Report shift via browser print dialog
+ * Cetak X-Report / Z-Report shift via browser print dialog (iframe tersembunyi, anti popup-blocker)
  */
 export function cetakBrowserShift(dataReport, ukuran = '58') {
   const isZReport = dataReport && (dataReport.status === 'ditutup' || dataReport.tipe_laporan === 'Z-REPORT');
   const teks = susunTeksXReport(dataReport, ukuran);
-  const win = window.open('', '_blank', 'width=380,height=600');
-  if (!win) {
-    showToast('Popup diblokir browser. Izinkan popup untuk mencetak.', 'warning');
-    return;
-  }
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${isZReport ? 'Laporan Tutup Shift (Z-Report)' : 'Rekap Shift (X-Report)'}</title>
-        <style>
-          @page { size: ${ukuran === '80' ? '80mm' : '58mm'} auto; margin: 2mm; }
-          body { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; white-space: pre-wrap; padding: 4px; margin: 0; }
-        </style>
-      </head>
-      <body>${escapeHtml(teks)}</body>
-    </html>
-  `);
-  win.document.close();
-  win.focus();
-  setTimeout(() => {
-    win.print();
-    win.close();
-  }, 400);
+  const htmlDoc = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>${isZReport ? 'Laporan Tutup Shift (Z-Report)' : 'Rekap Shift (X-Report)'}</title>
+    <style>
+      @page { size: ${ukuran === '80' ? '80mm' : '58mm'} auto; margin: 2mm; }
+      body { font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.35; white-space: pre; padding: 4px; margin: 0; color: #000; }
+    </style>
+  </head>
+  <body>${escapeHtml(teks)}</body>
+</html>`;
+  cetakHtmlViaIframe(htmlDoc);
 }
 
 /**
- * Dialog pilihan cetak struk rekap shift (RawBT / Bluetooth / Browser)
+ * Buat tautan WhatsApp rekap shift kasir (X-Report / Z-Report) untuk dikirim ke Owner/Supervisor
+ */
+export function buatTautanWhatsAppShift(dataReport) {
+  const teks = susunTeksXReport(dataReport, '58');
+  const isZReport = dataReport && (dataReport.status === 'ditutup' || dataReport.tipe_laporan === 'Z-REPORT');
+  const judul = isZReport ? '*LAPORAN TUTUP SHIFT (Z-REPORT)*' : '*REKAP SHIFT KASIR (X-REPORT)*';
+  const pesan = `${judul}\n\`\`\`\n${teks}\n\`\`\``;
+  return `https://wa.me/?text=${encodeURIComponent(pesan)}`;
+}
+
+/**
+ * Dialog pilihan cetak struk rekap shift (RawBT / Bluetooth / Browser / WhatsApp)
  * @param {Object} dataReport
  */
 export function bukaModalPilihanCetakShift(dataReport) {
@@ -1652,18 +1696,23 @@ export function bukaModalPilihanCetakShift(dataReport) {
   const modal = showModal({
     title: isZReport ? 'Cetak Laporan Tutup Shift (Z-Report)' : 'Cetak Rekap Shift (X-Report)',
     body: `
-      <div class="stack" style="gap: var(--sp-4);">
+      <div class="stack" style="gap: var(--sp-3);">
         <div class="alert ${isZReport ? 'alert-success' : 'alert-info'}">
           ${ICONS.printer}
           <div>
             <strong>${isZReport ? 'Laporan Tutup Shift (Z-Report) Siap Dicetak' : 'Rekap Shift Kasir Siap Dicetak'}</strong><br>
-            Pilih jalur pencetakan yang sesuai dengan printer kasir Anda.
+            Pilih jalur pencetakan thermal (${ukuran}mm) atau kirim rekap ke WhatsApp.
           </div>
         </div>
 
         <div>
-          <label class="form-label text-xs fw-semibold">Pratinjau Struk ${isZReport ? 'Z-Report' : 'X-Report'} (${ukuran}mm):</label>
-          <pre class="struk-preview mono" style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); font-size: 11px; line-height: 1.35; max-height: 240px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all;">${escapeHtml(teksStruk)}</pre>
+          <div class="row-between" style="margin-bottom: var(--sp-1);">
+            <label class="form-label text-xs fw-semibold" style="margin: 0;">Pratinjau Struk ${isZReport ? 'Z-Report' : 'X-Report'} (${ukuran}mm)</label>
+            <span class="badge badge-neutral">${LEBAR_KERTAS[ukuran] || 32} kolom</span>
+          </div>
+          <div class="thermal-preview-stage">
+            <pre class="thermal-preview-paper mono">${escapeHtml(teksStruk)}</pre>
+          </div>
         </div>
 
         <div class="stack" style="gap: var(--sp-2);">
@@ -1671,14 +1720,18 @@ export function bukaModalPilihanCetakShift(dataReport) {
             ${ICONS.printer}
             <span>Cetak via RawBT Printer (Android)</span>
           </button>
-          <div class="row" style="gap: var(--sp-2);">
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-shift-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.bluetooth || ICONS.printer}
               <span>Web Bluetooth</span>
             </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-shift-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+              ${ICONS.printer}
               <span>Browser / PDF</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-shift-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.messageCircle}
+              <span>Kirim WA</span>
             </button>
           </div>
         </div>
@@ -1686,7 +1739,7 @@ export function bukaModalPilihanCetakShift(dataReport) {
     `,
     footer: `
       <div class="row" style="width: 100%; justify-content: flex-end;">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-shift">Tutup</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-modal-cetak-shift">Tutup</button>
       </div>
     `
   });
@@ -1701,6 +1754,10 @@ export function bukaModalPilihanCetakShift(dataReport) {
 
   modal.el.querySelector('#btn-print-shift-browser')?.addEventListener('click', () => {
     cetakBrowserShift(dataReport, ukuran);
+  });
+
+  modal.el.querySelector('#btn-share-shift-wa')?.addEventListener('click', () => {
+    window.open(buatTautanWhatsAppShift(dataReport), '_blank');
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-shift')?.addEventListener('click', () => {
