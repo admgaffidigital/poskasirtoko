@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.117] - 2026-11-23
+### Ditambahkan — Direct POS USB (ESC/POS Native) untuk Desktop Kasir
+- **POS USB Bridge Windows Tanpa Install (`tools/pos-usb-bridge/`, `frontend/download/POS-Kasir-USB-Bridge.bat`)**: Bridge lokal ultra-ringan berbasis Windows PowerShell + Win32 `winspool.drv` RAW ESC/POS passthrough (0 dependensi, tanpa Node.js/Java/QZ Tray/ganti driver Zadig) untuk mencetak 1-klik langsung ke printer thermal USB Windows (Eppos, Panda, VSC, Blueprint, Xprinter, Epson TM-T82, POS-58, POS-80).
+- **3 Jalur Direct ESC/POS Desktop & Cash Drawer Kick (`printer.js`, `pengaturan.js`)**: Mendukung **POS USB Bridge Windows (`127.0.0.1:9199`)**, **Direct WebUSB (`navigator.usb`)**, dan **Direct USB Serial/COM (`navigator.serial`)**, lengkap dengan **BOLD + Double Height nama toko**, **BOLD baris TOTAL**, **auto-cutter (`GS V 66 0`)**, dan opsi **Buka Laci Kasir Otomatis (`ESC p`)**.
+- **Tombol Utama Direct POS USB di Semua Modal Cetak Desktop (`printer.js`)**: Di PC/Laptop, modal cetak Struk Penjualan, Faktur Pembelian, Rekap Shift (X/Z-Report), Surat Jalan, dan Modal Koneksi Printer otomatis menampilkan **Direct POS USB (ESC/POS)** sebagai jalur utama dengan cek status Bridge live & dropdown pilih printer Windows langsung dari aplikasi.
+
 ## [1.0.116] - 2026-11-23
 ### Ditingkatkan — Mesin Cetak Thermal Web Presisi 203 DPI
 - **Template Struk HTML 203 DPI Hitam Pekat Anti-Buram (`printer.js`)**: Cetak thermal dari Web Browser untuk **Struk Penjualan, Faktur Pembelian, Rekap Shift X/Z-Report, & Surat Jalan** kini menggunakan layout HTML semantik khusus printer thermal 203 DPI (font tebal crisp `#000000` tanpa dithering abu-abu, angka tabular sejajar, garis pemisah solid/dashed nyata) menggantikan plain-text `Courier New 10px`.

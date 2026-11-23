@@ -253,11 +253,13 @@ export function susunTeksStruk(data, ukuran = '58') {
 }
 
 /**
- * Hasilkan perintah biner ESC/POS untuk printer thermal
+ * Hasilkan perintah biner ESC/POS untuk printer thermal 58mm & 80mm
+ * Mendukung BOLD + Double Height nama toko, BOLD otomatis pada baris TOTAL/judul, auto-cut, & buka laci kasir (ESC p)
  * @param {string} teksStruk
+ * @param {Object} [opsi={}] { bukaLaci?: boolean, autoCut?: boolean }
  * @returns {Uint8Array}
  */
-export function teksKeEscPos(teksStruk) {
+export function teksKeEscPos(teksStruk, opsi = {}) {
   const bytes = [];
 
   // Inisialisasi printer: ESC @ (1B 40)
@@ -266,12 +268,35 @@ export function teksKeEscPos(teksStruk) {
   // Set character code table ke PC437 (Standar)
   bytes.push(0x1b, 0x74, 0x00);
 
+  // Buka laci kasir (Cash Drawer Kick: ESC p 0 25 250) jika diminta
+  if (opsi && opsi.bukaLaci) {
+    bytes.push(0x1b, 0x70, 0x00, 0x19, 0xfa);
+  }
+
   // Parse baris demi baris teks
-  const baris = teksStruk.split('\n');
+  const baris = String(teksStruk || '').split('\n');
+  let barisNamaTokoSudah = false;
 
   baris.forEach((line) => {
-    // Normal size, normal weight
-    bytes.push(0x1b, 0x21, 0x00);
+    const trimmed = line.trim();
+    const isHeaderToko = !barisNamaTokoSudah && trimmed.length > 0;
+    const isBarisTebal = !isHeaderToko && (
+      /^(TOTAL|GRAND TOTAL|TOTAL TAGIHAN|TOTAL OMSET|UANG FISIK LACI)\b/i.test(trimmed) ||
+      /^(REKAP SHIFT|LAPORAN TUTUP SHIFT|SURAT JALAN BARANG|FAKTUR PEMBELIAN|REKONSILIASI FISIK LACI)/i.test(trimmed)
+    );
+
+    if (isHeaderToko) {
+      barisNamaTokoSudah = true;
+      // Bold + Double Height agar nama toko tajam & gagah tanpa meluber lebar kolom
+      bytes.push(0x1b, 0x21, 0x18);
+      bytes.push(0x1b, 0x45, 0x01);
+    } else if (isBarisTebal) {
+      bytes.push(0x1b, 0x21, 0x08);
+      bytes.push(0x1b, 0x45, 0x01);
+    } else {
+      bytes.push(0x1b, 0x21, 0x00);
+      bytes.push(0x1b, 0x45, 0x00);
+    }
 
     // Encode string ke ASCII bytes
     for (let i = 0; i < line.length; i++) {
@@ -282,9 +307,14 @@ export function teksKeEscPos(teksStruk) {
     bytes.push(0x0a);
   });
 
-  // Feed 4 baris & Cut paper: GS V A 0 (1D 56 41 00)
+  // Reset style normal
+  bytes.push(0x1b, 0x21, 0x00, 0x1b, 0x45, 0x00);
+
+  // Feed 4 baris & Partial Cut paper: GS V 66 0 (1D 56 42 00) — kompatibel luas Epson/Xprinter/Eppos/Panda/POS-80
   bytes.push(0x0a, 0x0a, 0x0a, 0x0a);
-  bytes.push(0x1d, 0x56, 0x41, 0x00);
+  if (opsi.autoCut !== false) {
+    bytes.push(0x1d, 0x56, 0x42, 0x00);
+  }
 
   return new Uint8Array(bytes);
 }
@@ -296,10 +326,14 @@ let bluetoothCharacteristic = null;
 /** Cache port printer Web Serial (USB / Bluetooth COM Desktop) */
 let serialPortAktif = null;
 
+/** Cache perangkat printer WebUSB (Direct USB ESC/POS Desktop) */
+let webUsbDeviceAktif = null;
+let webUsbEndpointOut = null;
+
 const KEY_KALIBRASI_THERMAL = 'pos_thermal_web_cal_v1';
 
 /**
- * Ambil pengaturan kalibrasi cetak thermal web untuk perangkat ini
+ * Ambil pengaturan kalibrasi cetak thermal web & Direct USB Desktop untuk perangkat ini
  */
 export function ambilKalibrasiThermal() {
   const def = {
@@ -307,7 +341,11 @@ export function ambilKalibrasiThermal() {
     lebar80Mm: 72,   // Area cetak riil kertas 80mm (head thermal 72mm)
     ukuranFont: 'normal', // 'kecil' | 'normal' | 'besar'
     feedBawahMm: 10, // Ruang aman potong/sobek kertas di bawah struk
-    baudRate: 9600
+    baudRate: 9600,
+    usbBridgeUrl: 'http://127.0.0.1:9199',
+    usbPrinterName: '',
+    usbMode: 'bridge', // 'bridge' | 'webusb' | 'serial'
+    bukaLaciOtomatis: false
   };
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY_KALIBRASI_THERMAL) : null;
@@ -318,7 +356,11 @@ export function ambilKalibrasiThermal() {
       lebar80Mm: Number(parsed.lebar80Mm) || def.lebar80Mm,
       ukuranFont: ['kecil', 'normal', 'besar'].includes(parsed.ukuranFont) ? parsed.ukuranFont : def.ukuranFont,
       feedBawahMm: Number.isFinite(Number(parsed.feedBawahMm)) ? Number(parsed.feedBawahMm) : def.feedBawahMm,
-      baudRate: Number(parsed.baudRate) || def.baudRate
+      baudRate: Number(parsed.baudRate) || def.baudRate,
+      usbBridgeUrl: String(parsed.usbBridgeUrl || def.usbBridgeUrl).replace(/\/+$/, ''),
+      usbPrinterName: String(parsed.usbPrinterName || ''),
+      usbMode: ['bridge', 'webusb', 'serial'].includes(parsed.usbMode) ? parsed.usbMode : def.usbMode,
+      bukaLaciOtomatis: Boolean(parsed.bukaLaciOtomatis)
     };
   } catch (_) {
     return def;
@@ -326,7 +368,7 @@ export function ambilKalibrasiThermal() {
 }
 
 /**
- * Simpan pengaturan kalibrasi cetak thermal web untuk perangkat ini
+ * Simpan pengaturan kalibrasi cetak thermal web & Direct USB Desktop untuk perangkat ini
  */
 export function simpanKalibrasiThermal(patch) {
   const cur = ambilKalibrasiThermal();
@@ -339,11 +381,214 @@ export function simpanKalibrasiThermal(patch) {
   return next;
 }
 
-/**
- * Cek dukungan Web Serial API (Chrome/Edge Desktop untuk Direct USB/COM ESC/POS)
- */
+/** Konversi Uint8Array ke Base64 secara aman */
+function bytesKeBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/** Cek dukungan Web Serial API (Chrome/Edge Desktop) */
 export function dukungWebSerial() {
   return typeof navigator !== 'undefined' && 'serial' in navigator;
+}
+
+/** Cek dukungan WebUSB API (Chrome/Edge Desktop) */
+export function dukungWebUsb() {
+  return typeof navigator !== 'undefined' && 'usb' in navigator;
+}
+
+/**
+ * Cek status POS USB Bridge Windows lokal (http://127.0.0.1:9199/status)
+ * @returns {Promise<{aktif: boolean, printers: string[], default_printer: string, url: string}>}
+ */
+export async function cekStatusUsbBridge(timeoutMs = 1400) {
+  const cal = ambilKalibrasiThermal();
+  const url = cal.usbBridgeUrl || 'http://127.0.0.1:9199';
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(`${url}/status`, {
+      method: 'GET',
+      mode: 'cors',
+      signal: controller ? controller.signal : undefined
+    });
+    if (timer) clearTimeout(timer);
+    if (!res.ok) return { aktif: false, printers: [], default_printer: '', url };
+    const data = await res.json();
+    return {
+      aktif: Boolean(data && data.ok),
+      printers: Array.isArray(data?.printers) ? data.printers : [],
+      default_printer: String(data?.default_printer || ''),
+      url
+    };
+  } catch (_) {
+    if (timer) clearTimeout(timer);
+    return { aktif: false, printers: [], default_printer: '', url };
+  }
+}
+
+/**
+ * Kirim bytes RAW ESC/POS ke POS USB Bridge Windows lokal (winspool.drv RAW mode)
+ * 100% kompatibel semua printer thermal USB Windows tanpa perlu ganti driver.
+ */
+export async function kirimEscPosKeUsbBridge(escposBytes, namaPrinter = '', docName = 'POS Kasir ESC/POS') {
+  const cal = ambilKalibrasiThermal();
+  const url = cal.usbBridgeUrl || 'http://127.0.0.1:9199';
+  const targetPrinter = namaPrinter || cal.usbPrinterName || '';
+  const res = await fetch(`${url}/print`, {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      printer: targetPrinter,
+      doc_name: docName,
+      data_base64: bytesKeBase64(escposBytes)
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+/**
+ * Kirim bytes RAW ESC/POS langsung lewat WebUSB API (Chrome/Edge Desktop)
+ * Cocok untuk printer thermal USB mode WinUSB / Linux / macOS.
+ */
+export async function kirimEscPosKeWebUsb(escposBytes) {
+  if (!dukungWebUsb()) {
+    showToast('WebUSB hanya didukung di Chrome / Edge Desktop.', 'warning', 4000);
+    return false;
+  }
+  try {
+    if (!webUsbDeviceAktif || !webUsbDeviceAktif.opened) {
+      showToast('Pilih printer thermal USB pada dialog perangkat browser...', 'info', 3000);
+      webUsbDeviceAktif = await navigator.usb.requestDevice({
+        filters: [{ classCode: 7 }, { classCode: 255 }]
+      });
+      await webUsbDeviceAktif.open();
+      if (webUsbDeviceAktif.configuration === null) {
+        await webUsbDeviceAktif.selectConfiguration(1);
+      }
+      let claimed = false;
+      let epOut = null;
+      for (const iface of webUsbDeviceAktif.configuration.interfaces) {
+        for (const alt of iface.alternates) {
+          const outEp = (alt.endpoints || []).find((ep) => ep.direction === 'out' && ep.type === 'bulk');
+          if (outEp) {
+            await webUsbDeviceAktif.claimInterface(iface.interfaceNumber);
+            if (alt.alternateSetting !== 0) {
+              await webUsbDeviceAktif.selectAlternateInterface(iface.interfaceNumber, alt.alternateSetting);
+            }
+            epOut = outEp.endpointNumber;
+            claimed = true;
+            break;
+          }
+        }
+        if (claimed) break;
+      }
+      if (!claimed || epOut === null) {
+        throw new Error('Endpoint cetak USB (Bulk OUT) tidak ditemukan pada perangkat ini.');
+      }
+      webUsbEndpointOut = epOut;
+    }
+
+    const CHUNK = 512;
+    for (let i = 0; i < escposBytes.length; i += CHUNK) {
+      await webUsbDeviceAktif.transferOut(webUsbEndpointOut, escposBytes.slice(i, i + CHUNK));
+    }
+    showToast(`Struk terkirim langsung ke USB (${webUsbDeviceAktif.productName || 'POS USB'}).`, 'success');
+    return true;
+  } catch (err) {
+    if (err && err.name === 'NotFoundError') return false;
+    webUsbDeviceAktif = null;
+    webUsbEndpointOut = null;
+    const msg = String(err?.message || err || '');
+    if (/access denied|claim|protected/i.test(msg)) {
+      showToast('Driver Windows sedang memakai port USB. Gunakan POS USB Bridge Windows agar tidak perlu ganti driver!', 'warning', 6000);
+    } else {
+      showToast('Gagal cetak WebUSB: ' + msg, 'error', 4500);
+    }
+    return false;
+  }
+}
+
+/**
+ * Router pintar cetak Direct ESC/POS USB dari Desktop:
+ * 1) Mode Bridge Windows (paling stabil & 1-klik tanpa ganti driver)
+ * 2) Mode WebUSB (navigator.usb)
+ * 3) Mode Web Serial COM (navigator.serial)
+ */
+export async function cetakDirectUsbDesktop(escposBytes, labelDokumen = 'struk') {
+  const cal = ambilKalibrasiThermal();
+
+  if (cal.usbMode === 'webusb') {
+    return await kirimEscPosKeWebUsb(escposBytes);
+  }
+  if (cal.usbMode === 'serial') {
+    return await kirimEscPosKeSerial(escposBytes);
+  }
+
+  // Default: POS USB Bridge Windows (http://127.0.0.1:9199)
+  try {
+    const res = await kirimEscPosKeUsbBridge(escposBytes, cal.usbPrinterName, `POS Kasir - ${labelDokumen}`);
+    showToast(`Cetak ESC/POS OK → ${res.printer || 'Printer USB'}`, 'success', 2500);
+    return true;
+  } catch (err) {
+    // Jika bridge belum berjalan, cek apakah user sudah punya koneksi WebUSB/Serial aktif
+    if (webUsbDeviceAktif && webUsbDeviceAktif.opened) {
+      return await kirimEscPosKeWebUsb(escposBytes);
+    }
+    if (serialPortAktif && serialPortAktif.writable) {
+      return await kirimEscPosKeSerial(escposBytes);
+    }
+    showToast('POS USB Bridge Windows belum aktif. Membuka pengaturan & unduh Bridge 1-klik...', 'warning', 4500);
+    tampilkanModalKoneksiPrinter();
+    return false;
+  }
+}
+
+/**
+ * Kirim sinyal buka laci kasir (Cash Drawer Kick: ESC p 0 25 250) ke printer thermal USB Desktop
+ */
+export async function bukaLaciKasirUsb() {
+  const bytes = new Uint8Array([0x1b, 0x40, 0x1b, 0x70, 0x00, 0x19, 0xfa]);
+  return await cetakDirectUsbDesktop(bytes, 'Buka Laci Kasir');
+}
+
+/** Cetak Struk Penjualan langsung ke Printer POS USB Desktop (Direct ESC/POS) */
+export async function cetakUsbDirect(dataStruk, ukuran = '58') {
+  const cal = ambilKalibrasiThermal();
+  const pj = dataStruk?.penjualan || {};
+  const isTunai = String(pj.metode_bayar || 'tunai').toLowerCase() === 'tunai' || (Array.isArray(dataStruk?.pembayaran) && dataStruk.pembayaran.some((b) => String(b.metode || '').toLowerCase() === 'tunai'));
+  const teksStruk = susunTeksStruk(dataStruk, ukuran);
+  const bytes = teksKeEscPos(teksStruk, { bukaLaci: cal.bukaLaciOtomatis && isTunai });
+  return await cetakDirectUsbDesktop(bytes, pj.no_nota || 'Nota Penjualan');
+}
+
+/** Cetak Faktur Pembelian langsung ke Printer POS USB Desktop (Direct ESC/POS) */
+export async function cetakUsbDirectPembelian(dataPembelian, ukuran = '58') {
+  const teksStruk = susunTeksStrukPembelian(dataPembelian, ukuran);
+  const bytes = teksKeEscPos(teksStruk);
+  return await cetakDirectUsbDesktop(bytes, dataPembelian?.pembelian?.no_faktur || 'Faktur Pembelian');
+}
+
+/** Cetak Rekap Shift (X/Z-Report) langsung ke Printer POS USB Desktop (Direct ESC/POS) */
+export async function cetakUsbDirectShift(dataReport, ukuran = '58') {
+  const teksStruk = susunTeksXReport(dataReport, ukuran);
+  const bytes = teksKeEscPos(teksStruk);
+  return await cetakDirectUsbDesktop(bytes, dataReport?.no_shift || 'Rekap Shift');
+}
+
+/** Cetak Surat Jalan langsung ke Printer POS USB Desktop (Direct ESC/POS) */
+export async function cetakUsbDirectSuratJalan(dataStruk, ukuran = '58', opsi = {}) {
+  const teksStruk = susunTeksSuratJalan(dataStruk, ukuran, opsi);
+  const bytes = teksKeEscPos(teksStruk);
+  return await cetakDirectUsbDesktop(bytes, dataStruk?.penjualan?.no_nota || 'Surat Jalan');
 }
 
 /**
@@ -837,7 +1082,7 @@ function buatHtmlThermalSuratJalan(data, opsi = {}) {
 function bukaModalPratinjauThermalWeb({ judulModal, judulDokumen, bodyHtml, ukuranAwal = '58', ambilTeksEscPos = null }) {
   let ukuranAktif = String(ukuranAwal) === '80' ? '80' : '58';
   let cal = ambilKalibrasiThermal();
-  const adaSerial = dukungWebSerial() && typeof ambilTeksEscPos === 'function';
+  const adaDirectUsb = !adalahPerangkatAndroid() && typeof ambilTeksEscPos === 'function';
 
   const lebarOpsiHtml = (uk, aktifVal) => {
     const daftar = uk === '80' ? [68, 70, 72, 74, 76, 78] : [44, 46, 48, 50, 52, 54];
@@ -895,15 +1140,15 @@ function bukaModalPratinjauThermalWeb({ judulModal, judulDokumen, bodyHtml, ukur
       <div class="row" style="width: 100%; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap;">
         <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-pratinjau-th">Tutup</button>
         <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-          ${adaSerial ? `
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-cetak-serial-th" style="display: inline-flex; align-items: center; gap: 6px;">
+          ${adaDirectUsb ? `
+            <button type="button" class="btn btn-primary btn-sm" id="btn-cetak-serial-th" style="display: inline-flex; align-items: center; gap: 6px;">
               ${ICONS.zap}
-              <span>Direct USB (ESC/POS)</span>
+              <span>Direct POS USB (ESC/POS)</span>
             </button>
           ` : ''}
-          <button type="button" class="btn btn-primary btn-sm" id="btn-eksekusi-cetak-th" style="display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn ${adaDirectUsb ? 'btn-secondary' : 'btn-primary'} btn-sm" id="btn-eksekusi-cetak-th" style="display: inline-flex; align-items: center; gap: 6px;">
             ${ICONS.printer}
-            <span>Cetak Presisi (${ukuranAktif}mm)</span>
+            <span>Cetak Browser (${ukuranAktif}mm)</span>
           </button>
         </div>
       </div>
@@ -933,7 +1178,7 @@ function bukaModalPratinjauThermalWeb({ judulModal, judulDokumen, bodyHtml, ukur
       } catch (_) {}
     }, 60);
     if (btnCetak) {
-      btnCetak.innerHTML = `${ICONS.printer} <span>Cetak Presisi (${ukuranAktif}mm)</span>`;
+      btnCetak.innerHTML = `${ICONS.printer} <span>Cetak Browser (${ukuranAktif}mm)</span>`;
     }
   };
 
@@ -968,7 +1213,7 @@ function bukaModalPratinjauThermalWeb({ judulModal, judulDokumen, bodyHtml, ukur
   modal.el.querySelector('#btn-cetak-serial-th')?.addEventListener('click', async () => {
     if (typeof ambilTeksEscPos === 'function') {
       const teks = ambilTeksEscPos(ukuranAktif);
-      await kirimEscPosKeSerial(teksKeEscPos(teks));
+      await cetakDirectUsbDesktop(teksKeEscPos(teks), judulDokumen || 'Struk Thermal');
     }
   });
 
@@ -1237,12 +1482,20 @@ export function buatDataStrukUji(ukuran = '58') {
 
 /**
  * Eksekusi uji cetak struk (Test Print)
- * @param {'rawbt'|'bluetooth'|'browser'} [jalur='rawbt']
+ * @param {'rawbt'|'bluetooth'|'browser'|'usb_direct'|'webusb'|'serial'} [jalur='rawbt']
  * @param {'58'|'80'} [ukuran='58']
  */
 export async function cetakUjiStruk(jalur = 'rawbt', ukuran = '58') {
   const data = buatDataStrukUji(ukuran);
-  if (jalur === 'bluetooth') {
+  if (jalur === 'usb_direct') {
+    return await cetakUsbDirect(data, ukuran);
+  } else if (jalur === 'webusb') {
+    const teks = susunTeksStruk(data, ukuran);
+    return await kirimEscPosKeWebUsb(teksKeEscPos(teks));
+  } else if (jalur === 'serial') {
+    const teks = susunTeksStruk(data, ukuran);
+    return await kirimEscPosKeSerial(teksKeEscPos(teks));
+  } else if (jalur === 'bluetooth') {
     return await cetakBluetooth(data, ukuran);
   } else if (jalur === 'browser') {
     return cetakBrowser(data, ukuran);
@@ -1269,11 +1522,13 @@ export function cetakRawBT(dataStruk, ukuran = '58') {
 }
 
 /**
- * Tampilkan modal panduan & koneksi printer thermal Bluetooth via RawBT
+ * Tampilkan modal panduan & koneksi printer thermal (Direct POS USB Desktop & RawBT Bluetooth Android)
  */
 export function tampilkanModalKoneksiPrinter() {
   const cfg = store.get('pengaturan') || {};
   let ukuranKertas = cfg.printer_ukuran === '80' ? '80' : '58';
+  let cal = ambilKalibrasiThermal();
+  const isAndroid = adalahPerangkatAndroid();
 
   const hasNativeBridge = Boolean(window.AndroidRawBT);
   let rawbtInstalled = null;
@@ -1296,46 +1551,112 @@ export function tampilkanModalKoneksiPrinter() {
     </div>
   ` : '';
 
+  const panelDesktopUsbHtml = `
+    <div class="card card-body stack-sm" style="background: var(--primary-soft); border: 1.5px solid var(--border-strong);">
+      <div class="row-between" style="align-items: flex-start; gap: var(--sp-2); flex-wrap: wrap;">
+        <div class="row" style="align-items: flex-start; gap: var(--sp-2); flex: 1; min-width: 220px;">
+          <div style="background: var(--primary); color: var(--text-inverse); width: 38px; height: 38px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            ${ICONS.zap}
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <div class="fw-bold text-sm" style="color: var(--text);">Direct POS USB / ESC-POS (Desktop PC)</div>
+            <div class="text-xs text-muted" style="margin-top: 2px; line-height: 1.4;">
+              Cetak <strong>RAW ESC/POS asli</strong> langsung ke printer thermal USB 58/80mm (Eppos, Panda, Xprinter, Epson, POS-58/80) — <strong>1 klik, 100% tajam, auto-cut, tanpa dialog Chrome!</strong>
+            </div>
+          </div>
+        </div>
+        <span class="badge badge-neutral" id="badge-status-usb-bridge">Mengecek Bridge...</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-2); margin-top: 4px;">
+        <div>
+          <label class="form-label text-xs fw-semibold" for="sel-usb-mode" style="margin-bottom: 2px;">Jalur Direct USB PC</label>
+          <select id="sel-usb-mode" class="input input-sm">
+            <option value="bridge" ${cal.usbMode === 'bridge' ? 'selected' : ''}>POS USB Bridge Windows (Rekomendasi)</option>
+            <option value="webusb" ${cal.usbMode === 'webusb' ? 'selected' : ''}>Direct WebUSB (Tanpa Bridge / WinUSB)</option>
+            <option value="serial" ${cal.usbMode === 'serial' ? 'selected' : ''}>Direct USB Serial / COM Port</option>
+          </select>
+        </div>
+        <div id="wrap-usb-bridge-printer">
+          <label class="form-label text-xs fw-semibold" for="sel-usb-printer-name" style="margin-bottom: 2px;">Printer USB Windows</label>
+          <div class="row" style="gap: 4px;">
+            <select id="sel-usb-printer-name" class="input input-sm grow">
+              <option value="${escapeHtml(cal.usbPrinterName)}">${cal.usbPrinterName ? escapeHtml(cal.usbPrinterName) : '(Default Printer Windows)'}</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-usb-bridge" title="Segarkan daftar printer Windows" style="padding: 0 8px;">${ICONS.refresh}</button>
+          </div>
+        </div>
+      </div>
+
+      <label class="row text-xs" style="gap: 8px; cursor: pointer; align-items: center; margin-top: 2px;">
+        <input type="checkbox" id="chk-usb-buka-laci" ${cal.bukaLaciOtomatis ? 'checked' : ''} style="width: 15px; height: 15px; accent-color: var(--primary);">
+        <span>Buka Laci Kasir (Cash Drawer) otomatis saat cetak struk tunai</span>
+      </label>
+
+      <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: 4px;">
+        <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-test-usb-direct" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          ${ICONS.zap}
+          <span id="lbl-btn-test-usb">Uji Cetak Direct POS USB (${ukuranKertas}mm)</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-test-laci" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+          ${ICONS.wallet}
+          <span>Tes Buka Laci</span>
+        </button>
+        <a href="./download/POS-Kasir-USB-Bridge.bat" download="POS-Kasir-USB-Bridge.bat" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none;">
+          ${ICONS.download}
+          <span>Unduh Bridge Windows</span>
+        </a>
+      </div>
+
+      <div class="text-xs text-muted" style="line-height: 1.45; border-top: 1px dashed var(--border-strong); padding-top: 6px;">
+        <strong>Cara Pakai di Windows (30 Detik, Tanpa Install Driver Baru):</strong>
+        1) Klik <strong>Unduh Bridge Windows</strong> (atau jalankan <code>tools/pos-usb-bridge/jalankan-bridge.bat</code>), 2) Klik 2× file <code>POS-Kasir-USB-Bridge.bat</code>, 3) Tekan tombol segarkan lalu pilih nama printer thermal Anda &amp; klik <strong>Uji Cetak Direct POS USB</strong>!
+      </div>
+    </div>
+  `;
+
   const modal = showModal({
-    title: 'Koneksi Printer Bluetooth (RawBT)',
+    title: isAndroid ? 'Koneksi Printer Bluetooth (RawBT)' : 'Koneksi Printer Thermal (Direct POS USB & Bluetooth)',
     size: 'md',
     body: `
       <div class="stack" style="gap: var(--sp-3);">
-        <div class="card card-body" style="background: var(--primary-soft); border: 1.5px solid rgba(var(--primary-rgb, 232, 89, 12), 0.25);">
+        <!-- Pilih Ukuran Kertas Cepat -->
+        <div class="row-between items-center" style="gap: var(--sp-2); flex-wrap: wrap; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border);">
+          <span class="text-xs fw-semibold text-muted">Ukuran Kertas Uji Cetak:</span>
+          <div class="row" style="gap: 6px;" id="modal-printer-size-toggle">
+            <button type="button" class="btn btn-xs ${ukuranKertas === '58' ? 'btn-primary' : 'btn-secondary'}" data-paper-size="58">58 mm (32 Kolom)</button>
+            <button type="button" class="btn btn-xs ${ukuranKertas === '80' ? 'btn-primary' : 'btn-secondary'}" data-paper-size="80">80 mm (48 Kolom)</button>
+          </div>
+        </div>
+
+        ${!isAndroid ? panelDesktopUsbHtml : ''}
+
+        <div class="card card-body" style="background: ${isAndroid ? 'var(--primary-soft)' : 'var(--surface-2)'}; border: 1.5px solid var(--border);">
           <div class="row" style="align-items: flex-start; gap: var(--sp-3);">
-            <div style="background: var(--primary); color: #fff; width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div style="background: var(--primary); color: var(--text-inverse); width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
               ${ICONS.printer}
             </div>
             <div class="stack-sm" style="flex: 1; min-width: 0;">
-              <div class="fw-bold text-base" style="color: var(--text);">Sambungkan Printer Thermal Bluetooth</div>
-              <p class="text-sm text-muted" style="margin: 0; line-height: 1.45;">
-                Aplikasi POS Kasir terhubung langsung secara native ke <strong>RawBT Print Service</strong> untuk mencetak nota kasir secara instan dan stabil di HP/Tablet Android.
+              <div class="fw-bold text-sm" style="color: var(--text);">Printer Bluetooth Android (RawBT) &amp; Jalur Alternatif</div>
+              <p class="text-xs text-muted" style="margin: 0; line-height: 1.45;">
+                Untuk HP/Tablet Android, gunakan <strong>RawBT Print Service</strong> agar cetak nota kasir instan lewat Bluetooth.
               </p>
               ${statusBadgesHtml}
             </div>
           </div>
         </div>
 
-        <!-- Pilih Ukuran Kertas Cepat -->
-        <div class="row-between items-center" style="gap: var(--sp-2); flex-wrap: wrap; padding: 8px 12px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border);">
-          <span class="text-xs fw-semibold text-muted">Ukuran Kertas Uji Cetak:</span>
-          <div class="row" style="gap: 6px;" id="modal-printer-size-toggle">
-            <button type="button" class="btn btn-xs ${ukuranKertas === '58' ? 'btn-primary' : 'btn-secondary'}" data-paper-size="58">58 mm (Standar)</button>
-            <button type="button" class="btn btn-xs ${ukuranKertas === '80' ? 'btn-primary' : 'btn-secondary'}" data-paper-size="80">80 mm (Lebar)</button>
-          </div>
-        </div>
-
         <!-- Tombol Aksi Cepat -->
         <div class="stack-sm">
-          <div class="fw-bold text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">Aksi Cepat &amp; Uji Cetak:</div>
+          <div class="fw-bold text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">Aksi Cepat &amp; Uji Jalur Lain:</div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
             ${rawbtInstalled === false ? `
-              <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-install-rawbt-top" style="min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <button type="button" class="btn ${isAndroid ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-modal-install-rawbt-top" style="min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                 ${ICONS.download}
                 <span>Pasang RawBT (Play Store)</span>
               </button>
             ` : `
-              <button type="button" class="btn btn-primary btn-sm grow" id="btn-modal-test-rawbt" style="min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <button type="button" class="btn ${isAndroid ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-modal-test-rawbt" style="min-width: 150px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                 ${ICONS.printer}
                 <span id="lbl-btn-test-rawbt">Uji Cetak RawBT (${ukuranKertas}mm)</span>
               </button>
@@ -1348,7 +1669,7 @@ export function tampilkanModalKoneksiPrinter() {
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px;">
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-modal-open-bt-settings" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.bluetooth}
-              <span>Pengaturan Bluetooth HP</span>
+              <span>Bluetooth HP</span>
             </button>
             <button type="button" class="btn btn-ghost btn-sm grow" id="btn-modal-test-ble" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.bluetooth}
@@ -1361,53 +1682,38 @@ export function tampilkanModalKoneksiPrinter() {
           </div>
         </div>
 
+        ${isAndroid ? `
         <div class="divider" style="margin: var(--sp-1) 0;"></div>
-
-        <!-- 4 Langkah Panduan -->
         <div class="stack-sm">
-          <div class="fw-bold text-sm" style="color: var(--text);">4 Langkah Mudah Menyambungkan Printer:</div>
-          
+          <div class="fw-bold text-sm" style="color: var(--text);">4 Langkah Mudah Menyambungkan Printer Android:</div>
           <div class="stack" style="gap: var(--sp-2); margin-top: 4px;">
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">1</span>
               <div>
-                <strong>Pasang Aplikasi RawBT</strong> dari Google Play Store di HP/Tablet Android Anda jika belum ada.
+                <strong>Pasang Aplikasi RawBT</strong> dari Google Play Store di HP/Tablet Android Anda.
                 <div style="margin-top: 4px;">
-                  <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-modal-download-rawbt" style="padding: 2px 8px; border: 1px solid rgba(var(--primary-rgb, 232, 89, 12), 0.25); display: inline-flex; align-items: center; gap: 4px;">
+                  <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-modal-download-rawbt" style="padding: 2px 8px; border: 1px solid var(--border-strong); display: inline-flex; align-items: center; gap: 4px;">
                     ${ICONS.download}
                     <span>Unduh RawBT di Google Play Store</span>
                   </button>
                 </div>
               </div>
             </div>
-
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">2</span>
-              <div>
-                <strong>Nyalakan Printer &amp; Bluetooth</strong>: Ketuk tombol <strong>Pengaturan Bluetooth HP</strong> di atas, cari nama printer (cth: <em>RPP02N, PT-210, MPT-II, POS-58</em>), lalu pasangkan/pairing (PIN bawaan biasanya <code>0000</code> atau <code>1234</code>).
-              </div>
+              <div><strong>Nyalakan Printer &amp; Bluetooth</strong> lalu pairing nama printer (PIN: <code>0000</code> atau <code>1234</code>).</div>
             </div>
-
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">3</span>
-              <div>
-                <strong>Pilih Printer di RawBT</strong>: Ketuk <strong>Buka Aplikasi RawBT</strong> &gt; buka menu <strong>Settings (Pengaturan)</strong> &gt; pilih tipe koneksi <strong>Bluetooth</strong> &gt; tekan <strong>Pilih Printer</strong> dan pilih nama printer Anda.
-              </div>
+              <div><strong>Pilih Printer di RawBT</strong>: Buka RawBT &gt; Settings &gt; Bluetooth &gt; Pilih Printer Anda.</div>
             </div>
-
             <div class="row" style="align-items: flex-start; gap: 10px; font-size: 13px;">
               <span class="badge badge-primary" style="border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;">4</span>
-              <div>
-                <strong>Tekan Tombol Uji Cetak</strong>: Ketuk tombol <span class="badge badge-secondary" style="font-weight: var(--fw-semibold);">Uji Cetak RawBT</span> di atas. Jika kertas struk keluar, printer Anda sudah <strong>100% SIAP</strong> digunakan mencetak nota kasir!
-              </div>
+              <div><strong>Tekan Uji Cetak RawBT</strong> — jika kertas keluar, printer siap dipakai kasir!</div>
             </div>
           </div>
         </div>
-
-        <div class="alert alert-info text-xs" style="margin-top: var(--sp-1); padding: 8px 12px; display: flex; align-items: flex-start; gap: 6px;">
-          ${ICONS.info}
-          <div><strong>Tips Kasir:</strong> Setelah printer dipilih satu kali di aplikasi RawBT, Anda tidak perlu menyambungkan ulang. Cetak nota dari POS Kasir cukup 1 klik dan langsung terkirim ke printer.</div>
-        </div>
+        ` : ''}
       </div>
     `,
     footer: `
@@ -1423,6 +1729,58 @@ export function tampilkanModalKoneksiPrinter() {
     `
   });
 
+  const segarkanBridgeStatus = async () => {
+    const badge = modal.el.querySelector('#badge-status-usb-bridge');
+    const selPrn = modal.el.querySelector('#sel-usb-printer-name');
+    if (!badge) return;
+    badge.className = 'badge badge-neutral';
+    badge.textContent = 'Mengecek Bridge...';
+    const st = await cekStatusUsbBridge();
+    if (st.aktif) {
+      badge.className = 'badge badge-success badge-dot';
+      badge.textContent = `Bridge Aktif (${st.printers.length} Printer)`;
+      if (selPrn) {
+        const curName = cal.usbPrinterName || '';
+        const opsi = [`<option value="">(Default: ${escapeHtml(st.default_printer || 'Otomatis')})</option>`];
+        st.printers.forEach((pName) => {
+          opsi.push(`<option value="${escapeHtml(pName)}" ${curName === pName ? 'selected' : ''}>${escapeHtml(pName)}</option>`);
+        });
+        selPrn.innerHTML = opsi.join('');
+      }
+    } else {
+      badge.className = 'badge badge-warning badge-dot';
+      badge.textContent = 'Bridge Belum Aktif';
+    }
+  };
+
+  if (!isAndroid) {
+    segarkanBridgeStatus();
+    const selMode = modal.el.querySelector('#sel-usb-mode');
+    const wrapPrn = modal.el.querySelector('#wrap-usb-bridge-printer');
+    const syncModeUi = () => {
+      if (wrapPrn) wrapPrn.style.display = (selMode?.value || 'bridge') === 'bridge' ? '' : 'none';
+    };
+    syncModeUi();
+    selMode?.addEventListener('change', () => {
+      cal = simpanKalibrasiThermal({ usbMode: selMode.value });
+      syncModeUi();
+    });
+    modal.el.querySelector('#sel-usb-printer-name')?.addEventListener('change', (e) => {
+      cal = simpanKalibrasiThermal({ usbPrinterName: e.target.value });
+      showToast(`Printer USB dipilih: ${e.target.value || 'Default Windows'}`, 'success', 2000);
+    });
+    modal.el.querySelector('#chk-usb-buka-laci')?.addEventListener('change', (e) => {
+      cal = simpanKalibrasiThermal({ bukaLaciOtomatis: Boolean(e.target.checked) });
+    });
+    modal.el.querySelector('#btn-refresh-usb-bridge')?.addEventListener('click', segarkanBridgeStatus);
+    modal.el.querySelector('#btn-modal-test-usb-direct')?.addEventListener('click', () => {
+      cetakUjiStruk('usb_direct', ukuranKertas);
+    });
+    modal.el.querySelector('#btn-modal-test-laci')?.addEventListener('click', () => {
+      bukaLaciKasirUsb();
+    });
+  }
+
   modal.el.querySelectorAll('[data-paper-size]').forEach((btn) => {
     btn.addEventListener('click', () => {
       ukuranKertas = btn.getAttribute('data-paper-size') === '80' ? '80' : '58';
@@ -1431,6 +1789,8 @@ export function tampilkanModalKoneksiPrinter() {
       });
       const lbl = modal.el.querySelector('#lbl-btn-test-rawbt');
       if (lbl) lbl.textContent = `Uji Cetak RawBT (${ukuranKertas}mm)`;
+      const lblUsb = modal.el.querySelector('#lbl-btn-test-usb');
+      if (lblUsb) lblUsb.textContent = `Uji Cetak Direct POS USB (${ukuranKertas}mm)`;
     });
   });
 
@@ -1613,12 +1973,19 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-jual-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
-              <span>RawBT Android (${ukuran}mm)</span>
-            </button>
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-jual-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+            ${!adalahPerangkatAndroid() ? `
+              <button type="button" class="btn btn-primary btn-sm" id="btn-print-jual-usb-direct" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.zap}
+                <span>Direct POS USB / ESC-POS (${ukuran}mm)</span>
+              </button>
+            ` : `
+              <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-jual-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.smartphone}
+                <span>RawBT Android (${ukuran}mm)</span>
+              </button>
+            `}
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-jual-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.bluetooth}
               <span>Bluetooth Direct</span>
             </button>
           </div>
@@ -1650,15 +2017,19 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
     footer: `
       <div class="row" style="width: 100%; justify-content: ${options.isNewTransaction ? 'space-between' : 'flex-end'};">
         ${options.isNewTransaction ? `
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
           <button type="button" class="btn btn-primary btn-sm" id="btn-transaksi-baru-modal" style="font-weight: 600;">
             Transaksi Baru
           </button>
         ` : `
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-modal-cetak-jual">Tutup</button>
         `}
       </div>
     `
+  });
+
+  modal.el.querySelector('#btn-print-jual-usb-direct')?.addEventListener('click', () => {
+    cetakUsbDirect(dataStruk, ukuran);
   });
 
   modal.el.querySelector('#btn-print-jual-rawbt')?.addEventListener('click', () => {
@@ -1916,22 +2287,29 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-beli-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
-              <span>RawBT Android (${ukuran}mm)</span>
-            </button>
-            <button type="button" class="btn ${isRawBtUtama ? 'btn-secondary' : 'btn-primary'} btn-sm grow" id="btn-print-beli-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+            ${!adalahPerangkatAndroid() ? `
+              <button type="button" class="btn btn-primary btn-sm" id="btn-print-beli-usb-direct" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.zap}
+                <span>Direct POS USB / ESC-POS (${ukuran}mm)</span>
+              </button>
+            ` : `
+              <button type="button" class="btn ${isRawBtUtama ? 'btn-primary' : 'btn-secondary'} btn-sm grow" id="btn-print-beli-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.smartphone}
+                <span>RawBT Android (${ukuran}mm)</span>
+              </button>
+            `}
+            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-beli-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.bluetooth}
               <span>Bluetooth Direct</span>
             </button>
           </div>
           <div class="row" style="gap: var(--sp-2);">
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-beli-browser" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+              ${ICONS.printer}
               <span>Cetak / Browser</span>
             </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-share-beli-wa" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              ${ICONS.messageCircle}
               <span>WhatsApp</span>
             </button>
           </div>
@@ -1940,9 +2318,13 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
     `,
     footer: `
       <div class="row" style="width: 100%; justify-content: flex-end;">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-tutup-modal-cetak-beli">Tutup</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-modal-cetak-beli">Tutup</button>
       </div>
     `
+  });
+
+  modal.el.querySelector('#btn-print-beli-usb-direct')?.addEventListener('click', () => {
+    cetakUsbDirectPembelian(dataPembelian, ukuran);
   });
 
   modal.el.querySelector('#btn-print-beli-rawbt')?.addEventListener('click', () => {
@@ -2247,10 +2629,17 @@ export function bukaModalPilihanCetakShift(dataReport) {
         </div>
 
         <div class="stack" style="gap: var(--sp-2);">
-          <button type="button" class="btn btn-primary btn-sm" id="btn-print-shift-rawbt" style="width: 100%; justify-content: center; gap: 8px;">
-            ${ICONS.printer}
-            <span>Cetak via RawBT Printer (Android)</span>
-          </button>
+          ${!adalahPerangkatAndroid() ? `
+            <button type="button" class="btn btn-primary btn-sm" id="btn-print-shift-usb-direct" style="width: 100%; justify-content: center; gap: 8px;">
+              ${ICONS.zap}
+              <span>Direct POS USB / ESC-POS (${ukuran}mm)</span>
+            </button>
+          ` : `
+            <button type="button" class="btn btn-primary btn-sm" id="btn-print-shift-rawbt" style="width: 100%; justify-content: center; gap: 8px;">
+              ${ICONS.printer}
+              <span>Cetak via RawBT Printer (Android)</span>
+            </button>
+          `}
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-print-shift-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.bluetooth || ICONS.printer}
@@ -2273,6 +2662,10 @@ export function bukaModalPilihanCetakShift(dataReport) {
         <button type="button" class="btn btn-outline btn-sm" id="btn-tutup-modal-cetak-shift">Tutup</button>
       </div>
     `
+  });
+
+  modal.el.querySelector('#btn-print-shift-usb-direct')?.addEventListener('click', () => {
+    cetakUsbDirectShift(dataReport, ukuran);
   });
 
   modal.el.querySelector('#btn-print-shift-rawbt')?.addEventListener('click', () => {
@@ -2698,13 +3091,20 @@ export function bukaModalCetakSuratJalan(dataStruk) {
             <span>Cetak Surat Jalan Resmi (A5 / PDF)</span>
           </button>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            ${!adalahPerangkatAndroid() ? `
+              <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-usb-direct" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.zap}
+                <span>Direct POS USB (${ukuran}mm)</span>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                ${ICONS.smartphone}
+                <span>RawBT (${ukuran}mm)</span>
+              </button>
+            `}
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-thermal-web" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.printer}
               <span>Thermal Web (${ukuran}mm)</span>
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-rawbt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
-              ${ICONS.smartphone}
-              <span>RawBT (${ukuran}mm)</span>
             </button>
             <button type="button" class="btn btn-secondary btn-sm grow" id="btn-sj-bt" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.bluetooth}
@@ -2734,6 +3134,9 @@ export function bukaModalCetakSuratJalan(dataStruk) {
 
   modal.el.querySelector('#btn-sj-cetak-a5')?.addEventListener('click', () => {
     cetakSuratJalanA5(dataStruk, ambilOpsi());
+  });
+  modal.el.querySelector('#btn-sj-usb-direct')?.addEventListener('click', () => {
+    cetakUsbDirectSuratJalan(dataStruk, ukuran, ambilOpsi());
   });
   modal.el.querySelector('#btn-sj-thermal-web')?.addEventListener('click', () => {
     cetakSuratJalanThermalBrowser(dataStruk, ukuran, ambilOpsi());

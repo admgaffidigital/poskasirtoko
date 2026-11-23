@@ -104,10 +104,11 @@ async function muatPengaturan(container) {
             <div class="field">
               <label class="field-label" for="cfg-printer-jalur">Jalur Cetak Struk Utama</label>
               <select class="select" id="cfg-printer-jalur">
+                <option value="otomatis" ${(!cfg.printer_jalur || cfg.printer_jalur === 'otomatis') ? 'selected' : ''}>Otomatis (RawBT di Android / Direct POS USB di PC)</option>
+                <option value="usb_direct" ${cfg.printer_jalur === 'usb_direct' ? 'selected' : ''}>Direct POS USB / ESC-POS (Desktop Windows / WebUSB / Serial)</option>
                 <option value="rawbt" ${cfg.printer_jalur === 'rawbt' ? 'selected' : ''}>RawBT Android (Printer Bluetooth Thermal)</option>
                 <option value="webbluetooth" ${cfg.printer_jalur === 'webbluetooth' ? 'selected' : ''}>Web Bluetooth Direct (BLE Browser)</option>
                 <option value="browser" ${cfg.printer_jalur === 'browser' ? 'selected' : ''}>Cetak / Pratinjau Browser (Semua Perangkat / PDF)</option>
-                <option value="otomatis" ${(!cfg.printer_jalur || cfg.printer_jalur === 'otomatis') ? 'selected' : ''}>Otomatis (RawBT di Android / Browser di PC)</option>
               </select>
               <span class="field-hint">Metode cetak default yang aktif otomatis saat transaksi kasir selesai.</span>
             </div>
@@ -126,10 +127,10 @@ async function muatPengaturan(container) {
               <div>
                 <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
                   <span style="color: var(--primary);">${ICONS.printer}</span>
-                  <span>Koneksi Printer Bluetooth Thermal via RawBT</span>
+                  <span>Koneksi Printer Thermal (Direct POS USB PC &amp; RawBT Android)</span>
                 </div>
                 <div class="text-xs text-muted" style="margin-top: 2px;">
-                  Sambungkan printer thermal kasir (58/80mm) ke HP/tablet melalui RawBT dan uji cetak nota.
+                  Sambungkan printer thermal 58/80mm langsung lewat Direct ESC/POS USB di PC atau RawBT Bluetooth di Android.
                 </div>
               </div>
               <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
