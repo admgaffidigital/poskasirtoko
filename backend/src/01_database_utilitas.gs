@@ -663,9 +663,22 @@ function aksiSistemPing_() {
   let versiSkemaDb = null;
   try {
     const ss = ss_();
-    // 1 RPC getSheets() jauh lebih cepat daripada 27 panggilan getSheetByName()
+    // 1 RPC getSheets() jauh lebih cepat daripada 30 panggilan getSheetByName()
     const namaAda = {};
     ss.getSheets().forEach(function (sh) { namaAda[sh.getName()] = true; });
+    // Zero-migration auto-provisioning: bila DB inti sudah siap, otomatis buat sheet baru dari SKEMA
+    const intiAda = Boolean(namaAda.Users && namaAda.Pengaturan && namaAda.Produk && namaAda.Penjualan);
+    if (intiAda) {
+      const kurang = Object.keys(SKEMA).filter(function (n) { return !namaAda[n]; });
+      if (kurang.length > 0) {
+        denganKunci_(function () {
+          kurang.forEach(function (n) {
+            sheet_(n);
+            namaAda[n] = true;
+          });
+        });
+      }
+    }
     dbSiap = Object.keys(SKEMA).every(function (n) { return !!namaAda[n]; });
     if (dbSiap) versiSkemaDb = ambilPengaturan_().versi_skema;
   } catch (err) {
