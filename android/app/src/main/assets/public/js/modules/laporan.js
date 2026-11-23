@@ -2221,7 +2221,7 @@ function renderTabShiftKasir(container, data, rootContainer) {
     muatDataTabAktif(rootContainer);
   });
 
-  $('#btn-csv-shift', container)?.addEventListener('click', () => eksporLaporanCsv('shift'));
+  $('#btn-csv-shift', container)?.addEventListener('click', () => jalankanEksporCsv());
 
   $$('.btn-cetak-shift-lap', container).forEach((btn) => {
     btn.addEventListener('click', () => {

@@ -3611,7 +3611,7 @@ export function renderPosModule(container) {
       return;
     }
 
-    const totalRingkas = hitungTotalKeranjang();
+    const totalRingkas = hitungDanTampilkanTotal();
     const pel = state.pelanggan || null;
 
     const modal = showModal({

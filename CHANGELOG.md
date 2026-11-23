@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.112] - 2026-11-23
+
+### Fixed
+- [POS-JUAL] [DASHBOARD] **Hotfix Tombol Buat RAB & Ekspor CSV Shift Kasir (`pos.js`, `laporan.js`)**:
+  - Memperbaiki `ReferenceError: hitungTotalKeranjang is not defined` pada `bukaModalBuatPenawaran()` di `frontend/js/modules/pos.js` dengan memanggil `hitungDanTampilkanTotal()`.
+  - Memperbaiki pemanggilan tombol Ekspor CSV pada tab `Shift Kasir` di `frontend/js/modules/laporan.js` agar memanggil `jalankanEksporCsv()`.
+
 ## [1.0.111] - 2026-11-23
 
 ### Changed
