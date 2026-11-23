@@ -29,9 +29,9 @@ function ambilNamaVarian(v) {
   return String(raw).trim() || 'Standar';
 }
 
-/** Ambil daftar varian aktif lengkap untuk produk */
+/** Ambil daftar varian aktif lengkap untuk produk (hanya jika punya_varian aktif) */
 function ambilDaftarVarianAktif(prd) {
-  if (!prd || !Array.isArray(prd.varian)) return [];
+  if (!prd || !prd.punya_varian || !Array.isArray(prd.varian)) return [];
   return prd.varian.filter((v) => v && !v.deleted && v.aktif !== false);
 }
 
@@ -492,8 +492,8 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
     .cat-name { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: ${tema.ink}; }
     .cat-cnt { font-size: 8.5px; font-weight: 700; color: ${tema.primary}; }
 
-    /* Grid Kartu Produk */
-    .prod-grid { display: grid; gap: 7px; align-items: start; }
+    /* Grid Kartu Produk (Sejajar Rata Bawah di Setiap Baris) */
+    .prod-grid { display: grid; gap: 7px; align-items: stretch; }
     .prod-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .prod-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
@@ -504,6 +504,7 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
       overflow: hidden;
       page-break-inside: avoid;
       break-inside: avoid;
+      height: 100%;
     }
 
     /* Layout 1: Kartu Horizontal Modern (2 Kolom) */
@@ -623,8 +624,10 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
     .v-no { background: #d97706; }
     .conv-line { font-size: 8px; color: #374151; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 3px; padding: 2.5px 5px; }
 
-    /* Layout 3: Tabel Price List Resmi */
+    /* Layout 3: Tabel Price List Resmi (Header Otomatis Berulang Tiap Halaman A4) */
     .pl-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+    .pl-table thead { display: table-header-group; }
+    .pl-table tfoot { display: table-footer-group; }
     .pl-table th {
       background: ${tema.soft};
       color: ${tema.ink};
@@ -794,9 +797,42 @@ export async function bukaModalKatalogPdf(params = {}) {
   const petaKategori = new Map();
   const sinkronPetaKategori = () => {
     petaKategori.clear();
-    daftarKategori.forEach((k) => { if (k && k.id) petaKategori.set(k.id, k.nama); });
+    const byId = new Map();
+    daftarKategori.forEach((k) => { if (k && k.id) byId.set(k.id, k); });
+    daftarKategori.forEach((k) => {
+      if (!k || !k.id) return;
+      const induk = k.parent_id ? byId.get(k.parent_id) : null;
+      petaKategori.set(k.id, induk ? `${induk.nama} › ${k.nama}` : k.nama);
+    });
   };
   sinkronPetaKategori();
+
+  const susunOpsiFilterKatHtml = (selectedVal = '') => {
+    const indukList = daftarKategori.filter((k) => !k.parent_id);
+    const anakMap = new Map();
+    daftarKategori.forEach((k) => {
+      if (k.parent_id) {
+        if (!anakMap.has(k.parent_id)) anakMap.set(k.parent_id, []);
+        anakMap.get(k.parent_id).push(k);
+      }
+    });
+    const usedIds = new Set();
+    let html = '<option value="">Semua Kategori</option>';
+    indukList.forEach((p) => {
+      usedIds.add(p.id);
+      html += `<option value="${escapeHtml(p.id)}" ${selectedVal === p.id ? 'selected' : ''}>${escapeHtml(p.nama)}</option>`;
+      (anakMap.get(p.id) || []).forEach((c) => {
+        usedIds.add(c.id);
+        html += `<option value="${escapeHtml(c.id)}" ${selectedVal === c.id ? 'selected' : ''}>↳ ${escapeHtml(p.nama)} › ${escapeHtml(c.nama)}</option>`;
+      });
+    });
+    daftarKategori.forEach((k) => {
+      if (!usedIds.has(k.id)) {
+        html += `<option value="${escapeHtml(k.id)}" ${selectedVal === k.id ? 'selected' : ''}>${escapeHtml(k.nama)}</option>`;
+      }
+    });
+    return html;
+  };
 
   const toko = ambilInfoTokoKatalog();
   const bulanTahun = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -864,8 +900,7 @@ export async function bukaModalKatalogPdf(params = {}) {
               <input type="text" id="inp-kat-cari" class="input input-sm" placeholder="Cari nama produk, varian, kategori, atau SKU...">
             </div>
             <select id="sel-kat-filter" class="input input-sm" style="min-width: 165px;">
-              <option value="">Semua Kategori</option>
-              ${daftarKategori.map((k) => `<option value="${escapeHtml(k.id)}" ${stateKat.filterKat === k.id ? 'selected' : ''}>${escapeHtml(k.nama)}</option>`).join('')}
+              ${susunOpsiFilterKatHtml(stateKat.filterKat)}
             </select>
             <label class="row text-xs fw-semibold" style="gap: 6px; cursor: pointer; padding: 0 6px;">
               <input type="checkbox" id="chk-kat-ready" style="width: 15px; height: 15px; accent-color: var(--primary);">
@@ -1007,8 +1042,15 @@ export async function bukaModalKatalogPdf(params = {}) {
 
   const ambilProdukTersaring = () => {
     const q = stateKat.filterQ.trim().toLowerCase();
+    let targetKatIds = null;
+    if (stateKat.filterKat) {
+      targetKatIds = new Set([stateKat.filterKat]);
+      daftarKategori.forEach((k) => {
+        if (k && k.parent_id === stateKat.filterKat) targetKatIds.add(k.id);
+      });
+    }
     return stateKat.semuaProduk.filter((p) => {
-      if (stateKat.filterKat && p.kategori_id !== stateKat.filterKat) return false;
+      if (targetKatIds && !targetKatIds.has(p.kategori_id)) return false;
       if (stateKat.hanyaReady && !cekProdukReady(p)) return false;
       if (q) {
         const namaVarianGabung = ambilDaftarVarianAktif(p).map(ambilNamaVarian).join(' ');
@@ -1021,6 +1063,11 @@ export async function bukaModalKatalogPdf(params = {}) {
 
   const renderPickerList = () => {
     if (!listPicker) return;
+    if (!stateKat.loadedAll && stateKat.semuaProduk.length === 0) {
+      if (lblStatus) lblStatus.textContent = 'Memuat seluruh data produk, varian, & kategori dari server...';
+      listPicker.innerHTML = `<div class="text-sm text-muted" style="padding: var(--sp-5); text-align: center;">Sedang memuat seluruh produk toko...</div>`;
+      return;
+    }
     const list = ambilProdukTersaring();
     if (lblStatus) {
       lblStatus.textContent = `Menampilkan ${list.length} dari ${stateKat.semuaProduk.length} produk aktif • ${stateKat.terpilihIds.size} ditandai untuk katalog.`;
@@ -1288,8 +1335,7 @@ export async function bukaModalKatalogPdf(params = {}) {
       daftarKategori = resKat.items;
       sinkronPetaKategori();
       if (selKatFilter) {
-        selKatFilter.innerHTML = `<option value="">Semua Kategori</option>` +
-          daftarKategori.map((k) => `<option value="${escapeHtml(k.id)}" ${stateKat.filterKat === k.id ? 'selected' : ''}>${escapeHtml(k.nama)}</option>`).join('');
+        selKatFilter.innerHTML = susunOpsiFilterKatHtml(stateKat.filterKat);
       }
     }
     const petaId = new Map();

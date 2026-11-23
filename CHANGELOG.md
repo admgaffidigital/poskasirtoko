@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.121] - 2026-11-23
+### Disempurnakan — Presisi Edge-Case & Tata Letak Katalog PDF A4
+- **Filter Kategori Induk + Sub-Kategori (`katalog-pdf.js`)**: Memilih kategori induk pada Generator Katalog PDF kini otomatis menyertakan seluruh sub-kategorinya dengan label hierarki rapi (`Induk › Sub`).
+- **Guard Varian & Presisi Cetak Multi-Halaman A4 (`katalog-pdf.js`)**: Produk non-varian (`punya_varian: false`) dipastikan tidak menampilkan sisa data varian, kartu sejajar rata bawah per baris (`align-items: stretch`), header tabel Price List otomatis berulang di tiap halaman (`thead { display: table-header-group }`), serta status loading yang jelas saat mengambil seluruh produk.
+
 ## [1.0.120] - 2026-11-23
 ### Diperbaiki & Ditingkatkan — Katalog Produk PDF A4 (Data 100% Lengkap & Layout Modern)
 - **Fix Nama Varian & Kemasan Konversi (`katalog-pdf.js`)**: Membaca field skema asli backend `v.nama_varian` (sebelumnya tampil `-`), status stok tiap varian, serta `s.satuan` & `s.faktor` pada konversi satuan tanpa pemotongan jumlah varian.
