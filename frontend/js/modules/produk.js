@@ -9,6 +9,7 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { formatRupiah, formatQty, parseRupiah, escapeHtml } from '../utils/format.js';
 import { renderKalkulatorHppToggle, renderKalkulatorHppPanel, ikatKalkulatorHpp } from '../utils/hpp-calculator.js';
+import { bukaModalKatalogPdf } from '../utils/katalog-pdf.js';
 
 /**
  * Kompres file gambar ke format JPEG Base64 (maks 800px, kualitas 0.8)
@@ -110,8 +111,12 @@ export async function renderProdukModule(container) {
           <h2>Katalog & Stok Produk</h2>
           <p>Kelola daftar barang, varian, satuan konversi, harga eceran & grosir</p>
         </div>
-        ${canEdit ? `
-          <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
+        <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" id="btn-buat-katalog-pdf" title="Buat & Simpan Katalog Produk PDF A4 untuk Pelanggan / Proyek">
+            ${ICONS.clipboard}
+            <span>Katalog PDF</span>
+          </button>
+          ${canEdit ? `
             <button type="button" class="btn btn-secondary" id="btn-panduan-varian-header" title="Tata Cara & Panduan Penggunaan Varian dan Satuan">
               ${ICONS.helpCircle}
               <span>Panduan Varian &amp; Satuan</span>
@@ -120,8 +125,8 @@ export async function renderProdukModule(container) {
               ${ICONS.plus}
               <span>Tambah Produk</span>
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+        </div>
       </div>
 
       <!-- Bilah Filter & Pencarian Komprehensif -->
@@ -223,7 +228,11 @@ export async function renderProdukModule(container) {
       </div>
       <div class="bulk-action-btns">
         <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-all">Pilih Semua</button>
-        <button type="button" class="btn btn-xs btn-primary" id="btn-bulk-prd-ptag" data-needs-sel disabled>
+        <button type="button" class="btn btn-xs btn-primary" id="btn-bulk-prd-katalog" data-needs-sel disabled>
+          ${ICONS.clipboard}
+          <span>Katalog PDF</span>
+        </button>
+        <button type="button" class="btn btn-xs btn-bulk-ghost" id="btn-bulk-prd-ptag" data-needs-sel disabled>
           ${ICONS.printer}
           <span>Price Tag</span>
         </button>
@@ -388,6 +397,26 @@ export async function renderProdukModule(container) {
     }
     syncProdukBulkBar(container, canEdit);
     muatProduk(container, canEdit, isKasir, false);
+  });
+
+  // 0. Buat Katalog Produk PDF (Header & Bulk Action Bar)
+  $('#btn-buat-katalog-pdf', container)?.addEventListener('click', () => {
+    const terpilih = produkSelectedMap.size > 0 ? Array.from(produkSelectedMap.values()) : [];
+    bukaModalKatalogPdf({
+      produkTerpilih: terpilih,
+      daftarKategori: cacheDaftarKategoriPrd,
+      kategoriAwal: filterState.kategori_id || ''
+    });
+  });
+
+  $('#btn-bulk-prd-katalog', container)?.addEventListener('click', () => {
+    const terpilih = Array.from(produkSelectedMap.values());
+    if (!terpilih.length) return;
+    bukaModalKatalogPdf({
+      produkTerpilih: terpilih,
+      daftarKategori: cacheDaftarKategoriPrd,
+      kategoriAwal: filterState.kategori_id || ''
+    });
   });
 
   // 1. Cetak Price Tag Massal

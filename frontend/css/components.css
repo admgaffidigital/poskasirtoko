@@ -710,6 +710,74 @@ input[type="password"] {
   border-radius: var(--radius-md);
 }
 
+/* Generator Katalog Produk PDF A4 */
+.katalog-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.katalog-picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background-color var(--dur-fast);
+}
+
+.katalog-picker-item.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.katalog-picker-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.katalog-picker-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.katalog-a4-stage {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  padding: var(--sp-2);
+  height: 430px;
+  overflow: hidden;
+}
+
+.katalog-a4-stage iframe {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  display: block;
+}
+
 /* ---------- Kartu ---------- */
 .card {
   background: var(--surface);

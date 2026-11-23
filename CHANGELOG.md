@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.119] - 2026-11-23
+### Ditambahkan — Generator Katalog Produk PDF Profesional (A4)
+- **Tandai & Buat Katalog PDF (`katalog-pdf.js`, `produk.js`, `components.css`, `sw.js`)**: Pemilik toko dan kasir dapat menandai produk langsung dari **Mode Pilih** atau lewat tombol **Katalog PDF** di header halaman Produk, menyaring berdasarkan kategori/Ready Stok, dan menyimpannya sebagai **Preset Katalog** (harga otomatis selalu terbaru saat dicetak ulang).
+- **3 Tata Letak A4 & 4 Tema Warna Cetak**: Mendukung **Brosur Kartu Detail (2 Kolom)**, **Brosur Kartu Kompak (3 Kolom)**, dan **Daftar Harga Resmi / Price List Tabel + Foto**, dengan pilihan mode harga (**Ritel**, **Grosir/Proyek**, **Ritel + Grosir**, atau **Tanpa Harga / Hubungi Kami**), pengelompokan kategori otomatis, detail **Varian & Kemasan**, lencana **Ready/Inden**, pratinjau live A4, cetak/Simpan PDF, serta bagikan ringkasan ke WhatsApp.
+
 ## [1.0.118] - 2026-11-23
 ### Maintenance & Perawatan Total Website + Aplikasi
 - **Service Worker Bypass POS USB Bridge & Unduhan (`sw.js`)**: Request ke `127.0.0.1` / `localhost` (POS USB Bridge Windows) serta file unduhan `.bat` kini dibypass langsung dari Service Worker agar status koneksi printer lokal selalu real-time dan unduhan bridge selalu versi terbaru.
