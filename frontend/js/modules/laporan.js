@@ -552,7 +552,7 @@ function renderTabDashboard(container, data) {
       </div>
 
       <!-- Grid 2 Kolom: Produk Terlaris & Pelanggan Terbaik (Compact Native Ranking List) -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));">
         <!-- Produk Terlaris -->
         <div class="card" id="card-dash-terlaris">
           <div class="card-header" style="justify-content: space-between; align-items: center;">
@@ -620,7 +620,7 @@ function renderTabDashboard(container, data) {
       </div>
 
       <!-- Grid 2 Kolom: Metode Pembayaran & Stok Kritis (Ringkas + Lihat Semua) -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));">
         <!-- Breakdown Metode Pembayaran -->
         <div class="card">
           <div class="card-header">
@@ -1487,7 +1487,7 @@ function renderTabArusKas(container, data) {
       </div>
 
       <!-- Detail Rincian Kas Masuk & Kas Keluar -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));">
         <!-- Rincian Kas Masuk -->
         <div class="card">
           <div class="card-header">

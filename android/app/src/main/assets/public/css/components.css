@@ -2637,6 +2637,10 @@ a.list-item:hover {
     max-width: 800px;
   }
 
+  .is-modal .dialog.dialog-xl {
+    max-width: min(960px, calc(100vw - 48px));
+  }
+
   .is-sheet .dialog {
     max-width: 560px;
   }

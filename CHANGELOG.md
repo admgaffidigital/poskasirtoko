@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.124] - 2026-11-24
+### Diperbaiki — Presisi Tata Letak Modal `.dialog-xl` & Anti-Overflow Mobile Grid
+- **Lebar Modal `.dialog-xl` Desktop (`components.css`)**: Menambahkan definisi `.is-modal .dialog.dialog-xl { max-width: min(960px, calc(100vw - 48px)); }` sehingga modal Generator Katalog Produk PDF A4 di PC tampil lega 960px (pratinjau kertas A4 skala 1:1 utuh, sebelumnya jatuh ke default 520px).
+- **Anti-Overflow Grid Mobile di Laporan (`laporan.js`)**: Mengubah 3 grid `minmax(300px/320px, 1fr)` menjadi `minmax(min(100%, 300px/320px), 1fr)` agar layar HP sempit (320px–375px) 100% bebas overflow horizontal.
+
 ## [1.0.123] - 2026-11-24
 ### Diperbaiki — Presisi Ukuran Seluruh Ikon SVG (`:where()` & `.icon-fit`)
 - **Fix Spesifisitas CSS Pengaman Global SVG (`base.css`, `components.css`)**: Membungkus fallback ukuran global SVG dengan `:where(...)` (spesifisitas 0) agar tidak lagi menimpa ukuran spesifik tombol & komponen (`.btn` `16px`, `.btn-sm` `15px`, `.btn-xs` `13px`, `.badge` `13px`, `.stat-card-icon` `16px`, `.empty-icon` `30px`, `.pos-empty-icon-wrap` `36px`, `.splash-logo` `44px`).
