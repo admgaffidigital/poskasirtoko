@@ -57,7 +57,7 @@ export async function renderLaporanModule(container) {
       </div>
 
       <!-- Baris Filter Periode Cepat & Rentang Tanggal -->
-      <div class="card no-print" style="margin-bottom: var(--sp-3);">
+      <div class="card no-print" id="card-periode-laporan-global" style="margin-bottom: var(--sp-3); ${stateLaporan.tabAktif === 'tutupbuku' ? 'display: none;' : ''}">
         <div class="card-body" style="padding: var(--sp-3);">
           <!-- Baris Atas: Label & Badge Rentang Tanggal Aktif -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-2); gap: var(--sp-2);">
@@ -299,6 +299,11 @@ let laporanReqSeq = 0;
 async function muatDataTabAktif(container) {
   const target = $('#konten-tab-laporan', container);
   if (!target) return;
+
+  const cardPeriodeGlobal = $('#card-periode-laporan-global', container);
+  if (cardPeriodeGlobal) {
+    cardPeriodeGlobal.style.display = stateLaporan.tabAktif === 'tutupbuku' ? 'none' : '';
+  }
 
   const seq = ++laporanReqSeq;
   const payload = {
@@ -2708,90 +2713,127 @@ function renderTabTutupBuku(target, data, rootContainer) {
         ` : ''}
       </div>
 
-      <!-- KPI Utama + Perbandingan MoM -->
-      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));">
+      <!-- KPI Utama + Perbandingan MoM (Simetris 4x2 Desktop / 2x4 Mobile) -->
+      <div class="tb-kpi-grid">
         <div class="stat-card-pro">
-          <div class="stat-label">Omset Bersih (${escapeHtml(labelBln)})</div>
-          <div class="stat-value mono text-primary">${formatRupiah(r.omset_bersih || 0)}</div>
-          <div class="stat-sub">${badgeMoM(mom.omset_persen)} • ${r.total_transaksi || 0} nota</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Omset Bersih (${escapeHtml(labelBln)})</span>
+            <div class="stat-card-icon icon-amber">${ICONS.shoppingBag}</div>
+          </div>
+          <div class="stat-card-value tabular text-primary">${formatRupiah(r.omset_bersih || 0)}</div>
+          <div class="tb-kpi-desc">${badgeMoM(mom.omset_persen)} <span>${r.total_transaksi || 0} nota</span></div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Laba Kotor &amp; Margin</div>
-          <div class="stat-value mono">${formatRupiah(r.laba_kotor || 0)}</div>
-          <div class="stat-sub">Margin: <strong>${Number(r.margin_persen || 0).toFixed(1)}%</strong> • ${badgeMoM(mom.laba_kotor_persen)}</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Laba Kotor &amp; Margin</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.award}</div>
+          </div>
+          <div class="stat-card-value tabular">${formatRupiah(r.laba_kotor || 0)}</div>
+          <div class="tb-kpi-desc"><span>Margin <strong>${Number(r.margin_persen || 0).toFixed(1)}%</strong></span> ${badgeMoM(mom.laba_kotor_persen)}</div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Biaya Operasional</div>
-          <div class="stat-value mono text-danger">${formatRupiah(r.total_biaya || 0)}</div>
-          <div class="stat-sub">${badgeMoM(mom.biaya_persen, true)}</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Biaya Operasional</span>
+            <div class="stat-card-icon icon-rose">${ICONS.arrowUpRight}</div>
+          </div>
+          <div class="stat-card-value tabular text-danger">${formatRupiah(r.total_biaya || 0)}</div>
+          <div class="tb-kpi-desc">${badgeMoM(mom.biaya_persen, true)}</div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Laba Bersih Riil</div>
-          <div class="stat-value mono ${Number(r.laba_bersih || 0) >= 0 ? 'text-success' : 'text-danger'}">${formatRupiah(r.laba_bersih || 0)}</div>
-          <div class="stat-sub">${badgeMoM(mom.laba_bersih_persen)}</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Laba Bersih Riil</span>
+            <div class="stat-card-icon icon-emerald">${ICONS.chart}</div>
+          </div>
+          <div class="stat-card-value tabular ${Number(r.laba_bersih || 0) >= 0 ? 'text-success' : 'text-danger'}">${formatRupiah(r.laba_bersih || 0)}</div>
+          <div class="tb-kpi-desc">${badgeMoM(mom.laba_bersih_persen)}</div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Arus Kas Bersih</div>
-          <div class="stat-value mono">${formatRupiah(r.arus_kas_bersih || 0)}</div>
-          <div class="stat-sub">Masuk: ${formatRupiah(r.arus_kas_masuk || 0)} • Keluar: ${formatRupiah(r.arus_kas_keluar || 0)}</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Arus Kas Bersih</span>
+            <div class="stat-card-icon icon-blue">${ICONS.wallet}</div>
+          </div>
+          <div class="stat-card-value tabular ${Number(r.arus_kas_bersih || 0) < 0 ? 'text-danger' : ''}">${formatRupiah(r.arus_kas_bersih || 0)}</div>
+          <div class="tb-kpi-desc"><span>Masuk: ${formatRupiah(r.arus_kas_masuk || 0)}</span> <span>• Keluar: ${formatRupiah(r.arus_kas_keluar || 0)}</span></div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Valuasi Aset Stok</div>
-          <div class="stat-value mono">${formatRupiah(r.valuasi_stok || 0)}</div>
-          <div class="stat-sub">Pembelian bulan ini: ${formatRupiah(r.total_pembelian || 0)}</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Valuasi Aset Stok</span>
+            <div class="stat-card-icon icon-purple">${ICONS.box}</div>
+          </div>
+          <div class="stat-card-value tabular">${formatRupiah(r.valuasi_stok || 0)}</div>
+          <div class="tb-kpi-desc"><span>Pembelian bulan ini: <strong>${formatRupiah(r.total_pembelian || 0)}</strong></span></div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Piutang &amp; Hutang Berjalan</div>
-          <div class="stat-value mono">${formatRupiah(r.saldo_piutang || 0)}</div>
-          <div class="stat-sub">Piutang • Hutang Supplier: <strong>${formatRupiah(r.saldo_hutang || 0)}</strong></div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Piutang &amp; Hutang</span>
+            <div class="stat-card-icon icon-rose">${ICONS.clipboard}</div>
+          </div>
+          <div class="stat-card-value tabular">${formatRupiah(r.saldo_piutang || 0)}</div>
+          <div class="tb-kpi-desc"><span>Piutang • Hutang Supplier: <strong>${formatRupiah(r.saldo_hutang || 0)}</strong></span></div>
         </div>
         <div class="stat-card-pro">
-          <div class="stat-label">Disiplin Shift (${r.total_shift || 0} Shift)</div>
-          <div class="stat-value mono ${Number(r.selisih_shift || 0) < 0 ? 'text-danger' : 'text-success'}">${Number(r.selisih_shift || 0) >= 0 ? '+' : ''}${formatRupiah(r.selisih_shift || 0)}</div>
-          <div class="stat-sub">Akumulasi selisih fisik laci kasir</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Disiplin Shift (${r.total_shift || 0} Shift)</span>
+            <div class="stat-card-icon icon-blue">${ICONS.cashier}</div>
+          </div>
+          <div class="stat-card-value tabular ${Number(r.selisih_shift || 0) < 0 ? 'text-danger' : 'text-success'}">${Number(r.selisih_shift || 0) >= 0 ? '+' : ''}${formatRupiah(r.selisih_shift || 0)}</div>
+          <div class="tb-kpi-desc"><span>Akumulasi selisih fisik laci kasir</span></div>
         </div>
       </div>
 
-      <!-- Top 10 Produk Terlaris & Performa Kategori -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--sp-4);">
-        <div class="card card-body stack-sm">
-          <div class="fw-bold text-sm">Top 10 Produk Terlaris (${escapeHtml(labelBln)})</div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Produk</th><th class="text-right">Qty</th><th class="text-right">Omset</th><th class="text-right">Laba</th></tr></thead>
-              <tbody>
-                ${(data?.top_produk_terlaris || []).length ? data.top_produk_terlaris.map((p) => `
-                  <tr>
-                    <td data-label="Produk" class="fw-semibold text-xs">${escapeHtml(p.nama)}</td>
-                    <td data-label="Qty" class="text-right mono text-xs">${formatQty(p.qty)}</td>
-                    <td data-label="Omset" class="text-right mono text-xs">${formatRupiah(p.omset)}</td>
-                    <td data-label="Laba" class="text-right mono text-xs text-success">${formatRupiah(p.laba)}</td>
-                  </tr>
-                `).join('') : '<tr><td colspan="4" class="text-center text-muted text-xs">Belum ada penjualan pada bulan ini.</td></tr>'}
-              </tbody>
-            </table>
+      <!-- Top 10 Produk Terlaris & Barang Slow-Moving (Native Ranking List — Bebas Terpotong) -->
+      <div class="lap-grid-2col">
+        <div class="card">
+          <div class="card-header" style="justify-content: space-between; align-items: center; gap: var(--sp-2);">
+            <h3 class="card-title">${ICONS.award} Top 10 Produk Terlaris (${escapeHtml(labelBln)})</h3>
+            <span class="badge badge-info badge-sm">Top ${(data?.top_produk_terlaris || []).length}</span>
+          </div>
+          <div class="dash-list" style="max-height: 440px; overflow-y: auto;">
+            ${(data?.top_produk_terlaris || []).length ? data.top_produk_terlaris.map((p, idx) => `
+              <div class="dash-row">
+                <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
+                <div class="dash-row-main">
+                  <div class="dash-row-title" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
+                  <div class="dash-row-sub">
+                    <span>Terjual <b>${formatQty(p.qty)}</b></span>
+                    <span>•</span>
+                    <span>Laba <b class="text-success">${formatRupiah(p.laba)}</b></span>
+                  </div>
+                </div>
+                <div class="dash-row-right">
+                  <div class="dash-row-val text-primary">${formatRupiah(p.omset)}</div>
+                  <div class="text-2xs text-muted">Omset</div>
+                </div>
+              </div>
+            `).join('') : '<div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan pada bulan ini.</div>'}
           </div>
         </div>
 
-        <div class="card card-body stack-sm">
-          <div class="row-between items-center" style="flex-wrap: wrap; gap: 6px;">
-            <div class="fw-bold text-sm">Barang Slow-Moving / Dead Stock (0 Terjual)</div>
-            <span class="badge badge-warning mono text-xs">${data?.total_slow_moving || 0} item • Modal ${formatRupiah(data?.nilai_slow_moving || 0)}</span>
+        <div class="card">
+          <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
+            <h3 class="card-title">${ICONS.alertTriangle} Barang Slow-Moving (0 Terjual)</h3>
+            <span class="badge badge-warning badge-sm mono">${data?.total_slow_moving || 0} item • Modal ${formatRupiah(data?.nilai_slow_moving || 0)}</span>
           </div>
-          <div class="text-xs text-muted">Produk aktif yang masih memiliki stok tetapi belum terjual sama sekali di bulan ${escapeHtml(labelBln)} — bahan evaluasi promo/diskon cuci gudang.</div>
-          <div class="table-wrap" style="max-height: 310px; overflow-y: auto;">
-            <table class="table">
-              <thead><tr><th>Produk</th><th class="text-right">Stok</th><th class="text-right">Modal Tertahan</th></tr></thead>
-              <tbody>
-                ${(data?.slow_moving || []).length ? data.slow_moving.map((d) => `
-                  <tr>
-                    <td data-label="Produk" class="text-xs"><div class="fw-semibold">${escapeHtml(d.nama)}</div><div class="text-muted mono">${escapeHtml(d.sku)}</div></td>
-                    <td data-label="Stok" class="text-right mono text-xs">${formatQty(d.stok)} ${escapeHtml(d.satuan)}</td>
-                    <td data-label="Modal Tertahan" class="text-right mono text-xs text-warning fw-bold">${formatRupiah(d.nilai_modal)}</td>
-                  </tr>
-                `).join('') : '<tr><td colspan="3" class="text-center text-success text-xs">Luar biasa! Semua produk berstok bergerak terjual di bulan ini.</td></tr>'}
-              </tbody>
-            </table>
+          <div class="text-xs text-muted" style="padding: var(--sp-2) var(--sp-4); background: var(--surface-2); border-bottom: 1px solid var(--border);">
+            Produk aktif berstok yang belum terjual sama sekali di ${escapeHtml(labelBln)} — bahan evaluasi promo / cuci gudang.
+          </div>
+          <div class="dash-list" style="max-height: 396px; overflow-y: auto;">
+            ${(data?.slow_moving || []).length ? data.slow_moving.map((d) => `
+              <div class="dash-row">
+                <div class="dash-row-main">
+                  <div class="dash-row-title" title="${escapeHtml(d.nama)}">${escapeHtml(d.nama)}</div>
+                  <div class="dash-row-sub">
+                    <span class="mono">${escapeHtml(d.sku || '-')}</span>
+                    <span>•</span>
+                    <span>Stok <b>${formatQty(d.stok)} ${escapeHtml(d.satuan || '')}</b></span>
+                  </div>
+                </div>
+                <div class="dash-row-right">
+                  <div class="dash-row-val text-warning">${formatRupiah(d.nilai_modal)}</div>
+                  <div class="text-2xs text-muted">Modal tertahan</div>
+                </div>
+              </div>
+            `).join('') : '<div class="text-xs text-success text-center" style="padding: var(--sp-5);">Luar biasa! Semua produk berstok bergerak terjual di bulan ini.</div>'}
           </div>
         </div>
       </div>

@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.135] - 2026-11-25
+### Diperbaiki & Disempurnakan — Penyelarasan Tampilan Tab Tutup Bulanan (`#/laporan`)
+- **[DASHBOARD] [UI] Eliminasi Tabel Terpotong pada Top 10 Produk Terlaris & Slow-Moving (`laporan.js`, `components.css`)**:
+  - Mengubah kartu **Top 10 Produk Terlaris** dan **Barang Slow-Moving / Dead Stock (0 Terjual)** ke komponen daftar ranking native (`.dash-list` + `.dash-row`) selaras dengan *Ringkasan Eksekutif*, sehingga Nama Produk, Qty, Omset, Laba, SKU, Stok, dan Modal Tertahan tampil utuh tanpa scroll horizontal atau teks terpotong di desktop, tablet, maupun HP.
+- **[DASHBOARD] [UI] Grid KPI Simetris 4×2 (`components.css`, `laporan.js`)**:
+  - Menambahkan `.tb-kpi-grid` (4 kolom × 2 baris di desktop, 2 × 4 di tablet/HP) dan menyelaraskan 8 kartu KPI dengan standar `.stat-card-header` + `.stat-card-icon` + `.tb-kpi-desc` agar simetris tanpa slot kosong.
+- **[DASHBOARD] [UI] Sembunyikan Bar Periode Global Ganda (`laporan.js`)**:
+  - Otomatis menyembunyikan bar filter rentang harian di atas tab saat pengguna membuka Tab **Tutup Bulanan** yang sudah memiliki pemilih bulan evaluasi tersendiri.
+
 ## [1.0.134] - 2026-11-25
 ### Ditambahkan — Wajib Buka Shift (Semua Role), Tutup Harian (EOD), & Tutup Buku Bulanan + Evaluasi Analisa
 - **[POS-JUAL] [SETTING] [BACKEND] Wajib Buka Shift & Deteksi Shift Kemarin (`00_konfig_skema_router.gs`, `04_pos_penjualan.gs`, `pos.js`, `pengaturan.js`)**:
