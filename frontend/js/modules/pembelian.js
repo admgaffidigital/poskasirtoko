@@ -103,7 +103,8 @@ export async function renderPembelianModule(container) {
 }
 
 function renderFormInputBeli() {
-  const tglHariIni = new Date().toISOString().substring(0, 10);
+  const nowLokal = new Date();
+  const tglHariIni = `${nowLokal.getFullYear()}-${String(nowLokal.getMonth() + 1).padStart(2, '0')}-${String(nowLokal.getDate()).padStart(2, '0')}`;
   return `
     <div class="pembelian-container">
       <div class="pembelian-layout">

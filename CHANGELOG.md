@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.136] - 2026-11-25
+### Diperbaiki — Presisi Zona Waktu WIB, Snapshot Beku Tutup Buku Bulanan, & Valuasi Stok Varian
+- **[POS-BELI] [UI] Perbaikan Tanggal Default Pembelian Pagi Hari (`pembelian.js`, `format.js`)**:
+  - Mengganti `new Date().toISOString().substring(0, 10)` (UTC) dengan tanggal lokal perangkat pada form input pembelian agar transaksi antara pukul 00:00–06:59 WIB tidak mundur ke tanggal kemarin/bulan lalu.
+  - Parsing tanggal murni `YYYY-MM-DD` di `formatTanggal()` (`format.js`) kini menggunakan konstruktor lokal sehingga 100% kebal pergeseran zona waktu.
+- **[DASHBOARD] [BACKEND] Snapshot Permanen Bulan Terkunci & Valuasi Varian (`08_laporan_biaya.gs`)**:
+  - `tutupBuku.evaluasiBulanan` kini otomatis membaca angka beku dari `snapshot_json` (termasuk daftar `slow_moving`, `valuasi_stok`, `saldo_piutang`, & `saldo_hutang`) untuk bulan yang berstatus `terkunci`, sehingga laporan arsip bulan lampau tidak berubah meski stok/piutang bulan berikutnya bergerak.
+  - Menyamakan perhitungan `valuasi_stok` produk bervarian di `hitungMetrikSatuBulan_` agar menghitung `stok × HPP` per varian (100% identik dengan Tab Valuasi Stok).
+  - Mengunci helper `hitungRentangTanggal_` secara eksplisit ke WIB (`formatWaktu_()` / `APP.TZ = 'Asia/Jakarta'`).
+
 ## [1.0.135] - 2026-11-25
 ### Diperbaiki & Disempurnakan — Penyelarasan Tampilan Tab Tutup Bulanan (`#/laporan`)
 - **[DASHBOARD] [UI] Eliminasi Tabel Terpotong pada Top 10 Produk Terlaris & Slow-Moving (`laporan.js`, `components.css`)**:

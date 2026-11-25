@@ -104,9 +104,15 @@ export function formatTanggal(dateVal, denganWaktu = false) {
   if (dateVal instanceof Date) {
     d = dateVal;
   } else {
-    // String format: "yyyy-MM-dd HH:mm:ss" atau ISO
-    const s = String(dateVal).replace(' ', 'T');
-    d = new Date(s);
+    // Parse "yyyy-MM-dd" murni secara lokal agar kebal pergeseran UTC; "yyyy-MM-dd HH:mm:ss" ke ISO lokal
+    const raw = String(dateVal).trim();
+    const mDateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    if (mDateOnly) {
+      d = new Date(Number(mDateOnly[1]), Number(mDateOnly[2]) - 1, Number(mDateOnly[3]));
+    } else {
+      const s = raw.replace(' ', 'T');
+      d = new Date(s);
+    }
   }
 
   if (isNaN(d.getTime())) return String(dateVal);

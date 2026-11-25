@@ -2080,9 +2080,16 @@ async function runAudit() {
     assert(evalBln.slow_moving.some((d) => d.id === prodDead.id && d.nilai_modal === 600000),
       'Evaluasi bulanan wajib mendeteksi produk slow-moving / dead stock beserta nilai modal tertahan');
 
-    // 27f. Tutup Buku Bulanan -> periode terkunci, transaksi & biaya pada bulan terkunci DITOLAK!
+    // 27f. Tutup Buku Bulanan -> periode terkunci, transaksi & biaya pada bulan terkunci DITOLAK, & snapshot beku!
     const tutupBln = envTb.aksiTutupBukuTutupBulanan_({ user: ownerRow, payload: { periode: blnIni, catatan: 'Tutup buku akhir bulan' } });
     assert(tutupBln.arsip && tutupBln.arsip.status === 'terkunci', 'Tutup buku bulanan wajib mengunci periode');
+
+    const valuasiSaatTutup = evalBln.ringkasan.valuasi_stok;
+    envTb.ubahBaris_('Produk', [{ id: prodDead.id, data: { stok: 99 } }], ownerRow.id);
+    const evalTerkunci = envTb.aksiTutupBukuEvaluasiBulanan_({ user: ownerRow, payload: { periode: blnIni } });
+    assert(evalTerkunci.dari_snapshot === true && evalTerkunci.ringkasan.valuasi_stok === valuasiSaatTutup,
+      `Bulan terkunci wajib menyajikan snapshot beku (${valuasiSaatTutup}) meski stok berubah di masa depan, aktual: ${evalTerkunci.ringkasan.valuasi_stok}`);
+    envTb.ubahBaris_('Produk', [{ id: prodDead.id, data: { stok: 5 } }], ownerRow.id);
 
     let biayaTerkunci = false;
     try {

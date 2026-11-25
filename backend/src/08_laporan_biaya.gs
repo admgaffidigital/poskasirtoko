@@ -2,14 +2,11 @@
 /* 9.6 FASE 6: DASHBOARD & LAPORAN USAHA                                      */
 /* ========================================================================== */
 
-/** Helper: Konversi atau hitung rentang tanggal YYYY-MM-DD secara konsisten. */
+/** Helper: Konversi atau hitung rentang tanggal YYYY-MM-DD secara konsisten (WIB Asia/Jakarta). */
 function hitungRentangTanggal_(dari, sampai, periode) {
   const sekarang = new Date();
   const formatTgl = function (d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const t = String(d.getDate()).padStart(2, '0');
-    return y + '-' + m + '-' + t;
+    return formatWaktu_(d).substring(0, 10);
   };
 
   const hariIni = formatTgl(sekarang);
@@ -23,11 +20,9 @@ function hitungRentangTanggal_(dari, sampai, periode) {
     const d7 = new Date(sekarang.getTime() - 6 * 24 * 60 * 60 * 1000);
     return { dari: formatTgl(d7), sampai: hariIni };
   } else if (periode === 'bulan_ini') {
-    const awalBulan = new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
-    return { dari: formatTgl(awalBulan), sampai: hariIni };
+    return { dari: hariIni.substring(0, 7) + '-01', sampai: hariIni };
   } else if (periode === 'tahun_ini') {
-    const awalTahun = new Date(sekarang.getFullYear(), 0, 1);
-    return { dari: formatTgl(awalTahun), sampai: hariIni };
+    return { dari: hariIni.substring(0, 4) + '-01-01', sampai: hariIni };
   } else if (periode === 'semua') {
     return { dari: '2000-01-01', sampai: hariIni };
   }
@@ -1552,23 +1547,50 @@ function hitungMetrikSatuBulan_(ctx, ymStr) {
     return (!ht.deleted && ht.status !== 'lunas') ? acc + (Number(ht.sisa) || 0) : acc;
   }, 0);
 
+  const varianByProduk = {};
+  bacaSemua_('Varian').forEach(function (v) {
+    if (v.deleted) return;
+    if (!varianByProduk[v.produk_id]) varianByProduk[v.produk_id] = [];
+    varianByProduk[v.produk_id].push(v);
+  });
+
   let valuasiStok = 0;
   const deadStockList = [];
   bacaSemua_('Produk').forEach(function (pr) {
     if (pr.deleted || pr.aktif === false) return;
-    const st = Number(pr.stok) || 0;
-    const hp = Number(pr.hpp) || 0;
-    const nilai = Math.round(st * hp);
-    if (st > 0) valuasiStok += nilai;
-    if (st > 0 && !terjualPerProdukId[pr.id]) {
+    let stTotal = 0;
+    let nilaiModal = 0;
+    let hppTampil = Number(pr.hpp) || 0;
+
+    if (pr.punya_varian && varianByProduk[pr.id] && varianByProduk[pr.id].length > 0) {
+      varianByProduk[pr.id].forEach(function (v) {
+        const sv = Number(v.stok) || 0;
+        const hv = Number(v.hpp) || 0;
+        if (sv > 0) {
+          stTotal += sv;
+          nilaiModal += Math.round(sv * hv);
+        }
+      });
+      if (stTotal > 0) hppTampil = Math.round(nilaiModal / stTotal);
+    } else {
+      const st = Number(pr.stok) || 0;
+      const hp = Number(pr.hpp) || 0;
+      if (st > 0) {
+        stTotal = st;
+        nilaiModal = Math.round(st * hp);
+      }
+    }
+
+    if (stTotal > 0) valuasiStok += nilaiModal;
+    if (stTotal > 0 && !terjualPerProdukId[pr.id]) {
       deadStockList.push({
         id: pr.id,
         sku: pr.sku || '-',
         nama: pr.nama || '-',
         satuan: pr.satuan_dasar || 'PCS',
-        stok: st,
-        hpp: hp,
-        nilai_modal: nilai
+        stok: bulatQty_(stTotal),
+        hpp: hppTampil,
+        nilai_modal: nilaiModal
       });
     }
   });
@@ -1627,6 +1649,54 @@ function aksiTutupBukuEvaluasiBulanan_(ctx) {
     return tb.tipe === 'bulanan' && tb.periode === ymLalu;
   })[0] || null;
 
+  const riwayatBulanan = semuaArsip
+    .filter(function (tb) { return tb.tipe === 'bulanan'; })
+    .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); })
+    .slice(0, 24);
+
+  const riwayatHarianBulanIni = semuaArsip
+    .filter(function (tb) { return tb.tipe === 'harian' && String(tb.periode || '').indexOf(ymTarget) === 0; })
+    .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); });
+
+  const cfg = ambilPengaturan_();
+  const tokoInfo = {
+    nama: cfg.toko_nama || 'Toko Bangunan',
+    alamat: cfg.toko_alamat || '',
+    hp: cfg.toko_hp || ''
+  };
+
+  // Jika periode sudah dikunci resmi & memiliki snapshot_json lengkap, sajikan angka beku dari arsip
+  // agar valuasi stok, piutang, hutang, dan slow-moving bulan lampau tetap 100% permanen.
+  const snap = arsipBulanIni && arsipBulanIni.status === 'terkunci' &&
+    arsipBulanIni.snapshot_json && typeof arsipBulanIni.snapshot_json === 'object' &&
+    arsipBulanIni.snapshot_json.ringkasan
+    ? arsipBulanIni.snapshot_json
+    : null;
+
+  if (snap) {
+    const rBln = rentangBulan_(ymTarget);
+    const snapSlow = Array.isArray(snap.slow_moving) ? snap.slow_moving : [];
+    return {
+      periode: ymTarget,
+      rentang: { dari: rBln.dari, sampai: rBln.sampai },
+      status_buku: arsipBulanIni.status,
+      dari_snapshot: true,
+      arsip: arsipBulanIni,
+      ringkasan: snap.ringkasan,
+      perbandingan_mom: snap.perbandingan_mom || { periode_lalu: ymLalu, omset_persen: 0, laba_kotor_persen: 0, biaya_persen: 0, laba_bersih_persen: 0, transaksi_persen: 0, ringkasan_lalu: {} },
+      top_produk_terlaris: Array.isArray(snap.top_produk_terlaris) ? snap.top_produk_terlaris : [],
+      produk_margin_teratas: Array.isArray(snap.produk_margin_teratas) ? snap.produk_margin_teratas : [],
+      analisis_kategori: Array.isArray(snap.analisis_kategori) ? snap.analisis_kategori : [],
+      analisis_biaya: Array.isArray(snap.analisis_biaya) ? snap.analisis_biaya : [],
+      slow_moving: snapSlow,
+      total_slow_moving: Number(snap.total_slow_moving !== undefined ? snap.total_slow_moving : snapSlow.length),
+      nilai_slow_moving: Number(snap.nilai_slow_moving || 0),
+      riwayat_bulanan: riwayatBulanan,
+      riwayat_harian: riwayatHarianBulanIni,
+      toko: tokoInfo
+    };
+  }
+
   const metrikIni = hitungMetrikSatuBulan_(ctx, ymTarget);
   const ringkasanLalu = arsipBulanLalu
     ? {
@@ -1650,21 +1720,11 @@ function aksiTutupBukuEvaluasiBulanan_(ctx) {
     ringkasan_lalu: ringkasanLalu
   };
 
-  const riwayatBulanan = semuaArsip
-    .filter(function (tb) { return tb.tipe === 'bulanan'; })
-    .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); })
-    .slice(0, 24);
-
-  const riwayatHarianBulanIni = semuaArsip
-    .filter(function (tb) { return tb.tipe === 'harian' && String(tb.periode || '').indexOf(ymTarget) === 0; })
-    .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); });
-
-  const cfg = ambilPengaturan_();
-
   return {
     periode: ymTarget,
     rentang: metrikIni.rentang,
     status_buku: arsipBulanIni ? arsipBulanIni.status : 'terbuka',
+    dari_snapshot: false,
     arsip: arsipBulanIni,
     ringkasan: r,
     perbandingan_mom: mom,
@@ -1677,11 +1737,7 @@ function aksiTutupBukuEvaluasiBulanan_(ctx) {
     nilai_slow_moving: metrikIni.nilai_slow_moving,
     riwayat_bulanan: riwayatBulanan,
     riwayat_harian: riwayatHarianBulanIni,
-    toko: {
-      nama: cfg.toko_nama || 'Toko Bangunan',
-      alamat: cfg.toko_alamat || '',
-      hp: cfg.toko_hp || ''
-    }
+    toko: tokoInfo
   };
 }
 
@@ -1737,8 +1793,10 @@ function aksiTutupBukuTutupBulanan_(ctx) {
       ringkasan: r,
       perbandingan_mom: evaluasi.perbandingan_mom,
       top_produk_terlaris: evaluasi.top_produk_terlaris,
+      produk_margin_teratas: evaluasi.produk_margin_teratas || [],
       analisis_kategori: evaluasi.analisis_kategori,
       analisis_biaya: evaluasi.analisis_biaya,
+      slow_moving: evaluasi.slow_moving || [],
       total_slow_moving: evaluasi.total_slow_moving,
       nilai_slow_moving: evaluasi.nilai_slow_moving
     }
