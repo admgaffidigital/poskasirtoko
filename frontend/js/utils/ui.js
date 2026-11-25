@@ -731,7 +731,7 @@ export function bukaModalTemaWarna(onChanged = null) {
 
   const modal = showModal({
     title: 'Tema, Warna & Tipografi',
-    size: 'md',
+    size: 'lg',
     body: `
       <div class="theme-picker-wrap">
         <!-- 1. Suasana Latar (Light / Warm / Dark) -->

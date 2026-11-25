@@ -16,6 +16,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.128] - 2026-11-25
+### Diperbaiki — Presisi Lebar Modal Tema, Warna & Tipografi (`size: 'lg'`)
+- **[UI] Modal `Tema, Warna & Tipografi` (`ui.js`)**: Memperlebar dialog personalisasi tema dari `md` (`520px`) ke `lg` (`680px`) di layar desktop agar seluruh kartu grid 3 kolom (Suasana Latar, Warna Aksen, Jenis Font, & Gaya Huruf) tampil lebih lega tanpa teks subjudul terlipat sempit.
+
 ## [1.0.127] - 2026-11-25
 ### Diperbaiki — Presisi Modal Koneksi Printer Thermal Desktop & Keselarasan Kartu Backup Pengaturan
 - **[CETAK] [UI] Modal Koneksi Printer Thermal Desktop (`printer.js`)**: Mengubah ukuran modal Desktop ke `size: 'lg'` agar dropdown *Jalur Direct USB PC* tidak terpotong, memperbaiki tombol segarkan printer Windows agar selalu sejajar 1 baris horizontal di kanan dropdown (`flex-wrap: nowrap` + `width: auto` pada `<select>`), serta menjaga checkbox laci kasir tetap 1 baris.
