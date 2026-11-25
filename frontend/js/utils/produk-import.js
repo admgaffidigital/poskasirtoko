@@ -461,16 +461,18 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
 
         <!-- PANEL EXPORT & TEMPLATE -->
         <div id="panel-import-export" class="stack" style="display: none;">
-          <div class="form-grid cols-2">
-            <div class="card card-body stack-sm" style="background: var(--surface-2);">
-              <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
-                <span style="color: var(--primary);">${ICONS.fileSpreadsheet}</span>
-                <span>Ekspor Seluruh Katalog Produk &amp; Varian</span>
+          <div class="form-grid cols-2" style="align-items: stretch;">
+            <div class="card card-body stack-sm" style="background: var(--surface-2); justify-content: space-between; gap: var(--sp-3);">
+              <div class="stack-sm">
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--primary);">${ICONS.fileSpreadsheet}</span>
+                  <span>Ekspor Seluruh Katalog Produk &amp; Varian</span>
+                </div>
+                <div class="text-xs text-muted">
+                  Unduh 100% produk dan seluruh variannya dalam format CSV UTF-8 yang langsung rapi dibuka di Microsoft Excel atau Google Sheets. Ubah harga massal, lalu impor kembali di tab 1.
+                </div>
               </div>
-              <div class="text-xs text-muted">
-                Unduh 100% produk dan seluruh variannya dalam format CSV UTF-8 yang langsung rapi dibuka di Microsoft Excel atau Google Sheets. Ubah harga massal, lalu impor kembali di tab 1.
-              </div>
-              <div style="margin-top: var(--sp-1);">
+              <div>
                 <button type="button" class="btn btn-primary btn-sm" id="btn-ekspor-produk-csv" style="display: inline-flex; align-items: center; gap: 6px;">
                   ${ICONS.download}
                   <span>Ekspor Katalog Lengkap (.CSV)</span>
@@ -478,15 +480,17 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
               </div>
             </div>
 
-            <div class="card card-body stack-sm" style="background: var(--surface-2);">
-              <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
-                <span style="color: var(--primary);">${ICONS.clipboard}</span>
-                <span>Unduh Template Tambah Produk Baru</span>
+            <div class="card card-body stack-sm" style="background: var(--surface-2); justify-content: space-between; gap: var(--sp-3);">
+              <div class="stack-sm">
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--primary);">${ICONS.clipboard}</span>
+                  <span>Unduh Template Tambah Produk Baru</span>
+                </div>
+                <div class="text-xs text-muted">
+                  Cocok untuk menginput puluhan/ratusan barang toko bangunan baru sekaligus. Kategori yang belum ada akan otomatis dibuatkan oleh sistem.
+                </div>
               </div>
-              <div class="text-xs text-muted">
-                Cocok untuk menginput puluhan/ratusan barang toko bangunan baru sekaligus. Kategori yang belum ada akan otomatis dibuatkan oleh sistem.
-              </div>
-              <div style="margin-top: var(--sp-1);">
+              <div>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-unduh-template-csv" style="display: inline-flex; align-items: center; gap: 6px;">
                   ${ICONS.download}
                   <span>Unduh Template Contoh (.CSV)</span>
@@ -505,29 +509,31 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
 
         <!-- PANEL IMPORT / UPDATE MASSAL -->
         <div id="panel-import-upload" class="stack-sm">
-          <div class="form-grid cols-2">
-            <div class="field">
-              <label class="field-label" for="inp-file-import-csv">Pilih File CSV / TSV dari Komputer atau HP</label>
-              <input type="file" id="inp-file-import-csv" class="input" accept=".csv,.tsv,.txt,text/csv,text/plain">
-              <span class="field-hint">Mendukung pemisah koma (<code>,</code>), titik koma (<code>;</code> Excel Indonesia), dan tab (<code>TSV</code>).</span>
+          <div class="form-grid cols-2" style="align-items: start;">
+            <div class="card card-body stack-sm" style="background: var(--surface-2); padding: var(--sp-3);">
+              <div class="field">
+                <label class="field-label" for="inp-file-import-csv">Pilih File CSV / TSV dari Komputer atau HP</label>
+                <input type="file" id="inp-file-import-csv" class="input" accept=".csv,.tsv,.txt,text/csv,text/plain" style="padding: 7px 10px; height: auto;">
+                <span class="field-hint">Mendukung pemisah koma (<code>,</code>), titik koma (<code>;</code> Excel Indonesia), dan tab (<code>TSV</code>).</span>
+              </div>
             </div>
 
-            <div class="card card-body stack-sm" style="background: var(--surface-2); padding: var(--sp-2) var(--sp-3);">
+            <div class="card card-body stack-sm" style="background: var(--surface-2); padding: var(--sp-3); gap: 8px;">
               <div class="text-xs fw-bold">Opsi Pembaruan Data Eksisting</div>
-              <label class="row text-xs" style="gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="chk-imp-harga" checked style="width: 15px; height: 15px; accent-color: var(--primary);">
+              <label class="text-xs" style="display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; cursor: pointer; line-height: 1.4;">
+                <input type="checkbox" id="chk-imp-harga" checked style="width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0; accent-color: var(--primary);">
                 <span>Perbarui Harga (HPP, Harga Ritel, Harga Grosir)</span>
               </label>
-              <label class="row text-xs" style="gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="chk-imp-info" checked style="width: 15px; height: 15px; accent-color: var(--primary);">
+              <label class="text-xs" style="display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; cursor: pointer; line-height: 1.4;">
+                <input type="checkbox" id="chk-imp-info" checked style="width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0; accent-color: var(--primary);">
                 <span>Perbarui Info Produk (Nama, Kategori, Satuan, Barcode, Status)</span>
               </label>
-              <label class="row text-xs" style="gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="chk-imp-kat" checked style="width: 15px; height: 15px; accent-color: var(--primary);">
+              <label class="text-xs" style="display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; cursor: pointer; line-height: 1.4;">
+                <input type="checkbox" id="chk-imp-kat" checked style="width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0; accent-color: var(--primary);">
                 <span>Auto-buat Kategori baru jika nama kategori belum terdaftar</span>
               </label>
-              <label class="row text-xs" style="gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="chk-imp-stok" style="width: 15px; height: 15px; accent-color: var(--danger);">
+              <label class="text-xs" style="display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; cursor: pointer; line-height: 1.4;">
+                <input type="checkbox" id="chk-imp-stok" style="width: 15px; height: 15px; margin-top: 2px; flex-shrink: 0; accent-color: var(--danger);">
                 <span class="text-warning fw-semibold">Timpa Stok Fisik (Default MATI agar aman dari penjualan kasir)</span>
               </label>
             </div>
@@ -646,6 +652,7 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
   };
 
   // Tab switch
+  const footerAksiImport = modal.el.querySelector('#btn-eksekusi-import')?.parentElement;
   modal.el.querySelectorAll('#tabs-import-produk button').forEach((btn) => {
     btn.addEventListener('click', () => {
       tabAktif = btn.getAttribute('data-itab');
@@ -654,6 +661,9 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
       });
       panelUpload.style.display = tabAktif === 'import' ? 'flex' : 'none';
       panelExport.style.display = tabAktif === 'export' ? 'flex' : 'none';
+      if (footerAksiImport) {
+        footerAksiImport.style.display = tabAktif === 'import' ? 'flex' : 'none';
+      }
     });
   });
 

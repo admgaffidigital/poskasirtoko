@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.126] - 2026-11-25
+### Diperbaiki — Presisi Lebar Modal `.dialog-xl` (`showModal`) & Tata Letak Modal Import Massal Excel/CSV
+- **[UI] Mapping Kelas `.dialog-xl` di `showModal()` (`ui.js`)**: Menambahkan pemetaan `resolvedSize === 'xl' -> 'dialog-xl'` yang sebelumnya terlewat di `ui.js`, sehingga modal berukuran `xl` (Import / Update Massal Produk & Generator Katalog Produk PDF A4) kini tampil lebar penuh 960px di layar PC/desktop alih-alih menyempit ke 520px.
+- **[PRODUK] [UI] Presisi Checkbox, Input File, & Keselarasan Kartu Import Massal (`produk-import.js`)**: Memperbaiki 4 checkbox opsi pembaruan agar sejajar 1 baris horizontal (`flex-wrap: nowrap; align-items: flex-start`), merapikan input file CSV, menyelaraskan tinggi 2 kartu Ekspor/Template (`align-items: stretch` + `justify-content: space-between`), serta menyembunyikan tombol footer impor yang redundan saat berada di tab Ekspor & Template.
+
 ## [1.0.125] - 2026-11-25
 ### Ditambahkan — Import/Update Massal Excel/CSV, Cloud Sync Preset Katalog, Mode Offline Antrean & Backup 1-Klik
 - **[PRODUK] [BACKEND] Import / Update Massal Produk & Harga via Excel / CSV (`03_kategori_produk.gs`, `produk-import.js`, `produk.js`)**:

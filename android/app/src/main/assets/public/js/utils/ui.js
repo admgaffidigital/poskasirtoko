@@ -140,7 +140,7 @@ export function showToast(pesan, tipe = 'info', durasiMs = 3500) {
  * @param {string|HTMLElement} options.body
  * @param {string|HTMLElement} [options.footer]
  * @param {boolean} [options.isSheet=false]
- * @param {string} [options.size='md'] 'sm' | 'md' | 'lg'
+ * @param {string} [options.size='md'] 'sm' | 'md' | 'lg' | 'xl'
  * @param {boolean} [options.closeOnOverlay=true]
  * @returns {{ close: Function, el: HTMLElement }}
  */
@@ -164,12 +164,17 @@ export function showModal({
   let resolvedSize = size;
   if (width && size === 'md') {
     const px = parseInt(String(width), 10);
-    if (px >= 640) resolvedSize = 'lg';
+    if (px >= 880) resolvedSize = 'xl';
+    else if (px >= 640) resolvedSize = 'lg';
     else if (px > 0 && px <= 480) resolvedSize = 'sm';
   }
 
+  const sizeClass = resolvedSize === 'xl'
+    ? 'dialog-xl'
+    : (resolvedSize === 'lg' ? 'dialog-lg' : (resolvedSize === 'md' ? 'dialog-md' : (resolvedSize === 'sm' ? 'dialog-sm' : '')));
+
   const dialog = document.createElement('div');
-  dialog.className = `dialog ${resolvedSize === 'lg' ? 'dialog-lg' : resolvedSize === 'md' ? 'dialog-md' : resolvedSize === 'sm' ? 'dialog-sm' : ''}`;
+  dialog.className = `dialog ${sizeClass}`.trim();
   if (width) {
     dialog.style.setProperty('--custom-dialog-w', String(width));
   }
