@@ -204,7 +204,7 @@ function aksiPengaturanSet_(ctx) {
       if (k === 'pajak_persen') val = V_.angka(val, 'Pajak Persen', { min: 0, max: 100 });
       if (k === 'poin_per_rupiah') val = V_.angka(val, 'Aturan Poin (Rp per 1 Poin)', { min: 100 });
       if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
-      if (k === 'printer_jalur') val = ['otomatis', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
+      if (k === 'printer_jalur') val = ['otomatis', 'usb_direct', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
 
       if (petaId[k]) {
         diubah.push({ id: petaId[k], data: { value: val } });
@@ -229,6 +229,61 @@ function aksiPengaturanSet_(ctx) {
       hp: hasilPengaturan.toko_hp || '',
       nota_footer: hasilPengaturan.nota_footer || ''
     }
+  };
+}
+
+/** pengaturan.simpanPresetKatalog — Sinkronisasi Cloud Preset Katalog PDF lintas perangkat (Semua Role). */
+function aksiPengaturanSimpanPresetKatalog_(ctx) {
+  const p = ctx.payload || {};
+  if (!Array.isArray(p.presets)) {
+    gagal_(KODE.VALIDATION, 'Daftar preset katalog harus berupa array.');
+  }
+
+  const bersih = p.presets.slice(0, 25).map(function (pr, idx) {
+    const nama = V_.teks(pr && pr.nama, 'Nama Preset', { wajib: true, maks: 80 });
+    const ids = Array.isArray(pr && pr.productIds)
+      ? pr.productIds.slice(0, 2000).map(function (x) { return String(x || '').trim(); }).filter(Boolean)
+      : [];
+    const cfg = (pr && pr.config && typeof pr.config === 'object') ? pr.config : {};
+    return {
+      id: V_.teks(pr && pr.id, 'ID Preset', { maks: 60 }) || ('pr_' + Date.now() + '_' + idx),
+      nama: nama,
+      productIds: ids,
+      config: {
+        judul: V_.teks(cfg.judul, 'Judul Katalog', { maks: 120 }),
+        subjudul: V_.teks(cfg.subjudul, 'Subjudul', { maks: 120 }),
+        catatan: V_.teks(cfg.catatan, 'Catatan', { maks: 240 }),
+        layout: ['grid2', 'grid3', 'table'].indexOf(cfg.layout) !== -1 ? cfg.layout : 'grid2',
+        modeHarga: ['ritel', 'grosir', 'keduanya', 'tanpa_harga'].indexOf(cfg.modeHarga) !== -1 ? cfg.modeHarga : 'ritel',
+        tema: ['teal', 'orange', 'blue', 'bw'].indexOf(cfg.tema) !== -1 ? cfg.tema : 'teal',
+        groupByCategory: cfg.groupByCategory !== false,
+        showPhoto: cfg.showPhoto !== false,
+        showVariants: cfg.showVariants !== false,
+        showStock: cfg.showStock !== false,
+        showSku: cfg.showSku !== false
+      },
+      updatedAt: V_.teks(pr && pr.updatedAt, 'Waktu Update', { maks: 40 }) || sekarang_()
+    };
+  });
+
+  const barisPengaturan = bacaSemua_('Pengaturan', { termasukTerhapus: true });
+  let rowEks = null;
+  barisPengaturan.forEach(function (row) {
+    if (row.key === 'katalog_pdf_presets') rowEks = row;
+  });
+
+  if (rowEks) {
+    ubahBaris_('Pengaturan', [{ id: rowEks.id, data: { value: bersih, deleted: false } }], ctx.user.id);
+  } else {
+    tambahBaris_('Pengaturan', [{ key: 'katalog_pdf_presets', value: bersih }], ctx.user.id);
+  }
+
+  cacheHapus_('pengaturan');
+  catatAudit_(ctx.user.id, 'katalog_preset_simpan', 'SETTING', 'katalog_pdf_presets', { jumlah: bersih.length });
+
+  return {
+    presets: bersih,
+    waktu_sinkron: sekarang_()
   };
 }
 

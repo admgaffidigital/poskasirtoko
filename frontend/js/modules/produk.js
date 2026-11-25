@@ -10,6 +10,7 @@ import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { formatRupiah, formatQty, parseRupiah, escapeHtml } from '../utils/format.js';
 import { renderKalkulatorHppToggle, renderKalkulatorHppPanel, ikatKalkulatorHpp } from '../utils/hpp-calculator.js';
 import { bukaModalKatalogPdf } from '../utils/katalog-pdf.js';
+import { bukaModalImportExportProduk } from '../utils/produk-import.js';
 
 /**
  * Kompres file gambar ke format JPEG Base64 (maks 800px, kualitas 0.8)
@@ -117,6 +118,10 @@ export async function renderProdukModule(container) {
             <span>Katalog PDF</span>
           </button>
           ${canEdit ? `
+            <button type="button" class="btn btn-secondary" id="btn-import-export-produk" title="Import / Update Massal Produk & Harga via Excel / CSV">
+              ${ICONS.fileSpreadsheet}
+              <span>Import / Export</span>
+            </button>
             <button type="button" class="btn btn-secondary" id="btn-panduan-varian-header" title="Tata Cara & Panduan Penggunaan Varian dan Satuan">
               ${ICONS.helpCircle}
               <span>Panduan Varian &amp; Satuan</span>
@@ -406,6 +411,24 @@ export async function renderProdukModule(container) {
       produkTerpilih: terpilih,
       daftarKategori: cacheDaftarKategoriPrd,
       kategoriAwal: filterState.kategori_id || ''
+    });
+  });
+
+  // 0b. Import / Update Massal Produk & Harga via Excel / CSV (Owner & Admin)
+  $('#btn-import-export-produk', container)?.addEventListener('click', () => {
+    bukaModalImportExportProduk({
+      daftarKategori: cacheDaftarKategoriPrd,
+      onSelesai: async () => {
+        try {
+          const katRes = await apiCall('kategori.list', {}, { skipCache: true });
+          cacheDaftarKategoriPrd = katRes.items || [];
+          const selKat = $('#filter-produk-kategori', container);
+          if (selKat) {
+            selKat.innerHTML = susunOpsiKategoriHtml(cacheDaftarKategoriPrd, filterState.kategori_id, 'Semua Kategori');
+          }
+        } catch (_) {}
+        muatProduk(container, canEdit, isKasir, true);
+      }
     });
   });
 

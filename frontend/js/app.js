@@ -30,6 +30,7 @@ import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 // Core Auth & Native Utilities (dibutuhkan segera saat boot)
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin, tutupModalAuth } from './modules/auth.js';
 import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton, tampilkanDialogKeluarAplikasi } from './utils/native.js';
+import { jumlahAntreanOffline, bukaModalAntreanOffline, inisialisasiAutoSyncAntreanOffline, sinkronkanAntreanOffline } from './utils/offline-queue.js';
 
 // Lazy-Loader per Rute (Code Splitting Native ES Modules — memangkas >600 KB JS saat boot awal)
 const ROUTE_MODULE_LOADERS = {
@@ -119,6 +120,9 @@ class App {
     this.registerServiceWorker();
     hideNativeSplashScreen();
     window.bukaKoneksiPrinter = bukaKoneksiPrinterLazy;
+    inisialisasiAutoSyncAntreanOffline();
+    this.perbaruiBadgeAntreanOffline();
+    window.addEventListener('pos-offline-queue-changed', () => this.perbaruiBadgeAntreanOffline());
 
     // Pantau perubahan identitas toko & pengaturan secara reaktif
     store.subscribe('toko', (toko) => this.updateBrandUI(toko));
@@ -533,7 +537,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.124'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.125'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -586,7 +590,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.124'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.125'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -673,6 +677,12 @@ class App {
 
             <div class="topbar-actions">
               <span class="badge badge-warning net-pill ${typeof navigator !== 'undefined' && navigator.onLine ? '' : 'is-offline'}" id="net-pill">Offline</span>
+
+              <!-- Badge Antrean Transaksi Offline (muncul otomatis saat ada transaksi menunggu sinkron) -->
+              <button type="button" class="btn btn-xs btn-warning" id="btn-offline-queue-top" style="display: none; align-items: center; gap: 4px; border-radius: var(--radius-full);" title="Antrean Transaksi Offline Menunggu Sinkronisasi">
+                ${ICONS.cloud}
+                <span id="lbl-offline-queue-top">0</span>
+              </button>
 
               <!-- Quick Command Palette (Ctrl+K) -->
               <button type="button" class="btn-cmd-trigger" id="btn-cmd-palette" title="Lompat Cepat Menu & Aksi (Ctrl+K)" aria-label="Cari Cepat Menu">
@@ -830,6 +840,13 @@ class App {
 
     $('#btn-sync-top')?.addEventListener('click', triggerSyncHandler);
 
+    $('#btn-offline-queue-top')?.addEventListener('click', () => {
+      haptic.light();
+      bukaModalAntreanOffline({
+        onSelesai: () => this.perbaruiBadgeAntreanOffline()
+      });
+    });
+
     // Kontrol Buka/Tutup Sidebar (Mode Accurate POS untuk Desktop/Tablet & Drawer untuk Mobile)
     const toggleSidebarHandler = () => {
       const appContainer = $('.app');
@@ -985,7 +1002,7 @@ class App {
                 </div>
               </button>
               <button type="button" class="list-item" id="btn-menu-shift">
-                <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary-soft-text);"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg></div>
+                <div class="list-item-icon" style="background: var(--primary-soft); color: var(--primary-soft-text);">${ICONS.banknote}</div>
                 <div class="grow">
                   <div class="list-item-title">Kas &amp; Shift Kasir (X-Report)</div>
                   <div class="list-item-sub">Hitung saldo laci &amp; cetak laporan kasir (F3)</div>
@@ -1112,12 +1129,24 @@ class App {
         pill.classList.toggle('is-offline', !online);
       }
       this.updateNetStatusBar(online, false);
+      if (online && jumlahAntreanOffline() > 0) {
+        sinkronkanAntreanOffline({ senyap: true }).catch(() => {});
+      }
     });
 
     // Inisialisasi 6 Paket Native App (Scroll Elevation, Scroll-to-Top, Net Bar, Pull-to-Refresh)
     this.updateNetStatusBar(typeof navigator === 'undefined' ? true : navigator.onLine, true);
     this.setupScrollEnhancements();
     this.setupPullToRefresh();
+  }
+
+  perbaruiBadgeAntreanOffline() {
+    const btn = $('#btn-offline-queue-top');
+    const lbl = $('#lbl-offline-queue-top');
+    const cnt = jumlahAntreanOffline();
+    if (!btn || !lbl) return;
+    btn.style.display = cnt > 0 ? 'inline-flex' : 'none';
+    lbl.textContent = `Antrean (${cnt})`;
   }
 
   /**
@@ -1782,7 +1811,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.124'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.125'}</div>
         </div>
       `;
     };

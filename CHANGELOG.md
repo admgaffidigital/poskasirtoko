@@ -16,6 +16,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.125] - 2026-11-25
+### Ditambahkan — Import/Update Massal Excel/CSV, Cloud Sync Preset Katalog, Mode Offline Antrean & Backup 1-Klik
+- **[PRODUK] [BACKEND] Import / Update Massal Produk & Harga via Excel / CSV (`03_kategori_produk.gs`, `produk-import.js`, `produk.js`)**:
+  - Endpoint batch `produk.importMassal` (Owner/Admin, di dalam `LockService`) untuk tambah produk baru + auto-buat kategori, update produk (berdasarkan `id`/`sku`), dan tambah/update varian dengan proteksi Aturan Bisnis #1 (`harga >= HPP`), #5 (`Kartu_Stok` koreksi), dan #17 (rekalkulasi stok induk = jumlah varian).
+  - Antarmuka modal **Import / Export** di `#/produk`: Ekspor 100% seluruh katalog + varian ke CSV UTF-8 BOM ramah Excel, unduh template contoh, unggah `.csv`/`.tsv` atau **Copy-Paste langsung (`Ctrl+V`) dari Excel / Google Sheets**, pratinjau diff harga lama → baru, dan toggle aman *Timpa Stok Fisik* (default OFF).
+- **[PRODUK] [SETTING] [BACKEND] Sinkronisasi Cloud Preset Katalog PDF & Pengaturan Toko (`02_auth_user_pengaturan.gs`, `katalog-pdf.js`)**:
+  - Endpoint `pengaturan.simpanPresetKatalog` menyimpan daftar preset Katalog PDF (`katalog_pdf_presets`, maks 25 preset) ke sheet `Pengaturan` sehingga preset yang disimpan di PC otomatis muncul di HP/tablet dan sebaliknya, dengan fallback cache `localStorage` dan lencana status `Cloud Tersinkron`.
+  - Memperbaiki daftar `printer_jalur` valid di `pengaturan.set` agar mendukung `usb_direct`.
+- **[POS-JUAL] [PWA] Mode Offline Antrean Transaksi (`offline-queue.js`, `pos.js`, `app.js`, `sw.js`)**:
+  - Saat checkout `penjualan.create` gagal karena internet terputus/timeout, kasir dapat langsung menyimpan transaksi ke Antrean Offline (`pos_offline_tx_queue_v1`) dengan nomor nota sementara `OFF-...`, tetap bisa langsung mencetak struk thermal, serta dilengkapi badge Topbar `Antrean (N)`, modal manajemen antrean, dan **Auto-Sync** otomatis saat perangkat kembali online.
+- **[SETTING] [BACKEND] Backup Data 1-Klik JSON & Excel Multi-Sheet (`01_database_utilitas.gs`, `pengaturan.js`)**:
+  - Endpoint `sistem.backup` (khusus Owner) mengekspor seluruh 30 sheet database dengan sensor otomatis pada data sensitif (`pin_hash`, `salt`, `token_hash`).
+  - Tombol 1-klik di `#/pengaturan` untuk mengunduh **Backup JSON Lengkap (30 Sheet)** dan **Export Excel Multi-Sheet (`.xls` SpreadsheetML 13 tab)** serta panel status Cloud Sync & Antrean Offline.
+- **[UI] Kebersihan Ikon SVG (`ui.js`, `app.js`)**: Menambahkan ikon `upload`, `cloud`, `fileSpreadsheet`, `hardDrive`, dan `banknote` ke `ICONS` serta menyatukan ikon tombol shift di `app.js` agar 0 ikon SVG inline tersisa.
+
 ## [1.0.124] - 2026-11-24
 ### Diperbaiki — Presisi Tata Letak Modal `.dialog-xl` & Anti-Overflow Mobile Grid
 - **Lebar Modal `.dialog-xl` Desktop (`components.css`)**: Menambahkan definisi `.is-modal .dialog.dialog-xl { max-width: min(960px, calc(100vw - 48px)); }` sehingga modal Generator Katalog Produk PDF A4 di PC tampil lega 960px (pratinjau kertas A4 skala 1:1 utuh, sebelumnya jatuh ke default 520px).

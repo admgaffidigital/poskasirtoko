@@ -58,18 +58,74 @@ function cekProdukReady(prd) {
   return Number(prd.stok || 0) > 0;
 }
 
-/** Ambil daftar preset katalog tersimpan di perangkat */
+/** Gabungkan preset cloud & lokal tanpa duplikasi (terbaru di atas, maks 25) */
+function gabungPresetKatalog(listA = [], listB = []) {
+  const peta = new Map();
+  [...(Array.isArray(listA) ? listA : []), ...(Array.isArray(listB) ? listB : [])].forEach((item) => {
+    if (!item || !item.nama) return;
+    const id = String(item.id || '').trim() || ('pr_' + String(item.nama).toLowerCase().replace(/[^a-z0-9]/g, '_'));
+    const eks = peta.get(id);
+    const tNew = String(item.updatedAt || '');
+    const tEks = String(eks?.updatedAt || '');
+    if (!eks || tNew >= tEks) {
+      peta.set(id, {
+        id,
+        nama: String(item.nama).trim(),
+        productIds: Array.isArray(item.productIds) ? item.productIds : [],
+        config: item.config && typeof item.config === 'object' ? item.config : {},
+        updatedAt: tNew || new Date().toISOString()
+      });
+    }
+  });
+  return Array.from(peta.values())
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+    .slice(0, 25);
+}
+
+/** Simpan daftar preset ke cache localStorage perangkat */
+function simpanCachePresetLokal(list) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(KEY_KATALOG_PRESETS, JSON.stringify((list || []).slice(0, 25)));
+    }
+  } catch (_) {}
+}
+
+/** Ambil daftar preset katalog (gabungan Cloud Pengaturan + cache lokal perangkat) */
 export function ambilPresetKatalog() {
+  let lokal = [];
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY_KATALOG_PRESETS) : null;
     const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
+    lokal = Array.isArray(arr) ? arr : [];
   } catch (_) {
-    return [];
+    lokal = [];
+  }
+  const cloud = store.get('pengaturan')?.katalog_pdf_presets;
+  if (Array.isArray(cloud) && cloud.length > 0) {
+    return gabungPresetKatalog(cloud, lokal);
+  }
+  return lokal;
+}
+
+/** Dorong daftar preset katalog ke Cloud Google Sheet Pengaturan agar sinkron di semua PC & HP */
+async function sinkronkanPresetKeCloud(list) {
+  const bersih = (list || []).slice(0, 25);
+  simpanCachePresetLokal(bersih);
+  const cfgSaatIni = store.get('pengaturan') || {};
+  store.set('pengaturan', { ...cfgSaatIni, katalog_pdf_presets: bersih });
+  try {
+    const res = await apiCall('pengaturan.simpanPresetKatalog', { presets: bersih });
+    const finalList = Array.isArray(res?.presets) ? res.presets : bersih;
+    simpanCachePresetLokal(finalList);
+    store.set('pengaturan', { ...(store.get('pengaturan') || {}), katalog_pdf_presets: finalList });
+    return { synced: true, presets: finalList };
+  } catch (_) {
+    return { synced: false, presets: bersih };
   }
 }
 
-/** Simpan / perbarui preset katalog di perangkat */
+/** Simpan / perbarui preset katalog di perangkat & Cloud */
 export function simpanPresetKatalog(preset) {
   const list = ambilPresetKatalog();
   const idx = list.findIndex((x) => x.id === preset.id || x.nama.toLowerCase() === String(preset.nama || '').toLowerCase());
@@ -82,22 +138,14 @@ export function simpanPresetKatalog(preset) {
   };
   if (idx >= 0) list[idx] = item;
   else list.unshift(item);
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(KEY_KATALOG_PRESETS, JSON.stringify(list.slice(0, 20)));
-    }
-  } catch (_) {}
+  simpanCachePresetLokal(list.slice(0, 25));
   return item;
 }
 
-/** Hapus preset katalog */
+/** Hapus preset katalog dari perangkat */
 export function hapusPresetKatalog(presetId) {
   const list = ambilPresetKatalog().filter((x) => x.id !== presetId);
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(KEY_KATALOG_PRESETS, JSON.stringify(list));
-    }
-  } catch (_) {}
+  simpanCachePresetLokal(list);
   return list;
 }
 
@@ -878,11 +926,15 @@ export async function bukaModalKatalogPdf(params = {}) {
             </button>
           </div>
 
-          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; align-items: center;">
+            <span class="badge badge-info" id="badge-preset-cloud-status" title="Status sinkronisasi preset katalog lintas perangkat" style="display: inline-flex; align-items: center; gap: 4px;">
+              ${ICONS.cloud}
+              <span>Sinkron Cloud</span>
+            </span>
             <select id="sel-katalog-preset" class="input input-sm" style="min-width: 175px;" title="Muat daftar katalog yang pernah disimpan">
               <option value="">-- Preset Katalog Tersimpan --</option>
             </select>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-simpan-preset-kat" title="Simpan pilihan produk ini sebagai preset agar mudah dicetak ulang">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-simpan-preset-kat" title="Simpan pilihan produk ini ke Cloud agar bisa dibuka dari semua HP & PC">
               ${ICONS.clipboard}
               <span>Simpan Preset</span>
             </button>
@@ -1022,7 +1074,14 @@ export async function bukaModalKatalogPdf(params = {}) {
   const selKatFilter = modal.el.querySelector('#sel-kat-filter');
   const selPreset = modal.el.querySelector('#sel-katalog-preset');
   const btnHapusPreset = modal.el.querySelector('#btn-hapus-preset-kat');
+  const badgeCloudPreset = modal.el.querySelector('#badge-preset-cloud-status');
   const stageA4 = modal.el.querySelector('#stage-katalog-a4');
+
+  const setStatusCloudPreset = (mode, teks) => {
+    if (!badgeCloudPreset) return;
+    badgeCloudPreset.className = `badge ${mode === 'ok' ? 'badge-success' : (mode === 'warn' ? 'badge-warning' : 'badge-info')}`;
+    badgeCloudPreset.innerHTML = `${ICONS.cloud}<span>${escapeHtml(teks)}</span>`;
+  };
   const viewportA4 = modal.el.querySelector('#viewport-katalog-a4');
   const iframeA4 = modal.el.querySelector('#iframe-katalog-a4');
 
@@ -1252,9 +1311,16 @@ export async function bukaModalKatalogPdf(params = {}) {
     stateKat.terpilihIds = new Set((found.productIds || []).filter((id) => validIds.has(id)));
     if (found.config) {
       if (found.config.judul && modal.el.querySelector('#inp-kat-judul')) modal.el.querySelector('#inp-kat-judul').value = found.config.judul;
+      if (found.config.subjudul !== undefined && modal.el.querySelector('#inp-kat-subjudul')) modal.el.querySelector('#inp-kat-subjudul').value = found.config.subjudul;
+      if (found.config.catatan !== undefined && modal.el.querySelector('#inp-kat-catatan')) modal.el.querySelector('#inp-kat-catatan').value = found.config.catatan;
       if (found.config.layout && modal.el.querySelector('#sel-kat-layout')) modal.el.querySelector('#sel-kat-layout').value = found.config.layout;
       if (found.config.modeHarga && modal.el.querySelector('#sel-kat-harga')) modal.el.querySelector('#sel-kat-harga').value = found.config.modeHarga;
       if (found.config.tema && modal.el.querySelector('#sel-kat-tema')) modal.el.querySelector('#sel-kat-tema').value = found.config.tema;
+      if (found.config.groupByCategory !== undefined && modal.el.querySelector('#chk-kat-grup')) modal.el.querySelector('#chk-kat-grup').checked = Boolean(found.config.groupByCategory);
+      if (found.config.showPhoto !== undefined && modal.el.querySelector('#chk-kat-foto')) modal.el.querySelector('#chk-kat-foto').checked = Boolean(found.config.showPhoto);
+      if (found.config.showVariants !== undefined && modal.el.querySelector('#chk-kat-varian')) modal.el.querySelector('#chk-kat-varian').checked = Boolean(found.config.showVariants);
+      if (found.config.showStock !== undefined && modal.el.querySelector('#chk-kat-stok')) modal.el.querySelector('#chk-kat-stok').checked = Boolean(found.config.showStock);
+      if (found.config.showSku !== undefined && modal.el.querySelector('#chk-kat-sku')) modal.el.querySelector('#chk-kat-sku').checked = Boolean(found.config.showSku);
     }
     perbaruiCounter();
     if (stateKat.tab === 'preview') renderPreviewA4();
@@ -1269,11 +1335,11 @@ export async function bukaModalKatalogPdf(params = {}) {
     }
     bacaOpsiForm();
     const mSave = showModal({
-      title: 'Simpan Preset Katalog',
+      title: 'Simpan Preset Katalog (Sinkron Cloud)',
       size: 'sm',
       body: `
         <div class="stack-sm">
-          <div class="text-xs text-muted">Simpan <strong>${stateKat.terpilihIds.size} produk</strong> terpilih agar minggu depan tinggal 1 klik cetak ulang dengan harga otomatis terbaru:</div>
+          <div class="text-xs text-muted">Simpan <strong>${stateKat.terpilihIds.size} produk</strong> terpilih ke Cloud agar bisa dibuka dari PC maupun HP mana saja dengan harga otomatis terbaru:</div>
           <div class="field">
             <label class="field-label" for="inp-nama-preset-kat">Nama Preset Katalog</label>
             <input type="text" id="inp-nama-preset-kat" class="input" placeholder="Cth: Katalog Besi & Hollow" value="${escapeHtml(stateKat.opsi.judul === 'KATALOG PRODUK & DAFTAR HARGA' ? '' : stateKat.opsi.judul)}">
@@ -1282,28 +1348,44 @@ export async function bukaModalKatalogPdf(params = {}) {
       `,
       footer: `
         <button type="button" class="btn btn-outline btn-sm btn-cancel">Batal</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-ok-simpan-preset">Simpan Preset</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-ok-simpan-preset">Simpan ke Cloud</button>
       `
     });
-    mSave.el.querySelector('#btn-ok-simpan-preset')?.addEventListener('click', () => {
+    mSave.el.querySelector('#btn-ok-simpan-preset')?.addEventListener('click', async () => {
       const nama = (mSave.el.querySelector('#inp-nama-preset-kat')?.value || '').trim();
       if (!nama) {
         showToast('Masukkan nama preset terlebih dahulu.', 'warning');
         return;
       }
+      const btnOk = mSave.el.querySelector('#btn-ok-simpan-preset');
+      if (btnOk) { btnOk.disabled = true; btnOk.textContent = 'Menyimpan...'; }
       const saved = simpanPresetKatalog({
         nama,
         productIds: Array.from(stateKat.terpilihIds),
         config: {
           judul: stateKat.opsi.judul,
+          subjudul: stateKat.opsi.subjudul,
+          catatan: stateKat.opsi.catatan,
           layout: stateKat.opsi.layout,
           modeHarga: stateKat.opsi.modeHarga,
-          tema: stateKat.opsi.tema
+          tema: stateKat.opsi.tema,
+          groupByCategory: stateKat.opsi.groupByCategory,
+          showPhoto: stateKat.opsi.showPhoto,
+          showVariants: stateKat.opsi.showVariants,
+          showStock: stateKat.opsi.showStock,
+          showSku: stateKat.opsi.showSku
         }
       });
+      const resSync = await sinkronkanPresetKeCloud(ambilPresetKatalog());
       renderPresetDropdown(saved.id);
       mSave.close();
-      showToast(`Preset "${saved.nama}" tersimpan!`, 'success');
+      if (resSync.synced) {
+        setStatusCloudPreset('ok', 'Cloud Tersinkron');
+        showToast(`Preset "${saved.nama}" tersimpan & tersinkron ke Cloud!`, 'success');
+      } else {
+        setStatusCloudPreset('warn', 'Tersimpan Lokal');
+        showToast(`Preset "${saved.nama}" tersimpan lokal (akan sinkron saat online).`, 'warning');
+      }
     });
   });
 
@@ -1313,14 +1395,16 @@ export async function bukaModalKatalogPdf(params = {}) {
     const found = ambilPresetKatalog().find((x) => x.id === pid);
     const ok = await showConfirm({
       title: 'Hapus Preset Katalog?',
-      message: `Preset "${found?.nama || ''}" akan dihapus dari perangkat ini.`,
+      message: `Preset "${found?.nama || ''}" akan dihapus dari Cloud dan perangkat ini.`,
       confirmText: 'Ya, Hapus',
       danger: true
     });
     if (!ok) return;
-    hapusPresetKatalog(pid);
+    const sisa = hapusPresetKatalog(pid);
+    const resSync = await sinkronkanPresetKeCloud(sisa);
     renderPresetDropdown('');
-    showToast('Preset katalog dihapus.', 'info');
+    if (resSync.synced) setStatusCloudPreset('ok', 'Cloud Tersinkron');
+    showToast('Preset katalog berhasil dihapus.', 'info');
   });
 
   // Tombol cetak / simpan PDF & bagikan WA
@@ -1371,12 +1455,24 @@ export async function bukaModalKatalogPdf(params = {}) {
   if (stateKat.tab === 'preview') renderPreviewA4();
   else renderPickerList();
 
-  // Muat 100% seluruh produk aktif & daftar kategori di latar belakang agar tidak terpotong 50 item
+  // Muat 100% seluruh produk aktif, daftar kategori, & preset cloud di latar belakang
   try {
-    const [semua, resKat] = await Promise.all([
+    const [semua, resKat, resCfg] = await Promise.all([
       muatSeluruhProdukLengkap(),
-      daftarKategori.length ? Promise.resolve(null) : apiCall('kategori.list', {}).catch(() => null)
+      daftarKategori.length ? Promise.resolve(null) : apiCall('kategori.list', {}).catch(() => null),
+      apiCall('pengaturan.get', {}, { skipCache: true }).catch(() => null)
     ]);
+    if (resCfg && resCfg.pengaturan) {
+      const cloudPresets = Array.isArray(resCfg.pengaturan.katalog_pdf_presets) ? resCfg.pengaturan.katalog_pdf_presets : [];
+      const lokalPresets = ambilPresetKatalog();
+      const gabungan = gabungPresetKatalog(cloudPresets, lokalPresets);
+      simpanCachePresetLokal(gabungan);
+      store.set('pengaturan', { ...resCfg.pengaturan, katalog_pdf_presets: gabungan });
+      renderPresetDropdown(selPreset?.value || '');
+      setStatusCloudPreset('ok', 'Cloud Tersinkron');
+    } else {
+      setStatusCloudPreset('warn', 'Mode Lokal');
+    }
     if (resKat && Array.isArray(resKat.items) && resKat.items.length) {
       daftarKategori = resKat.items;
       sinkronPetaKategori();

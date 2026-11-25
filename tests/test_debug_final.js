@@ -1821,6 +1821,136 @@ async function runAudit() {
     assert(list2.items.length === 0, 'RAB yang dihapus tidak boleh muncul di penawaran.list');
   });
 
+  // =========================================================================
+  // TEST 24: IMPORT / UPDATE MASSAL PRODUK & VARIAN VIA EXCEL / CSV
+  // =========================================================================
+  test('24. Import Massal Produk & Varian: Tambah + Auto-Kategori, Update Harga Aman, Koreksi Stok, Varian Rule #17, & RBAC', () => {
+    const envImp = setupMockEnv();
+    envImp.setupDatabase();
+    const ownerRow = envImp.bacaSemua_('Users').find((u) => u.role === 'owner');
+    const kasirRow = envImp.bacaSemua_('Users').find((u) => u.role === 'kasir') || envImp.tambahBaris_('Users', [{
+      username: 'kasir_imp', nama: 'Kasir Import', role: 'kasir', pin_hash: 'x', salt: 'y', aktif: true
+    }], ownerRow.id)[0];
+
+    // 24a. Import 2 produk baru (+ 1 kategori baru otomatis) & 1 baris invalid (harga < HPP)
+    const res1 = envImp.aksiProdukImportMassal_({
+      user: ownerRow,
+      payload: {
+        items: [
+          { _baris: 2, tipe: 'produk', sku: 'IMP-SMN-01', nama: 'Semen Padang 50Kg', kategori_nama: 'Semen Import', satuan_dasar: 'SAK', hpp: 55000, harga_ritel: 66000, harga_grosir: 63000, stok: 40 },
+          { _baris: 3, tipe: 'produk', sku: 'IMP-CAT-01', nama: 'Cat Tembok 5Kg', kategori_nama: 'Semen Import', satuan_dasar: 'PAIL', hpp: 80000, harga_ritel: 105000, harga_grosir: 98000, stok: 15 },
+          { _baris: 4, tipe: 'produk', sku: 'IMP-ERR-01', nama: 'Barang Rugi', satuan_dasar: 'PCS', hpp: 50000, harga_ritel: 40000, stok: 5 }
+        ],
+        opsi: { perbarui_harga: true, perbarui_stok: false, buat_kategori_otomatis: true }
+      }
+    });
+    assert(res1.ditambah === 2 && res1.kategori_dibuat === 1 && res1.gagal.length === 1,
+      `Hasil import 1 wajib tambah 2 produk, 1 kategori baru, 1 gagal; aktual: ${JSON.stringify(res1)}`);
+
+    const prdSemen = envImp.bacaSemua_('Produk').find((p) => p.sku === 'IMP-SMN-01');
+    assert(prdSemen && prdSemen.harga_ritel === 66000 && prdSemen.stok === 40, 'Produk baru hasil import wajib tersimpan lengkap');
+
+    // 24b. Update harga massal TANPA timpa stok (opsi default perbarui_stok: false)
+    const res2 = envImp.aksiProdukImportMassal_({
+      user: ownerRow,
+      payload: {
+        items: [{ _baris: 2, tipe: 'produk', sku: 'IMP-SMN-01', hpp: 57000, harga_ritel: 70000, harga_grosir: 67000, stok: 999 }],
+        opsi: { perbarui_harga: true, perbarui_stok: false }
+      }
+    });
+    assert(res2.diperbarui === 1, 'Update harga berdasarkan SKU wajib memperbarui 1 produk');
+    const prdAfter2 = envImp.cariById_('Produk', prdSemen.id);
+    assert(prdAfter2.harga_ritel === 70000 && prdAfter2.stok === 40,
+      `Harga harus berubah ke 70000 dan stok TETAP aman 40 saat perbarui_stok=false, aktual stok=${prdAfter2.stok}`);
+
+    // 24c. Update stok eksplisit (perbarui_stok: true) wajib mencatat Kartu_Stok koreksi
+    const res3 = envImp.aksiProdukImportMassal_({
+      user: ownerRow,
+      payload: {
+        items: [{ _baris: 2, tipe: 'produk', id: prdSemen.id, stok: 55 }],
+        opsi: { perbarui_harga: false, perbarui_info: false, perbarui_stok: true }
+      }
+    });
+    assert(res3.diperbarui === 1 && envImp.cariById_('Produk', prdSemen.id).stok === 55, 'Stok harus berubah ke 55 saat perbarui_stok=true');
+    const ksKoreksi = envImp.bacaSemua_('Kartu_Stok').filter((k) => k.produk_id === prdSemen.id && k.tipe === 'koreksi' && k.qty === 15);
+    assert(ksKoreksi.length === 1, 'Perubahan stok via import massal wajib tercatat di Kartu_Stok sebagai koreksi (+15)');
+
+    // 24d. Tambah & update varian via import massal -> stok induk rekalkulasi otomatis (Rule #17)
+    const resVar = envImp.aksiProdukImportMassal_({
+      user: ownerRow,
+      payload: {
+        items: [
+          { _baris: 2, tipe: 'varian', sku_induk: 'IMP-CAT-01', nama_varian: 'Putih Salju', sku: 'IMP-CAT-01-V1', hpp: 80000, harga_ritel: 110000, stok: 12 },
+          { _baris: 3, tipe: 'varian', sku_induk: 'IMP-CAT-01', nama_varian: 'Abu Beton', sku: 'IMP-CAT-01-V2', hpp: 82000, harga_ritel: 112000, stok: 8 }
+        ],
+        opsi: { perbarui_harga: true, perbarui_stok: true }
+      }
+    });
+    assert(resVar.varian_ditambah === 2, 'Harus menambah 2 varian baru');
+    const prdCat = envImp.bacaSemua_('Produk').find((p) => p.sku === 'IMP-CAT-01');
+    assert(prdCat.punya_varian === true && prdCat.stok === 20, `Stok induk cat wajib sum varian = 20, aktual: ${prdCat.stok}`);
+
+    // 24e. RBAC via Router nyata (callApi): Kasir wajib ditolak FORBIDDEN
+    const resKasirImp = callApi('produk.importMassal', tokenKasir, {
+      items: [{ tipe: 'produk', nama: 'Coba Kasir', harga_ritel: 10000 }]
+    });
+    assert(resKasirImp.ok === false && resKasirImp.code === 'FORBIDDEN',
+      `RBAC produk.importMassal wajib menolak Kasir (FORBIDDEN), aktual: ${JSON.stringify(resKasirImp)}`);
+    assert(kasirRow && kasirRow.role === 'kasir', 'Kasir dummy tersedia untuk verifikasi');
+  });
+
+  // =========================================================================
+  // TEST 25: CLOUD SYNC PRESET KATALOG PDF & BACKUP DATA 1-KLIK (REDACT SENSITIF)
+  // =========================================================================
+  test('25. Sinkronisasi Cloud Preset Katalog PDF & Backup Data 1-Klik (30 Sheet + Sensor Data Sensitif)', () => {
+    const envSync = setupMockEnv();
+    envSync.setupDatabase();
+    const ownerRow = envSync.bacaSemua_('Users').find((u) => u.role === 'owner');
+
+    // 25a. Simpan preset katalog ke Cloud Pengaturan
+    const resPreset = envSync.aksiPengaturanSimpanPresetKatalog_({
+      user: ownerRow,
+      payload: {
+        presets: [{
+          id: 'pr_besi_1',
+          nama: 'Katalog Besi & Baja',
+          productIds: ['p1', 'p2', 'p3'],
+          config: { judul: 'KATALOG BESI PROYEK', layout: 'table', modeHarga: 'grosir', tema: 'blue' }
+        }]
+      }
+    });
+    assert(resPreset.presets.length === 1 && resPreset.presets[0].nama === 'Katalog Besi & Baja',
+      'pengaturan.simpanPresetKatalog wajib menyimpan dan mengembalikan daftar preset');
+
+    // 25b. pengaturan.get wajib memuat preset katalog dari Cloud untuk perangkat lain
+    const resGet = envSync.aksiPengaturanGet_({ user: ownerRow, payload: {} });
+    assert(Array.isArray(resGet.pengaturan.katalog_pdf_presets) && resGet.pengaturan.katalog_pdf_presets.length === 1,
+      'pengaturan.get wajib menyertakan katalog_pdf_presets hasil sinkronisasi Cloud');
+    assert(resGet.pengaturan.katalog_pdf_presets[0].config.layout === 'table', 'Konfigurasi layout preset Cloud harus utuh');
+
+    // 25c. sistem.backup (Khusus Owner) mengembalikan seluruh 30 sheet & menyensor pin_hash, salt, token_hash
+    envSync.tambahBaris_('Sesi', [{
+      user_id: ownerRow.id, token_hash: 'rahasia_token_xyz', kedaluwarsa: '2099-01-01 00:00:00', terakhir_aktif: '2026-11-25 10:00:00', perangkat: 'Chrome'
+    }], ownerRow.id);
+    const resBackup = envSync.aksiSistemBackup_({ user: ownerRow, payload: {} });
+    assert(resBackup.total_sheet === 30 && resBackup.sheets && Array.isArray(resBackup.sheets.Produk),
+      `sistem.backup wajib mengekspor seluruh 30 sheet database, aktual: ${resBackup.total_sheet}`);
+    const userBackup = resBackup.sheets.Users[0];
+    assert(userBackup && userBackup.pin_hash === undefined && userBackup.salt === undefined,
+      'Backup Users WAJIB menyensor kolom pin_hash dan salt');
+    const sesiBackup = resBackup.sheets.Sesi[0];
+    assert(sesiBackup && sesiBackup.token_hash === undefined,
+      'Backup Sesi WAJIB menyensor kolom token_hash');
+
+    // 25d. RBAC sistem.backup via Router nyata: Kasir ditolak FORBIDDEN, Owner sukses
+    const resBackupKasir = callApi('sistem.backup', tokenKasir, {});
+    assert(resBackupKasir.ok === false && resBackupKasir.code === 'FORBIDDEN',
+      `RBAC sistem.backup wajib menolak Kasir (FORBIDDEN), aktual: ${JSON.stringify(resBackupKasir)}`);
+    const resBackupOwner = callApi('sistem.backup', tokenOwner, {});
+    assert(resBackupOwner.ok === true && resBackupOwner.data.total_sheet === 30,
+      'Owner wajib dapat mengeksekusi sistem.backup penuh (30 sheet)');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

@@ -743,3 +743,59 @@ function aksiSistemMaintenance_(ctx) {
     waktu_server: sekarang_()
   };
 }
+
+/** sistem.backup — Ekspor snapshot lengkap seluruh sheet database (Khusus Owner, data sensitif disensor). */
+function aksiSistemBackup_(ctx) {
+  const namaSheets = Object.keys(SKEMA);
+  const sheetsData = {};
+  const ringkasan = {};
+  let totalBaris = 0;
+
+  namaSheets.forEach(function (nama) {
+    let rows = [];
+    try {
+      rows = bacaSemua_(nama);
+    } catch (_) {
+      rows = [];
+    }
+    if (nama === 'Users') {
+      rows = rows.map(function (u) {
+        const salin = Object.assign({}, u);
+        delete salin.pin_hash;
+        delete salin.salt;
+        return salin;
+      });
+    } else if (nama === 'Sesi') {
+      rows = rows.map(function (s) {
+        const salin = Object.assign({}, s);
+        delete salin.token_hash;
+        return salin;
+      });
+    }
+    sheetsData[nama] = rows;
+    ringkasan[nama] = rows.length;
+    totalBaris += rows.length;
+  });
+
+  const cfg = ambilPengaturan_();
+  catatAudit_(ctx.user.id, 'sistem_backup', 'SISTEM', '', {
+    total_sheet: namaSheets.length,
+    total_baris: totalBaris
+  });
+
+  return {
+    versi: APP.VERSI,
+    versi_skema: APP.VERSI_SKEMA,
+    waktu_backup: sekarang_(),
+    dibuat_oleh: ctx.user.nama || ctx.user.username || ctx.user.id,
+    toko: {
+      nama: cfg.toko_nama || 'Toko',
+      alamat: cfg.toko_alamat || '',
+      hp: cfg.toko_hp || ''
+    },
+    total_sheet: namaSheets.length,
+    total_baris: totalBaris,
+    ringkasan: ringkasan,
+    sheets: sheetsData
+  };
+}

@@ -195,7 +195,8 @@ const PENGATURAN_DEFAULT = {
   toko_logo_url: '',
   nota_footer: 'Terima kasih atas kunjungan Anda.\nBarang yang sudah dibeli dapat diretur sesuai ketentuan toko.',
   printer_ukuran: '58', // '58' (32 karakter) | '80' (48 karakter)
-  printer_jalur: 'otomatis', // otomatis | webbluetooth | rawbt | browser
+  printer_jalur: 'otomatis', // otomatis | usb_direct | rawbt | webbluetooth | browser
+  katalog_pdf_presets: [],
   poin_per_rupiah: 10000,
   level_member: [
     { nama: 'Reguler', min_belanja: 0, pengali: 1 },
@@ -233,6 +234,7 @@ const PENGATURAN_DEFAULT = {
 const RUTE = {
   'sistem.ping': { publik: true, handler: aksiSistemPing_ },
   'sistem.maintenance': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiSistemMaintenance_ },
+  'sistem.backup': { publik: false, roles: [ROLE.OWNER], handler: aksiSistemBackup_ },
 
   // Auth (Fase 1)
   'auth.login': { publik: true, tulis: true, handler: aksiAuthLogin_ },
@@ -252,10 +254,12 @@ const RUTE = {
   'produk.update': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukUpdate_ },
   'produk.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukDelete_ },
   'produk.uploadFoto': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukUploadFoto_ },
+  'produk.importMassal': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukImportMassal_ },
 
   // Pengaturan (Fase 1)
   'pengaturan.get': { publik: false, roles: SEMUA_ROLE, handler: aksiPengaturanGet_ },
   'pengaturan.set': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiPengaturanSet_ },
+  'pengaturan.simpanPresetKatalog': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPengaturanSimpanPresetKatalog_ },
 
   // User Management (Fase 1)
   'user.list': { publik: false, roles: [ROLE.OWNER], handler: aksiUserList_ },

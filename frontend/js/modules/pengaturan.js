@@ -10,6 +10,76 @@ import { syncStatusBarWithTheme } from '../utils/native.js';
 import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
 import { tampilkanModalKoneksiPrinter, bukaAplikasiRawBT, cetakUjiStruk } from '../utils/printer.js';
+import { jumlahAntreanOffline, bukaModalAntreanOffline } from '../utils/offline-queue.js';
+
+function escapeXmlExcel(val) {
+  const s = val === null || val === undefined ? '' : (typeof val === 'object' ? JSON.stringify(val) : String(val));
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function unduhBlobFile(namaFile, konten, mime) {
+  const blob = new Blob([konten], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = namaFile;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 600);
+}
+
+/** Bangun Workbook Microsoft Excel Multi-Sheet (SpreadsheetML XML .xls) dari payload sistem.backup */
+function buatWorkbookExcelMultiSheet(backupData) {
+  const sheets = backupData?.sheets || {};
+  const daftarTab = [
+    'Produk', 'Varian', 'Kategori', 'Pelanggan', 'Supplier',
+    'Penjualan', 'Penjualan_Item', 'Pembelian', 'Piutang', 'Hutang',
+    'Biaya', 'Shift_Kasir', 'Pengaturan'
+  ];
+
+  const xmlSheets = daftarTab.map((namaTab) => {
+    const rows = Array.isArray(sheets[namaTab]) ? sheets[namaTab] : [];
+    const cols = rows.length > 0 ? Object.keys(rows[0]) : ['Info'];
+    const headerCells = cols.map((c) => `<Cell ss:StyleID="hdr"><Data ss:Type="String">${escapeXmlExcel(c)}</Data></Cell>`).join('');
+    const bodyRows = rows.length > 0
+      ? rows.map((r) => {
+        const cells = cols.map((c) => {
+          const v = r[c];
+          if (typeof v === 'number' && Number.isFinite(v)) {
+            return `<Cell><Data ss:Type="Number">${v}</Data></Cell>`;
+          }
+          if (typeof v === 'boolean') {
+            return `<Cell><Data ss:Type="String">${v ? 'YA' : 'TIDAK'}</Data></Cell>`;
+          }
+          return `<Cell><Data ss:Type="String">${escapeXmlExcel(v)}</Data></Cell>`;
+        }).join('');
+        return `<Row>${cells}</Row>`;
+      }).join('')
+      : '<Row><Cell><Data ss:Type="String">(Belum ada data)</Data></Cell></Row>';
+
+    return `<Worksheet ss:Name="${escapeXmlExcel(namaTab.slice(0, 31))}"><Table><Row>${headerCells}</Row>${bodyRows}</Table></Worksheet>`;
+  }).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="hdr"><Font ss:Bold="1"/></Style>
+ </Styles>
+ ${xmlSheets}
+</Workbook>`;
+}
 
 export async function renderPengaturanModule(container) {
   const user = store.get('user');
@@ -234,6 +304,51 @@ async function muatPengaturan(container) {
             </div>
           </div>
         </div>
+
+        <div class="divider"></div>
+
+        <!-- 6. Backup Data 1-Klik, Ekspor Excel Lengkap, & Antrean Offline -->
+        <div>
+          <div class="section-title">Backup Data 1-Klik, Ekspor Excel, &amp; Sinkronisasi Cloud</div>
+          <div class="form-grid cols-2" style="margin-top: var(--sp-2);">
+            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1.5px solid var(--border);">
+              <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                <span style="color: var(--primary);">${ICONS.hardDrive}</span>
+                <span>Backup Lengkap Database (JSON &amp; Excel)</span>
+              </div>
+              <div class="text-xs text-muted">
+                Unduh arsip cadangan seluruh 30 tabel database (Produk, Penjualan, Pembelian, Piutang, Hutang, Pelanggan, Shift, &amp; Pengaturan). Password/PIN dan token sesi otomatis disensor demi keamanan.
+              </div>
+              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-1);">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-cfg-backup-json" style="display: inline-flex; align-items: center; gap: 6px;">
+                  ${ICONS.download}
+                  <span>Backup JSON Lengkap</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cfg-backup-excel" style="display: inline-flex; align-items: center; gap: 6px;">
+                  ${ICONS.fileSpreadsheet}
+                  <span>Export Excel Multi-Sheet</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1.5px solid var(--border);">
+              <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                <span style="color: var(--primary);">${ICONS.cloud}</span>
+                <span>Status Sinkron Cloud &amp; Antrean Offline</span>
+              </div>
+              <div class="text-xs text-muted">
+                Preset Katalog PDF tersimpan di Cloud: <strong class="mono">${Array.isArray(cfg.katalog_pdf_presets) ? cfg.katalog_pdf_presets.length : 0} preset</strong>.<br>
+                Antrean Transaksi Offline di perangkat ini: <strong class="mono" id="lbl-cfg-offline-count">${jumlahAntreanOffline()} transaksi</strong>.
+              </div>
+              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-1);">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cfg-antrean-offline" style="display: inline-flex; align-items: center; gap: 6px;">
+                  ${ICONS.refresh}
+                  <span>Kelola Antrean Offline</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </form>
     `;
 
@@ -300,6 +415,49 @@ async function muatPengaturan(container) {
 
     $('#btn-cfg-buka-tema', container)?.addEventListener('click', () => {
       bukaModalTemaWarna((c) => syncStatusBarWithTheme(c.theme));
+    });
+
+    // Listener Backup Data 1-Klik (JSON 30 Sheet & Workbook Excel Multi-Sheet)
+    const jalankanBackupData = async (mode) => {
+      const btn = $(mode === 'excel' ? '#btn-cfg-backup-excel' : '#btn-cfg-backup-json', container);
+      const htmlAsli = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Mengambil Data Cloud...';
+      }
+      try {
+        const res = await apiCall('sistem.backup', {});
+        const now = new Date();
+        const stamp = now.toISOString().slice(0, 16).replace(/[-:T]/g, '');
+        if (mode === 'excel') {
+          const xml = buatWorkbookExcelMultiSheet(res);
+          unduhBlobFile(`backup-excel-pos-kasir-${stamp}.xls`, '\uFEFF' + xml, 'application/vnd.ms-excel;charset=utf-8');
+          showToast(`Workbook Excel Multi-Sheet (${res.total_baris || 0} baris data) berhasil diunduh!`, 'success', 4000);
+        } else {
+          const jsonStr = JSON.stringify(res, null, 2);
+          unduhBlobFile(`backup-lengkap-pos-kasir-${stamp}.json`, jsonStr, 'application/json;charset=utf-8');
+          showToast(`Backup JSON Lengkap (${res.total_sheet || 30} sheet, ${res.total_baris || 0} baris) berhasil diunduh!`, 'success', 4000);
+        }
+      } catch (err) {
+        showToast('Gagal mengunduh backup: ' + err.message, 'error', 4500);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = htmlAsli;
+        }
+      }
+    };
+
+    $('#btn-cfg-backup-json', container)?.addEventListener('click', () => jalankanBackupData('json'));
+    $('#btn-cfg-backup-excel', container)?.addEventListener('click', () => jalankanBackupData('excel'));
+
+    $('#btn-cfg-antrean-offline', container)?.addEventListener('click', () => {
+      bukaModalAntreanOffline({
+        onSelesai: () => {
+          const lbl = $('#lbl-cfg-offline-count', container);
+          if (lbl) lbl.textContent = `${jumlahAntreanOffline()} transaksi`;
+        }
+      });
     });
   } catch (err) {
     area.innerHTML = `

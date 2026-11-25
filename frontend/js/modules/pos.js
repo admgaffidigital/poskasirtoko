@@ -26,6 +26,7 @@ import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
+import { adalahErrorJaringanOffline, tambahKeAntreanOffline } from '../utils/offline-queue.js';
 
 export function renderPosModule(container) {
   // Tandai layout POS terkunci ala workstation kasir profesional (Accurate POS)
@@ -2754,7 +2755,9 @@ export function renderPosModule(container) {
         const res = await api.post('penjualan.create', payload);
 
         if (!res.ok) {
-          throw new Error(res.error || 'Gagal menyimpan transaksi.');
+          const errObj = new Error(res.error || 'Gagal menyimpan transaksi.');
+          errObj.code = res.code || 'SERVER';
+          throw errObj;
         }
 
         // Transaksi Sukses!
@@ -2828,6 +2831,91 @@ export function renderPosModule(container) {
       } catch (err) {
         console.error('Error simpan penjualan:', err);
         haptic.warning();
+
+        // Mode Offline Antrean Transaksi: jika internet mati / timeout, tawarkan simpan ke antrean lokal
+        if (adalahErrorJaringanOffline(err)) {
+          const simpanOffline = await showConfirm({
+            title: 'Koneksi Terputus — Simpan ke Antrean Offline?',
+            message: `Transaksi senilai ${formatRupiah(grandTotal)} tidak dapat mencapai server saat ini. Simpan ke Antrean Offline perangkat ini? Struk sementara (OFF-...) tetap bisa dicetak sekarang dan otomatis tersinkron ke server saat internet kembali menyala.`,
+            confirmText: 'Simpan Offline & Cetak Struk',
+            cancelText: 'Coba Lagi Nanti'
+          });
+
+          if (simpanOffline) {
+            const payloadItemsOff = state.keranjang.map((it) => ({
+              produk_id: it.produk_id,
+              varian_id: it.varian_id || '',
+              satuan: it.satuan,
+              faktor: it.faktor || 1,
+              qty: it.qty,
+              qty_dibawa: it.qty_dibawa !== undefined ? it.qty_dibawa : it.qty,
+              tipe_harga: it.tipe_harga || 'ritel',
+              harga_asli: it.harga_asli || it.harga,
+              harga: it.harga,
+              diskon_tipe: it.diskon_tipe || '',
+              diskon_nilai: it.diskon_nilai || 0
+            }));
+            const daftarBayarOff = [];
+            if (activeMetode === 'tunai') {
+              daftarBayarOff.push({ metode: 'tunai', jumlah: parseRupiah(inputTunai.value) || grandTotal });
+            } else if (activeMetode === 'qris' || activeMetode === 'transfer') {
+              daftarBayarOff.push({ metode: activeMetode, jumlah: grandTotal, referensi: modal.el.querySelector('#input-ref-bayar')?.value.trim() || '' });
+            } else if (activeMetode === 'deposit') {
+              daftarBayarOff.push({ metode: 'deposit', jumlah: grandTotal });
+            } else if (activeMetode === 'tempo') {
+              daftarBayarOff.push({ metode: 'tempo', jumlah: grandTotal });
+            } else if (activeMetode === 'kombinasi') {
+              const nDep = parseRupiah(modal.el.querySelector('#komb-deposit')?.value || 0);
+              const nTunai = parseRupiah(modal.el.querySelector('#komb-tunai')?.value || 0);
+              const nTrf = parseRupiah(modal.el.querySelector('#komb-transfer')?.value || 0);
+              const nTempo = parseRupiah(modal.el.querySelector('#komb-tempo')?.value || 0);
+              if (nDep > 0) daftarBayarOff.push({ metode: 'deposit', jumlah: nDep });
+              if (nTunai > 0) daftarBayarOff.push({ metode: 'tunai', jumlah: nTunai });
+              if (nTrf > 0) daftarBayarOff.push({ metode: 'transfer', jumlah: nTrf });
+              if (nTempo > 0) daftarBayarOff.push({ metode: 'tempo', jumlah: nTempo });
+            }
+            const semuaDibawaOff = payloadItemsOff.every((it) => Number(it.qty_dibawa) >= Number(it.qty));
+            const payloadOff = {
+              pelanggan_id: state.pelanggan ? state.pelanggan.id : '',
+              pengiriman: state.pengiriman,
+              alamat_kirim: modal.el.querySelector('#checkout-alamat')?.value.trim() || '',
+              status_antar: state.pengiriman === 'dikirim' && semuaDibawaOff ? 'selesai' : undefined,
+              ongkir: getOngkirAktif(),
+              catatan: modal.el.querySelector('#checkout-catatan')?.value.trim() || '',
+              items: payloadItemsOff,
+              diskon_tipe: state.diskonTransaksi.tipe,
+              diskon_nilai: state.diskonTransaksi.nilai,
+              pembayaran: daftarBayarOff
+            };
+
+            const entryOff = tambahKeAntreanOffline(payloadOff, {
+              pelangganNama: state.pelanggan ? state.pelanggan.nama : 'Pelanggan Umum',
+              grandTotal,
+              subtotal: totals.subtotal,
+              diskonTransaksi: totals.diskonTransaksiNominal,
+              pajak: totals.pajak,
+              pembulatan: totals.pembulatan,
+              itemsDetail: state.keranjang.slice()
+            });
+
+            bunyikanBeep();
+            haptic.success();
+            modal.close();
+            showToast(`Disimpan di Antrean Offline (${entryOff.noNotaSementara}). Akan otomatis terkirim saat online.`, 'warning', 4500);
+            bukaModalStrukSukses(entryOff.dataStrukOffline);
+
+            state.keranjang = [];
+            state.diskonTransaksi = { tipe: '', nilai: 0 };
+            state.pengiriman = 'ambil';
+            state.alamatKirim = '';
+            state.ongkir = 0;
+            state.catatan = '';
+            renderKeranjang();
+            if (typeof window !== 'undefined' && window.innerWidth < 992) setMobileView('catalog');
+            return;
+          }
+        }
+
         showToast(err.message, 'error', 4500);
         btnProses.disabled = false;
         btnProses.textContent = 'Konfirmasi & Simpan Transaksi';

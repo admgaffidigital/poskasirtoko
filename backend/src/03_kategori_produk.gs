@@ -633,3 +633,444 @@ function aksiProdukUploadFoto_(ctx) {
     nama_file: file.getName()
   };
 }
+
+/**
+ * produk.importMassal — Import & Update Massal Produk/Varian & Harga dari Excel/CSV (Owner & Admin).
+ * Mendukung:
+ * - Tambah produk baru (+ auto-buat kategori jika belum ada)
+ * - Update produk eksisting berdasarkan `id` atau `sku`
+ * - Update/tambah varian eksisting berdasarkan `varian_id` atau `sku` varian
+ * - Proteksi Aturan Bisnis #1 (harga_ritel/harga_grosir >= hpp), #5 (Kartu_Stok koreksi), #17 (stok induk = sum varian)
+ */
+function aksiProdukImportMassal_(ctx) {
+  const p = ctx.payload || {};
+  const items = Array.isArray(p.items) ? p.items : [];
+  if (!items.length) gagal_(KODE.VALIDATION, 'Daftar baris import tidak boleh kosong.');
+  if (items.length > 500) gagal_(KODE.VALIDATION, 'Maksimal 500 baris per 1 kali import massal agar proses tetap cepat.');
+
+  const opsi = p.opsi || {};
+  const perbaruiHarga = opsi.perbarui_harga !== false;
+  const perbaruiInfo = opsi.perbarui_info !== false;
+  const perbaruiStok = opsi.perbarui_stok === true;
+  const buatKategoriOtomatis = opsi.buat_kategori_otomatis !== false;
+
+  // Muat seluruh master eksisting sekali di awal untuk lookup cepat
+  const semuaKat = bacaSemua_('Kategori');
+  const katById = {};
+  const katByNama = {};
+  semuaKat.forEach(function (k) {
+    katById[k.id] = k;
+    katByNama[String(k.nama || '').trim().toLowerCase()] = k;
+  });
+
+  const semuaPrd = bacaSemua_('Produk');
+  const prdById = {};
+  const prdBySku = {};
+  const prdByNama = {};
+  semuaPrd.forEach(function (pr) {
+    prdById[pr.id] = pr;
+    if (pr.sku) prdBySku[String(pr.sku).trim().toLowerCase()] = pr;
+    if (pr.nama) prdByNama[String(pr.nama).trim().toLowerCase()] = pr;
+  });
+
+  const semuaVar = bacaSemua_('Varian');
+  const varById = {};
+  const varBySku = {};
+  const varByPrdNama = {};
+  semuaVar.forEach(function (v) {
+    varById[v.id] = v;
+    if (v.sku) varBySku[String(v.sku).trim().toLowerCase()] = v;
+    varByPrdNama[v.produk_id + '::' + String(v.nama_varian || '').trim().toLowerCase()] = v;
+  });
+
+  const produkBaruQueue = [];
+  const produkUpdateQueue = [];
+  const varianBaruQueue = [];
+  const varianUpdateQueue = [];
+  const kartuStokQueue = [];
+  const indukRekalkulasiSet = {};
+  const gagalList = [];
+
+  let kategoriDibuat = 0;
+  let ditambah = 0;
+  let diperbarui = 0;
+  let varianDitambah = 0;
+  let varianDiperbarui = 0;
+  let dilewati = 0;
+
+  function parseAngkaOpsional_(val) {
+    if (val === undefined || val === null || val === '') return null;
+    const n = Number(val);
+    return isFinite(n) ? n : null;
+  }
+
+  function selesaikanKategori_(katIdInput, katNamaInput) {
+    const idTrim = String(katIdInput || '').trim();
+    if (idTrim && katById[idTrim]) return idTrim;
+    const namaTrim = String(katNamaInput || '').trim();
+    if (!namaTrim) return '';
+    const key = namaTrim.toLowerCase();
+    if (katByNama[key]) return katByNama[key].id;
+    if (!buatKategoriOtomatis) return '';
+    const baru = tambahBaris_('Kategori', [{
+      nama: namaTrim.slice(0, 80),
+      parent_id: '',
+      urutan: Object.keys(katById).length + 1,
+      aktif: true
+    }], ctx.user.id)[0];
+    katById[baru.id] = baru;
+    katByNama[key] = baru;
+    kategoriDibuat++;
+    return baru.id;
+  }
+
+  items.forEach(function (raw, idx) {
+    const noBaris = raw && raw._baris ? Number(raw._baris) : (idx + 1);
+    try {
+      if (!raw || typeof raw !== 'object') {
+        gagalList.push({ baris: noBaris, pesan: 'Format baris tidak valid.' });
+        return;
+      }
+
+      const tipeRaw = String(raw.tipe || '').trim().toLowerCase();
+      const isVarian = tipeRaw === 'varian' || (!!raw.varian_id && tipeRaw !== 'produk');
+      const skuTrim = String(raw.sku || '').trim();
+      const skuKey = skuTrim.toLowerCase();
+
+      if (isVarian) {
+        const varIdTrim = String(raw.varian_id || raw.id || '').trim();
+        let targetVar = (varIdTrim && varById[varIdTrim]) || (skuKey && varBySku[skuKey]) || null;
+
+        // Coba cocokkan berdasarkan produk induk + nama_varian
+        const namaVarian = String(raw.nama_varian || '').trim();
+        let indukPrd = null;
+        if (targetVar) {
+          indukPrd = prdById[targetVar.produk_id] || null;
+        } else {
+          const pIdIn = String(raw.produk_id || '').trim();
+          const pSkuIn = String(raw.sku_induk || '').trim().toLowerCase();
+          const pNamaIn = String(raw.nama || raw.nama_produk || '').trim().toLowerCase();
+          indukPrd = (pIdIn && prdById[pIdIn]) || (pSkuIn && prdBySku[pSkuIn]) || (pNamaIn && prdByNama[pNamaIn]) || null;
+          if (indukPrd && namaVarian) {
+            targetVar = varByPrdNama[indukPrd.id + '::' + namaVarian.toLowerCase()] || null;
+          }
+        }
+
+        if (targetVar) {
+          const hppIn = parseAngkaOpsional_(raw.hpp);
+          const ritelIn = parseAngkaOpsional_(raw.harga_ritel);
+          const grosirIn = parseAngkaOpsional_(raw.harga_grosir);
+          const stokIn = parseAngkaOpsional_(raw.stok);
+          const stokMinIn = parseAngkaOpsional_(raw.stok_min);
+
+          const hppFinal = (perbaruiHarga && hppIn !== null) ? Math.max(0, Math.round(hppIn)) : Number(targetVar.hpp || 0);
+          const ritelFinal = (perbaruiHarga && ritelIn !== null) ? Math.max(0, Math.round(ritelIn)) : Number(targetVar.harga_ritel || 0);
+          const grosirFinal = (perbaruiHarga && grosirIn !== null) ? Math.max(0, Math.round(grosirIn)) : Number(targetVar.harga_grosir || ritelFinal);
+
+          if (ritelFinal < hppFinal) {
+            gagalList.push({ baris: noBaris, pesan: 'Harga ritel varian (' + ritelFinal + ') di bawah HPP (' + hppFinal + ').' });
+            return;
+          }
+          if (grosirFinal < hppFinal) {
+            gagalList.push({ baris: noBaris, pesan: 'Harga grosir varian (' + grosirFinal + ') di bawah HPP (' + hppFinal + ').' });
+            return;
+          }
+
+          const patch = {};
+          if (perbaruiInfo) {
+            if (namaVarian) patch.nama_varian = namaVarian.slice(0, 120);
+            if (raw.barcode !== undefined && String(raw.barcode).trim()) patch.barcode = String(raw.barcode).trim().slice(0, 50);
+            if (stokMinIn !== null) patch.stok_min = Math.max(0, stokMinIn);
+            if (raw.aktif !== undefined) patch.aktif = raw.aktif !== false;
+          }
+          if (perbaruiHarga) {
+            patch.hpp = hppFinal;
+            patch.harga_ritel = ritelFinal;
+            patch.harga_grosir = grosirFinal;
+          }
+          if (perbaruiStok && stokIn !== null) {
+            const stokLama = Number(targetVar.stok || 0);
+            const stokBaru = Math.max(0, stokIn);
+            if (stokBaru !== stokLama) {
+              patch.stok = stokBaru;
+              targetVar.stok = stokBaru;
+              indukRekalkulasiSet[targetVar.produk_id] = true;
+              kartuStokQueue.push({
+                produk_id: targetVar.produk_id,
+                varian_id: targetVar.id,
+                tipe: 'koreksi',
+                qty: stokBaru - stokLama,
+                stok_sebelum: stokLama,
+                stok_sesudah: stokBaru,
+                ref_tipe: 'IMPORT_MASSAL',
+                ref_id: targetVar.id,
+                catatan: 'Import massal Excel/CSV (Varian ' + (patch.nama_varian || targetVar.nama_varian) + ')'
+              });
+            }
+          }
+
+          if (Object.keys(patch).length > 0) {
+            Object.assign(targetVar, patch);
+            varianUpdateQueue.push({ id: targetVar.id, data: patch });
+            varianDiperbarui++;
+          } else {
+            dilewati++;
+          }
+        } else {
+          if (!indukPrd) {
+            gagalList.push({ baris: noBaris, pesan: 'Produk induk untuk varian "' + (namaVarian || skuTrim || '-') + '" tidak ditemukan.' });
+            return;
+          }
+          if (!namaVarian) {
+            gagalList.push({ baris: noBaris, pesan: 'Nama varian wajib diisi untuk baris tipe varian baru.' });
+            return;
+          }
+          const vHpp = Math.max(0, Math.round(parseAngkaOpsional_(raw.hpp) !== null ? parseAngkaOpsional_(raw.hpp) : Number(indukPrd.hpp || 0)));
+          const vRitel = Math.max(0, Math.round(parseAngkaOpsional_(raw.harga_ritel) !== null ? parseAngkaOpsional_(raw.harga_ritel) : Number(indukPrd.harga_ritel || 0)));
+          const vGrosir = Math.max(0, Math.round(parseAngkaOpsional_(raw.harga_grosir) !== null ? parseAngkaOpsional_(raw.harga_grosir) : vRitel));
+          if (vRitel < vHpp || vGrosir < vHpp) {
+            gagalList.push({ baris: noBaris, pesan: 'Harga jual varian baru di bawah HPP.' });
+            return;
+          }
+          const vStok = Math.max(0, parseAngkaOpsional_(raw.stok) || 0);
+          const vSku = skuTrim || (indukPrd.sku + '-V' + (Object.keys(varById).length + varianBaruQueue.length + 1));
+          const vBarcode = String(raw.barcode || '').trim() || barcodeBerikut_();
+          const objVarBaru = {
+            produk_id: indukPrd.id,
+            nama_varian: namaVarian.slice(0, 120),
+            sku: vSku.slice(0, 50),
+            barcode: vBarcode.slice(0, 50),
+            hpp: vHpp,
+            harga_ritel: vRitel,
+            harga_grosir: vGrosir,
+            stok: vStok,
+            stok_min: Math.max(0, parseAngkaOpsional_(raw.stok_min) || 0),
+            aktif: raw.aktif !== false
+          };
+          varianBaruQueue.push(objVarBaru);
+          indukRekalkulasiSet[indukPrd.id] = true;
+          varianDitambah++;
+        }
+        return;
+      }
+
+      // === BARIS PRODUK ===
+      const idTrim = String(raw.id || '').trim();
+      const targetPrd = (idTrim && prdById[idTrim]) || (skuKey && prdBySku[skuKey]) || null;
+
+      if (targetPrd) {
+        const hppIn = parseAngkaOpsional_(raw.hpp);
+        const ritelIn = parseAngkaOpsional_(raw.harga_ritel);
+        const grosirIn = parseAngkaOpsional_(raw.harga_grosir);
+        const minGrosirIn = parseAngkaOpsional_(raw.min_grosir_qty);
+        const stokIn = parseAngkaOpsional_(raw.stok);
+        const stokMinIn = parseAngkaOpsional_(raw.stok_min);
+
+        const hppFinal = (perbaruiHarga && hppIn !== null) ? Math.max(0, Math.round(hppIn)) : Number(targetPrd.hpp || 0);
+        const ritelFinal = (perbaruiHarga && ritelIn !== null) ? Math.max(0, Math.round(ritelIn)) : Number(targetPrd.harga_ritel || 0);
+        const grosirFinal = (perbaruiHarga && grosirIn !== null) ? Math.max(0, Math.round(grosirIn)) : Number(targetPrd.harga_grosir || ritelFinal);
+
+        if (ritelFinal < hppFinal) {
+          gagalList.push({ baris: noBaris, pesan: 'Harga ritel "' + targetPrd.nama + '" (' + ritelFinal + ') di bawah HPP (' + hppFinal + ').' });
+          return;
+        }
+        if (grosirFinal < hppFinal) {
+          gagalList.push({ baris: noBaris, pesan: 'Harga grosir "' + targetPrd.nama + '" (' + grosirFinal + ') di bawah HPP (' + hppFinal + ').' });
+          return;
+        }
+
+        const patch = {};
+        if (perbaruiInfo) {
+          const namaIn = String(raw.nama || raw.nama_produk || '').trim();
+          if (namaIn) patch.nama = namaIn.slice(0, 200);
+          if (raw.barcode !== undefined && String(raw.barcode).trim()) patch.barcode = String(raw.barcode).trim().slice(0, 50);
+          const satIn = String(raw.satuan_dasar || raw.satuan || '').trim();
+          if (satIn) patch.satuan_dasar = satIn.slice(0, 30).toUpperCase();
+          if (raw.kategori_id || raw.kategori || raw.kategori_nama) {
+            const kId = selesaikanKategori_(raw.kategori_id, raw.kategori_nama || raw.kategori);
+            if (kId) patch.kategori_id = kId;
+          }
+          if (stokMinIn !== null) patch.stok_min = Math.max(0, stokMinIn);
+          if (raw.aktif !== undefined) patch.aktif = raw.aktif !== false;
+        }
+        if (perbaruiHarga) {
+          patch.hpp = hppFinal;
+          patch.harga_ritel = ritelFinal;
+          patch.harga_grosir = grosirFinal;
+          if (minGrosirIn !== null && minGrosirIn > 0) patch.min_grosir_qty = minGrosirIn;
+        }
+        if (perbaruiStok && stokIn !== null && !targetPrd.punya_varian) {
+          const stokLama = Number(targetPrd.stok || 0);
+          const stokBaru = Math.max(0, stokIn);
+          if (stokBaru !== stokLama) {
+            patch.stok = stokBaru;
+            kartuStokQueue.push({
+              produk_id: targetPrd.id,
+              varian_id: '',
+              tipe: 'koreksi',
+              qty: stokBaru - stokLama,
+              stok_sebelum: stokLama,
+              stok_sesudah: stokBaru,
+              ref_tipe: 'IMPORT_MASSAL',
+              ref_id: targetPrd.id,
+              catatan: 'Import massal Excel/CSV'
+            });
+          }
+        }
+
+        if (Object.keys(patch).length > 0) {
+          Object.assign(targetPrd, patch);
+          produkUpdateQueue.push({ id: targetPrd.id, data: patch });
+          diperbarui++;
+        } else {
+          dilewati++;
+        }
+      } else {
+        // Tambah Produk Baru
+        const namaBaru = String(raw.nama || raw.nama_produk || '').trim();
+        if (!namaBaru) {
+          gagalList.push({ baris: noBaris, pesan: 'Nama produk wajib diisi untuk produk baru.' });
+          return;
+        }
+        const hppBaru = Math.max(0, Math.round(parseAngkaOpsional_(raw.hpp) || 0));
+        const ritelIn = parseAngkaOpsional_(raw.harga_ritel);
+        if (ritelIn === null || ritelIn < 0) {
+          gagalList.push({ baris: noBaris, pesan: 'Harga ritel wajib diisi angka valid untuk produk "' + namaBaru + '".' });
+          return;
+        }
+        const ritelBaru = Math.round(ritelIn);
+        const grosirIn = parseAngkaOpsional_(raw.harga_grosir);
+        const grosirBaru = grosirIn !== null ? Math.round(grosirIn) : ritelBaru;
+
+        if (ritelBaru < hppBaru) {
+          gagalList.push({ baris: noBaris, pesan: 'Harga ritel "' + namaBaru + '" (' + ritelBaru + ') di bawah HPP (' + hppBaru + ').' });
+          return;
+        }
+        if (grosirBaru < hppBaru) {
+          gagalList.push({ baris: noBaris, pesan: 'Harga grosir "' + namaBaru + '" (' + grosirBaru + ') di bawah HPP (' + hppBaru + ').' });
+          return;
+        }
+
+        const skuBaru = skuTrim ? skuTrim.slice(0, 50) : nomorBerikut_('SKU');
+        const barcodeBaru = String(raw.barcode || '').trim().slice(0, 50) || barcodeBerikut_();
+        const satuanBaru = (String(raw.satuan_dasar || raw.satuan || 'PCS').trim() || 'PCS').slice(0, 30).toUpperCase();
+        const katIdBaru = selesaikanKategori_(raw.kategori_id, raw.kategori_nama || raw.kategori);
+        const stokBaru = Math.max(0, parseAngkaOpsional_(raw.stok) || 0);
+        const stokMinBaru = Math.max(0, parseAngkaOpsional_(raw.stok_min) || 0);
+        const minGrosirBaru = Math.max(1, parseAngkaOpsional_(raw.min_grosir_qty) || 1);
+
+        const objBaru = {
+          sku: skuBaru,
+          barcode: barcodeBaru,
+          nama: namaBaru.slice(0, 200),
+          kategori_id: katIdBaru,
+          satuan_dasar: satuanBaru,
+          hpp: hppBaru,
+          harga_ritel: ritelBaru,
+          harga_grosir: grosirBaru,
+          min_grosir_qty: minGrosirBaru,
+          stok: stokBaru,
+          stok_min: stokMinBaru,
+          punya_varian: false,
+          foto_url: String(raw.foto_url || '').trim().slice(0, 500),
+          aktif: raw.aktif !== false
+        };
+        produkBaruQueue.push(objBaru);
+        ditambah++;
+      }
+    } catch (errBaris) {
+      gagalList.push({ baris: noBaris, pesan: errBaris && errBaris.message ? errBaris.message : 'Baris gagal diproses.' });
+    }
+  });
+
+  // Eksekusi batch tulis ke Spreadsheet
+  if (produkBaruQueue.length > 0) {
+    const hasilBaru = tambahBaris_('Produk', produkBaruQueue, ctx.user.id);
+    hasilBaru.forEach(function (pr) {
+      prdById[pr.id] = pr;
+      if (pr.sku) prdBySku[String(pr.sku).trim().toLowerCase()] = pr;
+      if (Number(pr.stok || 0) > 0) {
+        kartuStokQueue.push({
+          produk_id: pr.id,
+          varian_id: '',
+          tipe: 'masuk',
+          qty: Number(pr.stok),
+          stok_sebelum: 0,
+          stok_sesudah: Number(pr.stok),
+          ref_tipe: 'IMPORT_MASSAL',
+          ref_id: pr.id,
+          catatan: 'Stok awal import massal Excel/CSV'
+        });
+      }
+    });
+  }
+
+  if (produkUpdateQueue.length > 0) {
+    ubahBaris_('Produk', produkUpdateQueue, ctx.user.id);
+  }
+
+  if (varianBaruQueue.length > 0) {
+    const hasilVarBaru = tambahBaris_('Varian', varianBaruQueue, ctx.user.id);
+    hasilVarBaru.forEach(function (v) {
+      if (Number(v.stok || 0) > 0) {
+        kartuStokQueue.push({
+          produk_id: v.produk_id,
+          varian_id: v.id,
+          tipe: 'masuk',
+          qty: Number(v.stok),
+          stok_sebelum: 0,
+          stok_sesudah: Number(v.stok),
+          ref_tipe: 'IMPORT_MASSAL',
+          ref_id: v.id,
+          catatan: 'Stok awal varian import massal'
+        });
+      }
+    });
+  }
+
+  if (varianUpdateQueue.length > 0) {
+    ubahBaris_('Varian', varianUpdateQueue, ctx.user.id);
+  }
+
+  // Rekalkulasi stok produk induk yang variannya berubah (Aturan Bisnis #17)
+  const daftarIndukRekal = Object.keys(indukRekalkulasiSet);
+  if (daftarIndukRekal.length > 0) {
+    const semuaVarTerbaru = bacaSemua_('Varian');
+    const rekalUpdates = [];
+    daftarIndukRekal.forEach(function (pId) {
+      const varInduk = semuaVarTerbaru.filter(function (v) { return v.produk_id === pId && v.aktif !== false; });
+      const sumStok = varInduk.reduce(function (acc, v) { return acc + (Number(v.stok) || 0); }, 0);
+      rekalUpdates.push({ id: pId, data: { punya_varian: true, stok: sumStok } });
+    });
+    if (rekalUpdates.length > 0) {
+      ubahBaris_('Produk', rekalUpdates, ctx.user.id);
+    }
+  }
+
+  if (kartuStokQueue.length > 0) {
+    tambahBaris_('Kartu_Stok', kartuStokQueue, ctx.user.id);
+  }
+
+  catatAudit_(ctx.user.id, 'produk_import_massal', 'PRODUK', '', {
+    ditambah: ditambah,
+    diperbarui: diperbarui,
+    varian_ditambah: varianDitambah,
+    varian_diperbarui: varianDiperbarui,
+    kategori_dibuat: kategoriDibuat,
+    dilewati: dilewati,
+    gagal: gagalList.length,
+    perbarui_stok: perbaruiStok
+  });
+
+  return {
+    pesan: 'Import massal selesai: ' + ditambah + ' produk baru, ' + diperbarui + ' produk diperbarui, ' + varianDiperbarui + ' varian diperbarui' + (gagalList.length ? ', ' + gagalList.length + ' baris gagal.' : '.'),
+    ditambah: ditambah,
+    diperbarui: diperbarui,
+    varian_ditambah: varianDitambah,
+    varian_diperbarui: varianDiperbarui,
+    kategori_dibuat: kategoriDibuat,
+    dilewati: dilewati,
+    total_diproses: items.length,
+    gagal: gagalList
+  };
+}
