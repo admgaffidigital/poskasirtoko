@@ -260,7 +260,7 @@ async function muatDataKartuStok(container) {
       let tampilanRef = ks.ref_id || '-';
       const isSaldoAwal = ks.tipe === 'koreksi' && (tampilanRef === 'STOK-AWAL' || tampilanRef === ks.produk_id || /^[0-9a-f-]{36}$/i.test(tampilanRef));
       const refHtml = isSaldoAwal
-        ? '<span class="badge badge-secondary" style="font-size: 11px; font-weight: 600; padding: 2px 7px;">STOK-AWAL</span>'
+        ? '<span class="badge badge-secondary" style="font-size: var(--fs-2xs); font-weight: var(--fw-semibold); padding: 2px 7px;">STOK-AWAL</span>'
         : `<span class="tabular font-mono fw-bold text-xs" style="white-space: nowrap;">${escapeHtml(tampilanRef)}</span>`;
 
       html += `
@@ -277,7 +277,7 @@ async function muatDataKartuStok(container) {
             </div>
           </td>
           <td data-label="Jenis" style="text-align: center; white-space: nowrap;">
-            <span class="badge ${badgeClass}" style="font-size: 11px; padding: 2px 7px;">${labelTipe}</span>
+            <span class="badge ${badgeClass}" style="font-size: var(--fs-2xs); padding: 2px 7px;">${labelTipe}</span>
           </td>
           <td data-label="No. Referensi">
             ${refHtml}

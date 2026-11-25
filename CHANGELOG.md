@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.138] - 2026-11-25
+### Disempurnakan — Konsistensi Tipografi 100% & Preload Google Font Zero-FOUT
+- **[UI] Preload Instan Google Fonts di `<head>` (`index.html`)**: Menyuntikkan stylesheet Google Font pilihan user (*Plus Jakarta Sans*, *Inter*, *Poppins*, *Roboto*, *JetBrains Mono*) langsung di script Zero-FOUC sebelum first paint untuk menghilangkan kedipan pergantian font saat muat ulang.
+- **[UI] Penyeragaman Penuh `var(--font-mono)`, `var(--fs-*)`, & `var(--fw-*)` (`laporan.js`, `pos.js`, `produk.js`, `kartu-stok.js`, `pelanggan.js`, `components.css`, `layout.css`)**:
+  - Mengganti seluruh `font-family: monospace` mentah (yang jatuh ke Courier New di Windows) dengan `var(--font-mono)`.
+  - Mengganti ukuran huruf hardcoded `9px–11.5px` dan `font-weight: bold` pada antarmuka aplikasi menjadi token standar `var(--fs-2xs)` / `var(--fs-xs)` dan `var(--fw-bold)` / `var(--fw-semibold)` agar 100% seragam mengikuti skala & gaya huruf pilihan pengguna.
+
 ## [1.0.137] - 2026-11-25
 ### Diperbaiki — Ketajaman Teks Anti-Blur (Modal GPU & ClearType Windows) + Kontras Global WCAG AA/AAA
 - **[UI] Eliminasi Blur pada Modal Desktop & Animasi (`components.css`)**:

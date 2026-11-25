@@ -836,15 +836,15 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             ${canEdit ? `
               <td style="text-align: right; width: 175px; min-width: 170px; white-space: nowrap;" data-label="Aksi">
                 <div class="table-actions" style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px;">
-                  <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
+                  <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: var(--fs-2xs);">
                     ${ICONS.zap}
                     <span>Cepat</span>
                   </button>
-                  <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px; border: 1px solid var(--border-strong);">
+                  <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: var(--fs-2xs); border: 1px solid var(--border-strong);">
                     ${ICONS.edit}
                     <span>Ubah</span>
                   </button>
-                  <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: 11px;">
+                  <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="padding: 0 6px; height: 26px; min-height: 26px; font-size: var(--fs-2xs);">
                     ${ICONS.copy}
                     <span>Salin</span>
                   </button>
@@ -920,15 +920,15 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
 
             ${canEdit ? `
               <div class="table-actions" style="display: flex; align-items: center; width: 100%; gap: 4px; margin-top: var(--sp-2);">
-                <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
+                <button type="button" class="btn btn-outline-primary btn-xs btn-quick-edit-prd" data-id="${p.id}" title="Edit Cepat Harga & Stok" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: var(--fs-xs); justify-content: center; gap: 3px;">
                   ${ICONS.zap}
                   <span>Cepat</span>
                 </button>
-                <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px; border: 1px solid var(--border-strong);">
+                <button type="button" class="btn btn-secondary btn-xs btn-edit-prd" data-id="${p.id}" title="Edit Lengkap" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: var(--fs-xs); justify-content: center; gap: 3px; border: 1px solid var(--border-strong);">
                   ${ICONS.edit}
                   <span>Ubah</span>
                 </button>
-                <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: 11.5px; justify-content: center; gap: 3px;">
+                <button type="button" class="btn btn-outline-secondary btn-xs btn-duplikat-prd" data-id="${p.id}" title="Duplikat / Salin Produk" style="flex: 1 1 0%; padding: 0 4px; height: 32px; font-size: var(--fs-xs); justify-content: center; gap: 3px;">
                   ${ICONS.copy}
                   <span>Salin</span>
                 </button>
@@ -1628,7 +1628,7 @@ function bukaModalEditCepat(container, p) {
             ${escapeHtml(p.sku || '-')} &bull; Satuan: <span class="fw-bold text-primary">${escapeHtml(p.satuan_dasar)}</span>
           </div>
         </div>
-        <button type="button" class="btn btn-ghost btn-xs text-primary btn-ke-form-lengkap" style="flex-shrink: 0; font-size: 11px;">
+        <button type="button" class="btn btn-ghost btn-xs text-primary btn-ke-form-lengkap" style="flex-shrink: 0; font-size: var(--fs-2xs);">
           Form Lengkap &nearr;
         </button>
       </div>
@@ -1861,9 +1861,9 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
               <img src="${hasData && pData.foto_url ? escapeHtml(pData.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${hasData && pData.foto_url ? '' : 'display: none;'}">
               <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${hasData && pData.foto_url ? 'display: none;' : ''}">
                 <span class="icon-fit" style="width: 26px; height: 26px;">${ICONS.image}</span>
-                <div style="font-size: 9px; margin-top: 2px;">Belum Ada</div>
+                <div style="font-size: var(--fs-2xs); margin-top: 2px;">Belum Ada</div>
               </div>
-              <div id="prd-foto-loading" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.65); place-items: center; color: #fff; font-size: 11px; font-weight: 500;">
+              <div id="prd-foto-loading" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.65); place-items: center; color: #fff; font-size: var(--fs-2xs); font-weight: var(--fw-medium);">
                 <span class="spinner-sm" style="border-color: #fff; border-top-color: transparent;"></span>
               </div>
             </div>
@@ -1901,7 +1901,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <div class="field">
             <div class="row items-center justify-between" style="margin-bottom: 4px;">
               <label class="field-label" for="prd-sku" style="margin-bottom: 0;">Kode SKU</label>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-sku" title="Buat SKU Otomatis" style="padding: 2px 6px; font-size: var(--fs-2xs); display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>
             </div>
             <input type="text" class="input mono uppercase" id="prd-sku" value="${isEdit ? escapeHtml(pData.sku || '') : ''}" placeholder="Auto (cth: SKU-20261113-0001)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
@@ -1909,7 +1909,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <div class="field">
             <div class="row items-center justify-between" style="margin-bottom: 4px;">
               <label class="field-label" for="prd-barcode" style="margin-bottom: 0;">Barcode</label>
-              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-barcode" title="Buat Barcode EAN-13 Otomatis" style="padding: 2px 6px; font-size: var(--fs-2xs); display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>
             </div>
             <input type="text" class="input mono" id="prd-barcode" value="${isEdit ? escapeHtml(pData.barcode || '') : ''}" placeholder="Auto (13 digit EAN-13)">
             <span class="field-hint">Kosongkan jika ingin dibuat otomatis</span>
@@ -2485,7 +2485,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Nama Satuan Kemasan *</label>
           <input type="text" class="input uppercase sat-nama" placeholder="Cth: DUS / IKAT / ROL" value="${escapeHtml((s.satuan || '').toUpperCase())}">
         </div>
-        <div style="padding-bottom: 10px; font-weight: bold; font-size: var(--fs-base);">=</div>
+        <div style="padding-bottom: 10px; font-weight: var(--fw-bold); font-size: var(--fs-base);">=</div>
         <div style="width: 100px;">
           <label class="form-label text-2xs fw-semibold text-muted" style="margin-bottom: 2px;">Isi / Faktor *</label>
           <input type="number" step="0.001" class="input input-num sat-faktor" placeholder="Cth: 24" value="${s.faktor || ''}">

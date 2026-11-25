@@ -30,6 +30,20 @@
         r.setAttribute('data-font-style', st);
         r.setAttribute('data-font-family', ff);
         if (isFinite(s) && s >= 0.8 && s <= 1.35) r.style.setProperty('--font-scale', String(s));
+        var gFonts = {
+          inter: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+          jakarta: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap',
+          poppins: 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
+          roboto: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap',
+          mono: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap'
+        };
+        if (gFonts[ff] && !document.getElementById('pos-google-font-link')) {
+          var fl = document.createElement('link');
+          fl.id = 'pos-google-font-link';
+          fl.rel = 'stylesheet';
+          fl.href = gFonts[ff];
+          document.head.appendChild(fl);
+        }
         var accentHex = { orange: '#e8590c', teal: '#0d9488', blue: '#2563eb', emerald: '#059669', indigo: '#4f46e5', rose: '#e11d48', slate: '#334155' };
         var tc = document.querySelector('meta[name="theme-color"]');
         if (tc && accentHex[a]) tc.setAttribute('content', accentHex[a]);
@@ -309,7 +323,7 @@
 
       <!-- Versi di Bagian Bawah -->
       <div class="splash-footer">
-        <span>v1.0.137 • Terenkripsi &amp; Siap Offline</span>
+        <span>v1.0.138 • Terenkripsi &amp; Siap Offline</span>
       </div>
     </div>
   </div>

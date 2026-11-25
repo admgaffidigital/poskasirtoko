@@ -999,7 +999,7 @@ input[type="file"].input {
 
   .card.stat .stat-label,
   .stat .stat-label {
-    font-size: 10px;
+    font-size: var(--fs-2xs);
   }
 
   .card.stat .stat-value,
@@ -1010,7 +1010,7 @@ input[type="file"].input {
 
   .card.stat .stat-delta,
   .stat .stat-delta {
-    font-size: 10.5px;
+    font-size: var(--fs-2xs);
   }
 
   .card-grid[style*="minmax(200px"],
@@ -1137,9 +1137,9 @@ input[type="file"].input {
 }
 
 .stat-card-desc {
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 @media (max-width: 767px) {
@@ -1572,7 +1572,7 @@ input[type="file"].input {
 .kat-sub-arrow {
   color: var(--primary);
   font-weight: var(--fw-bold);
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 1.15rem;
   line-height: 1;
   flex-shrink: 0;
@@ -1985,8 +1985,8 @@ input[type="file"].input {
   .table-wrap:not(.keep-table) .table.table-users tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
   .table-wrap:not(.keep-table) .table.table-riwayat-beli tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before,
   .table-wrap:not(.keep-table) .table.table-card-2col tbody tr td:not(:first-child):not([data-label="Aksi"]):not([colspan]):not(.d-none-mobile)::before {
-    font-size: 10px !important;
-    line-height: 1.2 !important;
+    font-size: var(--fs-2xs) !important;
+    line-height: 1.25 !important;
     margin-right: 0 !important;
   }
 
@@ -5442,8 +5442,8 @@ a.list-item:hover {
 
 .cat-picker-indent {
   color: var(--primary);
-  font-family: monospace;
-  font-weight: bold;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-bold);
 }
 
 .cat-picker-check {
@@ -6506,7 +6506,7 @@ tr.is-bulk-selected td {
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.35;
 }

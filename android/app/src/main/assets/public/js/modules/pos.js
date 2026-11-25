@@ -78,7 +78,7 @@ export function renderPosModule(container) {
       <button type="button" id="pos-tab-cart" aria-pressed="false">
         ${ICONS.cart}
         <span>Keranjang</span>
-        <span class="badge badge-primary" id="mobile-cart-badge" style="display: none; padding: 2px 7px; font-size: 11px;">0</span>
+        <span class="badge badge-primary" id="mobile-cart-badge" style="display: none; padding: 2px 7px; font-size: var(--fs-2xs);">0</span>
       </button>
     </div>
 
@@ -1302,9 +1302,9 @@ export function renderPosModule(container) {
 
       let labelTipeHarga = '';
       if (isGrosir) {
-        labelTipeHarga = `<span class="badge badge-success" style="font-size: 9px;">Grosir</span>`;
+        labelTipeHarga = `<span class="badge badge-success badge-sm">Grosir</span>`;
       } else if (isKustom) {
-        labelTipeHarga = `<span class="badge badge-warning" style="font-size: 9px;">Harga Kustom</span>`;
+        labelTipeHarga = `<span class="badge badge-warning badge-sm">Harga Kustom</span>`;
       }
 
       const p = it._pr || state.katalog.find((x) => x.id === it.produk_id);
@@ -3210,7 +3210,7 @@ export function renderPosModule(container) {
               </div>
             ` : ''}
           ` : ''}
-          <div class="detail-kv-row" style="font-weight: bold; font-size: var(--fs-base); padding-top: 9px;">
+          <div class="detail-kv-row" style="font-weight: var(--fw-bold); font-size: var(--fs-base); padding-top: 9px;">
             <span>Total Omset Penjualan</span>
             <span class="mono" style="color: var(--primary);">${formatRupiah(rd.total_penjualan || 0)}</span>
           </div>

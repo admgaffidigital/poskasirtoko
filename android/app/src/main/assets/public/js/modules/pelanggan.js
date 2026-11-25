@@ -623,7 +623,7 @@ function bukaModalFormPelanggan(container, pelanggan = null, onSaved) {
         <div class="field" style="width: 200px; min-width: 160px;">
           <div class="row items-center justify-between" style="margin-bottom: 4px;">
             <label class="field-label" for="pel-kode" style="margin-bottom: 0;">Kode Member</label>
-            ${!isEdit ? `<button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-kode-pel" title="Generate kode otomatis" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>` : ''}
+            ${!isEdit ? `<button type="button" class="btn btn-ghost btn-xs text-primary" id="btn-auto-kode-pel" title="Generate kode otomatis" style="padding: 2px 6px; font-size: var(--fs-2xs); display: inline-flex; align-items: center; gap: 4px;">${ICONS.sparkles}<span>Auto</span></button>` : ''}
           </div>
           <input type="text" class="input font-mono uppercase" id="pel-kode" value="${escapeHtml(pelanggan ? pelanggan.kode : '')}" placeholder="Auto (MBR-...)" ${!isOwnerOrAdmin && isEdit ? 'disabled' : ''}>
           <span class="text-xs text-muted">Dibuat otomatis bila kosong</span>

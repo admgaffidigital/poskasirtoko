@@ -948,7 +948,7 @@ function renderTabPenjualan(container, data) {
                   return `
                   <tr style="${isVoided ? 'opacity: 0.65; background: var(--bg-surface-variant);' : ''}">
                     <td data-label="No Nota">
-                      <span style="font-family: monospace; font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</span>
+                      <span style="font-family: var(--font-mono); font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</span>
                     </td>
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(j.tanggal)}</td>
                     <td data-label="Kasir">${escapeHtml(j.kasir_nama || 'Kasir')}</td>
@@ -1199,7 +1199,7 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
 
         <div class="cluster" style="justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: var(--sp-2);">
           <div>
-            <div style="font-weight: var(--fw-bold); font-size: var(--fs-lg); font-family: monospace; ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</div>
+            <div style="font-weight: var(--fw-bold); font-size: var(--fs-lg); font-family: var(--font-mono); ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</div>
             <div style="font-size: var(--fs-xs); color: var(--text-muted);">${formatTanggal(j.tanggal)}</div>
           </div>
           <div style="text-align: right;">
@@ -1391,8 +1391,8 @@ function renderTabPembelian(container, data) {
                   <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada faktur pembelian sesuai filter</td></tr>
                 ` : items.map((pb) => `
                   <tr>
-                    <td data-label="No Faktur"><span style="font-family: monospace; font-weight: var(--fw-bold);">${escapeHtml(pb.no_faktur)}</span></td>
-                    <td data-label="Ref Supplier"><span style="font-family: monospace; color: var(--text-muted);">${escapeHtml(pb.no_faktur_supplier || '-')}</span></td>
+                    <td data-label="No Faktur"><span style="font-family: var(--font-mono); font-weight: var(--fw-bold);">${escapeHtml(pb.no_faktur)}</span></td>
+                    <td data-label="Ref Supplier"><span style="font-family: var(--font-mono); color: var(--text-muted);">${escapeHtml(pb.no_faktur_supplier || '-')}</span></td>
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(pb.tanggal)}</td>
                     <td style="font-weight: var(--fw-medium);" data-label="Supplier">${escapeHtml(pb.supplier_nama)}</td>
                     <td data-label="Status">
@@ -1896,7 +1896,7 @@ function renderTabStokValuasi(container, data) {
                   <tr>
                     <td data-label="SKU / Barcode">
                       <div class="cell-stack">
-                        <div style="font-family: monospace; font-weight: var(--fw-medium);">${escapeHtml(it.sku || '-')}</div>
+                        <div style="font-family: var(--font-mono); font-weight: var(--fw-medium);">${escapeHtml(it.sku || '-')}</div>
                         ${it.barcode ? `<div style="font-size: var(--fs-xs); color: var(--text-muted);">${escapeHtml(it.barcode)}</div>` : ''}
                       </div>
                     </td>
