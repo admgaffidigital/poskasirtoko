@@ -1965,7 +1965,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
             </label>
             ${renderKalkulatorHppToggle('prd')}
           </div>
-          <div class="input-prefix" style="max-width: 320px;">
+          <div class="input-prefix">
             <span>Rp</span>
             <input type="text" class="input input-num fw-bold" id="prd-hpp" value="${hasData ? formatRupiah(pData.hpp, false) : '0'}" placeholder="0">
           </div>

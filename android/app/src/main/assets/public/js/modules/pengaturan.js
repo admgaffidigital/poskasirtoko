@@ -271,13 +271,15 @@ async function muatPengaturan(container) {
         <!-- 4. Loyalitas & Poin Member -->
         <div>
           <div class="section-title">Aturan Poin Loyalitas Member</div>
-          <div class="field" style="margin-top: var(--sp-2); max-width: 320px;">
-            <label class="field-label" for="cfg-poin-rupiah">Belanja untuk Mendapat 1 Poin (Rp)</label>
-            <div class="input-prefix">
-              <span>Rp</span>
-              <input type="number" class="input input-num" id="cfg-poin-rupiah" value="${cfg.poin_per_rupiah || 10000}" min="100" step="100">
+          <div class="form-grid cols-2" style="margin-top: var(--sp-2);">
+            <div class="field">
+              <label class="field-label" for="cfg-poin-rupiah">Belanja untuk Mendapat 1 Poin (Rp)</label>
+              <div class="input-prefix">
+                <span>Rp</span>
+                <input type="number" class="input input-num" id="cfg-poin-rupiah" value="${cfg.poin_per_rupiah || 10000}" min="100" step="100">
+              </div>
+              <span class="field-hint">Standar: 1 poin tiap kelipatan Rp 10.000 belanja lunas (khusus pelanggan Member). Untuk transaksi Piutang/Tempo, poin otomatis ditambahkan saat piutang berstatus <strong>Lunas</strong>.</span>
             </div>
-            <span class="field-hint">Standar: 1 poin tiap kelipatan Rp 10.000 belanja lunas (khusus pelanggan Member). Untuk transaksi Piutang/Tempo, poin otomatis ditambahkan saat piutang berstatus <strong>Lunas</strong>.</span>
           </div>
         </div>
 

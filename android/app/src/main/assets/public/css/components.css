@@ -426,10 +426,20 @@ input[type="password"] {
   padding-left: 40px;
 }
 
+input[type="file"].input {
+  padding: 7px 10px;
+  height: auto;
+}
+
 .form-grid {
   display: grid;
   gap: var(--sp-4);
   grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.form-grid>.card {
+  height: 100%;
 }
 
 @media (min-width: 768px) {

@@ -285,8 +285,14 @@ input[type="number"] {
   font-variant-numeric: tabular-nums;
 }
 
-.mono {
+.mono,
+.font-mono {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.uppercase {
+  text-transform: uppercase;
 }
 
 /* Utilitas teks */
@@ -350,6 +356,10 @@ input[type="number"] {
   font-weight: var(--fw-bold);
 }
 
+.text-primary {
+  color: var(--primary);
+}
+
 .text-success {
   color: var(--success-text);
 }
@@ -395,12 +405,74 @@ input[type="number"] {
   max-width: 100%;
 }
 
+.row-nowrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
 .row-between {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
   max-width: 100%;
+}
+
+/* Utilitas penyelarasan flex & lebar global */
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-stretch {
+  align-items: stretch;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.w-full {
+  width: 100%;
+}
+
+/* Mencegah checkbox/radio label terlipat 2 baris vertikal saat di dalam .row */
+label.row:has(> input[type="checkbox"]),
+label.row:has(> input[type="radio"]) {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+label.row > input[type="checkbox"],
+label.row > input[type="radio"] {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Pastikan input/select dengan .grow berbagi 1 baris rapi bersama tombol di sampingnya */
+.row > .input.grow,
+.row > .select.grow,
+.row > .input-group.grow,
+.row-nowrap > .input.grow,
+.row-nowrap > .select.grow,
+.row-nowrap > .input-group.grow {
+  flex: 1 1 0%;
+  width: auto;
+  min-width: 0;
 }
 
 .grow {

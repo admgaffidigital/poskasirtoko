@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.129] - 2026-11-25
+### Diperbaiki — Penyelarasan & Konsistensi Tampilan Global (CSS Utilities, Flex Input, Checkbox, & Form Grid)
+- **[UI] Standarisasi Utilitas CSS Global (`base.css`)**: Menambahkan definisi 6 kelas utilitas yang sebelumnya belum terdefinisi (`.text-primary`, `.font-mono`, `.uppercase`, `.w-full`, `.items-center`/`.items-start`/`.items-stretch`, `.justify-between`/`.justify-center`/`.justify-end`, `.row-nowrap`) yang dipakai di 179 titik seluruh modul sehingga perataan tombol `Auto` di SKU/Barcode, teks aksen utama, dan angka monospace tabular kini konsisten 100%.
+- **[UI] Proteksi Global Baris Input+Tombol & Checkbox (`base.css`, `components.css`, `barcode.js`)**: Menambahkan aturan `.row > .input.grow` (`flex: 1 1 0%; width: auto; min-width: 0;`) agar pasangan input/dropdown + tombol di sampingnya tidak pernah turun ke baris baru, aturan `label.row:has(> input[type="checkbox"])` agar checkbox+teks selalu sejajar 1 baris horizontal, penataan `input[type="file"].input`, serta `height: 100%` pada kartu sejajar di `.form-grid`.
+- **[PRODUK] [SETTING] Penyelarasan Lebar Kolom Form (`produk.js`, `pengaturan.js`)**: Menyamakan lebar penuh kotak input HPP di Tab 2 *Tambah/Ubah Produk* agar sejajar lurus dengan tombol **Kalkulator HPP**, serta menempatkan *Aturan Poin Loyalitas Member* di `#/pengaturan` dalam `.form-grid.cols-2` agar sejajar persis dengan kolom *Lebar Kertas Printer* dan *Batas Diskon Kasir*.
+
 ## [1.0.128] - 2026-11-25
 ### Diperbaiki — Presisi Lebar Modal Tema, Warna & Tipografi (`size: 'lg'`)
 - **[UI] Modal `Tema, Warna & Tipografi` (`ui.js`)**: Memperlebar dialog personalisasi tema dari `md` (`520px`) ke `lg` (`680px`) di layar desktop agar seluruh kartu grid 3 kolom (Suasana Latar, Warna Aksen, Jenis Font, & Gaya Huruf) tampil lebih lega tanpa teks subjudul terlipat sempit.

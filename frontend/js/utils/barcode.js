@@ -146,9 +146,9 @@ export function bukaKameraScanner(onScanCallback) {
           Arahkan barcode atau kode QR ke dalam kotak pemindai di atas.
         </div>
 
-        <div class="row" style="width: 100%; gap: var(--sp-2);">
-          <input type="text" id="input-manual-barcode" class="input" placeholder="Atau ketik Barcode / SKU..." style="flex: 1;" />
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-manual-barcode">Pilih</button>
+        <div class="row-nowrap w-full">
+          <input type="text" id="input-manual-barcode" class="input grow" placeholder="Atau ketik Barcode / SKU..." />
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-manual-barcode" style="flex-shrink: 0;">Pilih</button>
         </div>
       </div>
       <style>
