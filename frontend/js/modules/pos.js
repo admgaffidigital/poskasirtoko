@@ -1086,7 +1086,7 @@ export function renderPosModule(container) {
               <label class="form-label">Jumlah Beli (Qty):</label>
               <div class="row" style="gap: var(--sp-1);">
                 <button type="button" class="btn btn-secondary btn-icon" id="btn-modal-min">-</button>
-                <input type="number" id="input-modal-qty" class="input text-center fw-bold" value="1" min="0.001" step="any" style="width: 90px;" />
+                <input type="number" id="input-modal-qty" class="input text-center fw-bold" value="1" min="0.001" step="any" inputmode="decimal" style="width: 90px;" />
                 <button type="button" class="btn btn-secondary btn-icon" id="btn-modal-plus">+</button>
               </div>
             </div>
@@ -1339,7 +1339,7 @@ export function renderPosModule(container) {
             <!-- Qty Stepper -->
             <div class="pos-item-stepper">
               <button type="button" class="btn-item-min" data-idx="${idx}" title="Kurang">-</button>
-              <input type="number" class="input-item-qty mono" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" />
+              <input type="number" class="input-item-qty mono" data-idx="${idx}" value="${it.qty}" min="0.001" step="any" inputmode="decimal" />
               <button type="button" class="btn-item-plus" data-idx="${idx}" title="Tambah">+</button>
             </div>
 

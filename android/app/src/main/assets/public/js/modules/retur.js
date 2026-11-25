@@ -610,7 +610,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
                   <td class="num font-mono" data-label="Qty Beli">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
                   <td class="num" data-label="Qty Retur">
                     <input type="number" class="input input-sm input-num input-qty-retur" data-idx="${idx}"
-                           min="0.001" max="${it.qty}" step="any" value="${it.qty}" style="width: 90px;">
+                           min="0.001" max="${it.qty}" step="any" inputmode="decimal" value="${it.qty}" style="width: 90px;">
                   </td>
                   <td class="num fw-bold subtotal-retur-item" data-idx="${idx}" data-label="Subtotal">${formatRupiah(it.harga * it.qty)}</td>
                 </tr>
@@ -924,7 +924,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
                   <td class="num font-mono" data-label="Qty Beli">${formatQty(it.qty)} ${escapeHtml(it.satuan || '')}</td>
                   <td class="num" data-label="Qty Retur">
                     <input type="number" class="input input-sm input-num input-qty-retur-beli" data-idx="${idx}"
-                           min="0.001" max="${it.qty}" step="any" value="${it.qty}" style="width: 90px;">
+                           min="0.001" max="${it.qty}" step="any" inputmode="decimal" value="${it.qty}" style="width: 90px;">
                   </td>
                   <td class="num fw-bold subtotal-retur-beli-item" data-idx="${idx}" data-label="Subtotal">${formatRupiah(it.harga_beli * it.qty)}</td>
                 </tr>

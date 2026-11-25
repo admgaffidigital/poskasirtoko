@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.132] - 2026-11-25
+### Diperbaiki — Akurasi Parsing Qty Desimal (`parseQty`) di POS Pembelian, Kasir, Retur, & Stok Opname
+- **[POS-BELI] [POS-JUAL] [RETUR] [OPNAME] Perbaikan Kritis `parseQty()` (`format.js`)**: Sebelumnya `parseQty()` menghapus semua karakter titik (`.replace(/\./g, '')`), sehingga input desimal standar dari `<input type="number">` seperti `"0.5"` atau `"2.5"` keliru terbaca menjadi `5` atau `25`. Kini `parseQty()` mendukung penuh titik desimal standar (`0.5`, `2.5`, `1.125`), koma desimal Indonesia (`0,5`, `2,5`), sekaligus pemisah ribuan (`1.250,5` / `1,250.5`) hingga 3 angka di belakang koma.
+- **[POS-BELI] Edit Inline Qty Desimal & Keyboard Android (`pembelian.js`, `pos.js`, `retur.js`, `opname.js`)**: Menambahkan input edit langsung qty desimal pada tabel keranjang pembelian serta atribut `inputmode="decimal"` di seluruh kolom kuantitas agar papan ketik HP langsung menampilkan tombol desimal.
+
 ## [1.0.131] - 2026-11-25
 ### Diperbaiki — Tata Letak Kotak Info Tempo di Modal Pembayaran POS & Proteksi Global `.alert`
 - **[POS-JUAL] [UI] Kotak Info Tempo/Kredit & Kas Keluar (`pos.js`)**: Membungkus konten teks di kotak `.alert` Tempo/Kredit (`#sec-tempo`) dan Kas Keluar dengan ikon `ICONS.*` + `<div>` pembungkus agar teks jatuh tempo dan info poin tampil normal 2 paragraf penuh (sebelumnya pecah menjadi 5 kolom vertikal akibat `display: flex` pada `.alert`).

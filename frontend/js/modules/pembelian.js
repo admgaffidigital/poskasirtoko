@@ -165,7 +165,7 @@ function renderFormInputBeli() {
             </div>
             <div class="field">
               <label class="field-label" for="beli-qty">Qty Beli</label>
-              <input type="number" class="input tabular fw-bold" id="beli-qty" min="0.001" step="any" value="1" disabled>
+              <input type="number" class="input tabular fw-bold" id="beli-qty" min="0.001" step="any" inputmode="decimal" placeholder="cth: 2.5" value="1" disabled>
             </div>
             <div class="field">
               <label class="field-label" for="beli-harga">Harga Beli Satuan (Rp)</label>
@@ -874,8 +874,8 @@ function renderTabelKeranjangBeli(container) {
         </td>
         <td data-label="Satuan"><span class="badge">${escapeHtml(it.satuan)}</span></td>
         <td style="text-align: right;" class="tabular" data-label="Qty Beli">
-          <div class="cell-stack">
-            <div class="fw-semibold">${formatQty(it.qty)}</div>
+          <div class="cell-stack" style="align-items: flex-end;">
+            <input type="number" class="input input-sm tabular fw-semibold input-qty-item-beli" data-index="${idx}" min="0.001" step="any" inputmode="decimal" value="${it.qty}" style="width: 82px; text-align: right;">
             ${it.faktor > 1 ? `<div class="text-xs text-muted">(${formatQty(it.qty_dasar)} ${escapeHtml(it.satuan_dasar)})</div>` : ''}
           </div>
         </td>
@@ -905,6 +905,24 @@ function renderTabelKeranjangBeli(container) {
   });
 
   tbody.innerHTML = html;
+
+  tbody.querySelectorAll('.input-qty-item-beli').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      const idx = Number(inp.getAttribute('data-index'));
+      if (!keranjangBeli[idx]) return;
+      const qtyBaru = parseQty(inp.value);
+      if (qtyBaru <= 0) {
+        showToast('Kuantitas beli harus lebih dari 0.', 'warning');
+        inp.value = String(keranjangBeli[idx].qty);
+        return;
+      }
+      keranjangBeli[idx].qty = qtyBaru;
+      keranjangBeli[idx].qty_dasar = Math.round(qtyBaru * (Number(keranjangBeli[idx].faktor) || 1) * 1000) / 1000;
+      hitungUlangItemBeli(keranjangBeli[idx]);
+      renderTabelKeranjangBeli(container);
+      renderRingkasanBeli(container);
+    });
+  });
 
   tbody.querySelectorAll('.input-diskon-item-beli').forEach((inp) => {
     inp.addEventListener('change', () => {

@@ -254,7 +254,7 @@ async function bukaModalInputOpname(container) {
           </div>
           <div class="field grow">
             <label class="field-label" for="op-qty-fisik">Hasil Hitung Fisik <span class="wajib">*</span></label>
-            <input type="number" class="input tabular fw-bold" id="op-qty-fisik" step="any" min="0" placeholder="0" required disabled>
+            <input type="number" class="input tabular fw-bold" id="op-qty-fisik" step="any" inputmode="decimal" min="0" placeholder="0" required disabled>
           </div>
         </div>
 

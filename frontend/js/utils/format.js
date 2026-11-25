@@ -51,17 +51,44 @@ export function formatQty(val) {
 }
 
 /**
- * Parse input string kuantitas menjadi angka float (maks 3 desimal)
+ * Parse input string kuantitas menjadi angka float (maks 3 desimal).
+ * Mendukung titik desimal standar HTML <input type="number"> ("0.5", "2.5", "1.125"),
+ * koma desimal Indonesia ("0,5", "2,5"), maupun pemisah ribuan ("1.250,5" / "1,250.5").
  * @param {string|number} str
  * @returns {number}
  */
 export function parseQty(str) {
-  if (typeof str === 'number') return Math.round(str * 1000) / 1000;
-  if (!str) return 0;
-  // Format Indonesia koma sebagai desimal
-  const normalized = String(str).replace(/\./g, '').replace(',', '.');
-  const parsed = parseFloat(normalized);
-  if (isNaN(parsed)) return 0;
+  if (typeof str === 'number') return Number.isFinite(str) ? Math.round(str * 1000) / 1000 : 0;
+  if (str === null || str === undefined) return 0;
+  let s = String(str).trim().replace(/\s+/g, '');
+  if (!s) return 0;
+
+  const hasDot = s.includes('.');
+  const hasComma = s.includes(',');
+
+  if (hasDot && hasComma) {
+    // Jika koma di belakang titik -> format Indonesia (1.250,5)
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Format internasional (1,250.5)
+      s = s.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    // Koma tunggal sebagai desimal Indonesia ("2,5", "0,75")
+    const commaCount = (s.match(/,/g) || []).length;
+    s = commaCount === 1 ? s.replace(',', '.') : s.replace(/,/g, '');
+  } else if (hasDot) {
+    // Titik tunggal (cth: "0.5", "2.5", "1.25", "1.125" dari <input type="number">) adalah desimal;
+    // Hanya titik jamak ("1.000.000") yang merupakan pemisah ribuan.
+    const dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      s = s.replace(/\./g, '');
+    }
+  }
+
+  const parsed = parseFloat(s);
+  if (!Number.isFinite(parsed)) return 0;
   return Math.round(parsed * 1000) / 1000;
 }
 
