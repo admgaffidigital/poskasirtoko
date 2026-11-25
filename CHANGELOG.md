@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.131] - 2026-11-25
+### Diperbaiki — Tata Letak Kotak Info Tempo di Modal Pembayaran POS & Proteksi Global `.alert`
+- **[POS-JUAL] [UI] Kotak Info Tempo/Kredit & Kas Keluar (`pos.js`)**: Membungkus konten teks di kotak `.alert` Tempo/Kredit (`#sec-tempo`) dan Kas Keluar dengan ikon `ICONS.*` + `<div>` pembungkus agar teks jatuh tempo dan info poin tampil normal 2 paragraf penuh (sebelumnya pecah menjadi 5 kolom vertikal akibat `display: flex` pada `.alert`).
+- **[UI] Proteksi Global `.alert` (`components.css`)**: Menambahkan aturan `.alert:has(> b), .alert:has(> strong) { display: block; }` dan `.alert > div { flex: 1; min-width: 0; }` untuk mencegah bug teks pecah menjadi kolom di seluruh kotak notifikasi aplikasi.
+
 ## [1.0.130] - 2026-11-25
 ### Ditambahkan — Sinkronisasi Cloud Tema, Warna Aksen & Tipografi Lintas Perangkat (PC & HP)
 - **[SETTING] [BACKEND] Endpoint `pengaturan.simpanTema` (`00_konfig_skema_router.gs`, `02_auth_user_pengaturan.gs`)**: Menambahkan konfigurasi `tampilan_tema` pada sheet `Pengaturan` dengan sanitasi penuh (`theme`, `accent`, `fontFamily`, `fontPct` 85–125%, `fontStyle`, `updatedAt`) dan pencatatan `Log_Audit`.

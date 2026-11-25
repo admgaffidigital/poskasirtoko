@@ -2285,6 +2285,17 @@ a.list-item:hover {
   flex-direction: column !important;
 }
 
+/* Proteksi global: alert dengan tag <b>/<strong> langsung tanpa pembungkus div tidak pecah menjadi kolom flex */
+.alert:has(> b),
+.alert:has(> strong) {
+  display: block;
+}
+
+.alert > div {
+  flex: 1;
+  min-width: 0;
+}
+
 .alert svg {
   width: 20px;
   height: 20px;

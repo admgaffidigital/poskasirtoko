@@ -2275,8 +2275,11 @@ export function renderPosModule(container) {
               <!-- Section Tempo -->
               <div id="sec-tempo" style="display: none;">
                 <div class="alert alert-info text-xs" style="margin-bottom: var(--sp-2);">
-                  Jatuh tempo: <b>${state.pelanggan?.tempo_hari || 30} Hari</b> dari sekarang. Piutang akan dicatat atas nama <b>${escapeHtml(state.pelanggan?.nama || '')}</b>.
-                  <div style="margin-top: 4px;">Poin loyalitas transaksi tempo akan <b>otomatis bertambah saat piutang dilunasi</b>.</div>
+                  ${ICONS.info}
+                  <div>
+                    <div>Jatuh tempo: <strong>${state.pelanggan?.tempo_hari || 30} Hari</strong> dari sekarang. Piutang akan dicatat atas nama <strong>${escapeHtml(state.pelanggan?.nama || '')}</strong>.</div>
+                    <div style="margin-top: 4px;">Poin loyalitas transaksi tempo akan <strong>otomatis bertambah saat piutang dilunasi</strong>.</div>
+                  </div>
                 </div>
               </div>
 
@@ -3702,7 +3705,8 @@ export function renderPosModule(container) {
       body: `
         <form id="form-kas-keluar-kasir" class="stack" style="gap: var(--sp-3);">
           <div class="alert alert-warning" style="font-size: var(--fs-xs); margin: 0; padding: 8px 12px;">
-            Kas keluar ini memotong uang fisik kasir di laci dan tercatat dalam buku biaya operasional toko.
+            ${ICONS.alertTriangle}
+            <div>Kas keluar ini memotong uang fisik kasir di laci dan tercatat dalam buku biaya operasional toko.</div>
           </div>
           <div>
             <label class="form-label required text-xs">Kategori Pengeluaran</label>
