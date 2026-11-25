@@ -1873,7 +1873,8 @@ async function runAudit() {
     });
     assert(res3.diperbarui === 1 && envImp.cariById_('Produk', prdSemen.id).stok === 55, 'Stok harus berubah ke 55 saat perbarui_stok=true');
     const ksKoreksi = envImp.bacaSemua_('Kartu_Stok').filter((k) => k.produk_id === prdSemen.id && k.tipe === 'koreksi' && k.qty === 15);
-    assert(ksKoreksi.length === 1, 'Perubahan stok via import massal wajib tercatat di Kartu_Stok sebagai koreksi (+15)');
+    assert(ksKoreksi.length === 1 && ksKoreksi[0].saldo === 55 && ksKoreksi[0].hpp === 57000 && ksKoreksi[0].user_id === ownerRow.id && Boolean(ksKoreksi[0].keterangan),
+      `Perubahan stok via import massal wajib tercatat lengkap sesuai skema Kartu_Stok (saldo=55, hpp=57000, user_id, keterangan), aktual: ${JSON.stringify(ksKoreksi[0])}`);
 
     // 24d. Tambah & update varian via import massal -> stok induk rekalkulasi otomatis (Rule #17)
     const resVar = envImp.aksiProdukImportMassal_({

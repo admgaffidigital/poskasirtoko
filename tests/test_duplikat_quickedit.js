@@ -37,7 +37,7 @@ console.log('  ✔ [PASS] 5. Satuan dasar default PCS dan otomatis UPPERCASE');
 // Tes 6: Pastikan Stok Min default 0 (bukan 5)
 assert(!produkJs.includes('value="5" id="prd-stok-min"'), 'Tidak boleh ada default stok min 5');
 assert(produkJs.includes('id="prd-stok-min"') && produkJs.includes(': 0) : 0'), 'Stok min default harus 0');
-assert(produkJs.includes("parseFloat($('#prd-stok-min', form).value) || 0"), 'Parsing stok_min harus default 0');
+assert(produkJs.includes("parseQty($('#prd-stok-min', form).value) || 0") || produkJs.includes("parseFloat($('#prd-stok-min', form).value) || 0"), 'Parsing stok_min harus default 0');
 console.log('  ✔ [PASS] 6. Batas stok minimum default 0 (bukan 5)');
 
 // Tes 7: Pastikan 0 emoji di seluruh file frontend/js/modules/produk.js dan frontend/js/utils/ui.js

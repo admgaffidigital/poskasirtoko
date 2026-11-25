@@ -715,8 +715,7 @@ function aksiProdukImportMassal_(ctx) {
     const baru = tambahBaris_('Kategori', [{
       nama: namaTrim.slice(0, 80),
       parent_id: '',
-      urutan: Object.keys(katById).length + 1,
-      aktif: true
+      urutan: Object.keys(katById).length + 1
     }], ctx.user.id)[0];
     katById[baru.id] = baru;
     katByNama[key] = baru;
@@ -789,8 +788,8 @@ function aksiProdukImportMassal_(ctx) {
             patch.harga_grosir = grosirFinal;
           }
           if (perbaruiStok && stokIn !== null) {
-            const stokLama = Number(targetVar.stok || 0);
-            const stokBaru = Math.max(0, stokIn);
+            const stokLama = bulatQty_(Number(targetVar.stok || 0));
+            const stokBaru = bulatQty_(Math.max(0, stokIn));
             if (stokBaru !== stokLama) {
               patch.stok = stokBaru;
               targetVar.stok = stokBaru;
@@ -799,12 +798,12 @@ function aksiProdukImportMassal_(ctx) {
                 produk_id: targetVar.produk_id,
                 varian_id: targetVar.id,
                 tipe: 'koreksi',
-                qty: stokBaru - stokLama,
-                stok_sebelum: stokLama,
-                stok_sesudah: stokBaru,
-                ref_tipe: 'IMPORT_MASSAL',
-                ref_id: targetVar.id,
-                catatan: 'Import massal Excel/CSV (Varian ' + (patch.nama_varian || targetVar.nama_varian) + ')'
+                qty: bulatQty_(stokBaru - stokLama),
+                saldo: stokBaru,
+                hpp: hppFinal,
+                ref_id: 'IMPORT-VAR-' + targetVar.sku,
+                user_id: ctx.user.id,
+                keterangan: 'Import massal Excel/CSV (Varian ' + (patch.nama_varian || targetVar.nama_varian) + ')'
               });
             }
           }
@@ -900,20 +899,20 @@ function aksiProdukImportMassal_(ctx) {
           if (minGrosirIn !== null && minGrosirIn > 0) patch.min_grosir_qty = minGrosirIn;
         }
         if (perbaruiStok && stokIn !== null && !targetPrd.punya_varian) {
-          const stokLama = Number(targetPrd.stok || 0);
-          const stokBaru = Math.max(0, stokIn);
+          const stokLama = bulatQty_(Number(targetPrd.stok || 0));
+          const stokBaru = bulatQty_(Math.max(0, stokIn));
           if (stokBaru !== stokLama) {
             patch.stok = stokBaru;
             kartuStokQueue.push({
               produk_id: targetPrd.id,
               varian_id: '',
               tipe: 'koreksi',
-              qty: stokBaru - stokLama,
-              stok_sebelum: stokLama,
-              stok_sesudah: stokBaru,
-              ref_tipe: 'IMPORT_MASSAL',
-              ref_id: targetPrd.id,
-              catatan: 'Import massal Excel/CSV'
+              qty: bulatQty_(stokBaru - stokLama),
+              saldo: stokBaru,
+              hpp: hppFinal,
+              ref_id: 'IMPORT-' + (targetPrd.sku || targetPrd.id),
+              user_id: ctx.user.id,
+              keterangan: 'Import massal Excel/CSV'
             });
           }
         }
@@ -990,16 +989,17 @@ function aksiProdukImportMassal_(ctx) {
       prdById[pr.id] = pr;
       if (pr.sku) prdBySku[String(pr.sku).trim().toLowerCase()] = pr;
       if (Number(pr.stok || 0) > 0) {
+        const stokAwalPrd = bulatQty_(Number(pr.stok));
         kartuStokQueue.push({
           produk_id: pr.id,
           varian_id: '',
-          tipe: 'masuk',
-          qty: Number(pr.stok),
-          stok_sebelum: 0,
-          stok_sesudah: Number(pr.stok),
-          ref_tipe: 'IMPORT_MASSAL',
-          ref_id: pr.id,
-          catatan: 'Stok awal import massal Excel/CSV'
+          tipe: 'koreksi',
+          qty: stokAwalPrd,
+          saldo: stokAwalPrd,
+          hpp: Number(pr.hpp || 0),
+          ref_id: 'IMPORT-' + (pr.sku || pr.id),
+          user_id: ctx.user.id,
+          keterangan: 'Stok awal import massal Excel/CSV'
         });
       }
     });
@@ -1013,16 +1013,17 @@ function aksiProdukImportMassal_(ctx) {
     const hasilVarBaru = tambahBaris_('Varian', varianBaruQueue, ctx.user.id);
     hasilVarBaru.forEach(function (v) {
       if (Number(v.stok || 0) > 0) {
+        const stokAwalVar = bulatQty_(Number(v.stok));
         kartuStokQueue.push({
           produk_id: v.produk_id,
           varian_id: v.id,
-          tipe: 'masuk',
-          qty: Number(v.stok),
-          stok_sebelum: 0,
-          stok_sesudah: Number(v.stok),
-          ref_tipe: 'IMPORT_MASSAL',
-          ref_id: v.id,
-          catatan: 'Stok awal varian import massal'
+          tipe: 'koreksi',
+          qty: stokAwalVar,
+          saldo: stokAwalVar,
+          hpp: Number(v.hpp || 0),
+          ref_id: 'IMPORT-VAR-' + (v.sku || v.id),
+          user_id: ctx.user.id,
+          keterangan: 'Stok awal varian import massal'
         });
       }
     });

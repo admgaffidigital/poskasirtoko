@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.133] - 2026-11-25
+### Diperbaiki — Audit Debugging Total: Skema Kartu_Stok Import Massal, Presisi Desimal POS & Produk
+- **[BACKEND] [PRODUK] Keselarasan Skema `Kartu_Stok` & `Kategori` di `produk.importMassal` (`03_kategori_produk.gs`, `test_debug_final.js`)**: Memperbaiki 4 titik pencatatan `Kartu_Stok` pada import massal agar memakai kolom skema resmi (`tipe: 'koreksi'`, `saldo`, `hpp`, `ref_id`, `user_id`, `keterangan`) dengan pembulatan desimal `bulatQty_()`, serta membersihkan properti non-skema `aktif` saat auto-buat `Kategori`.
+- **[POS-JUAL] Anti Floating-Point Drift Modal Varian/Satuan (`pos.js`)**: Membulatkan operasi tombol `-` / `+` di modal pilih varian/satuan dengan `Math.round((cur +/- 1) * 1000) / 1000` agar qty desimal (misal `2.2 - 1`) tidak berubah menjadi `1.2000000000000002`.
+- **[PRODUK] Presisi Desimal `0.125` di Import Excel & Master Produk (`produk-import.js`, `produk.js`)**: Memperbaiki regex ribuan `parseAngkaImport()` (`[1-9]\d{0,2}`) agar angka desimal `< 1` tiga digit seperti `"0.125"` tidak keliru dibaca menjadi `125`, serta menyatukan pembacaan stok/faktor/min-grosir di `produk.js` menggunakan `parseQty()`.
+
 ## [1.0.132] - 2026-11-25
 ### Diperbaiki — Akurasi Parsing Qty Desimal (`parseQty`) di POS Pembelian, Kasir, Retur, & Stok Opname
 - **[POS-BELI] [POS-JUAL] [RETUR] [OPNAME] Perbaikan Kritis `parseQty()` (`format.js`)**: Sebelumnya `parseQty()` menghapus semua karakter titik (`.replace(/\./g, '')`), sehingga input desimal standar dari `<input type="number">` seperti `"0.5"` atau `"2.5"` keliru terbaca menjadi `5` atau `25`. Kini `parseQty()` mendukung penuh titik desimal standar (`0.5`, `2.5`, `1.125`), koma desimal Indonesia (`0,5`, `2,5`), sekaligus pemisah ribuan (`1.250,5` / `1,250.5`) hingga 3 angka di belakang koma.

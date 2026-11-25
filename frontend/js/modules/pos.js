@@ -1149,14 +1149,14 @@ export function renderPosModule(container) {
     modal.el.querySelector('#btn-modal-min')?.addEventListener('click', () => {
       const cur = parseQty(elInputQty.value) || 1;
       if (cur > 1) {
-        elInputQty.value = cur - 1;
+        elInputQty.value = Math.round((cur - 1) * 1000) / 1000;
         updateModalEst();
       }
     });
 
     modal.el.querySelector('#btn-modal-plus')?.addEventListener('click', () => {
       const cur = parseQty(elInputQty.value) || 0;
-      elInputQty.value = cur + 1;
+      elInputQty.value = Math.round((cur + 1) * 1000) / 1000;
       updateModalEst();
     });
 

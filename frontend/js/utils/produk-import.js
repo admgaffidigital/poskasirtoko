@@ -141,10 +141,10 @@ export function parseAngkaImport(raw) {
   let s = String(raw).trim();
   if (!s) return null;
   s = s.replace(/^rp\.?\s*/i, '').replace(/\s+/g, '');
-  // Jika pola ribuan titik Indonesia (misal 65.000 atau 1.250.000)
-  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+  // Jika pola ribuan titik Indonesia (misal 65.000 atau 1.250.000; hindari 0.125 agar tetap desimal!)
+  if (/^-?[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(s)) {
     s = s.replace(/\./g, '').replace(',', '.');
-  } else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) {
+  } else if (/^-?[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(s)) {
     s = s.replace(/,/g, '');
   } else if (/^-?\d+,\d+$/.test(s)) {
     s = s.replace(',', '.');

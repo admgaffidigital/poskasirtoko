@@ -7,7 +7,7 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
-import { formatRupiah, formatQty, parseRupiah, escapeHtml } from '../utils/format.js';
+import { formatRupiah, formatQty, parseRupiah, parseQty, escapeHtml } from '../utils/format.js';
 import { renderKalkulatorHppToggle, renderKalkulatorHppPanel, ikatKalkulatorHpp } from '../utils/hpp-calculator.js';
 import { bukaModalKatalogPdf } from '../utils/katalog-pdf.js';
 import { bukaModalImportExportProduk } from '../utils/produk-import.js';
@@ -1758,8 +1758,8 @@ function bukaModalEditCepat(container, p) {
     const hpp = parseRupiah(inputHpp.value);
     const harga_ritel = parseRupiah(inputRitel.value);
     const harga_grosir = parseRupiah(inputGrosir.value) || harga_ritel;
-    const min_grosir_qty = parseFloat($('#qe-min-grosir', form).value) || 1;
-    const stok_min = parseFloat($('#qe-stok-min', form).value) || 0;
+    const min_grosir_qty = parseQty($('#qe-min-grosir', form).value) || 1;
+    const stok_min = parseQty($('#qe-stok-min', form).value) || 0;
     const aktif = $('#qe-aktif', form).checked;
 
     if (harga_ritel <= 0) {
@@ -2599,9 +2599,9 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
     }
 
     const kategori_id = $('#prd-kategori', form).value;
-    const min_grosir_qty = parseFloat($('#prd-min-grosir', form).value) || 1;
-    const stok = parseFloat($('#prd-stok', form).value) || 0;
-    const stok_min = parseFloat($('#prd-stok-min', form).value) || 0;
+    const min_grosir_qty = parseQty($('#prd-min-grosir', form).value) || 1;
+    const stok = parseQty($('#prd-stok', form).value) || 0;
+    const stok_min = parseQty($('#prd-stok-min', form).value) || 0;
     const aktif = $('#prd-aktif', form).checked;
     const punya_varian = checkVarian.checked;
 
@@ -2659,7 +2659,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           hpp: vHpp,
           harga_ritel: vRitel,
           harga_grosir: vGrosir,
-          stok: parseFloat(b.querySelector('.var-stok').value) || 0
+          stok: parseQty(b.querySelector('.var-stok').value) || 0
         });
       }
     }
@@ -2669,9 +2669,9 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
     const barisSatuan = form.querySelectorAll('.baris-satuan');
     for (const s of barisSatuan) {
       const sNama = s.querySelector('.sat-nama').value.trim().toUpperCase();
-      const sFaktor = parseFloat(s.querySelector('.sat-faktor').value);
+      const sFaktor = parseQty(s.querySelector('.sat-faktor').value);
       const sRitel = parseRupiah(s.querySelector('.sat-ritel').value);
-      if (!sNama && isNaN(sFaktor) && sRitel === 0) continue;
+      if (!sNama && sFaktor <= 0 && sRitel === 0) continue;
       if (!sNama) {
         switchTab('varian');
         s.querySelector('.sat-nama').focus();
