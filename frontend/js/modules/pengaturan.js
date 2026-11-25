@@ -310,16 +310,18 @@ async function muatPengaturan(container) {
         <!-- 6. Backup Data 1-Klik, Ekspor Excel Lengkap, & Antrean Offline -->
         <div>
           <div class="section-title">Backup Data 1-Klik, Ekspor Excel, &amp; Sinkronisasi Cloud</div>
-          <div class="form-grid cols-2" style="margin-top: var(--sp-2);">
-            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1.5px solid var(--border);">
-              <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
-                <span style="color: var(--primary);">${ICONS.hardDrive}</span>
-                <span>Backup Lengkap Database (JSON &amp; Excel)</span>
+          <div class="form-grid cols-2" style="margin-top: var(--sp-2); align-items: stretch;">
+            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1.5px solid var(--border); justify-content: space-between; gap: var(--sp-3);">
+              <div class="stack-sm">
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--primary);">${ICONS.hardDrive}</span>
+                  <span>Backup Lengkap Database (JSON &amp; Excel)</span>
+                </div>
+                <div class="text-xs text-muted">
+                  Unduh arsip cadangan seluruh 30 tabel database (Produk, Penjualan, Pembelian, Piutang, Hutang, Pelanggan, Shift, &amp; Pengaturan). Password/PIN dan token sesi otomatis disensor demi keamanan.
+                </div>
               </div>
-              <div class="text-xs text-muted">
-                Unduh arsip cadangan seluruh 30 tabel database (Produk, Penjualan, Pembelian, Piutang, Hutang, Pelanggan, Shift, &amp; Pengaturan). Password/PIN dan token sesi otomatis disensor demi keamanan.
-              </div>
-              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-1);">
+              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
                 <button type="button" class="btn btn-primary btn-sm" id="btn-cfg-backup-json" style="display: inline-flex; align-items: center; gap: 6px;">
                   ${ICONS.download}
                   <span>Backup JSON Lengkap</span>
@@ -331,16 +333,18 @@ async function muatPengaturan(container) {
               </div>
             </div>
 
-            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1.5px solid var(--border);">
-              <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
-                <span style="color: var(--primary);">${ICONS.cloud}</span>
-                <span>Status Sinkron Cloud &amp; Antrean Offline</span>
+            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1.5px solid var(--border); justify-content: space-between; gap: var(--sp-3);">
+              <div class="stack-sm">
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px;">
+                  <span style="color: var(--primary);">${ICONS.cloud}</span>
+                  <span>Status Sinkron Cloud &amp; Antrean Offline</span>
+                </div>
+                <div class="text-xs text-muted">
+                  Preset Katalog PDF tersimpan di Cloud: <strong class="mono">${Array.isArray(cfg.katalog_pdf_presets) ? cfg.katalog_pdf_presets.length : 0} preset</strong>.<br>
+                  Antrean Transaksi Offline di perangkat ini: <strong class="mono" id="lbl-cfg-offline-count">${jumlahAntreanOffline()} transaksi</strong>.
+                </div>
               </div>
-              <div class="text-xs text-muted">
-                Preset Katalog PDF tersimpan di Cloud: <strong class="mono">${Array.isArray(cfg.katalog_pdf_presets) ? cfg.katalog_pdf_presets.length : 0} preset</strong>.<br>
-                Antrean Transaksi Offline di perangkat ini: <strong class="mono" id="lbl-cfg-offline-count">${jumlahAntreanOffline()} transaksi</strong>.
-              </div>
-              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-1);">
+              <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-cfg-antrean-offline" style="display: inline-flex; align-items: center; gap: 6px;">
                   ${ICONS.refresh}
                   <span>Kelola Antrean Offline</span>

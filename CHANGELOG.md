@@ -16,6 +16,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.127] - 2026-11-25
+### Diperbaiki — Presisi Modal Koneksi Printer Thermal Desktop & Keselarasan Kartu Backup Pengaturan
+- **[CETAK] [UI] Modal Koneksi Printer Thermal Desktop (`printer.js`)**: Mengubah ukuran modal Desktop ke `size: 'lg'` agar dropdown *Jalur Direct USB PC* tidak terpotong, memperbaiki tombol segarkan printer Windows agar selalu sejajar 1 baris horizontal di kanan dropdown (`flex-wrap: nowrap` + `width: auto` pada `<select>`), serta menjaga checkbox laci kasir tetap 1 baris.
+- **[SETTING] [UI] Keselarasan Kartu Backup & Cloud Sync (`pengaturan.js`)**: Menambahkan `align-items: stretch` dan `justify-content: space-between` pada 2 kartu Backup Database & Status Sinkron Cloud agar baris tombol aksi di kedua kartu rata bawah sempurna.
+
 ## [1.0.126] - 2026-11-25
 ### Diperbaiki — Presisi Lebar Modal `.dialog-xl` (`showModal`) & Tata Letak Modal Import Massal Excel/CSV
 - **[UI] Mapping Kelas `.dialog-xl` di `showModal()` (`ui.js`)**: Menambahkan pemetaan `resolvedSize === 'xl' -> 'dialog-xl'` yang sebelumnya terlewat di `ui.js`, sehingga modal berukuran `xl` (Import / Update Massal Produk & Generator Katalog Produk PDF A4) kini tampil lebar penuh 960px di layar PC/desktop alih-alih menyempit ke 520px.

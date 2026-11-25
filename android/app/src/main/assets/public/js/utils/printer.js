@@ -1568,7 +1568,7 @@ export function tampilkanModalKoneksiPrinter() {
         <span class="badge badge-neutral" id="badge-status-usb-bridge">Mengecek Bridge...</span>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-2); margin-top: 4px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-2); margin-top: 4px;">
         <div>
           <label class="form-label text-xs fw-semibold" for="sel-usb-mode" style="margin-bottom: 2px;">Jalur Direct USB PC</label>
           <select id="sel-usb-mode" class="input input-sm">
@@ -1579,17 +1579,17 @@ export function tampilkanModalKoneksiPrinter() {
         </div>
         <div id="wrap-usb-bridge-printer">
           <label class="form-label text-xs fw-semibold" for="sel-usb-printer-name" style="margin-bottom: 2px;">Printer USB Windows</label>
-          <div class="row" style="gap: 4px;">
-            <select id="sel-usb-printer-name" class="input input-sm grow">
+          <div style="display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;">
+            <select id="sel-usb-printer-name" class="input input-sm" style="flex: 1; min-width: 0; width: auto;">
               <option value="${escapeHtml(cal.usbPrinterName)}">${cal.usbPrinterName ? escapeHtml(cal.usbPrinterName) : '(Default Printer Windows)'}</option>
             </select>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-usb-bridge" title="Segarkan daftar printer Windows" style="padding: 0 8px;">${ICONS.refresh}</button>
+            <button type="button" class="btn btn-secondary btn-sm btn-icon" id="btn-refresh-usb-bridge" title="Segarkan daftar printer Windows" style="flex-shrink: 0;">${ICONS.refresh}</button>
           </div>
         </div>
       </div>
 
-      <label class="row text-xs" style="gap: 8px; cursor: pointer; align-items: center; margin-top: 2px;">
-        <input type="checkbox" id="chk-usb-buka-laci" ${cal.bukaLaciOtomatis ? 'checked' : ''} style="width: 15px; height: 15px; accent-color: var(--primary);">
+      <label class="text-xs" style="display: flex; flex-wrap: nowrap; gap: 8px; cursor: pointer; align-items: center; margin-top: 2px;">
+        <input type="checkbox" id="chk-usb-buka-laci" ${cal.bukaLaciOtomatis ? 'checked' : ''} style="width: 15px; height: 15px; flex-shrink: 0; accent-color: var(--primary);">
         <span>Buka Laci Kasir (Cash Drawer) otomatis saat cetak struk tunai</span>
       </label>
 
@@ -1617,7 +1617,7 @@ export function tampilkanModalKoneksiPrinter() {
 
   const modal = showModal({
     title: isAndroid ? 'Koneksi Printer Bluetooth (RawBT)' : 'Koneksi Printer Thermal (Direct POS USB & Bluetooth)',
-    size: 'md',
+    size: isAndroid ? 'md' : 'lg',
     body: `
       <div class="stack" style="gap: var(--sp-3);">
         <!-- Pilih Ukuran Kertas Cepat -->
