@@ -45,9 +45,9 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Text", "SF Pro Display", "Inter", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, Menlo, monospace;
   --font-scale: 1;
-  --fs-2xs: 0.6875rem; /* 11px - micro badge, uppercase caption */
-  --fs-xs: 0.75rem;    /* 12px - secondary meta, hint, standard badge */
-  --fs-sm: 0.875rem;   /* 14px - table data, secondary buttons, input label */
+  --fs-2xs: max(11px, 0.6875rem); /* min 11px - micro badge, uppercase caption (anti blur di skala 85%) */
+  --fs-xs: max(12px, 0.75rem);    /* min 12px - secondary meta, hint, standard badge */
+  --fs-sm: max(13px, 0.875rem);   /* min 13px - table data, secondary buttons, input label */
   --fs-md: 1rem;       /* 16px - body default, input controls */
   --fs-base: var(--fs-md); /* Alias kompatibilitas */
   --fs-lg: 1.125rem;   /* 18px - section title, dialog title */
@@ -122,14 +122,14 @@
   --surface: var(--slate-0);
   --surface-2: var(--slate-50);
   --surface-3: var(--slate-200);
-  --border: var(--slate-200);
-  --border-strong: var(--slate-300);
+  --border: #d5dde7;
+  --border-strong: #b8c4d4;
   --text: var(--slate-900);
   --text-heading: var(--text);
   --text-body: var(--text);
   --text-main: var(--text);
-  --text-muted: var(--slate-500);
-  --text-subtle: var(--slate-400);
+  --text-muted: var(--slate-600);
+  --text-subtle: var(--slate-500);
   --text-on-primary: #ffffff;
   --surface-1: var(--surface);
   --bg-surface-variant: var(--surface-2);
@@ -146,18 +146,18 @@
   --brand-primary-soft: var(--primary-soft);
 
   --success: var(--green-500);
-  --success-soft: #e8f7ee;
-  --success-text: var(--green-600);
+  --success-soft: #dcfce7;
+  --success-text: #166534;
   --warning: var(--amber-500);
-  --warning-soft: #fdf3e2;
-  --warning-text: var(--amber-600);
+  --warning-soft: #fef0c7;
+  --warning-text: #9a3412;
   --danger: var(--red-500);
   --danger-hover: var(--red-600);
-  --danger-soft: #fdecec;
-  --danger-text: var(--red-600);
+  --danger-soft: #fee2e2;
+  --danger-text: #991b1b;
   --info: var(--blue-500);
-  --info-soft: #e9effd;
-  --info-text: var(--blue-600);
+  --info-soft: #dbeafe;
+  --info-text: #1e40af;
   --purple: #9333ea;
   --purple-soft: #f3e8ff;
   --purple-text: #7e22ce;
@@ -186,19 +186,27 @@
   --surface: #fffdf8;
   --surface-2: #faf6ec;
   --surface-3: #eae3d2;
-  --border: #e2dac7;
-  --border-strong: #cfc4ac;
+  --border: #d6cbb4;
+  --border-strong: #bca989;
   --text: #1c1917;
   --text-heading: var(--text);
   --text-body: var(--text);
   --text-main: var(--text);
-  --text-muted: #57534e;
-  --text-subtle: #78716c;
+  --text-muted: #44403c;
+  --text-subtle: #57534e;
   --text-on-primary: #ffffff;
   --surface-1: var(--surface);
   --bg-surface-variant: var(--surface-2);
   --clr-border: var(--border);
   --clr-surface-muted: var(--surface-2);
+  --success-soft: #dcfce7;
+  --success-text: #166534;
+  --warning-soft: #fef0c7;
+  --warning-text: #9a3412;
+  --danger-soft: #fee2e2;
+  --danger-text: #991b1b;
+  --info-soft: #dbeafe;
+  --info-text: #1e40af;
   --nav-bg: #1c1917;
   --nav-text: #d6d3d1;
   --nav-text-active: #ffffff;
@@ -219,8 +227,8 @@
   --text-heading: var(--text);
   --text-body: var(--text);
   --text-main: var(--text);
-  --text-muted: var(--slate-400);
-  --text-subtle: var(--slate-500);
+  --text-muted: var(--slate-300);
+  --text-subtle: var(--slate-400);
   --text-on-primary: #ffffff;
   --surface-1: var(--surface);
   --bg-surface-variant: var(--surface-2);

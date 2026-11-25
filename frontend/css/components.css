@@ -1185,36 +1185,37 @@ input[type="file"].input {
   padding: 0 8px;
   border-radius: var(--radius-xs);
   font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   background: var(--surface-3);
-  color: var(--text-muted);
+  color: var(--text);
   white-space: nowrap;
   letter-spacing: 0.01em;
   line-height: 1;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
 }
 
 .badge-sm {
   height: 18px;
   padding: 0 6px;
   font-size: var(--fs-2xs);
-  font-weight: var(--fw-medium);
+  font-weight: var(--fw-semibold);
   gap: 4px;
 }
 
 .badge-xs {
   height: 17px;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: max(10.5px, var(--fs-2xs));
   font-weight: var(--fw-semibold);
   gap: 3px;
 }
 
 .badge-secondary,
-.badge-subtle {
+.badge-subtle,
+.badge-neutral {
   background: var(--surface-2);
-  color: var(--text-muted);
-  border-color: var(--border);
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 .badge-primary {
@@ -2571,7 +2572,7 @@ a.list-item:hover {
 
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: none;
   }
 }
 
@@ -2609,6 +2610,10 @@ a.list-item:hover {
   .overlay.is-modal {
     align-items: center;
     padding: var(--sp-6);
+    transform: none;
+    will-change: auto;
+    -webkit-backface-visibility: visible;
+    backface-visibility: visible;
   }
 }
 
@@ -2643,7 +2648,11 @@ a.list-item:hover {
     border-radius: var(--radius-xl);
     border-bottom: 1px solid var(--border);
     padding-bottom: 0;
-    animation: muncul 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    -webkit-backface-visibility: visible;
+    backface-visibility: visible;
+    transform: none;
+    will-change: auto;
+    animation: muncul 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .is-modal .dialog.dialog-sm {
@@ -3664,12 +3673,12 @@ a.list-item:hover {
 @keyframes muncul {
   from {
     opacity: 0;
-    transform: scale3d(0.96, 0.96, 1);
+    transform: translateY(6px);
   }
 
   to {
     opacity: 1;
-    transform: scale3d(1, 1, 1);
+    transform: none;
   }
 }
 
@@ -4515,8 +4524,9 @@ a.list-item:hover {
 }
 
 .pos-kbd-hint {
-  font-size: 10px;
-  opacity: 0.7;
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+  opacity: 0.9;
 }
 
 /* Pelanggan / Member Card */
@@ -5813,7 +5823,7 @@ a.list-item:hover {
 .scroll-top-fab.is-visible {
   opacity: 1;
   visibility: visible;
-  transform: translate3d(0, 0, 0) scale(1);
+  transform: none;
 }
 
 .scroll-top-fab:hover {

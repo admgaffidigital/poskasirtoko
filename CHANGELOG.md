@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.137] - 2026-11-25
+### Diperbaiki — Ketajaman Teks Anti-Blur (Modal GPU & ClearType Windows) + Kontras Global WCAG AA/AAA
+- **[UI] Eliminasi Blur pada Modal Desktop & Animasi (`components.css`)**:
+  - Menghapus GPU layer permanen (`transform: translate3d(0,0,0)` & `will-change: transform`) khusus pada modal desktop (`.overlay.is-modal` & `.is-modal .dialog`) serta mengubah akhir animasi `@keyframes muncul` dari `scale3d(1,1,1)` menjadi `transform: none` agar modal dengan tinggi ganjil tidak di-rasterisasi blur pada koordinat sub-pixel. (Akselerasi GPU 60fps tetap aktif untuk bottom sheet Android mobile.)
+- **[UI] Pemulihan ClearType Subpixel Rendering di Windows (`base.css`)**:
+  - Mengubah `-webkit-font-smoothing` ke `auto` pada tema Terang & Hangat agar teks huruf kecil tampil tajam (ClearType native di Windows), sementara `antialiased` tetap dipakai khusus tema Gelap.
+- **[UI] Batas Minimum Ukuran Huruf & Peningkatan Kontras Tema Terang/Hangat/Gelap (`tokens.css`, `components.css`)**:
+  - Menetapkan lantai minimum `--fs-2xs: max(11px, 0.6875rem)`, `--fs-xs: max(12px, 0.75rem)`, dan `--fs-sm: max(13px, 0.875rem)` agar teks kecil tidak menyusut buram (9–10px) saat skala huruf disetel 85%.
+  - Mempertajam kontras `--text-muted`, `--text-subtle`, `--border`, `--border-strong`, warna badge status (`success`/`warning`/`danger`/`info`), dan menambahkan `.badge-neutral` pada seluruh tema (khususnya tema **Terang Hangat**).
+
 ## [1.0.136] - 2026-11-25
 ### Diperbaiki — Presisi Zona Waktu WIB, Snapshot Beku Tutup Buku Bulanan, & Valuasi Stok Varian
 - **[POS-BELI] [UI] Perbaikan Tanggal Default Pembelian Pagi Hari (`pembelian.js`, `format.js`)**:
