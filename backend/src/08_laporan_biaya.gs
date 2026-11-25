@@ -1193,6 +1193,7 @@ function aksiBiayaCreate_(ctx) {
   return denganKunci_(function () {
     const noTransaksi = nomorBerikut_('EXP');
     const waktuSkrg = sekarang_();
+    cekPeriodeTerkunci_(waktuSkrg);
 
     const dataBiaya = {
       no_transaksi: noTransaksi,
@@ -1236,6 +1237,7 @@ function aksiBiayaDelete_(ctx) {
   return denganKunci_(function () {
     const item = cariById_('Biaya', p.id);
     if (!item || item.deleted) gagal_(KODE.NOT_FOUND, 'Data biaya tidak ditemukan.');
+    cekPeriodeTerkunci_(item.tanggal || item.created_at || sekarang_());
 
     // Soft delete menggunakan hapusLunak_
     hapusLunak_('Biaya', item.id, ctx.user.id);
@@ -1251,4 +1253,558 @@ function aksiBiayaDelete_(ctx) {
       id: item.id
     };
   });
+}
+
+/* ========================================================================== */
+/* TUTUP HARIAN (EOD) & TUTUP BUKU BULANAN + EVALUASI ANALISA                 */
+/* ========================================================================== */
+
+/** Helper: Hitung tanggal awal & akhir sebuah bulan YYYY-MM */
+function rentangBulan_(ymStr) {
+  const parts = String(ymStr || '').split('-');
+  const tahun = parseInt(parts[0], 10);
+  const bulan = parseInt(parts[1], 10);
+  if (!isFinite(tahun) || !isFinite(bulan) || bulan < 1 || bulan > 12) {
+    gagal_(KODE.VALIDATION, 'Format bulan wajib YYYY-MM (contoh: 2026-11).');
+  }
+  const mm = ('0' + bulan).slice(-2);
+  const hariAkhir = new Date(tahun, bulan, 0).getDate();
+  const ddAkhir = ('0' + hariAkhir).slice(-2);
+  return {
+    periode: tahun + '-' + mm,
+    dari: tahun + '-' + mm + '-01',
+    sampai: tahun + '-' + mm + '-' + ddAkhir,
+    tahun: tahun,
+    bulan: bulan
+  };
+}
+
+/** Helper: Bulan sebelumnya dari YYYY-MM */
+function bulanSebelumnya_(ymStr) {
+  const r = rentangBulan_(ymStr);
+  let y = r.tahun;
+  let m = r.bulan - 1;
+  if (m < 1) { m = 12; y--; }
+  return y + '-' + ('0' + m).slice(-2);
+}
+
+/** Helper: Hitung persentase pertumbuhan MoM aman */
+function hitungMoM_(sekarangVal, laluVal) {
+  const cur = Number(sekarangVal) || 0;
+  const prev = Number(laluVal) || 0;
+  if (prev === 0) return cur > 0 ? 100 : (cur < 0 ? -100 : 0);
+  return Math.round(((cur - prev) / Math.abs(prev)) * 1000) / 10;
+}
+
+/**
+ * tutupBuku.rekapHarian — Rekap gabungan End-of-Day (EOD) seluruh shift & transaksi pada 1 tanggal.
+ */
+function aksiTutupBukuRekapHarian_(ctx) {
+  const p = ctx.payload || {};
+  const tanggal = (p.tanggal && /^\d{4}-\d{2}-\d{2}$/.test(String(p.tanggal).trim()))
+    ? String(p.tanggal).trim()
+    : sekarang_().substring(0, 10);
+
+  const semuaShift = bacaSemua_('Shift_Kasir').filter(function (s) {
+    if (s.deleted) return false;
+    return String(s.waktu_buka || '').substring(0, 10) === tanggal;
+  });
+
+  const shiftAktifHariIni = semuaShift.filter(function (s) { return s.status === 'aktif'; });
+  const shiftSelesaiHariIni = semuaShift.filter(function (s) { return s.status === 'tutup'; });
+
+  const semuaPending = bacaSemua_('Penjualan').filter(function (j) {
+    return !j.deleted && j.status === 'pending';
+  });
+
+  const lr = aksiLaporanLabaRugi_({ user: ctx.user, payload: { dari: tanggal, sampai: tanggal } });
+  const ak = aksiLaporanArusKas_({ user: ctx.user, payload: { dari: tanggal, sampai: tanggal } });
+
+  const penjualanHari = bacaSemua_('Penjualan').filter(function (j) {
+    return !j.deleted && j.status === 'final' && String(j.tanggal || '').substring(0, 10) === tanggal;
+  });
+
+  let totalModalAwal = 0;
+  let totalKasSistem = 0;
+  let totalKasFisik = 0;
+  let totalSelisih = 0;
+  let totalTunaiShift = 0;
+  let totalTransferShift = 0;
+  let totalTempoShift = 0;
+  let totalBiayaKasirShift = 0;
+
+  semuaShift.forEach(function (s) {
+    totalModalAwal += Number(s.modal_awal || 0);
+    if (s.status === 'tutup') {
+      totalKasSistem += Number(s.kas_sistem || 0);
+      totalKasFisik += Number(s.kas_fisik || 0);
+      totalSelisih += Number(s.selisih || 0);
+      totalTunaiShift += Number(s.total_tunai || 0);
+      totalTransferShift += Number(s.total_transfer || 0);
+      totalTempoShift += Number(s.total_tempo || 0);
+      totalBiayaKasirShift += Number(s.total_biaya_kasir || 0);
+    } else {
+      const live = hitungRekapShiftKasir_(s.kasir_id, {
+        shiftId: s.id,
+        waktuMulai: s.waktu_buka,
+        waktuSelesai: sekarang_(),
+        targetTgl: tanggal,
+        modalAwal: Number(s.modal_awal || 0),
+        fallbackUser: { id: s.kasir_id, nama: s.kasir_nama }
+      });
+      totalKasSistem += Number(live.total_laci || 0);
+      totalTunaiShift += Number(live.total_tunai || 0);
+      totalTransferShift += Number(live.total_transfer || 0);
+      totalTempoShift += Number(live.total_tempo || 0);
+      totalBiayaKasirShift += Number(live.total_biaya_kasir || 0);
+    }
+  });
+
+  // Cek apakah sudah pernah ditutup harian
+  const arsipEks = bacaSemua_('Tutup_Buku').filter(function (tb) {
+    return !tb.deleted && tb.tipe === 'harian' && tb.periode === tanggal;
+  })[0] || null;
+
+  return {
+    tanggal: tanggal,
+    sudah_tutup_harian: Boolean(arsipEks),
+    arsip: arsipEks,
+    precheck: {
+      shift_aktif_count: shiftAktifHariIni.length,
+      shift_selesai_count: shiftSelesaiHariIni.length,
+      shift_aktif_list: shiftAktifHariIni.map(function (s) {
+        return { id: s.id, no_shift: s.no_shift, kasir_nama: s.kasir_nama, waktu_buka: s.waktu_buka };
+      }),
+      pending_count: semuaPending.length
+    },
+    ringkasan: {
+      total_transaksi: penjualanHari.length,
+      omset_kotor: lr.ringkasan.omset_kotor,
+      total_diskon: lr.ringkasan.total_diskon,
+      omset_bersih: lr.ringkasan.omset_bersih,
+      total_hpp: lr.ringkasan.total_hpp,
+      laba_kotor: lr.ringkasan.laba_kotor_bersih,
+      total_biaya: lr.ringkasan.total_biaya_operasional,
+      laba_bersih: lr.ringkasan.laba_bersih_riil,
+      arus_kas_masuk: ak.ringkasan.total_kas_masuk,
+      arus_kas_keluar: ak.ringkasan.total_kas_keluar,
+      arus_kas_bersih: ak.ringkasan.arus_kas_bersih,
+      total_modal_awal: totalModalAwal,
+      total_tunai: totalTunaiShift,
+      total_transfer: totalTransferShift,
+      total_tempo: totalTempoShift,
+      total_biaya_kasir: totalBiayaKasirShift,
+      total_kas_sistem: totalKasSistem,
+      total_kas_fisik: totalKasFisik,
+      total_selisih: totalSelisih
+    },
+    shifts: semuaShift.map(function (s) {
+      return {
+        id: s.id,
+        no_shift: s.no_shift,
+        kasir_nama: s.kasir_nama,
+        status: s.status,
+        waktu_buka: s.waktu_buka,
+        waktu_tutup: s.waktu_tutup,
+        modal_awal: Number(s.modal_awal || 0),
+        total_penjualan: Number(s.total_penjualan || 0),
+        kas_sistem: Number(s.kas_sistem || 0),
+        kas_fisik: Number(s.kas_fisik || 0),
+        selisih: Number(s.selisih || 0)
+      };
+    })
+  };
+}
+
+/**
+ * tutupBuku.tutupHarian — Simpan arsip Tutup Harian (EOD), setoran ke Owner, & sisa modal besok.
+ */
+function aksiTutupBukuTutupHarian_(ctx) {
+  const p = ctx.payload || {};
+  const tanggal = (p.tanggal && /^\d{4}-\d{2}-\d{2}$/.test(String(p.tanggal).trim()))
+    ? String(p.tanggal).trim()
+    : sekarang_().substring(0, 10);
+
+  cekPeriodeTerkunci_(tanggal);
+
+  const rekap = aksiTutupBukuRekapHarian_({ user: ctx.user, payload: { tanggal: tanggal } });
+  if (rekap.precheck.shift_aktif_count > 0) {
+    gagal_(KODE.CONFLICT, 'Masih ada ' + rekap.precheck.shift_aktif_count + ' shift kasir yang belum ditutup hari ini (' +
+      rekap.precheck.shift_aktif_list.map(function (s) { return s.no_shift + ' - ' + s.kasir_nama; }).join(', ') +
+      '). Tutup semua shift kasir terlebih dahulu sebelum Tutup Harian.');
+  }
+
+  const setoranOwner = Math.round(V_.nonNegatif(p.setoran_owner, 'Setoran ke Owner', { bawaan: 0 }));
+  const sisaModalBesok = Math.round(V_.nonNegatif(p.sisa_modal_besok, 'Sisa Modal untuk Besok', { bawaan: 0 }));
+  const catatan = V_.teks(p.catatan || '', 'Catatan Tutup Harian', { maks: 500 });
+  const waktu = sekarang_();
+  const namaPenutup = ctx.user.nama || ctx.user.username || 'User';
+  const r = rekap.ringkasan;
+
+  const dataRow = {
+    periode: tanggal,
+    tipe: 'harian',
+    status: 'selesai',
+    waktu_tutup: waktu,
+    ditutup_oleh: ctx.user.id,
+    ditutup_oleh_nama: namaPenutup,
+    omset_kotor: r.omset_kotor,
+    total_diskon: r.total_diskon,
+    omset_bersih: r.omset_bersih,
+    total_hpp: r.total_hpp,
+    laba_kotor: r.laba_kotor,
+    total_biaya: r.total_biaya,
+    laba_bersih: r.laba_bersih,
+    margin_persen: r.omset_bersih > 0 ? Math.round((r.laba_kotor / r.omset_bersih) * 10000) / 100 : 0,
+    total_transaksi: r.total_transaksi,
+    total_pembelian: 0,
+    arus_kas_masuk: r.arus_kas_masuk,
+    arus_kas_keluar: r.arus_kas_keluar,
+    arus_kas_bersih: r.arus_kas_bersih,
+    saldo_piutang: 0,
+    saldo_hutang: 0,
+    valuasi_stok: 0,
+    selisih_shift: r.total_selisih,
+    setoran_owner: setoranOwner,
+    sisa_modal_besok: sisaModalBesok,
+    catatan: catatan,
+    snapshot_json: { shifts: rekap.shifts, ringkasan: r }
+  };
+
+  let tersimpan;
+  if (rekap.arsip && rekap.arsip.id) {
+    tersimpan = ubahBaris_('Tutup_Buku', [{ id: rekap.arsip.id, data: dataRow }], ctx.user.id)[0];
+  } else {
+    tersimpan = tambahBaris_('Tutup_Buku', [dataRow], ctx.user.id)[0];
+  }
+
+  catatAudit_(ctx.user.id, 'tutup_harian', 'TUTUP_BUKU', tanggal, {
+    omset_bersih: r.omset_bersih,
+    laba_bersih: r.laba_bersih,
+    selisih_shift: r.total_selisih,
+    setoran_owner: setoranOwner,
+    sisa_modal_besok: sisaModalBesok
+  });
+
+  return {
+    pesan: 'Tutup Harian tanggal ' + tanggal + ' berhasil disimpan.',
+    arsip: tersimpan,
+    ringkasan: r
+  };
+}
+
+/** Helper internal: Hitung KPI lengkap satu bulan YYYY-MM */
+function hitungMetrikSatuBulan_(ctx, ymStr) {
+  const rBln = rentangBulan_(ymStr);
+  const lr = aksiLaporanLabaRugi_({ user: ctx.user, payload: { dari: rBln.dari, sampai: rBln.sampai } });
+  const ak = aksiLaporanArusKas_({ user: ctx.user, payload: { dari: rBln.dari, sampai: rBln.sampai } });
+
+  const semuaPenjualan = bacaSemua_('Penjualan').filter(function (j) {
+    if (j.deleted || j.status !== 'final') return false;
+    const t = String(j.tanggal || '').substring(0, 10);
+    return t >= rBln.dari && t <= rBln.sampai;
+  });
+  const idJualSet = {};
+  semuaPenjualan.forEach(function (j) { idJualSet[j.id] = true; });
+
+  const semuaPembelian = bacaSemua_('Pembelian').filter(function (pb) {
+    if (pb.deleted || pb.status === 'batal') return false;
+    const t = String(pb.tanggal || '').substring(0, 10);
+    return t >= rBln.dari && t <= rBln.sampai;
+  });
+  const totalPembelian = semuaPembelian.reduce(function (s, pb) { return s + (Number(pb.total) || 0); }, 0);
+
+  const semuaShift = bacaSemua_('Shift_Kasir').filter(function (sh) {
+    if (sh.deleted) return false;
+    const t = String(sh.waktu_buka || '').substring(0, 10);
+    return t >= rBln.dari && t <= rBln.sampai;
+  });
+  const shiftAktifCount = semuaShift.filter(function (s) { return s.status === 'aktif'; }).length;
+  const totalSelisihShift = semuaShift.reduce(function (acc, s) { return acc + (s.status === 'tutup' ? (Number(s.selisih) || 0) : 0); }, 0);
+
+  // Hitung produk terjual di bulan ini (untuk Top 10 & Slow-Moving/Dead Stock)
+  const terjualPerProdukId = {};
+  const itemTerlarisMap = {};
+  bacaSemua_('Penjualan_Item').forEach(function (it) {
+    if (it.deleted || !idJualSet[it.penjualan_id]) return;
+    if (it.produk_id) terjualPerProdukId[it.produk_id] = (terjualPerProdukId[it.produk_id] || 0) + (Number(it.qty_dasar || it.qty) || 0);
+    const k = it.produk_id || it.nama;
+    if (!itemTerlarisMap[k]) {
+      itemTerlarisMap[k] = { produk_id: it.produk_id || '', nama: it.nama || '-', qty: 0, omset: 0, hpp: 0, laba: 0 };
+    }
+    const sub = Number(it.subtotal) || 0;
+    const hppTot = (Number(it.hpp) || 0) * (Number(it.qty_dasar || it.qty) || 0);
+    itemTerlarisMap[k].qty = bulatQty_(itemTerlarisMap[k].qty + (Number(it.qty) || 0));
+    itemTerlarisMap[k].omset += sub;
+    itemTerlarisMap[k].hpp += Math.round(hppTot);
+    itemTerlarisMap[k].laba += Math.round(sub - hppTot);
+  });
+
+  const topProdukTerlaris = Object.values(itemTerlarisMap)
+    .sort(function (a, b) { return b.omset - a.omset; })
+    .slice(0, 10);
+
+  // Saldo Piutang, Hutang, Valuasi Stok & Dead Stock (stok > 0, 0 penjualan di bulan ini)
+  const saldoPiutang = bacaSemua_('Piutang').reduce(function (acc, pt) {
+    return (!pt.deleted && pt.status !== 'lunas') ? acc + (Number(pt.sisa) || 0) : acc;
+  }, 0);
+  const saldoHutang = bacaSemua_('Hutang').reduce(function (acc, ht) {
+    return (!ht.deleted && ht.status !== 'lunas') ? acc + (Number(ht.sisa) || 0) : acc;
+  }, 0);
+
+  let valuasiStok = 0;
+  const deadStockList = [];
+  bacaSemua_('Produk').forEach(function (pr) {
+    if (pr.deleted || pr.aktif === false) return;
+    const st = Number(pr.stok) || 0;
+    const hp = Number(pr.hpp) || 0;
+    const nilai = Math.round(st * hp);
+    if (st > 0) valuasiStok += nilai;
+    if (st > 0 && !terjualPerProdukId[pr.id]) {
+      deadStockList.push({
+        id: pr.id,
+        sku: pr.sku || '-',
+        nama: pr.nama || '-',
+        satuan: pr.satuan_dasar || 'PCS',
+        stok: st,
+        hpp: hp,
+        nilai_modal: nilai
+      });
+    }
+  });
+  deadStockList.sort(function (a, b) { return b.nilai_modal - a.nilai_modal; });
+
+  return {
+    periode: rBln.periode,
+    rentang: { dari: rBln.dari, sampai: rBln.sampai },
+    ringkasan: {
+      omset_kotor: lr.ringkasan.omset_kotor,
+      total_diskon: lr.ringkasan.total_diskon,
+      omset_bersih: lr.ringkasan.omset_bersih,
+      total_hpp: lr.ringkasan.total_hpp,
+      laba_kotor: lr.ringkasan.laba_kotor_bersih,
+      margin_persen: lr.ringkasan.margin_persen,
+      total_biaya: lr.ringkasan.total_biaya_operasional,
+      laba_bersih: lr.ringkasan.laba_bersih_riil,
+      margin_bersih_persen: lr.ringkasan.margin_bersih_persen,
+      total_transaksi: semuaPenjualan.length,
+      total_pembelian: totalPembelian,
+      arus_kas_masuk: ak.ringkasan.total_kas_masuk,
+      arus_kas_keluar: ak.ringkasan.total_kas_keluar,
+      arus_kas_bersih: ak.ringkasan.arus_kas_bersih,
+      saldo_piutang: saldoPiutang,
+      saldo_hutang: saldoHutang,
+      valuasi_stok: valuasiStok,
+      total_shift: semuaShift.length,
+      shift_aktif_count: shiftAktifCount,
+      selisih_shift: totalSelisihShift
+    },
+    top_produk_terlaris: topProdukTerlaris,
+    produk_margin_teratas: lr.produk_margin_teratas || [],
+    analisis_kategori: lr.analisis_kategori || [],
+    analisis_biaya: lr.analisis_biaya || [],
+    slow_moving: deadStockList.slice(0, 25),
+    total_slow_moving: deadStockList.length,
+    nilai_slow_moving: deadStockList.reduce(function (s, d) { return s + d.nilai_modal; }, 0)
+  };
+}
+
+/**
+ * tutupBuku.evaluasiBulanan — Laporan Evaluasi & Analisa Bulanan lengkap dengan perbandingan MoM.
+ */
+function aksiTutupBukuEvaluasiBulanan_(ctx) {
+  const p = ctx.payload || {};
+  const ymTarget = (p.periode && /^\d{4}-\d{2}$/.test(String(p.periode).trim()))
+    ? String(p.periode).trim()
+    : sekarang_().substring(0, 7);
+  const ymLalu = bulanSebelumnya_(ymTarget);
+
+  const semuaArsip = bacaSemua_('Tutup_Buku').filter(function (tb) { return !tb.deleted; });
+  const arsipBulanIni = semuaArsip.filter(function (tb) {
+    return tb.tipe === 'bulanan' && tb.periode === ymTarget;
+  })[0] || null;
+  const arsipBulanLalu = semuaArsip.filter(function (tb) {
+    return tb.tipe === 'bulanan' && tb.periode === ymLalu;
+  })[0] || null;
+
+  const metrikIni = hitungMetrikSatuBulan_(ctx, ymTarget);
+  const ringkasanLalu = arsipBulanLalu
+    ? {
+      omset_bersih: Number(arsipBulanLalu.omset_bersih || 0),
+      laba_kotor: Number(arsipBulanLalu.laba_kotor || 0),
+      total_biaya: Number(arsipBulanLalu.total_biaya || 0),
+      laba_bersih: Number(arsipBulanLalu.laba_bersih || 0),
+      total_transaksi: Number(arsipBulanLalu.total_transaksi || 0),
+      arus_kas_bersih: Number(arsipBulanLalu.arus_kas_bersih || 0)
+    }
+    : hitungMetrikSatuBulan_(ctx, ymLalu).ringkasan;
+
+  const r = metrikIni.ringkasan;
+  const mom = {
+    periode_lalu: ymLalu,
+    omset_persen: hitungMoM_(r.omset_bersih, ringkasanLalu.omset_bersih),
+    laba_kotor_persen: hitungMoM_(r.laba_kotor, ringkasanLalu.laba_kotor),
+    biaya_persen: hitungMoM_(r.total_biaya, ringkasanLalu.total_biaya),
+    laba_bersih_persen: hitungMoM_(r.laba_bersih, ringkasanLalu.laba_bersih),
+    transaksi_persen: hitungMoM_(r.total_transaksi, ringkasanLalu.total_transaksi),
+    ringkasan_lalu: ringkasanLalu
+  };
+
+  const riwayatBulanan = semuaArsip
+    .filter(function (tb) { return tb.tipe === 'bulanan'; })
+    .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); })
+    .slice(0, 24);
+
+  const riwayatHarianBulanIni = semuaArsip
+    .filter(function (tb) { return tb.tipe === 'harian' && String(tb.periode || '').indexOf(ymTarget) === 0; })
+    .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); });
+
+  const cfg = ambilPengaturan_();
+
+  return {
+    periode: ymTarget,
+    rentang: metrikIni.rentang,
+    status_buku: arsipBulanIni ? arsipBulanIni.status : 'terbuka',
+    arsip: arsipBulanIni,
+    ringkasan: r,
+    perbandingan_mom: mom,
+    top_produk_terlaris: metrikIni.top_produk_terlaris,
+    produk_margin_teratas: metrikIni.produk_margin_teratas,
+    analisis_kategori: metrikIni.analisis_kategori,
+    analisis_biaya: metrikIni.analisis_biaya,
+    slow_moving: metrikIni.slow_moving,
+    total_slow_moving: metrikIni.total_slow_moving,
+    nilai_slow_moving: metrikIni.nilai_slow_moving,
+    riwayat_bulanan: riwayatBulanan,
+    riwayat_harian: riwayatHarianBulanIni,
+    toko: {
+      nama: cfg.toko_nama || 'Toko Bangunan',
+      alamat: cfg.toko_alamat || '',
+      hp: cfg.toko_hp || ''
+    }
+  };
+}
+
+/**
+ * tutupBuku.tutupBulanan — Tutup Buku & Kunci Periode Bulanan (Khusus Owner).
+ */
+function aksiTutupBukuTutupBulanan_(ctx) {
+  const p = ctx.payload || {};
+  const ymTarget = (p.periode && /^\d{4}-\d{2}$/.test(String(p.periode).trim()))
+    ? String(p.periode).trim()
+    : sekarang_().substring(0, 7);
+  const catatan = V_.teks(p.catatan || '', 'Catatan Tutup Buku Bulanan', { maks: 500 });
+
+  const evaluasi = aksiTutupBukuEvaluasiBulanan_({ user: ctx.user, payload: { periode: ymTarget } });
+  if (evaluasi.status_buku === 'terkunci') {
+    gagal_(KODE.CONFLICT, 'Periode bulan ' + ymTarget + ' sudah ditutup buku (terkunci).');
+  }
+  if (evaluasi.ringkasan.shift_aktif_count > 0) {
+    gagal_(KODE.CONFLICT, 'Masih ada ' + evaluasi.ringkasan.shift_aktif_count + ' shift kasir yang belum ditutup pada bulan ' + ymTarget + '. Tutup semua shift terlebih dahulu.');
+  }
+
+  const r = evaluasi.ringkasan;
+  const waktu = sekarang_();
+  const namaPenutup = ctx.user.nama || ctx.user.username || 'Owner';
+  const dataRow = {
+    periode: ymTarget,
+    tipe: 'bulanan',
+    status: 'terkunci',
+    waktu_tutup: waktu,
+    ditutup_oleh: ctx.user.id,
+    ditutup_oleh_nama: namaPenutup,
+    omset_kotor: r.omset_kotor,
+    total_diskon: r.total_diskon,
+    omset_bersih: r.omset_bersih,
+    total_hpp: r.total_hpp,
+    laba_kotor: r.laba_kotor,
+    total_biaya: r.total_biaya,
+    laba_bersih: r.laba_bersih,
+    margin_persen: r.margin_persen,
+    total_transaksi: r.total_transaksi,
+    total_pembelian: r.total_pembelian,
+    arus_kas_masuk: r.arus_kas_masuk,
+    arus_kas_keluar: r.arus_kas_keluar,
+    arus_kas_bersih: r.arus_kas_bersih,
+    saldo_piutang: r.saldo_piutang,
+    saldo_hutang: r.saldo_hutang,
+    valuasi_stok: r.valuasi_stok,
+    selisih_shift: r.selisih_shift,
+    setoran_owner: 0,
+    sisa_modal_besok: 0,
+    catatan: catatan,
+    snapshot_json: {
+      ringkasan: r,
+      perbandingan_mom: evaluasi.perbandingan_mom,
+      top_produk_terlaris: evaluasi.top_produk_terlaris,
+      analisis_kategori: evaluasi.analisis_kategori,
+      analisis_biaya: evaluasi.analisis_biaya,
+      total_slow_moving: evaluasi.total_slow_moving,
+      nilai_slow_moving: evaluasi.nilai_slow_moving
+    }
+  };
+
+  let tersimpan;
+  if (evaluasi.arsip && evaluasi.arsip.id) {
+    tersimpan = ubahBaris_('Tutup_Buku', [{ id: evaluasi.arsip.id, data: dataRow }], ctx.user.id)[0];
+  } else {
+    tersimpan = tambahBaris_('Tutup_Buku', [dataRow], ctx.user.id)[0];
+  }
+
+  catatAudit_(ctx.user.id, 'tutup_buku_bulanan', 'TUTUP_BUKU', ymTarget, {
+    omset_bersih: r.omset_bersih,
+    laba_bersih: r.laba_bersih,
+    margin_persen: r.margin_persen,
+    selisih_shift: r.selisih_shift,
+    catatan: catatan
+  });
+
+  return {
+    pesan: 'Tutup Buku Bulanan ' + ymTarget + ' berhasil disimpan & periode telah dikunci.',
+    arsip: tersimpan
+  };
+}
+
+/**
+ * tutupBuku.bukaKunci — Buka kunci periode bulanan untuk koreksi darurat (Khusus Owner, wajib alasan).
+ */
+function aksiTutupBukuBukaKunci_(ctx) {
+  const p = ctx.payload || {};
+  const ymTarget = V_.teks(p.periode, 'Periode Bulan', { wajib: true, maks: 10 });
+  const alasan = V_.teks(p.alasan, 'Alasan Buka Kunci Periode', { wajib: true, min: 4, maks: 300 });
+
+  const arsip = bacaSemua_('Tutup_Buku').filter(function (tb) {
+    return !tb.deleted && tb.tipe === 'bulanan' && tb.periode === ymTarget;
+  })[0];
+
+  if (!arsip) gagal_(KODE.NOT_FOUND, 'Arsip Tutup Buku bulan ' + ymTarget + ' tidak ditemukan.');
+  if (arsip.status !== 'terkunci') gagal_(KODE.CONFLICT, 'Periode bulan ' + ymTarget + ' saat ini tidak dalam keadaan terkunci.');
+
+  const diubah = ubahBaris_('Tutup_Buku', [{
+    id: arsip.id,
+    data: {
+      status: 'dibuka_kembali',
+      catatan: (arsip.catatan ? arsip.catatan + ' | ' : '') + 'Dibuka kembali: ' + alasan
+    }
+  }], ctx.user.id)[0];
+
+  catatAudit_(ctx.user.id, 'tutup_buku_buka_kunci', 'TUTUP_BUKU', ymTarget, { alasan: alasan });
+
+  return {
+    pesan: 'Kunci periode bulan ' + ymTarget + ' berhasil dibuka kembali.',
+    arsip: diubah
+  };
+}
+
+/**
+ * tutupBuku.list — Daftar riwayat Tutup Harian & Tutup Buku Bulanan.
+ */
+function aksiTutupBukuList_(ctx) {
+  const p = ctx.payload || {};
+  let items = bacaSemua_('Tutup_Buku').filter(function (tb) { return !tb.deleted; });
+  if (p.tipe === 'harian' || p.tipe === 'bulanan') {
+    items = items.filter(function (tb) { return tb.tipe === p.tipe; });
+  }
+  items.sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); });
+  return { items: items, total: items.length };
 }

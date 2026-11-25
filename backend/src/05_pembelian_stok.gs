@@ -260,6 +260,7 @@ function aksiPembelianCreate_(ctx) {
   const metodeAlokasi = String(payload.metode_alokasi_biaya || 'proporsional').trim().toLowerCase() === 'qty' ? 'qty' : 'proporsional';
   const nominalBayar = V_.rupiah(payload.bayar, 'Nominal Bayar', { bawaan: 0 });
   const tanggalBeli = payload.tanggal ? String(payload.tanggal).trim() : sekarang_();
+  cekPeriodeTerkunci_(tanggalBeli);
   const jatuhTempo = payload.jatuh_tempo ? String(payload.jatuh_tempo).trim() : '';
 
   // Validasi dan normalisasi tiap item

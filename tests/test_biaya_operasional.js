@@ -184,6 +184,7 @@ async function run() {
 
   const ctxOwner = { user: { id: 'user-owner', username: 'owner', role: 'owner', nama: 'Bapak Owner' } };
   const ctxKasir = { user: { id: 'user-kasir-1', username: 'kasir1', role: 'kasir', nama: 'Kasir Susi' } };
+  env.aksiPengaturanSet_({ ...ctxOwner, payload: { wajib_buka_shift: false } });
 
   // 1. Catat Biaya Kasir (Petty cash untuk bensin pickup toko)
   const resB1 = env.aksiBiayaCreate_({

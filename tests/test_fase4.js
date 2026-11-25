@@ -192,6 +192,7 @@ async function runTests() {
     payload: {},
     token: 'token-owner'
   };
+  env.aksiPengaturanSet_({ ...ctxOwner, payload: { wajib_buka_shift: false } });
 
   // Kasir User
   const kasirRes = env.tambahBaris_('Users', [{

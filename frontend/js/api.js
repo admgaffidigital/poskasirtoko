@@ -64,7 +64,10 @@ const CACHE_CONFIG = {
   'laporan.pembelian': 60000,      // 1 menit
   'laporan.arusKas': 60000,        // 1 menit
   'laporan.labaRugi': 60000,       // 1 menit
-  'laporan.stokValuasi': 60000     // 1 menit
+  'laporan.stokValuasi': 60000,    // 1 menit
+  'tutupBuku.list': 60000,         // 1 menit
+  'tutupBuku.rekapHarian': 30000,  // 30 detik
+  'tutupBuku.evaluasiBulanan': 45000 // 45 detik
 };
 
 // Aksi yang disimpan ke localStorage agar instan (0ms) saat halaman di-reload (F5)
@@ -89,7 +92,8 @@ const MUTATION_PATTERNS = [
   { trigger: 'kategori.', targets: ['kategori.', 'produk.', 'laporan.'] },
   { trigger: 'produk.', targets: ['produk.', 'kartuStok.', 'laporan.'] },
   { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'shift.', 'pengiriman.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
-  { trigger: 'shift.', targets: ['shift.', 'penjualan.', 'laporan.'] },
+  { trigger: 'shift.', targets: ['shift.', 'penjualan.', 'laporan.', 'tutupBuku.'] },
+  { trigger: 'tutupBuku.', targets: ['tutupBuku.', 'shift.', 'laporan.'] },
   { trigger: 'pengiriman.', targets: ['pengiriman.', 'penjualan.', 'laporan.'] },
   { trigger: 'penawaran.', targets: ['penawaran.'] },
   { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'kartuStok.', 'laporan.'] },

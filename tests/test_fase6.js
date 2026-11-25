@@ -202,6 +202,7 @@ async function runTests() {
     token: 'token-owner',
     waktu: env.sekarang_()
   };
+  env.aksiPengaturanSet_({ ...ctxOwner, payload: { wajib_buka_shift: false } });
 
   // Buat akun Admin
   const adminRes = env.tambahBaris_('Users', [{

@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.134] - 2026-11-25
+### Ditambahkan — Wajib Buka Shift (Semua Role), Tutup Harian (EOD), & Tutup Buku Bulanan + Evaluasi Analisa
+- **[POS-JUAL] [SETTING] [BACKEND] Wajib Buka Shift & Deteksi Shift Kemarin (`00_konfig_skema_router.gs`, `04_pos_penjualan.gs`, `pos.js`, `pengaturan.js`)**:
+  - Menambahkan kebijakan `wajib_buka_shift` (default aktif untuk semua role: Owner, Admin, & Kasir; dapat diatur Owner di `#/pengaturan`).
+  - Validasi ganda di POS Kasir (`bukaModalPembayaran`) & backend `penjualan.create`: menolak transaksi bila belum buka shift (`SHIFT_BELUM_DIBUKA`) atau masih ada shift kemarin belum ditutup (`SHIFT_KEMARIN_BELUM_TUTUP`), serta otomatis menyarankan modal awal dari sisa modal Tutup Harian sebelumnya.
+- **[POS-JUAL] [BACKEND] Tutup Harian / End-of-Day (`08_laporan_biaya.gs`, `pos.js`)**:
+  - Endpoint `tutupBuku.rekapHarian` & `tutupBuku.tutupHarian` + tab baru **Tutup Harian** di modal Shift Kasir (`F3`): pre-check shift aktif / draft pending / antrean offline, rekap gabungan semua shift hari itu, input **Setoran ke Owner** & **Sisa Modal Besok**, serta tombol 1-klik **Kirim Ringkasan ke WA Owner**.
+- **[DASHBOARD] [BACKEND] Tutup Buku Bulanan, Kunci Periode & Laporan Evaluasi PDF A4/Excel (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `08_laporan_biaya.gs`, `laporan.js`, `evaluasi-pdf.js`, `sw.js`)**:
+  - Menambahkan sheet `Tutup_Buku` (auto-provisioned, 31 sheet total) dan proteksi `cekPeriodeTerkunci_()` pada Penjualan, Void, Pembelian, & Biaya agar periode bulanan yang sudah ditutup tidak dapat diubah tanpa **Buka Kunci Periode** oleh Owner (tercatat di `Log_Audit`).
+  - Tab baru **Tutup Bulanan** di `#/dashboard`: KPI bulanan lengkap dengan tren **MoM % vs Bulan Lalu**, **Top 10 Produk Terlaris**, **Daftar Barang Slow-Moving / Dead Stock** (modal tertahan), arsip multi-bulan, serta ekspor 1-klik **Laporan Evaluasi PDF A4** dan **Workbook Excel Bulanan (`.xls`)**.
+
 ## [1.0.133] - 2026-11-25
 ### Diperbaiki — Audit Debugging Total: Skema Kartu_Stok Import Massal, Presisi Desimal POS & Produk
 - **[BACKEND] [PRODUK] Keselarasan Skema `Kartu_Stok` & `Kategori` di `produk.importMassal` (`03_kategori_produk.gs`, `test_debug_final.js`)**: Memperbaiki 4 titik pencatatan `Kartu_Stok` pada import massal agar memakai kolom skema resmi (`tipe: 'koreksi'`, `saldo`, `hpp`, `ref_id`, `user_id`, `keterangan`) dengan pembulatan desimal `bulatQty_()`, serta membersihkan properti non-skema `aktif` saat auto-buat `Kategori`.

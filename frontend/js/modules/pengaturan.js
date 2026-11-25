@@ -259,15 +259,28 @@ async function muatPengaturan(container) {
             </div>
           </div>
 
-          <div class="card card-body" style="margin-top: var(--sp-3);">
-            <label class="switch">
-              <input type="checkbox" id="cfg-stok-minus" ${cfg.stok_minus ? 'checked' : ''}>
-              <span class="switch-track"></span>
-              <div>
-                <span class="text-sm fw-semibold">Izinkan Transaksi Saat Stok Minus</span>
-                <div class="text-xs text-muted">Secara default kasir dilarang menjual barang jika stok fisik tidak mencukupi untuk mencegah selisih stok.</div>
-              </div>
-            </label>
+          <div class="form-grid cols-2" style="margin-top: var(--sp-3);">
+            <div class="card card-body">
+              <label class="switch">
+                <input type="checkbox" id="cfg-stok-minus" ${cfg.stok_minus ? 'checked' : ''}>
+                <span class="switch-track"></span>
+                <div>
+                  <span class="text-sm fw-semibold">Izinkan Transaksi Saat Stok Minus</span>
+                  <div class="text-xs text-muted">Secara default kasir dilarang menjual barang jika stok fisik tidak mencukupi untuk mencegah selisih stok.</div>
+                </div>
+              </label>
+            </div>
+
+            <div class="card card-body">
+              <label class="switch">
+                <input type="checkbox" id="cfg-wajib-buka-shift" ${cfg.wajib_buka_shift !== false ? 'checked' : ''}>
+                <span class="switch-track"></span>
+                <div>
+                  <span class="text-sm fw-semibold">Wajib Buka Shift Sebelum Transaksi POS</span>
+                  <div class="text-xs text-muted">Berlaku untuk semua role (Owner, Admin, &amp; Kasir). Transaksi &amp; tutup harian terkontrol penuh, termasuk peringatan shift kemarin belum ditutup.</div>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -386,6 +399,7 @@ async function muatPengaturan(container) {
         pajak_persen: Number.isFinite(parsedPajakPersen) ? parsedPajakPersen : 11,
         pembulatan_aktif: $('#cfg-pembulatan-aktif', form).checked,
         stok_minus: $('#cfg-stok-minus', form).checked,
+        wajib_buka_shift: $('#cfg-wajib-buka-shift', form).checked,
         poin_per_rupiah: parseInt($('#cfg-poin-rupiah', form).value, 10) || 10000
       };
 

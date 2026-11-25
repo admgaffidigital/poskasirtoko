@@ -799,3 +799,24 @@ function aksiSistemBackup_(ctx) {
     sheets: sheetsData
   };
 }
+
+/**
+ * cekPeriodeTerkunci_ — Pastikan tanggal transaksi tidak berada pada bulan yang sudah ditutup buku (terkunci).
+ * Jika terkunci, melempar error FORBIDDEN agar angka laporan bulan lalu tetap utuh & tidak berubah.
+ */
+function cekPeriodeTerkunci_(tanggalStr) {
+  const ym = String(tanggalStr || sekarang_()).substring(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(ym)) return;
+  let daftarTutup = [];
+  try {
+    daftarTutup = bacaSemua_('Tutup_Buku');
+  } catch (_) {
+    return;
+  }
+  const terkunci = daftarTutup.some(function (tb) {
+    return !tb.deleted && tb.tipe === 'bulanan' && tb.periode === ym && tb.status === 'terkunci';
+  });
+  if (terkunci) {
+    gagal_(KODE.FORBIDDEN, 'PERIODE_TERKUNCI: Periode bulan ' + ym + ' sudah ditutup buku (terkunci). Hubungi Owner untuk membuka kunci periode terlebih dahulu.');
+  }
+}

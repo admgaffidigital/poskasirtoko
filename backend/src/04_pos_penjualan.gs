@@ -89,6 +89,23 @@ function aksiPenjualanCreate_(ctx) {
     gagal_(KODE.VALIDATION, 'Keranjang penjualan tidak boleh kosong.');
   }
 
+  // Kunci Periode Bulanan: cegah transaksi pada bulan yang sudah ditutup buku
+  const waktuSekarang = sekarang_();
+  cekPeriodeTerkunci_(waktuSekarang);
+
+  // Kebijakan Wajib Buka Shift (berlaku untuk semua role bila aktif di Pengaturan)
+  if (pengaturan.wajib_buka_shift !== false) {
+    const shiftAktifUser = cariShiftAktifKasir_(ctx.user.id);
+    if (!shiftAktifUser) {
+      gagal_(KODE.VALIDATION, 'SHIFT_BELUM_DIBUKA: Anda wajib membuka Shift Kasir terlebih dahulu sebelum melakukan transaksi di POS.');
+    }
+    const hariIniStr = waktuSekarang.substring(0, 10);
+    const tglBukaShift = String(shiftAktifUser.waktu_buka || '').substring(0, 10);
+    if (tglBukaShift && tglBukaShift < hariIniStr) {
+      gagal_(KODE.VALIDATION, 'SHIFT_KEMARIN_BELUM_TUTUP: Shift kasir ' + shiftAktifUser.no_shift + ' dari tanggal ' + tglBukaShift + ' belum ditutup. Wajib tutup shift hari sebelumnya terlebih dahulu.');
+    }
+  }
+
   // Siapkan indeks data referensi untuk efisiensi batch
   const semuaProduk = bacaSemua_('Produk');
   const produkPeta = {};
@@ -1167,19 +1184,48 @@ function aksiPenjualanShiftKasir_(ctx) {
 function aksiShiftAktif_(ctx) {
   const p = ctx.payload || {};
   const user = ctx.user;
+  const pengaturan = ambilPengaturan_();
+  const wajibBukaShift = pengaturan.wajib_buka_shift !== false;
   const isOwnerOrAdmin = user.role === ROLE.OWNER || user.role === ROLE.ADMIN;
   const targetKasirId = (isOwnerOrAdmin && p.kasir_id) ? String(p.kasir_id) : user.id;
+  const hariIni = sekarang_().substring(0, 10);
+
+  // Cek saran modal awal dari Tutup Harian terakhir (sisa_modal_besok)
+  let saranModalAwal = 0;
+  try {
+    const arsipHarian = bacaSemua_('Tutup_Buku')
+      .filter(function (tb) { return !tb.deleted && tb.tipe === 'harian' && Number(tb.sisa_modal_besok || 0) > 0; })
+      .sort(function (a, b) { return String(b.periode || '').localeCompare(String(a.periode || '')); });
+    if (arsipHarian.length > 0) {
+      saranModalAwal = Number(arsipHarian[0].sisa_modal_besok || 0);
+    }
+  } catch (_) {}
+
+  const semuaShiftAktif = bacaSemua_('Shift_Kasir').filter(function (s) {
+    return !s.deleted && s.status === 'aktif';
+  });
+  const shiftAktifLainCount = semuaShiftAktif.filter(function (s) { return s.kasir_id !== targetKasirId; }).length;
 
   const shiftAktif = cariShiftAktifKasir_(targetKasirId);
   if (!shiftAktif) {
-    return { shift: null, ringkasan: null };
+    return {
+      shift: null,
+      ringkasan: null,
+      wajib_buka_shift: wajibBukaShift,
+      shift_kemarin_belum_tutup: false,
+      saran_modal_awal: saranModalAwal,
+      shift_aktif_lain_count: shiftAktifLainCount
+    };
   }
+
+  const tglShift = String(shiftAktif.waktu_buka || '').substring(0, 10);
+  const shiftKemarinBelumTutup = Boolean(tglShift && tglShift < hariIni);
 
   const rekap = hitungRekapShiftKasir_(shiftAktif.kasir_id, {
     shiftId: shiftAktif.id,
     waktuMulai: shiftAktif.waktu_buka,
     waktuSelesai: sekarang_(),
-    targetTgl: String(shiftAktif.waktu_buka || '').substring(0, 10),
+    targetTgl: tglShift,
     modalAwal: Number(shiftAktif.modal_awal || 0),
     fallbackUser: user
   });
@@ -1192,7 +1238,11 @@ function aksiShiftAktif_(ctx) {
 
   return {
     shift: shiftAktif,
-    ringkasan: rekap
+    ringkasan: rekap,
+    wajib_buka_shift: wajibBukaShift,
+    shift_kemarin_belum_tutup: shiftKemarinBelumTutup,
+    saran_modal_awal: saranModalAwal,
+    shift_aktif_lain_count: shiftAktifLainCount
   };
 }
 
@@ -1200,6 +1250,7 @@ function aksiShiftAktif_(ctx) {
 function aksiShiftBuka_(ctx) {
   const p = ctx.payload || {};
   const user = ctx.user;
+  cekPeriodeTerkunci_(sekarang_());
   const modalAwal = Math.round(V_.nonNegatif(p.modal_awal, 'Modal awal laci', { bawaan: 0 }));
   const catatanBuka = V_.teks(p.catatan || p.catatan_buka || '', 'Catatan buka shift', { maks: 300 });
 
@@ -1893,6 +1944,8 @@ function aksiPenjualanVoid_(ctx) {
   if (piutangTerkait && Number(piutangTerkait.terbayar || 0) > 0) {
     gagal_(KODE.CONFLICT, 'Transaksi ini tidak dapat dibatalkan (void) karena piutang sudah memiliki riwayat pembayaran cicilan (' + formatRupiah_(piutangTerkait.terbayar) + ').');
   }
+
+  cekPeriodeTerkunci_(penjualan.tanggal || sekarang_());
 
   // 1. Kembalikan Stok & Catat Kartu_Stok Tipe 'void'
   const items = bacaSemua_('Penjualan_Item').filter(function (it) {

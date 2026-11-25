@@ -165,6 +165,12 @@ const SKEMA = {
     ['subtotal', 'n'], ['diskon_tipe', 's'], ['diskon_nilai', 'n'], ['diskon', 'n'], ['ongkir', 'n'], ['total', 'n'],
     ['pengiriman', 's'], ['catatan', 's'], ['items_json', 'j'], ['status', 's'], ['penjualan_id', 's'],
     ['no_nota_konversi', 's']],
+  Tutup_Buku: [['periode', 's'], ['tipe', 's'], ['status', 's'], ['waktu_tutup', 'd'], ['ditutup_oleh', 's'],
+    ['ditutup_oleh_nama', 's'], ['omset_kotor', 'n'], ['total_diskon', 'n'], ['omset_bersih', 'n'], ['total_hpp', 'n'],
+    ['laba_kotor', 'n'], ['total_biaya', 'n'], ['laba_bersih', 'n'], ['margin_persen', 'n'], ['total_transaksi', 'n'],
+    ['total_pembelian', 'n'], ['arus_kas_masuk', 'n'], ['arus_kas_keluar', 'n'], ['arus_kas_bersih', 'n'],
+    ['saldo_piutang', 'n'], ['saldo_hutang', 'n'], ['valuasi_stok', 'n'], ['selisih_shift', 'n'],
+    ['setoran_owner', 'n'], ['sisa_modal_besok', 'n'], ['catatan', 's'], ['snapshot_json', 'j']],
   Pengaturan: [['key', 's'], ['value', 'j']],
   Log_Audit: [['user_id', 's'], ['aksi', 's'], ['modul', 's'], ['ref_id', 's'], ['detail_json', 'j']],
   Counter: [['key', 's'], ['nilai', 'n']]
@@ -217,6 +223,7 @@ const PENGATURAN_DEFAULT = {
   pembulatan_aktif: false,
   pembulatan_kelipatan: 100,
   stok_minus: false,
+  wajib_buka_shift: true,
   tempo_default_hari: 30,
   limit_kredit_default: 0,
   diskon_maks_kasir_persen: 10,
@@ -369,7 +376,15 @@ const RUTE = {
   'penawaran.list': { publik: false, roles: SEMUA_ROLE, handler: aksiPenawaranList_ },
   'penawaran.create': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranCreate_ },
   'penawaran.konversi': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranKonversi_ },
-  'penawaran.delete': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranDelete_ }
+  'penawaran.delete': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPenawaranDelete_ },
+
+  // Tutup Harian (EOD) & Tutup Buku Bulanan + Evaluasi Analisa
+  'tutupBuku.rekapHarian': { publik: false, roles: SEMUA_ROLE, handler: aksiTutupBukuRekapHarian_ },
+  'tutupBuku.tutupHarian': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiTutupBukuTutupHarian_ },
+  'tutupBuku.evaluasiBulanan': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiTutupBukuEvaluasiBulanan_ },
+  'tutupBuku.tutupBulanan': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiTutupBukuTutupBulanan_ },
+  'tutupBuku.bukaKunci': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiTutupBukuBukaKunci_ },
+  'tutupBuku.list': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiTutupBukuList_ }
 };
 
 /** Cache pembacaan per-request untuk optimasi performa sheet. */

@@ -233,6 +233,8 @@ async function runAudit() {
     assert.strictEqual(sheets.includes('Penjualan'), true);
     assert.strictEqual(sheets.includes('Pembelian'), true);
     assert.strictEqual(sheets.includes('Log_Audit'), true);
+    const ownerInit = app.bacaSemua_('Users').find(u => u.username === 'owner');
+    app.aksiPengaturanSet_({ user: ownerInit, payload: { wajib_buka_shift: false } });
   });
 
   // Ambil token owner pertama
@@ -1067,6 +1069,7 @@ async function runAudit() {
     const envAcc = setupMockEnv();
     envAcc.setupDatabase();
     const ownerRow = envAcc.bacaSemua_('Users').find(u => u.username === 'owner');
+    envAcc.aksiPengaturanSet_({ user: ownerRow, payload: { wajib_buka_shift: false } });
 
     // Buat produk HPP Rp 8.000, Harga Jual Rp 10.000, Stok 50
     const prRes = envAcc.aksiProdukCreate_({
@@ -1277,6 +1280,7 @@ async function runAudit() {
     const envOng = setupMockEnv();
     envOng.setupDatabase();
     const ownerRow = envOng.bacaSemua_('Users').find(u => u.username === 'owner');
+    envOng.aksiPengaturanSet_({ user: ownerRow, payload: { wajib_buka_shift: false } });
 
     const prRes = envOng.aksiProdukCreate_({
       user: ownerRow,
@@ -1453,6 +1457,7 @@ async function runAudit() {
     const envDep = setupMockEnv();
     envDep.setupDatabase();
     const ownerRow = envDep.bacaSemua_('Users').find(u => u.username === 'owner');
+    envDep.aksiPengaturanSet_({ user: ownerRow, payload: { wajib_buka_shift: false } });
     const kasirRes = envDep.aksiUserCreate_({
       user: ownerRow,
       payload: { username: 'kasirdep', nama: 'Kasir Deposit', role: 'kasir', pin: '123456' }
@@ -1702,6 +1707,7 @@ async function runAudit() {
     const envKrm = setupMockEnv();
     envKrm.setupDatabase();
     const ownerRow = envKrm.bacaSemua_('Users').find((u) => u.role === 'owner');
+    envKrm.aksiPengaturanSet_({ user: ownerRow, payload: { wajib_buka_shift: false } });
     const prod = envKrm.tambahBaris_('Produk', [{
       sku: 'SKU-KRM-1', nama: 'Semen Tiga Roda 50kg', satuan_dasar: 'SAK',
       hpp: 55000, harga_ritel: 70000, stok: 100, aktif: true
@@ -1934,8 +1940,8 @@ async function runAudit() {
       user_id: ownerRow.id, token_hash: 'rahasia_token_xyz', kedaluwarsa: '2099-01-01 00:00:00', terakhir_aktif: '2026-11-25 10:00:00', perangkat: 'Chrome'
     }], ownerRow.id);
     const resBackup = envSync.aksiSistemBackup_({ user: ownerRow, payload: {} });
-    assert(resBackup.total_sheet === 30 && resBackup.sheets && Array.isArray(resBackup.sheets.Produk),
-      `sistem.backup wajib mengekspor seluruh 30 sheet database, aktual: ${resBackup.total_sheet}`);
+    assert(resBackup.total_sheet === 31 && resBackup.sheets && Array.isArray(resBackup.sheets.Produk),
+      `sistem.backup wajib mengekspor seluruh 31 sheet database, aktual: ${resBackup.total_sheet}`);
     const userBackup = resBackup.sheets.Users[0];
     assert(userBackup && userBackup.pin_hash === undefined && userBackup.salt === undefined,
       'Backup Users WAJIB menyensor kolom pin_hash dan salt');
@@ -1948,8 +1954,8 @@ async function runAudit() {
     assert(resBackupKasir.ok === false && resBackupKasir.code === 'FORBIDDEN',
       `RBAC sistem.backup wajib menolak Kasir (FORBIDDEN), aktual: ${JSON.stringify(resBackupKasir)}`);
     const resBackupOwner = callApi('sistem.backup', tokenOwner, {});
-    assert(resBackupOwner.ok === true && resBackupOwner.data.total_sheet === 30,
-      'Owner wajib dapat mengeksekusi sistem.backup penuh (30 sheet)');
+    assert(resBackupOwner.ok === true && resBackupOwner.data.total_sheet === 31,
+      'Owner wajib dapat mengeksekusi sistem.backup penuh (31 sheet)');
   });
 
   // =========================================================================
@@ -1996,6 +2002,125 @@ async function runAudit() {
       resClamp.data.tampilan_tema.fontPct === 125 &&
       resClamp.data.tampilan_tema.fontStyle === 'standar',
       `Sanitasi & clamp fontPct wajib tepat, aktual: ${JSON.stringify(resClamp.data.tampilan_tema)}`);
+  });
+
+  // =========================================================================
+  // TEST 27: WAJIB BUKA SHIFT (SEMUA ROLE), TUTUP HARIAN (EOD), & TUTUP BULANAN + PERIOD LOCK
+  // =========================================================================
+  test('27. Wajib Buka Shift (Semua Role), Deteksi Shift Kemarin, Tutup Harian EOD, & Tutup Buku Bulanan (Period Lock)', () => {
+    const envTb = setupMockEnv();
+    envTb.setupDatabase();
+    const ownerRow = envTb.bacaSemua_('Users').find((u) => u.role === 'owner');
+    const prod = envTb.tambahBaris_('Produk', [{
+      sku: 'SKU-TB-1', nama: 'Semen Holcim 50Kg', satuan_dasar: 'SAK',
+      hpp: 50000, harga_ritel: 65000, stok: 30, aktif: true
+    }], ownerRow.id)[0];
+    const prodDead = envTb.tambahBaris_('Produk', [{
+      sku: 'SKU-DEAD-1', nama: 'Cat Anti Bocor Slow', satuan_dasar: 'PAIL',
+      hpp: 120000, harga_ritel: 150000, stok: 5, aktif: true
+    }], ownerRow.id)[0];
+
+    // 27a. Default wajib_buka_shift = true -> transaksi TANPA buka shift WAJIB ditolak (termasuk Owner)
+    let ditolakTanpaShift = false;
+    try {
+      envTb.aksiPenjualanCreate_({
+        user: ownerRow,
+        payload: {
+          items: [{ produk_id: prod.id, satuan: 'SAK', faktor: 1, qty: 2, harga: 65000 }],
+          pembayaran: [{ metode: 'tunai', jumlah: 130000 }]
+        }
+      });
+    } catch (e) {
+      ditolakTanpaShift = String(e.message || '').includes('SHIFT_BELUM_DIBUKA');
+    }
+    assert(ditolakTanpaShift === true, 'Saat wajib_buka_shift aktif, Owner/Kasir wajib ditolak transaksi bila belum buka shift');
+
+    // 27b. Buka shift -> transaksi sukses!
+    const shBuka = envTb.aksiShiftBuka_({ user: ownerRow, payload: { modal_awal: 300000, catatan: 'Shift pagi' } });
+    assert(shBuka.shift && shBuka.shift.status === 'aktif', 'Shift berhasil dibuka');
+    const jualOk = envTb.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        items: [{ produk_id: prod.id, satuan: 'SAK', faktor: 1, qty: 2, harga: 65000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 130000 }]
+      }
+    });
+    assert(jualOk.penjualan && jualOk.penjualan.total === 130000, 'Setelah buka shift, transaksi penjualan wajib sukses');
+
+    // 27c. Tutup Harian saat masih ada shift aktif wajib ditolak
+    const tglHariIni = envTb.sekarang_().substring(0, 10);
+    const blnIni = tglHariIni.substring(0, 7);
+    let eodDitolak = false;
+    try {
+      envTb.aksiTutupBukuTutupHarian_({
+        user: ownerRow,
+        payload: { tanggal: tglHariIni, setoran_owner: 130000, sisa_modal_besok: 300000 }
+      });
+    } catch (e) {
+      eodDitolak = e.code === 'CONFLICT';
+    }
+    assert(eodDitolak === true, 'Tutup Harian wajib menolak bila masih ada shift aktif hari ini');
+
+    // 27d. Tutup shift lalu Tutup Harian -> sukses & shift.aktif menyarankan sisa_modal_besok!
+    envTb.aksiShiftTutup_({ user: ownerRow, payload: { id: shBuka.shift.id, kas_fisik: 430000, catatan: 'Klop' } });
+    const eodOk = envTb.aksiTutupBukuTutupHarian_({
+      user: ownerRow,
+      payload: { tanggal: tglHariIni, setoran_owner: 130000, sisa_modal_besok: 300000, catatan: 'Setor Owner' }
+    });
+    assert(eodOk.arsip && eodOk.arsip.setoran_owner === 130000 && eodOk.arsip.sisa_modal_besok === 300000,
+      'Arsip Tutup Harian wajib menyimpan setoran_owner dan sisa_modal_besok');
+
+    const cekShiftNext = envTb.aksiShiftAktif_({ user: ownerRow, payload: {} });
+    assert(cekShiftNext.saran_modal_awal === 300000, `shift.aktif wajib menyarankan modal awal dari sisa_modal_besok (300000), aktual: ${cekShiftNext.saran_modal_awal}`);
+
+    // 27e. Evaluasi Bulanan: omset = 130000, laba kotor = 30000, slow_moving memuat prodDead (modal 600000)
+    const evalBln = envTb.aksiTutupBukuEvaluasiBulanan_({ user: ownerRow, payload: { periode: blnIni } });
+    assert(evalBln.ringkasan.omset_bersih === 130000 && evalBln.ringkasan.laba_kotor === 30000,
+      `Evaluasi bulanan wajib menghitung omset 130000 & laba kotor 30000, aktual: ${JSON.stringify(evalBln.ringkasan)}`);
+    assert(evalBln.slow_moving.some((d) => d.id === prodDead.id && d.nilai_modal === 600000),
+      'Evaluasi bulanan wajib mendeteksi produk slow-moving / dead stock beserta nilai modal tertahan');
+
+    // 27f. Tutup Buku Bulanan -> periode terkunci, transaksi & biaya pada bulan terkunci DITOLAK!
+    const tutupBln = envTb.aksiTutupBukuTutupBulanan_({ user: ownerRow, payload: { periode: blnIni, catatan: 'Tutup buku akhir bulan' } });
+    assert(tutupBln.arsip && tutupBln.arsip.status === 'terkunci', 'Tutup buku bulanan wajib mengunci periode');
+
+    let biayaTerkunci = false;
+    try {
+      envTb.aksiBiayaCreate_({ user: ownerRow, payload: { kategori: 'Listrik', nominal: 50000, keterangan: 'Tes kunci periode' } });
+    } catch (e) {
+      biayaTerkunci = String(e.message || '').includes('PERIODE_TERKUNCI');
+    }
+    assert(biayaTerkunci === true, 'Periode bulanan terkunci wajib menolak pencatatan biaya baru');
+
+    // 27g. RBAC: Kasir dilarang tutupBuku.tutupBulanan; Owner bisa bukaKunci dengan alasan
+    const resKasirTutup = callApi('tutupBuku.tutupBulanan', tokenKasir, { periode: blnIni });
+    assert(resKasirTutup.ok === false && resKasirTutup.code === 'FORBIDDEN', 'Kasir wajib ditolak menjalankan tutupBuku.tutupBulanan');
+
+    const bukaKunci = envTb.aksiTutupBukuBukaKunci_({ user: ownerRow, payload: { periode: blnIni, alasan: 'Koreksi darurat audit' } });
+    assert(bukaKunci.arsip && bukaKunci.arsip.status === 'dibuka_kembali', 'Owner wajib bisa membuka kunci periode dengan alasan');
+
+    // Setelah dibuka kunci, biaya kembali bisa dicatat
+    const biayaOk = envTb.aksiBiayaCreate_({ user: ownerRow, payload: { kategori: 'Listrik', nominal: 50000, keterangan: 'Setelah buka kunci' } });
+    assert(biayaOk && biayaOk.no_transaksi, 'Setelah buka kunci periode, transaksi/biaya kembali diizinkan');
+
+    // 27h. Deteksi Shift Kemarin Belum Ditutup -> shift.aktif flag true & transaksi diblokir SHIFT_KEMARIN_BELUM_TUTUP
+    const shLama = envTb.aksiShiftBuka_({ user: ownerRow, payload: { modal_awal: 200000, catatan: 'Shift kemarin simulasi' } });
+    envTb.ubahBaris_('Shift_Kasir', [{ id: shLama.shift.id, data: { waktu_buka: '2026-01-01 08:00:00' } }], ownerRow.id);
+    const cekKemarin = envTb.aksiShiftAktif_({ user: ownerRow, payload: {} });
+    assert(cekKemarin.shift_kemarin_belum_tutup === true, 'shift.aktif wajib mendeteksi shift kemarin yang belum ditutup');
+    let blokirShiftKemarin = false;
+    try {
+      envTb.aksiPenjualanCreate_({
+        user: ownerRow,
+        payload: {
+          items: [{ produk_id: prod.id, satuan: 'SAK', faktor: 1, qty: 1, harga: 65000 }],
+          pembayaran: [{ metode: 'tunai', jumlah: 65000 }]
+        }
+      });
+    } catch (e) {
+      blokirShiftKemarin = String(e.message || '').includes('SHIFT_KEMARIN_BELUM_TUTUP');
+    }
+    assert(blokirShiftKemarin === true, 'Transaksi wajib diblokir (SHIFT_KEMARIN_BELUM_TUTUP) bila shift hari kemarin belum ditutup');
   });
 
   console.log('\n=============================================');

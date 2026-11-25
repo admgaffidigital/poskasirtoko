@@ -26,7 +26,7 @@ import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic } from '../utils/native.js';
-import { adalahErrorJaringanOffline, tambahKeAntreanOffline } from '../utils/offline-queue.js';
+import { adalahErrorJaringanOffline, tambahKeAntreanOffline, jumlahAntreanOffline } from '../utils/offline-queue.js';
 
 export function renderPosModule(container) {
   // Tandai layout POS terkunci ala workstation kasir profesional (Accurate POS)
@@ -2115,6 +2115,23 @@ export function renderPosModule(container) {
       return;
     }
 
+    // Kebijakan Wajib Buka Shift & Anti-Shift Kemarin Menggantung (Semua Role)
+    const wajibShift = state.wajibBukaShift !== undefined
+      ? Boolean(state.wajibBukaShift)
+      : (store.get('pengaturan')?.wajib_buka_shift !== false);
+    if (wajibShift && !state.shiftAktif) {
+      haptic.warning();
+      showToast('Wajib Buka Shift Kasir terlebih dahulu sebelum memproses transaksi!', 'warning', 4000);
+      bukaModalShiftKasir('utama');
+      return;
+    }
+    if (wajibShift && state.shiftKemarinBelumTutup) {
+      haptic.warning();
+      showToast('Shift kasir kemarin belum ditutup! Tutup shift kemarin dulu sebelum transaksi hari ini.', 'warning', 4500);
+      bukaModalShiftKasir('tutup');
+      return;
+    }
+
     const totals = hitungDanTampilkanTotal();
     const totalBarangNet = totals.grandTotal;
     const getOngkirAktif = () => (state.pengiriman === 'dikirim' ? Math.max(0, Number(state.ongkir) || 0) : 0);
@@ -2991,18 +3008,29 @@ export function renderPosModule(container) {
     }
   }
 
-  // ---------- Manajemen Buka & Tutup Shift Kasir (X-Report & Z-Report + Hitung Fisik Laci) ----------
-  const perbaruiIndikatorShift = (shiftObj) => {
+  // ---------- Manajemen Buka & Tutup Shift Kasir + Tutup Harian (EOD) ----------
+  const perbaruiIndikatorShift = (shiftObj, meta = {}) => {
     state.shiftAktif = shiftObj || null;
+    if (meta.wajib_buka_shift !== undefined) state.wajibBukaShift = Boolean(meta.wajib_buka_shift);
+    if (meta.shift_kemarin_belum_tutup !== undefined) state.shiftKemarinBelumTutup = Boolean(meta.shift_kemarin_belum_tutup);
+    if (meta.saran_modal_awal !== undefined) state.saranModalAwal = Number(meta.saran_modal_awal || 0);
+
     const btnShift = container.querySelector('#btn-pos-shift');
     const dotAktif = container.querySelector('#dot-pos-shift-aktif');
     if (dotAktif) {
       dotAktif.style.display = state.shiftAktif ? 'inline-block' : 'none';
+      dotAktif.style.background = state.shiftKemarinBelumTutup ? 'var(--danger)' : '';
     }
     if (btnShift) {
-      if (state.shiftAktif) {
+      if (state.shiftKemarinBelumTutup && state.shiftAktif) {
+        btnShift.style.borderColor = 'var(--danger)';
+        btnShift.title = `PERINGATAN: Shift kemarin (${state.shiftAktif.no_shift}) belum ditutup! Klik untuk Tutup Shift (F3)`;
+      } else if (state.shiftAktif) {
         btnShift.style.borderColor = 'var(--success)';
         btnShift.title = `Shift Aktif: ${state.shiftAktif.no_shift} | Modal Awal: ${formatRupiah(state.shiftAktif.modal_awal || 0)} (F3)`;
+      } else if (state.wajibBukaShift !== false) {
+        btnShift.style.borderColor = 'var(--warning)';
+        btnShift.title = 'WAJIB Buka Shift sebelum transaksi di POS Kasir (F3)';
       } else {
         btnShift.style.borderColor = '';
         btnShift.title = 'Belum Buka Shift — Klik untuk Buka Shift Kasir (F3)';
@@ -3010,10 +3038,27 @@ export function renderPosModule(container) {
     }
   };
 
+  let promptShiftAwalTampil = false;
   async function muatStatusShiftAktif() {
     try {
-      const res = await apiCall('shift.aktif', {});
-      perbaruiIndikatorShift(res && res.shift ? res.shift : null);
+      const res = await apiCall('shift.aktif', {}, { skipCache: true });
+      const sh = res && res.shift ? res.shift : null;
+      perbaruiIndikatorShift(sh, {
+        wajib_buka_shift: res && res.wajib_buka_shift !== undefined ? res.wajib_buka_shift : true,
+        shift_kemarin_belum_tutup: Boolean(res && res.shift_kemarin_belum_tutup),
+        saran_modal_awal: Number(res && res.saran_modal_awal || 0)
+      });
+
+      if (!promptShiftAwalTampil && !document.querySelector('.overlay')) {
+        if (state.shiftKemarinBelumTutup && sh) {
+          promptShiftAwalTampil = true;
+          showToast(`Shift kemarin (${sh.no_shift}) belum ditutup. Silakan tutup shift kemarin dahulu.`, 'warning', 5000);
+          bukaModalShiftKasir('tutup');
+        } else if (state.wajibBukaShift && !sh) {
+          promptShiftAwalTampil = true;
+          bukaModalShiftKasir('utama');
+        }
+      }
     } catch (_) {
       // Abaikan diam-diam bila offline/gagal koneksi awal
     }
@@ -3025,8 +3070,8 @@ export function renderPosModule(container) {
     const todayStr = `${nowDt.getFullYear()}-${String(nowDt.getMonth() + 1).padStart(2, '0')}-${String(nowDt.getDate()).padStart(2, '0')}`;
 
     const modal = showModal({
-      title: 'Manajemen Shift Kasir (Buka / Tutup Laci)',
-      size: 'md',
+      title: 'Manajemen Shift Kasir & Tutup Harian (EOD)',
+      size: 'lg',
       body: `
         <div class="stack" style="gap: var(--sp-3);" id="shift-kasir-container">
           <div class="text-center" style="padding: var(--sp-6);">
@@ -3047,7 +3092,7 @@ export function renderPosModule(container) {
 
     let shiftAktif = null;
     let ringkasanAktif = null;
-    let tabAktif = modeAwal; // 'utama' | 'tutup' | 'riwayat' | 'harian'
+    let tabAktif = modeAwal; // 'utama' | 'tutup' | 'tutup_harian' | 'riwayat' | 'harian'
     let riwayatShift = null;
 
     const muatDataShift = async (skipCache = false) => {
@@ -3055,7 +3100,11 @@ export function renderPosModule(container) {
         const res = await apiCall('shift.aktif', {}, { skipCache });
         shiftAktif = res && res.shift ? res.shift : null;
         ringkasanAktif = res && res.ringkasan ? res.ringkasan : null;
-        perbaruiIndikatorShift(shiftAktif);
+        perbaruiIndikatorShift(shiftAktif, {
+          wajib_buka_shift: res && res.wajib_buka_shift !== undefined ? res.wajib_buka_shift : state.wajibBukaShift,
+          shift_kemarin_belum_tutup: Boolean(res && res.shift_kemarin_belum_tutup),
+          saran_modal_awal: Number(res && res.saran_modal_awal || 0)
+        });
       } catch (err) {
         shiftAktif = null;
         ringkasanAktif = null;
@@ -3179,7 +3228,11 @@ export function renderPosModule(container) {
             </button>
             <button type="button" class="btn btn-sm ${tabAktif === 'tutup' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="tutup">
               ${ICONS.checkCircle}
-              <span>Tutup (Z)</span>
+              <span>Tutup Shift</span>
+            </button>
+            <button type="button" class="btn btn-sm ${tabAktif === 'tutup_harian' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="tutup_harian">
+              ${ICONS.calendar}
+              <span>Tutup Harian</span>
             </button>
             <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat">
               ${ICONS.clipboard}
@@ -3194,9 +3247,9 @@ export function renderPosModule(container) {
             ${ICONS.wallet}
             <span>Buka Shift</span>
           </button>
-          <button type="button" class="btn btn-sm ${tabAktif === 'harian' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="harian">
-            ${ICONS.chart}
-            <span>Harian</span>
+          <button type="button" class="btn btn-sm ${tabAktif === 'tutup_harian' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="tutup_harian">
+            ${ICONS.calendar}
+            <span>Tutup Harian</span>
           </button>
           <button type="button" class="btn btn-sm ${tabAktif === 'riwayat' ? 'btn-primary' : 'btn-ghost'}" data-shift-tab="riwayat">
             ${ICONS.clipboard}
@@ -3285,10 +3338,156 @@ export function renderPosModule(container) {
               bukaModalPilihanCetakShift({
                 ...target,
                 kasir: { id: target.kasir_id, nama: target.kasir_nama },
-                tipe_laporan: target.status === 'ditutup' ? 'Z-REPORT' : 'X-REPORT'
+                tipe_laporan: target.status !== 'aktif' ? 'Z-REPORT' : 'X-REPORT'
               });
             }
           });
+        });
+        return;
+      }
+
+      // TAB TUTUP HARIAN (END-OF-DAY / EOD CLOSING)
+      if (tabAktif === 'tutup_harian') {
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          <div class="text-center" style="padding: var(--sp-5);">
+            <div class="spinner spinner-primary" style="margin: 0 auto var(--sp-2);"></div>
+            <div class="text-muted text-sm">Menghitung rekap gabungan seluruh shift hari ini...</div>
+          </div>
+        `;
+        pasangEventNavTab();
+
+        let eod = null;
+        try {
+          eod = await apiCall('tutupBuku.rekapHarian', { tanggal: todayStr }, { skipCache: true });
+        } catch (err) {
+          elContainer.innerHTML = `${renderNavTab()}<div class="alert alert-danger">${ICONS.alertTriangle}<div>Gagal memuat rekap tutup harian: ${escapeHtml(err.message)}</div></div>`;
+          pasangEventNavTab();
+          return;
+        }
+
+        const rEod = eod.ringkasan || {};
+        const pre = eod.precheck || {};
+        const antreanOffCnt = jumlahAntreanOffline();
+        const adaBlokirShift = Number(pre.shift_aktif_count || 0) > 0;
+        const setoranDefault = eod.arsip ? Number(eod.arsip.setoran_owner || 0) : Math.max(0, Number(rEod.total_kas_fisik || rEod.total_kas_sistem || 0) - Number(state.saranModalAwal || 0));
+        const modalBesokDefault = eod.arsip ? Number(eod.arsip.sisa_modal_besok || 0) : Number(state.saranModalAwal || 0);
+
+        elContainer.innerHTML = `
+          ${renderNavTab()}
+          <div class="row-between items-center" style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border); flex-wrap: wrap; gap: var(--sp-2);">
+            <div>
+              <div class="fw-bold text-sm">Tutup Harian Toko (End-of-Day)</div>
+              <div class="text-xs text-muted">Tanggal: <strong class="mono">${escapeHtml(eod.tanggal)}</strong> • ${eod.shifts?.length || 0} shift tercatat</div>
+            </div>
+            <span class="badge ${eod.sudah_tutup_harian ? 'badge-success' : 'badge-warning'}">${eod.sudah_tutup_harian ? 'Sudah Tutup Harian' : 'Belum Tutup Harian'}</span>
+          </div>
+
+          <!-- Pre-check Kebersihan Harian -->
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <span class="badge ${adaBlokirShift ? 'badge-danger' : 'badge-success'}">${adaBlokirShift ? `${pre.shift_aktif_count} Shift Masih Aktif (Wajib Tutup)` : 'Semua Shift Sudah Ditutup'}</span>
+            <span class="badge ${pre.pending_count > 0 ? 'badge-warning' : 'badge-success'}">Draft Tertahan: ${pre.pending_count || 0}</span>
+            <span class="badge ${antreanOffCnt > 0 ? 'badge-danger' : 'badge-success'}">Antrean Offline: ${antreanOffCnt}</span>
+          </div>
+
+          ${adaBlokirShift ? `
+            <div class="alert alert-warning text-xs" style="margin: 0;">
+              ${ICONS.alertTriangle}
+              <div>Masih ada shift aktif (${escapeHtml((pre.shift_aktif_list || []).map((s) => `${s.no_shift} - ${s.kasir_nama}`).join(', '))}). Silakan tutup semua shift terlebih dahulu di tab <strong>Tutup Shift</strong> sebelum mengunci Tutup Harian.</div>
+            </div>
+          ` : ''}
+
+          <div class="detail-kv-card">
+            <div class="detail-kv-row"><span class="text-muted">Total Transaksi Final</span><span class="fw-bold mono">${rEod.total_transaksi || 0} Nota</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Omset Bersih Hari Ini</span><span class="fw-bold mono text-primary">${formatRupiah(rEod.omset_bersih || 0)}</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Tunai / Non-Tunai / Tempo</span><span class="fw-semibold mono text-xs">${formatRupiah(rEod.total_tunai || 0)} / ${formatRupiah(rEod.total_transfer || 0)} / ${formatRupiah(rEod.total_tempo || 0)}</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Biaya Operasional Hari Ini</span><span class="fw-bold mono text-danger">-${formatRupiah(rEod.total_biaya || 0)}</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Estimasi Laba Bersih Hari Ini</span><span class="fw-bold mono text-success">${formatRupiah(rEod.laba_bersih || 0)}</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Total Kas Fisik Semua Shift</span><span class="fw-bold mono">${formatRupiah(rEod.total_kas_fisik || 0)}</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Akumulasi Selisih Laci</span><span class="fw-bold mono ${Number(rEod.total_selisih || 0) === 0 ? 'text-success' : (Number(rEod.total_selisih || 0) < 0 ? 'text-danger' : 'text-info')}">${Number(rEod.total_selisih || 0) >= 0 ? '+' : ''}${formatRupiah(rEod.total_selisih || 0)}</span></div>
+          </div>
+
+          <div class="form-grid cols-2">
+            <div class="field">
+              <label class="field-label text-xs" for="inp-eod-setoran">Setoran Kas ke Owner / Brankas (Rp)</label>
+              <input type="text" inputmode="numeric" id="inp-eod-setoran" class="input fw-bold mono" value="${setoranDefault > 0 ? formatRupiah(setoranDefault, false) : '0'}">
+            </div>
+            <div class="field">
+              <label class="field-label text-xs" for="inp-eod-modal-besok">Sisa Modal Laci untuk Besok Pagi (Rp)</label>
+              <input type="text" inputmode="numeric" id="inp-eod-modal-besok" class="input fw-bold mono" value="${modalBesokDefault > 0 ? formatRupiah(modalBesokDefault, false) : '0'}">
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label text-xs" for="inp-eod-catatan">Catatan Tutup Harian (Opsional)</label>
+            <input type="text" id="inp-eod-catatan" class="input" value="${escapeHtml(eod.arsip?.catatan || '')}" placeholder="Cth: Setoran tunai sudah diserahkan ke Owner, laci aman">
+          </div>
+        `;
+        pasangEventNavTab();
+
+        elFooterActions.innerHTML = `
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-wa-eod-owner" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.messageCircle}
+            <span>Kirim WA Owner</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-sm grow" id="btn-simpan-tutup-harian" ${adaBlokirShift ? 'disabled' : ''} style="justify-content: center; gap: 6px;">
+            ${ICONS.checkCircle}
+            <span>${eod.sudah_tutup_harian ? 'Perbarui Tutup Harian' : 'Simpan Tutup Harian (EOD)'}</span>
+          </button>
+        `;
+
+        const buatPesanWaEod = (setoranVal, besokVal, catVal) => {
+          const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Bangunan';
+          return [
+            `*LAPORAN TUTUP HARIAN (EOD)*`,
+            `*${namaToko.toUpperCase()}*`,
+            `Tanggal: ${eod.tanggal}`,
+            `--------------------------------`,
+            `Total Transaksi : ${rEod.total_transaksi || 0} nota`,
+            `Omset Bersih    : *${formatRupiah(rEod.omset_bersih || 0)}*`,
+            `- Tunai         : ${formatRupiah(rEod.total_tunai || 0)}`,
+            `- Transfer/QRIS : ${formatRupiah(rEod.total_transfer || 0)}`,
+            `- Tempo/Piutang : ${formatRupiah(rEod.total_tempo || 0)}`,
+            `Biaya Hari Ini  : ${formatRupiah(rEod.total_biaya || 0)}`,
+            `Laba Bersih Est : *${formatRupiah(rEod.laba_bersih || 0)}*`,
+            `--------------------------------`,
+            `Kas Fisik Shift : ${formatRupiah(rEod.total_kas_fisik || 0)}`,
+            `Selisih Laci    : ${formatRupiah(rEod.total_selisih || 0)}`,
+            `Setoran Owner   : *${formatRupiah(setoranVal)}*`,
+            `Sisa Modal Besok: ${formatRupiah(besokVal)}`,
+            catVal ? `Catatan: ${catVal}` : ''
+          ].filter(Boolean).join('\n');
+        };
+
+        elFooterActions.querySelector('#btn-wa-eod-owner')?.addEventListener('click', () => {
+          const sVal = parseRupiah(elContainer.querySelector('#inp-eod-setoran')?.value || 0);
+          const bVal = parseRupiah(elContainer.querySelector('#inp-eod-modal-besok')?.value || 0);
+          const cVal = (elContainer.querySelector('#inp-eod-catatan')?.value || '').trim();
+          window.open(`https://wa.me/?text=${encodeURIComponent(buatPesanWaEod(sVal, bVal, cVal))}`, '_blank', 'noopener,noreferrer');
+        });
+
+        const btnSimpanEod = elFooterActions.querySelector('#btn-simpan-tutup-harian');
+        btnSimpanEod?.addEventListener('click', async () => {
+          const sVal = Math.max(0, parseRupiah(elContainer.querySelector('#inp-eod-setoran')?.value || 0));
+          const bVal = Math.max(0, parseRupiah(elContainer.querySelector('#inp-eod-modal-besok')?.value || 0));
+          const cVal = (elContainer.querySelector('#inp-eod-catatan')?.value || '').trim();
+          btnSimpanEod.disabled = true;
+          btnSimpanEod.textContent = 'Menyimpan Tutup Harian...';
+          try {
+            const res = await apiCall('tutupBuku.tutupHarian', {
+              tanggal: eod.tanggal,
+              setoran_owner: sVal,
+              sisa_modal_besok: bVal,
+              catatan: cVal
+            });
+            state.saranModalAwal = bVal;
+            haptic.success();
+            showToast(res.pesan || 'Tutup Harian berhasil disimpan!', 'success', 4000);
+            renderTampilanShift();
+          } catch (err) {
+            showToast(err.message || 'Gagal menyimpan tutup harian', 'error', 4500);
+            btnSimpanEod.disabled = false;
+            btnSimpanEod.innerHTML = `${ICONS.checkCircle}<span>Simpan Tutup Harian (EOD)</span>`;
+          }
         });
         return;
       }
@@ -3337,7 +3536,7 @@ export function renderPosModule(container) {
 
       // KONDISI A: BELUM ADA SHIFT AKTIF → FORM BUKA SHIFT
       if (!shiftAktif) {
-        let modalInputVal = 0;
+        let modalInputVal = Number(state.saranModalAwal || 0);
         elContainer.innerHTML = `
           ${renderNavTab()}
           <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
@@ -3346,18 +3545,18 @@ export function renderPosModule(container) {
                 <div class="text-xs text-muted">Kasir Bertugas</div>
                 <div class="fw-bold" style="color: var(--text);">${escapeHtml(user.nama || user.username || 'Kasir')}</div>
               </div>
-              <span class="badge badge-warning">Belum Buka Shift</span>
+              <span class="badge ${state.wajibBukaShift !== false ? 'badge-danger' : 'badge-warning'}">${state.wajibBukaShift !== false ? 'Wajib Buka Shift' : 'Belum Buka Shift'}</span>
             </div>
           </div>
 
           <div class="alert alert-info" style="font-size: var(--fs-xs); margin: 0; padding: 10px 12px;">
             ${ICONS.info}
-            <div>Hitung uang pecahan kembalian (modal awal / float) di laci kasir lalu klik <strong>Buka Shift Kasir</strong>. Seluruh transaksi tunai, piutang, titipan, dan kas keluar selama shift akan direkap otomatis hingga tutup toko.</div>
+            <div>Hitung uang pecahan kembalian (modal awal / float) di laci kasir lalu klik <strong>Buka Shift Kasir</strong>.${state.saranModalAwal > 0 ? ` Disarankan <strong class="mono">${formatRupiah(state.saranModalAwal)}</strong> sesuai sisa modal dari Tutup Harian sebelumnya.` : ' Seluruh transaksi tunai, piutang, titipan, dan kas keluar selama shift akan direkap otomatis hingga tutup toko.'}</div>
           </div>
 
           <div class="stack" style="gap: var(--sp-2);">
             <label class="form-label fw-bold text-xs" for="inp-buka-modal-awal" style="margin: 0;">Modal Awal Laci / Float Kasir (Rp)</label>
-            <input type="text" inputmode="numeric" id="inp-buka-modal-awal" class="input fw-bold mono" value="0" placeholder="Rp 0" autocomplete="off" />
+            <input type="text" inputmode="numeric" id="inp-buka-modal-awal" class="input fw-bold mono" value="${modalInputVal > 0 ? formatRupiah(modalInputVal, false) : '0'}" placeholder="Rp 0" autocomplete="off" />
             <div class="row" style="gap: 6px; flex-wrap: wrap;">
               <button type="button" class="btn btn-secondary btn-xs btn-preset-buka" data-val="100000">+100rb</button>
               <button type="button" class="btn btn-secondary btn-xs btn-preset-buka" data-val="200000">+200rb</button>

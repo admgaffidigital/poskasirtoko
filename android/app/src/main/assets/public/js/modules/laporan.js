@@ -11,11 +11,13 @@ import { formatRupiah, parseRupiah, formatQty, formatTanggal, formatAngka } from
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { haptic } from '../utils/native.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift, cetakFakturA5, bukaModalCetakSuratJalan } from '../utils/printer.js';
+import { cetakLaporanEvaluasiBulananPdf, eksporEvaluasiBulananExcel, formatLabelBulan } from '../utils/evaluasi-pdf.js';
 
 // State lokal modul laporan
 let stateLaporan = {
-  tabAktif: 'dashboard', // 'dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift', 'pengiriman'
+  tabAktif: 'dashboard', // 'dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift', 'pengiriman', 'tutupbuku'
   periode: '30_hari',
+  periodeBulanan: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
   dari: '',
   sampai: '',
   dataDashboard: null,
@@ -26,6 +28,7 @@ let stateLaporan = {
   dataStokValuasi: null,
   dataShift: null,
   dataPengiriman: null,
+  dataTutupBuku: null,
   filterStok: { status_stok: 'semua', kategori_id: '', q: '' },
   filterPenjualan: { status_bayar: '', metode_bayar: '' },
   filterPembelian: { status_bayar: '', supplier_id: '' },
@@ -126,6 +129,10 @@ export async function renderLaporanModule(container) {
           ${ICONS.truck}
           <span>Pengiriman</span>
         </button>
+        <button type="button" id="tab-btn-tutupbuku" class="btn btn-sm" aria-pressed="${stateLaporan.tabAktif === 'tutupbuku'}">
+          ${ICONS.calendar}
+          <span>Tutup Bulanan</span>
+        </button>
       </div>
 
       <!-- Wadah Konten Tab Aktif -->
@@ -159,7 +166,7 @@ function inisialisasiTanggalDefault() {
 /** Pasang event listener kontrol header */
 function pasangEventHeader(container) {
   // Tombol Tab
-  const daftarTab = ['dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift', 'pengiriman'];
+  const daftarTab = ['dashboard', 'penjualan', 'pembelian', 'aruskas', 'labarugi', 'stok', 'shift', 'pengiriman', 'tutupbuku'];
   daftarTab.forEach((tabId) => {
     const btn = $(`#tab-btn-${tabId}`, container);
     if (btn) {
@@ -331,6 +338,9 @@ async function muatDataTabAktif(container) {
       status_antar: stateLaporan.filterPengiriman.status_antar === 'semua' ? '' : stateLaporan.filterPengiriman.status_antar,
       limit: 150
     };
+  } else if (stateLaporan.tabAktif === 'tutupbuku') {
+    targetAction = 'tutupBuku.evaluasiBulanan';
+    targetPayload = { periode: stateLaporan.periodeBulanan };
   }
 
   if (!hasUsableApiCache(targetAction, targetPayload)) {
@@ -411,6 +421,13 @@ async function muatDataTabAktif(container) {
         renderTabPengiriman(target, res.data, container);
       } else {
         target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat antrean pengiriman');
+      }
+    } else if (stateLaporan.tabAktif === 'tutupbuku') {
+      if (res && res.ok) {
+        stateLaporan.dataTutupBuku = res.data;
+        renderTabTutupBuku(target, res.data, container);
+      } else {
+        target.innerHTML = renderErrorState(res ? res.error : 'Gagal memuat evaluasi tutup buku bulanan');
       }
     }
   } catch (err) {
@@ -2612,6 +2629,316 @@ function bukaModalUpdatePengiriman(k, rootContainer) {
       btnSimpan.disabled = false;
       btnSimpan.textContent = 'Simpan Status';
     }
+  });
+}
+
+/**
+ * TAB 9: TUTUP BUKU BULANAN, KUNCI PERIODE, & EVALUASI ANALISA (MoM + Slow-Moving + PDF A4)
+ */
+function renderTabTutupBuku(target, data, rootContainer) {
+  const user = store.get('user');
+  const isOwner = user && user.role === 'owner';
+  const r = data?.ringkasan || {};
+  const mom = data?.perbandingan_mom || {};
+  const terkunci = data?.status_buku === 'terkunci';
+  const labelBln = formatLabelBulan(data?.periode);
+  const labelLalu = formatLabelBulan(mom.periode_lalu);
+
+  const badgeMoM = (val, invertGood = false) => {
+    const n = Number(val || 0);
+    const sign = n > 0 ? '+' : '';
+    const isGood = invertGood ? n <= 0 : n >= 0;
+    const cls = n === 0 ? 'badge-neutral' : (isGood ? 'badge-success' : 'badge-danger');
+    return `<span class="badge ${cls} text-xs mono">${sign}${n.toFixed(1)}% vs ${escapeHtml(labelLalu)}</span>`;
+  };
+
+  const nowD = new Date();
+  const ymIni = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}`;
+  const prevD = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1);
+  const ymLalu = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}`;
+
+  target.innerHTML = `
+    <div class="stack" style="gap: var(--sp-4);">
+      <!-- Baris Kontrol Periode Bulan & Aksi Tutup Buku -->
+      <div class="card card-body stack-sm" style="gap: var(--sp-3);">
+        <div class="row-between items-center" style="flex-wrap: wrap; gap: var(--sp-2);">
+          <div class="row items-center" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <label class="form-label text-xs fw-bold" for="inp-tb-bulan" style="margin: 0;">Pilih Bulan Evaluasi:</label>
+            <input type="month" id="inp-tb-bulan" class="input input-sm" value="${escapeHtml(data?.periode || stateLaporan.periodeBulanan)}" style="width: 170px;">
+            <button type="button" class="btn btn-xs ${data?.periode === ymIni ? 'btn-primary' : 'btn-secondary'}" id="btn-tb-bulan-ini">Bulan Ini</button>
+            <button type="button" class="btn btn-xs ${data?.periode === ymLalu ? 'btn-primary' : 'btn-secondary'}" id="btn-tb-bulan-lalu">Bulan Lalu</button>
+            <span class="badge ${terkunci ? 'badge-success' : 'badge-warning'}">${terkunci ? 'Terkunci (Sudah Tutup Buku)' : 'Periode Terbuka'}</span>
+          </div>
+
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-tb-cetak-pdf" style="display: inline-flex; align-items: center; gap: 6px;">
+              ${ICONS.printer}
+              <span>Laporan PDF A4</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-tb-ekspor-excel" style="display: inline-flex; align-items: center; gap: 6px;">
+              ${ICONS.fileSpreadsheet}
+              <span>Excel Bulanan</span>
+            </button>
+            ${isOwner ? (terkunci ? `
+              <button type="button" class="btn btn-outline-danger btn-sm" id="btn-tb-buka-kunci" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${ICONS.rotateCcw}
+                <span>Buka Kunci Periode</span>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-primary btn-sm" id="btn-tb-tutup-bulanan" style="display: inline-flex; align-items: center; gap: 6px;">
+                ${ICONS.checkCircle}
+                <span>Tutup Buku &amp; Kunci ${escapeHtml(labelBln)}</span>
+              </button>
+            `) : ''}
+          </div>
+        </div>
+
+        ${r.shift_aktif_count > 0 && !terkunci ? `
+          <div class="alert alert-warning text-xs" style="margin: 0;">
+            ${ICONS.alertTriangle}
+            <div>Masih ada <strong>${r.shift_aktif_count} shift kasir aktif</strong> pada bulan ${escapeHtml(labelBln)}. Tutup semua shift kasir terlebih dahulu sebelum mengunci Tutup Buku Bulanan.</div>
+          </div>
+        ` : ''}
+
+        ${terkunci && data?.arsip ? `
+          <div class="alert alert-success text-xs" style="margin: 0;">
+            ${ICONS.checkCircle}
+            <div>Periode <strong>${escapeHtml(labelBln)}</strong> telah ditutup buku oleh <strong>${escapeHtml(data.arsip.ditutup_oleh_nama || 'Owner')}</strong> pada ${escapeHtml(formatTanggal(data.arsip.waktu_tutup, true))}. Seluruh transaksi pada bulan ini terkunci untuk menjaga integritas laporan.${data.arsip.catatan ? ` Catatan: <em>${escapeHtml(data.arsip.catatan)}</em>` : ''}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- KPI Utama + Perbandingan MoM -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));">
+        <div class="stat-card-pro">
+          <div class="stat-label">Omset Bersih (${escapeHtml(labelBln)})</div>
+          <div class="stat-value mono text-primary">${formatRupiah(r.omset_bersih || 0)}</div>
+          <div class="stat-sub">${badgeMoM(mom.omset_persen)} • ${r.total_transaksi || 0} nota</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Laba Kotor &amp; Margin</div>
+          <div class="stat-value mono">${formatRupiah(r.laba_kotor || 0)}</div>
+          <div class="stat-sub">Margin: <strong>${Number(r.margin_persen || 0).toFixed(1)}%</strong> • ${badgeMoM(mom.laba_kotor_persen)}</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Biaya Operasional</div>
+          <div class="stat-value mono text-danger">${formatRupiah(r.total_biaya || 0)}</div>
+          <div class="stat-sub">${badgeMoM(mom.biaya_persen, true)}</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Laba Bersih Riil</div>
+          <div class="stat-value mono ${Number(r.laba_bersih || 0) >= 0 ? 'text-success' : 'text-danger'}">${formatRupiah(r.laba_bersih || 0)}</div>
+          <div class="stat-sub">${badgeMoM(mom.laba_bersih_persen)}</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Arus Kas Bersih</div>
+          <div class="stat-value mono">${formatRupiah(r.arus_kas_bersih || 0)}</div>
+          <div class="stat-sub">Masuk: ${formatRupiah(r.arus_kas_masuk || 0)} • Keluar: ${formatRupiah(r.arus_kas_keluar || 0)}</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Valuasi Aset Stok</div>
+          <div class="stat-value mono">${formatRupiah(r.valuasi_stok || 0)}</div>
+          <div class="stat-sub">Pembelian bulan ini: ${formatRupiah(r.total_pembelian || 0)}</div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Piutang &amp; Hutang Berjalan</div>
+          <div class="stat-value mono">${formatRupiah(r.saldo_piutang || 0)}</div>
+          <div class="stat-sub">Piutang • Hutang Supplier: <strong>${formatRupiah(r.saldo_hutang || 0)}</strong></div>
+        </div>
+        <div class="stat-card-pro">
+          <div class="stat-label">Disiplin Shift (${r.total_shift || 0} Shift)</div>
+          <div class="stat-value mono ${Number(r.selisih_shift || 0) < 0 ? 'text-danger' : 'text-success'}">${Number(r.selisih_shift || 0) >= 0 ? '+' : ''}${formatRupiah(r.selisih_shift || 0)}</div>
+          <div class="stat-sub">Akumulasi selisih fisik laci kasir</div>
+        </div>
+      </div>
+
+      <!-- Top 10 Produk Terlaris & Performa Kategori -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--sp-4);">
+        <div class="card card-body stack-sm">
+          <div class="fw-bold text-sm">Top 10 Produk Terlaris (${escapeHtml(labelBln)})</div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Produk</th><th class="text-right">Qty</th><th class="text-right">Omset</th><th class="text-right">Laba</th></tr></thead>
+              <tbody>
+                ${(data?.top_produk_terlaris || []).length ? data.top_produk_terlaris.map((p) => `
+                  <tr>
+                    <td data-label="Produk" class="fw-semibold text-xs">${escapeHtml(p.nama)}</td>
+                    <td data-label="Qty" class="text-right mono text-xs">${formatQty(p.qty)}</td>
+                    <td data-label="Omset" class="text-right mono text-xs">${formatRupiah(p.omset)}</td>
+                    <td data-label="Laba" class="text-right mono text-xs text-success">${formatRupiah(p.laba)}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="4" class="text-center text-muted text-xs">Belum ada penjualan pada bulan ini.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card card-body stack-sm">
+          <div class="row-between items-center" style="flex-wrap: wrap; gap: 6px;">
+            <div class="fw-bold text-sm">Barang Slow-Moving / Dead Stock (0 Terjual)</div>
+            <span class="badge badge-warning mono text-xs">${data?.total_slow_moving || 0} item • Modal ${formatRupiah(data?.nilai_slow_moving || 0)}</span>
+          </div>
+          <div class="text-xs text-muted">Produk aktif yang masih memiliki stok tetapi belum terjual sama sekali di bulan ${escapeHtml(labelBln)} — bahan evaluasi promo/diskon cuci gudang.</div>
+          <div class="table-wrap" style="max-height: 310px; overflow-y: auto;">
+            <table class="table">
+              <thead><tr><th>Produk</th><th class="text-right">Stok</th><th class="text-right">Modal Tertahan</th></tr></thead>
+              <tbody>
+                ${(data?.slow_moving || []).length ? data.slow_moving.map((d) => `
+                  <tr>
+                    <td data-label="Produk" class="text-xs"><div class="fw-semibold">${escapeHtml(d.nama)}</div><div class="text-muted mono">${escapeHtml(d.sku)}</div></td>
+                    <td data-label="Stok" class="text-right mono text-xs">${formatQty(d.stok)} ${escapeHtml(d.satuan)}</td>
+                    <td data-label="Modal Tertahan" class="text-right mono text-xs text-warning fw-bold">${formatRupiah(d.nilai_modal)}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="3" class="text-center text-success text-xs">Luar biasa! Semua produk berstok bergerak terjual di bulan ini.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Riwayat Arsip Tutup Buku Multi-Bulan -->
+      <div class="card card-body stack-sm">
+        <div class="fw-bold text-sm">Arsip Perbandingan Tutup Buku Bulanan (Multi-Bulan)</div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Periode</th>
+                <th>Status</th>
+                <th class="text-right">Nota</th>
+                <th class="text-right">Omset Bersih</th>
+                <th class="text-right">Laba Kotor</th>
+                <th class="text-right">Biaya</th>
+                <th class="text-right">Laba Bersih</th>
+                <th class="text-right">Selisih Shift</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(data?.riwayat_bulanan || []).length ? data.riwayat_bulanan.map((tb) => `
+                <tr>
+                  <td data-label="Periode" class="fw-bold mono text-xs">${escapeHtml(formatLabelBulan(tb.periode))}</td>
+                  <td data-label="Status"><span class="badge ${tb.status === 'terkunci' ? 'badge-success' : 'badge-warning'} text-xs">${tb.status === 'terkunci' ? 'Terkunci' : 'Dibuka'}</span></td>
+                  <td data-label="Nota" class="text-right mono text-xs">${tb.total_transaksi || 0}</td>
+                  <td data-label="Omset Bersih" class="text-right mono text-xs">${formatRupiah(tb.omset_bersih || 0)}</td>
+                  <td data-label="Laba Kotor" class="text-right mono text-xs">${formatRupiah(tb.laba_kotor || 0)}</td>
+                  <td data-label="Biaya" class="text-right mono text-xs text-danger">${formatRupiah(tb.total_biaya || 0)}</td>
+                  <td data-label="Laba Bersih" class="text-right mono text-xs fw-bold ${Number(tb.laba_bersih || 0) >= 0 ? 'text-success' : 'text-danger'}">${formatRupiah(tb.laba_bersih || 0)}</td>
+                  <td data-label="Selisih Shift" class="text-right mono text-xs">${formatRupiah(tb.selisih_shift || 0)}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="8" class="text-center text-muted text-xs">Belum ada arsip Tutup Buku Bulanan tersimpan. Klik "Tutup Buku &amp; Kunci" di akhir bulan untuk menyimpan rekam evaluasi permanen.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Event ganti bulan
+  const muatBulan = (ym) => {
+    if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return;
+    stateLaporan.periodeBulanan = ym;
+    muatDataTabAktif(rootContainer);
+  };
+  target.querySelector('#inp-tb-bulan')?.addEventListener('change', (e) => muatBulan(e.target.value));
+  target.querySelector('#btn-tb-bulan-ini')?.addEventListener('click', () => muatBulan(ymIni));
+  target.querySelector('#btn-tb-bulan-lalu')?.addEventListener('click', () => muatBulan(ymLalu));
+
+  // Event PDF & Excel
+  target.querySelector('#btn-tb-cetak-pdf')?.addEventListener('click', () => {
+    showToast('Menyiapkan Laporan Evaluasi Bulanan PDF A4...', 'info', 2500);
+    cetakLaporanEvaluasiBulananPdf(data);
+  });
+  target.querySelector('#btn-tb-ekspor-excel')?.addEventListener('click', () => {
+    eksporEvaluasiBulananExcel(data);
+    showToast(`Workbook Excel Evaluasi ${labelBln} berhasil diunduh!`, 'success');
+  });
+
+  // Event Tutup Buku & Kunci Bulanan (Owner)
+  target.querySelector('#btn-tb-tutup-bulanan')?.addEventListener('click', () => {
+    const mTutup = showModal({
+      title: `Tutup Buku & Kunci Periode ${labelBln}`,
+      size: 'sm',
+      body: `
+        <div class="stack-sm">
+          <div class="alert alert-warning text-xs" style="margin: 0;">
+            ${ICONS.alertTriangle}
+            <div>Setelah ditutup buku, seluruh transaksi penjualan, pembelian, void, dan biaya pada bulan <strong>${escapeHtml(labelBln)}</strong> akan <strong>terkunci</strong> agar angka evaluasi tidak berubah. Owner tetap dapat membuka kunci sewaktu-waktu bila ada koreksi darurat.</div>
+          </div>
+          <div class="detail-kv-card">
+            <div class="detail-kv-row"><span class="text-muted">Omset Bersih</span><span class="fw-bold mono">${formatRupiah(r.omset_bersih || 0)}</span></div>
+            <div class="detail-kv-row"><span class="text-muted">Laba Bersih Riil</span><span class="fw-bold mono text-success">${formatRupiah(r.laba_bersih || 0)}</span></div>
+          </div>
+          <div class="field">
+            <label class="field-label text-xs" for="inp-cat-tutup-bulanan">Catatan Evaluasi Owner (Opsional)</label>
+            <textarea id="inp-cat-tutup-bulanan" class="textarea" rows="2" placeholder="Cth: Target omset tercapai, fokus cuci gudang cat slow-moving bulan depan"></textarea>
+          </div>
+        </div>
+      `,
+      footer: `
+        <button type="button" class="btn btn-outline btn-sm btn-cancel">Batal</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-ok-tutup-bulanan">Ya, Tutup &amp; Kunci Bulan Ini</button>
+      `
+    });
+    const btnOk = mTutup.el.querySelector('#btn-ok-tutup-bulanan');
+    btnOk?.addEventListener('click', async () => {
+      const cat = (mTutup.el.querySelector('#inp-cat-tutup-bulanan')?.value || '').trim();
+      btnOk.disabled = true;
+      btnOk.textContent = 'Mengunci Periode...';
+      try {
+        const res = await kirimRequest('tutupBuku.tutupBulanan', { periode: data.periode, catatan: cat });
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal menutup buku bulanan');
+        haptic.success();
+        showToast(res.data?.pesan || `Tutup Buku ${labelBln} berhasil!`, 'success', 4000);
+        mTutup.close();
+        muatDataTabAktif(rootContainer);
+      } catch (err) {
+        showToast(err.message, 'error', 4500);
+        btnOk.disabled = false;
+        btnOk.textContent = 'Ya, Tutup & Kunci Bulan Ini';
+      }
+    });
+  });
+
+  // Event Buka Kunci Periode (Owner)
+  target.querySelector('#btn-tb-buka-kunci')?.addEventListener('click', () => {
+    const mBuka = showModal({
+      title: `Buka Kunci Periode ${labelBln}`,
+      size: 'sm',
+      body: `
+        <div class="stack-sm">
+          <div class="text-xs text-muted">Masukkan alasan pembukaan kunci periode <strong>${escapeHtml(labelBln)}</strong> (akan tercatat di Log Audit):</div>
+          <div class="field">
+            <label class="field-label text-xs" for="inp-alasan-buka-kunci">Alasan Buka Kunci <span class="wajib">*</span></label>
+            <input type="text" id="inp-alasan-buka-kunci" class="input" placeholder="Cth: Koreksi input biaya listrik bulan lalu">
+          </div>
+        </div>
+      `,
+      footer: `
+        <button type="button" class="btn btn-outline btn-sm btn-cancel">Batal</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-ok-buka-kunci">Buka Kunci</button>
+      `
+    });
+    const btnOk = mBuka.el.querySelector('#btn-ok-buka-kunci');
+    btnOk?.addEventListener('click', async () => {
+      const alasan = (mBuka.el.querySelector('#inp-alasan-buka-kunci')?.value || '').trim();
+      if (alasan.length < 4) {
+        showToast('Alasan pembukaan kunci wajib minimal 4 karakter.', 'warning');
+        return;
+      }
+      btnOk.disabled = true;
+      btnOk.textContent = 'Membuka Kunci...';
+      try {
+        const res = await kirimRequest('tutupBuku.bukaKunci', { periode: data.periode, alasan });
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal membuka kunci periode');
+        showToast(res.data?.pesan || 'Kunci periode berhasil dibuka!', 'success');
+        mBuka.close();
+        muatDataTabAktif(rootContainer);
+      } catch (err) {
+        showToast(err.message, 'error', 4500);
+        btnOk.disabled = false;
+        btnOk.textContent = 'Buka Kunci';
+      }
+    });
   });
 }
 
