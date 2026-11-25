@@ -287,6 +287,61 @@ function aksiPengaturanSimpanPresetKatalog_(ctx) {
   };
 }
 
+/** pengaturan.simpanTema — Sinkronisasi Cloud Tema, Warna Aksen, & Tipografi lintas perangkat (Semua Role). */
+function aksiPengaturanSimpanTema_(ctx) {
+  const p = ctx.payload || {};
+  const daftarTheme = ['light', 'warm', 'dark'];
+  const daftarAccent = ['orange', 'blue', 'emerald', 'teal', 'indigo', 'rose'];
+  const daftarFontFamily = ['system', 'inter', 'jakarta', 'poppins', 'roboto', 'mono'];
+  const daftarFontStyle = ['standar', 'tegas', 'ramping'];
+
+  const theme = daftarTheme.indexOf(String(p.theme || '')) !== -1 ? String(p.theme) : 'light';
+  const accent = daftarAccent.indexOf(String(p.accent || '')) !== -1 ? String(p.accent) : 'orange';
+  const fontFamily = daftarFontFamily.indexOf(String(p.fontFamily || '')) !== -1 ? String(p.fontFamily) : 'system';
+  const fontStyle = daftarFontStyle.indexOf(String(p.fontStyle || '')) !== -1 ? String(p.fontStyle) : 'standar';
+
+  let fontPct = parseInt(p.fontPct, 10);
+  if (!isFinite(fontPct)) fontPct = 100;
+  fontPct = Math.max(85, Math.min(125, fontPct));
+
+  const waktu = sekarang_();
+  const temaBersih = {
+    theme: theme,
+    accent: accent,
+    fontFamily: fontFamily,
+    fontPct: fontPct,
+    fontStyle: fontStyle,
+    updatedAt: waktu,
+    diubah_oleh: ctx.user.nama || ctx.user.username || ctx.user.id
+  };
+
+  const barisPengaturan = bacaSemua_('Pengaturan', { termasukTerhapus: true });
+  let rowEks = null;
+  barisPengaturan.forEach(function (row) {
+    if (row.key === 'tampilan_tema') rowEks = row;
+  });
+
+  if (rowEks) {
+    ubahBaris_('Pengaturan', [{ id: rowEks.id, data: { value: temaBersih, deleted: false } }], ctx.user.id);
+  } else {
+    tambahBaris_('Pengaturan', [{ key: 'tampilan_tema', value: temaBersih }], ctx.user.id);
+  }
+
+  cacheHapus_('pengaturan');
+  catatAudit_(ctx.user.id, 'tampilan_tema_simpan', 'SETTING', 'tampilan_tema', {
+    theme: theme,
+    accent: accent,
+    fontFamily: fontFamily,
+    fontPct: fontPct,
+    fontStyle: fontStyle
+  });
+
+  return {
+    tampilan_tema: temaBersih,
+    waktu_sinkron: waktu
+  };
+}
+
 /* ---------- 9.5 MANAJEMEN MULTI AKUN PENGGUNA ---------- */
 
 /** user.list — Daftar akun pengguna (Khusus Owner). */

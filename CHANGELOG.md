@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.130] - 2026-11-25
+### Ditambahkan — Sinkronisasi Cloud Tema, Warna Aksen & Tipografi Lintas Perangkat (PC & HP)
+- **[SETTING] [BACKEND] Endpoint `pengaturan.simpanTema` (`00_konfig_skema_router.gs`, `02_auth_user_pengaturan.gs`)**: Menambahkan konfigurasi `tampilan_tema` pada sheet `Pengaturan` dengan sanitasi penuh (`theme`, `accent`, `fontFamily`, `fontPct` 85–125%, `fontStyle`, `updatedAt`) dan pencatatan `Log_Audit`.
+- **[UI] Auto-Sync Tema Cloud Debounced (`ui.js`, `app.js`, `pengaturan.js`)**:
+  - Setiap perubahan suasana latar, warna aksen, jenis font, ukuran huruf (slider/preset), gaya huruf, atau *Reset ke Standar* di modal **Tema, Warna & Tipografi** maupun panel cepat Profil Pengguna otomatis dikirim ke Cloud (debounced 650ms) dengan lencana status **Cloud Tersinkron**.
+  - Saat aplikasi dibuka di perangkat lain (PC/Tablet/HP), `auth.me` dan `pengaturan.get` otomatis menarik & menerapkan `tampilan_tema` Cloud secara langsung, serta ringkasannya tampil di kartu *Status Sinkron Cloud* pada `#/pengaturan`.
+
 ## [1.0.129] - 2026-11-25
 ### Diperbaiki — Penyelarasan & Konsistensi Tampilan Global (CSS Utilities, Flex Input, Checkbox, & Form Grid)
 - **[UI] Standarisasi Utilitas CSS Global (`base.css`)**: Menambahkan definisi 6 kelas utilitas yang sebelumnya belum terdefinisi (`.text-primary`, `.font-mono`, `.uppercase`, `.w-full`, `.items-center`/`.items-start`/`.items-stretch`, `.justify-between`/`.justify-center`/`.justify-end`, `.row-nowrap`) yang dipakai di 179 titik seluruh modul sehingga perataan tombol `Auto` di SKU/Barcode, teks aksen utama, dan angka monospace tabular kini konsisten 100%.

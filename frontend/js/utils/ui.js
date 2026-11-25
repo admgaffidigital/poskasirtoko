@@ -715,7 +715,66 @@ export function toggleFontSize() {
   const idx = FONT_SIZE_PRESETS.findIndex((f) => f.id === current);
   const nextPreset = FONT_SIZE_PRESETS[(idx + 1) % FONT_SIZE_PRESETS.length] || FONT_SIZE_PRESETS[2];
   setFontSizePreset(nextPreset.id);
+  jadwalkanSinkronTemaCloud();
   return nextPreset.id;
+}
+
+/* ---------- Sinkronisasi Cloud Tema, Warna & Tipografi ---------- */
+let cloudThemeSyncHandler = null;
+let cloudThemeSyncTimer = null;
+let cloudThemeStatusListeners = new Set();
+
+/** Daftarkan handler sinkronisasi Cloud dari app.js (hindari circular import) */
+export function setCloudThemeSyncHandler(fn) {
+  cloudThemeSyncHandler = typeof fn === 'function' ? fn : null;
+}
+
+function kabariStatusCloudTema(state, teks) {
+  cloudThemeStatusListeners.forEach((cb) => {
+    try { cb(state, teks); } catch (_) {}
+  });
+}
+
+/** Terapkan objek konfigurasi tema Cloud (theme, accent, fontFamily, fontPct, fontStyle) ke DOM & localStorage */
+export function applyThemeConfig(cfgObj) {
+  if (!cfgObj || typeof cfgObj !== 'object') return getThemeConfig();
+  if (cfgObj.theme) setThemeMode(cfgObj.theme);
+  if (cfgObj.accent) setAccentColor(cfgObj.accent);
+  if (cfgObj.fontFamily) setFontFamily(cfgObj.fontFamily);
+  if (cfgObj.fontPct !== undefined && cfgObj.fontPct !== null && Number.isFinite(Number(cfgObj.fontPct))) {
+    setCustomFontScale(Number(cfgObj.fontPct));
+  } else if (cfgObj.font) {
+    setFontSizePreset(cfgObj.font);
+  }
+  if (cfgObj.fontStyle) setFontStyleMode(cfgObj.fontStyle);
+  return getThemeConfig();
+}
+
+/** Jadwalkan pengiriman tema terbaru ke Cloud dengan debounce 650ms agar slider tidak membanjiri API */
+export function jadwalkanSinkronTemaCloud() {
+  if (!cloudThemeSyncHandler) return;
+  kabariStatusCloudTema('syncing', 'Menyimpan ke Cloud...');
+  if (cloudThemeSyncTimer) clearTimeout(cloudThemeSyncTimer);
+  cloudThemeSyncTimer = setTimeout(async () => {
+    cloudThemeSyncTimer = null;
+    try {
+      const cfg = getThemeConfig();
+      const res = await cloudThemeSyncHandler({
+        theme: cfg.theme,
+        accent: cfg.accent,
+        fontFamily: cfg.fontFamily,
+        fontPct: cfg.fontPct,
+        fontStyle: cfg.fontStyle
+      });
+      if (res && res.synced) {
+        kabariStatusCloudTema('ok', 'Cloud Tersinkron');
+      } else {
+        kabariStatusCloudTema('local', 'Tersimpan Lokal');
+      }
+    } catch (_) {
+      kabariStatusCloudTema('local', 'Tersimpan Lokal');
+    }
+  }, 650);
 }
 
 /**
@@ -843,8 +902,14 @@ export function bukaModalTemaWarna(onChanged = null) {
       </div>
     `,
     footer: `
-      <div class="row-between items-center" style="width: 100%; gap: var(--sp-2);">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-tema-default">Reset ke Standar</button>
+      <div class="row-between items-center" style="width: 100%; gap: var(--sp-2); flex-wrap: wrap;">
+        <div class="row items-center" style="gap: var(--sp-2);">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-tema-default">Reset ke Standar</button>
+          <span class="badge badge-info" id="badge-tema-cloud-status" style="display: inline-flex; align-items: center; gap: 4px;" title="Status sinkronisasi tema lintas perangkat (PC & HP)">
+            ${ICONS.cloud}
+            <span>Cloud Siap</span>
+          </span>
+        </div>
         <button type="button" class="btn btn-primary btn-sm" id="btn-selesai-tema">Selesai</button>
       </div>
     `
@@ -853,11 +918,25 @@ export function bukaModalTemaWarna(onChanged = null) {
   const sliderEl = modal.el.querySelector('#input-font-scale-slider');
   const badgePctEl = modal.el.querySelector('#picker-font-pct-badge');
   const badgeFamilyEl = modal.el.querySelector('#picker-font-family-badge');
+  const badgeCloudTema = modal.el.querySelector('#badge-tema-cloud-status');
+
+  const onCloudStatus = (st, teks) => {
+    if (!badgeCloudTema) return;
+    badgeCloudTema.className = `badge ${st === 'ok' ? 'badge-success' : (st === 'syncing' ? 'badge-info' : 'badge-warning')}`;
+    badgeCloudTema.innerHTML = `${ICONS.cloud}<span>${escapeHtml(teks)}</span>`;
+  };
+  cloudThemeStatusListeners.add(onCloudStatus);
+  const origClose = modal.close;
+  modal.close = () => {
+    cloudThemeStatusListeners.delete(onCloudStatus);
+    origClose();
+  };
 
   const emitChange = () => {
     if (typeof onChanged === 'function') {
       onChanged(getThemeConfig());
     }
+    jadwalkanSinkronTemaCloud();
   };
 
   const syncFontUi = (pct, activeId) => {

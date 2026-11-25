@@ -5,7 +5,7 @@
 
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
-import { ICONS, showToast, bukaModalTemaWarna } from '../utils/ui.js';
+import { ICONS, showToast, bukaModalTemaWarna, THEME_MODES, ACCENT_PALETTES, FONT_FAMILIES } from '../utils/ui.js';
 import { syncStatusBarWithTheme } from '../utils/native.js';
 import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
@@ -134,6 +134,11 @@ async function muatPengaturan(container) {
       hp: cfg.toko_hp,
       nota_footer: cfg.nota_footer
     });
+
+    const temaCloud = cfg.tampilan_tema && cfg.tampilan_tema.updatedAt ? cfg.tampilan_tema : null;
+    const labelTemaCloud = temaCloud
+      ? `${THEME_MODES.find((m) => m.id === temaCloud.theme)?.nama || temaCloud.theme} • ${ACCENT_PALETTES.find((a) => a.id === temaCloud.accent)?.nama || temaCloud.accent} • ${FONT_FAMILIES.find((f) => f.id === temaCloud.fontFamily)?.nama || temaCloud.fontFamily} (${temaCloud.fontPct || 100}%)`
+      : 'Belum disinkronkan (masih lokal perangkat)';
 
     area.innerHTML = `
       <form id="form-pengaturan" class="stack">
@@ -343,6 +348,7 @@ async function muatPengaturan(container) {
                 </div>
                 <div class="text-xs text-muted">
                   Preset Katalog PDF tersimpan di Cloud: <strong class="mono">${Array.isArray(cfg.katalog_pdf_presets) ? cfg.katalog_pdf_presets.length : 0} preset</strong>.<br>
+                  Tema &amp; Tipografi Cloud: <strong id="lbl-cfg-tema-cloud">${escapeHtml(labelTemaCloud)}</strong>.<br>
                   Antrean Transaksi Offline di perangkat ini: <strong class="mono" id="lbl-cfg-offline-count">${jumlahAntreanOffline()} transaksi</strong>.
                 </div>
               </div>
@@ -420,7 +426,16 @@ async function muatPengaturan(container) {
     });
 
     $('#btn-cfg-buka-tema', container)?.addEventListener('click', () => {
-      bukaModalTemaWarna((c) => syncStatusBarWithTheme(c.theme));
+      bukaModalTemaWarna((c) => {
+        syncStatusBarWithTheme(c.theme);
+        const lblTema = $('#lbl-cfg-tema-cloud', container);
+        if (lblTema) {
+          const nMode = THEME_MODES.find((m) => m.id === c.theme)?.nama || c.theme;
+          const nAcc = ACCENT_PALETTES.find((a) => a.id === c.accent)?.nama || c.accent;
+          const nFont = FONT_FAMILIES.find((f) => f.id === c.fontFamily)?.nama || c.fontFamily;
+          lblTema.textContent = `${nMode} • ${nAcc} • ${nFont} (${c.fontPct || 100}%)`;
+        }
+      });
     });
 
     // Listener Backup Data 1-Klik (JSON 30 Sheet & Workbook Excel Multi-Sheet)

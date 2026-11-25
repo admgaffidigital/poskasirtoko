@@ -1951,6 +1951,52 @@ async function runAudit() {
       'Owner wajib dapat mengeksekusi sistem.backup penuh (30 sheet)');
   });
 
+  // =========================================================================
+  // TEST 26: SINKRONISASI CLOUD TEMA, WARNA AKSEN, & TIPOGRAFI LINTAS PERANGKAT
+  // =========================================================================
+  test('26. Sinkronisasi Cloud Tema, Warna & Tipografi: Simpan, Sanitasi Batas, & Muat Lintas Sesi', () => {
+    // 26a. Simpan tema valid via Router nyata (pengaturan.simpanTema)
+    const resSimpan = callApi('pengaturan.simpanTema', tokenOwner, {
+      theme: 'warm',
+      accent: 'teal',
+      fontFamily: 'jakarta',
+      fontPct: 92,
+      fontStyle: 'tegas'
+    });
+    assert(resSimpan.ok === true, `pengaturan.simpanTema wajib sukses, aktual: ${JSON.stringify(resSimpan)}`);
+    assert(resSimpan.data.tampilan_tema.theme === 'warm' &&
+      resSimpan.data.tampilan_tema.accent === 'teal' &&
+      resSimpan.data.tampilan_tema.fontFamily === 'jakarta' &&
+      resSimpan.data.tampilan_tema.fontPct === 92 &&
+      resSimpan.data.tampilan_tema.fontStyle === 'tegas' &&
+      Boolean(resSimpan.data.tampilan_tema.updatedAt),
+      'Hasil simpan tema harus menyimpan seluruh 5 preferensi & stempel waktu updatedAt');
+
+    // 26b. pengaturan.get & auth.me wajib mengembalikan tampilan_tema terbaru untuk perangkat lain
+    const resGet = callApi('pengaturan.get', tokenKasir, {});
+    assert(resGet.ok === true && resGet.data.pengaturan.tampilan_tema.accent === 'teal' && resGet.data.pengaturan.tampilan_tema.fontFamily === 'jakarta',
+      'Perangkat lain (Kasir) wajib menerima tema Cloud terbaru lewat pengaturan.get');
+    const resMe = callApi('auth.me', tokenKasir, {});
+    assert(resMe.ok === true && resMe.data.pengaturan.tampilan_tema.theme === 'warm' && resMe.data.pengaturan.tampilan_tema.fontPct === 92,
+      'auth.me saat boot aplikasi wajib menyertakan tampilan_tema Cloud terbaru');
+
+    // 26c. Sanitasi nilai di luar daftar valid & clamp fontPct (85..125)
+    const resClamp = callApi('pengaturan.simpanTema', tokenKasir, {
+      theme: 'pelangi_invalid',
+      accent: 'kuning_invalid',
+      fontFamily: 'comicsans',
+      fontPct: 500,
+      fontStyle: 'aneh'
+    });
+    assert(resClamp.ok === true, 'Input invalid harus disanitasi aman ke fallback tanpa crash');
+    assert(resClamp.data.tampilan_tema.theme === 'light' &&
+      resClamp.data.tampilan_tema.accent === 'orange' &&
+      resClamp.data.tampilan_tema.fontFamily === 'system' &&
+      resClamp.data.tampilan_tema.fontPct === 125 &&
+      resClamp.data.tampilan_tema.fontStyle === 'standar',
+      `Sanitasi & clamp fontPct wajib tepat, aktual: ${JSON.stringify(resClamp.data.tampilan_tema)}`);
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

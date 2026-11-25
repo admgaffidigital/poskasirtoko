@@ -197,6 +197,14 @@ const PENGATURAN_DEFAULT = {
   printer_ukuran: '58', // '58' (32 karakter) | '80' (48 karakter)
   printer_jalur: 'otomatis', // otomatis | usb_direct | rawbt | webbluetooth | browser
   katalog_pdf_presets: [],
+  tampilan_tema: {
+    theme: 'light',
+    accent: 'orange',
+    fontFamily: 'system',
+    fontPct: 100,
+    fontStyle: 'standar',
+    updatedAt: ''
+  },
   poin_per_rupiah: 10000,
   level_member: [
     { nama: 'Reguler', min_belanja: 0, pengali: 1 },
@@ -260,6 +268,7 @@ const RUTE = {
   'pengaturan.get': { publik: false, roles: SEMUA_ROLE, handler: aksiPengaturanGet_ },
   'pengaturan.set': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiPengaturanSet_ },
   'pengaturan.simpanPresetKatalog': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPengaturanSimpanPresetKatalog_ },
+  'pengaturan.simpanTema': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiPengaturanSimpanTema_ },
 
   // User Management (Fase 1)
   'user.list': { publik: false, roles: [ROLE.OWNER], handler: aksiUserList_ },
