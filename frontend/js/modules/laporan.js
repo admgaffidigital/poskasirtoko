@@ -1380,11 +1380,14 @@ function renderTabPembelian(container, data) {
       <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
         <div class="stat-card-pro">
           <div class="stat-card-header">
-            <span class="stat-card-title">Total Pembelian Barang</span>
+            <span class="stat-card-title">Total Pembelian Bersih</span>
             <div class="stat-card-icon icon-amber">${ICONS.truck}</div>
           </div>
           <div class="stat-card-value" style="color: var(--warning);">${formatRupiah(r.total_pembelian || 0)}</div>
-          <div class="stat-card-desc"><span class="badge badge-warning">${formatAngka(r.total_faktur || 0)} Faktur Masuk</span></div>
+          <div class="stat-card-desc" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span class="badge badge-warning">${formatAngka(r.total_faktur || 0)} Faktur Aktif</span>
+            ${(r.total_retur || 0) > 0 ? `<span class="badge badge-info">Retur -${formatRupiah(r.total_retur)}</span>` : ''}
+          </div>
         </div>
         <div class="stat-card-pro">
           <div class="stat-card-header">
@@ -1416,6 +1419,7 @@ function renderTabPembelian(container, data) {
               <option value="lunas" ${stateLaporan.filterPembelian.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
               <option value="sebagian" ${stateLaporan.filterPembelian.status_bayar === 'sebagian' ? 'selected' : ''}>Sebagian (Tempo)</option>
               <option value="hutang" ${stateLaporan.filterPembelian.status_bayar === 'hutang' ? 'selected' : ''}>Belum Dibayar</option>
+              <option value="diretur" ${stateLaporan.filterPembelian.status_bayar === 'diretur' ? 'selected' : ''}>Pernah Diretur</option>
             </select>
           </div>
         </div>
@@ -1439,18 +1443,42 @@ function renderTabPembelian(container, data) {
               <tbody>
                 ${items.length === 0 ? `
                   <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada faktur pembelian sesuai filter</td></tr>
-                ` : items.map((pb) => `
-                  <tr>
-                    <td data-label="No Faktur"><span style="font-family: var(--font-mono); font-weight: var(--fw-bold);">${escapeHtml(pb.no_faktur)}</span></td>
+                ` : items.map((pb) => {
+                  const isRetPenuh = pb.status_retur === 'penuh';
+                  const isRetSebagian = pb.status_retur === 'sebagian';
+                  const adaRet = isRetPenuh || isRetSebagian;
+                  const noRetStr = Array.isArray(pb.daftar_no_retur) && pb.daftar_no_retur.length ? pb.daftar_no_retur.join(', ') : '';
+                  const totBersih = pb.total_bersih !== undefined ? pb.total_bersih : pb.total;
+                  return `
+                  <tr style="${isRetPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
+                    <td data-label="No Faktur">
+                      <div class="cell-stack" style="gap: 2px;">
+                        <span style="font-family: var(--font-mono); font-weight: var(--fw-bold); ${isRetPenuh ? 'text-decoration: line-through;' : ''}">${escapeHtml(pb.no_faktur)}</span>
+                        ${noRetStr ? `<span class="text-2xs font-mono text-warning">Retur: ${escapeHtml(noRetStr)}</span>` : ''}
+                      </div>
+                    </td>
                     <td data-label="Ref Supplier"><span style="font-family: var(--font-mono); color: var(--text-muted);">${escapeHtml(pb.no_faktur_supplier || '-')}</span></td>
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(pb.tanggal)}</td>
                     <td style="font-weight: var(--fw-medium);" data-label="Supplier">${escapeHtml(pb.supplier_nama)}</td>
                     <td data-label="Status">
-                      <span class="badge ${pb.status_bayar === 'lunas' ? 'badge-success' : (pb.status_bayar === 'sebagian' ? 'badge-warning' : 'badge-danger')}">
-                        ${escapeHtml(formatLabelStatusBayar(pb.status_bayar))}
-                      </span>
+                      <div class="cell-stack" style="gap: 3px; align-items: flex-start;">
+                        ${isRetPenuh ? `<span class="badge badge-warning">Diretur Penuh</span>` : `
+                          <span class="badge ${pb.status_bayar === 'lunas' ? 'badge-success' : (pb.status_bayar === 'sebagian' ? 'badge-warning' : 'badge-danger')}">
+                            ${escapeHtml(formatLabelStatusBayar(pb.status_bayar))}
+                          </span>
+                          ${isRetSebagian ? `<span class="badge badge-warning badge-xs">Diretur Sebagian</span>` : ''}
+                        `}
+                      </div>
                     </td>
-                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold);" data-label="Total Nilai">${formatRupiah(pb.total)}</td>
+                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold);" data-label="Total Nilai">
+                      ${adaRet ? `
+                        <div class="cell-stack" style="align-items: flex-end; gap: 1px;">
+                          <span class="text-2xs text-muted" style="text-decoration: line-through; font-weight: var(--fw-normal);">${formatRupiah(pb.total)}</span>
+                          <span>${formatRupiah(totBersih)}</span>
+                          <span class="text-2xs text-danger" style="font-weight: var(--fw-normal);">Retur -${formatRupiah(pb.total_retur || 0)}</span>
+                        </div>
+                      ` : formatRupiah(pb.total)}
+                    </td>
                     <td class="tabular" style="text-align: right; white-space: nowrap; color: var(--success);" data-label="Dibayar">${formatRupiah(pb.bayar)}</td>
                     <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); color: ${pb.sisa_hutang > 0 ? 'var(--danger)' : 'var(--text-muted)'};" data-label="Sisa Hutang">
                       ${formatRupiah(pb.sisa_hutang)}
@@ -1464,7 +1492,7 @@ function renderTabPembelian(container, data) {
                       </div>
                     </td>
                   </tr>
-                `).join('')}
+                `}).join('')}
               </tbody>
             </table>
           </div>
@@ -1601,6 +1629,18 @@ function renderTabArusKas(container, data) {
                       <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">${formatRupiah(masuk.deposit_masuk_bank)}</td>
                     </tr>
                   ` : ''}
+                  ${(masuk.refund_retur_beli_tunai || 0) > 0 ? `
+                    <tr>
+                      <td>Refund Retur Pembelian dari Supplier (Tunai)</td>
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">${formatRupiah(masuk.refund_retur_beli_tunai)}</td>
+                    </tr>
+                  ` : ''}
+                  ${(masuk.refund_retur_beli_bank || 0) > 0 ? `
+                    <tr>
+                      <td>Refund Retur Pembelian dari Supplier (Transfer)</td>
+                      <td style="text-align: right; font-weight: var(--fw-semibold); color: var(--success);">${formatRupiah(masuk.refund_retur_beli_bank)}</td>
+                    </tr>
+                  ` : ''}
                   <tr style="background: var(--bg-surface-variant); font-weight: var(--fw-bold);">
                     <td>TOTAL KAS MASUK</td>
                     <td style="text-align: right; color: var(--success);">${formatRupiah(r.total_kas_masuk || 0)}</td>
@@ -1706,6 +1746,12 @@ function renderTabLabaRugi(container, data) {
                 <span style="font-weight: var(--fw-semibold);">+ ${formatRupiah(r.total_ongkir || 0)}</span>
               </div>
             ` : ''}
+            ${Number(r.total_retur_penjualan || 0) > 0 ? `
+              <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--danger);">
+                <span>Pengurang: Retur Penjualan Disetujui:</span>
+                <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_retur_penjualan || 0)}</span>
+              </div>
+            ` : ''}
             <div class="cluster" style="justify-content: space-between; font-size: var(--fs-lg); font-weight: var(--fw-bold); border-top: 1px solid var(--border); padding-top: var(--sp-2);">
               <span>Penjualan Bersih (Net Sales):</span>
               <span style="color: var(--primary);">${formatRupiah(r.omset_bersih || 0)}</span>
@@ -1714,15 +1760,6 @@ function renderTabLabaRugi(container, data) {
             <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--danger); margin-top: var(--sp-2);">
               <span>Harga Pokok Penjualan (HPP / COGS):</span>
               <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_hpp || 0)}</span>
-            </div>
-            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); font-weight: var(--fw-bold); border-top: 1px solid var(--border); padding-top: var(--sp-1);">
-              <span>Laba Kotor Awal:</span>
-              <span>${formatRupiah(r.laba_kotor_sebelum_retur || 0)}</span>
-            </div>
-
-            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--danger);">
-              <span>Pengurang: Retur Penjualan Disetujui:</span>
-              <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_retur_penjualan || 0)}</span>
             </div>
             ${Number(r.total_retur_hpp || 0) > 0 ? `
               <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--success);">

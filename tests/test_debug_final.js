@@ -2526,6 +2526,20 @@ async function runAudit() {
     assert(detRetPenuh.status_retur === 'penuh' && detRetPenuh.total_retur === 130000 && detRetPenuh.retur_list.length === 1,
       'penjualan.detail wajib menyertakan status_retur, total_retur, & daftar retur_list');
 
+    // 29f5. Sinkronisasi 100% Lintas Laporan (Dashboard == Laporan Penjualan == Laba Rugi == Tutup Harian) setelah retur penuh
+    const dashSinkron = envGd.aksiLaporanDashboard_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    const lrSinkron = envGd.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    const eodSinkron = envGd.aksiTutupBukuRekapHarian_({ user: ownerRow, payload: {} });
+    assert(dashSinkron.ringkasan.total_retur_penjualan === 130000 && dashSinkron.ringkasan.total_penjualan === 0,
+      `Dashboard wajib menampilkan total_retur_penjualan=130000 & total_penjualan bersih=0; aktual: ${JSON.stringify(dashSinkron.ringkasan)}`);
+    assert(lrSinkron.ringkasan.omset_bersih === 0 && lrSinkron.ringkasan.laba_kotor_bersih === 0,
+      `Laba Rugi wajib sinkron omset_bersih=0 & laba_kotor_bersih=0; aktual: ${JSON.stringify(lrSinkron.ringkasan)}`);
+    assert(eodSinkron.ringkasan.omset_bersih === dashSinkron.ringkasan.total_penjualan &&
+      eodSinkron.ringkasan.omset_bersih === lapJualRet.ringkasan.total_omset &&
+      eodSinkron.ringkasan.laba_bersih === dashSinkron.ringkasan.laba_bersih_riil &&
+      eodSinkron.ringkasan.laba_bersih === lrSinkron.ringkasan.laba_bersih_riil,
+      'Dashboard, Laporan Penjualan, Laba Rugi, & Tutup Harian wajib 100% identik hingga rupiah terakhir');
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');

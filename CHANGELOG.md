@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.146] - 2026-11-27
+### Disempurnakan — Presisi Akuntansi 100% Sinkron Lintas Seluruh 9 Laporan (Dashboard, Penjualan, Pembelian, Arus Kas, Laba Rugi, & Tutup Buku)
+- **[DASHBOARD] [BACKEND] Sinkronisasi Omset Bersih, Retur Penjualan/Pembelian, Ranking, & Tren Harian (`08_laporan_biaya.gs`)**:
+  - Memperbaiki typo pembacaan `efekRetur.total_retur_jual` di `laporan.dashboard`, mengurangkan retur penjualan dari `total_penjualan`, `total_transaksi`, `total_item_terjual`, `produk_terlaris`, `pelanggan_terbaik`, dan grafik `tren` harian, serta mengurangkan retur pembelian dari `total_pembelian` & `tren` pembelian.
+- **[DASHBOARD] [POS-BELI] [RETUR] [UI] Laba Rugi Net Sales, Laporan Pembelian Retur, & Arus Kas Refund Supplier (`08_laporan_biaya.gs`, `laporan.js`)**:
+  - **Laba Rugi**: `omset_bersih` kini menghitung **Penjualan Bersih Setelah Retur** (dan `margin_persen`/`margin_bersih_persen` dihitung dari Net Sales riil), serta mengurangkan item retur dari **Analisis Kategori** & **Produk Margin Teratas**.
+  - **Laporan Pembelian**: menampilkan badge `Diretur Penuh` / `Diretur Sebagian`, referensi `RT-...`, nilai bersih setelah retur, dan filter `Pernah Diretur`.
+  - **Arus Kas**: mencatat kas masuk refund **Retur Pembelian dari Supplier** (`tunai`/`transfer`) dan kas keluar refund retur penjualan via bank agar saldo kas & bank 100% presisi.
+  - **Evaluasi Bulanan & Tutup Harian**: otomatis mewarisi Net Sales, Pembelian Bersih, dan Top Produk Bersih setelah retur (terverifikasi otomatis lewat uji lintas laporan **Test #29f5**).
+
 ## [1.0.145] - 2026-11-27
 ### Diperbaiki — Deteksi Shift Lewat Tengah Malam & Pemulihan Otomatis Transaksi POS
 - **[POS-JUAL] [UI] Deteksi Realtime Shift Kemarin & Auto-Redirect Modal Tutup Shift (`frontend/js/modules/pos.js`)**:
