@@ -967,22 +967,52 @@ async function bukaModalDetailPelanggan(pelangganId, container = null) {
                 ${riwayatJual.map((pj) => {
                   const metodeMap = { tunai: 'Tunai', qris: 'QRIS', transfer: 'Transfer', tempo: 'Tempo', deposit: 'Saldo Titipan', kombinasi: 'Kombinasi', campuran: 'Kombinasi' };
                   const statusMap = { lunas: 'Lunas', belum_lunas: 'Belum Lunas', bayar_sebagian: 'Cicilan', sebagian: 'Cicilan', void: 'Dibatalkan', pending: 'Ditahan' };
+                  const isVoid = pj.status === 'void';
+                  const isRetPenuh = !isVoid && pj.status_retur === 'penuh';
+                  const isRetSebagian = !isVoid && pj.status_retur === 'sebagian';
+                  const adaRetur = isRetPenuh || isRetSebagian;
+                  const noRetStr = Array.isArray(pj.daftar_no_retur) && pj.daftar_no_retur.length ? pj.daftar_no_retur.join(', ') : '';
+                  const totBersih = pj.total_bersih !== undefined ? pj.total_bersih : pj.total;
+                  const sisaTag = Number(pj.sisa_tagihan || 0);
                   const mKey = String(pj.metode_bayar || '').toLowerCase();
                   const sKey = String(pj.status_bayar || '').toLowerCase();
                   const metodeLabel = metodeMap[mKey] || (pj.metode_bayar || '-');
-                  const statusLabel = statusMap[sKey] || (pj.status_bayar || '-');
-                  const statusCls = sKey === 'lunas' ? 'badge-success' : (sKey === 'void' ? 'badge-secondary' : (sKey === 'belum_lunas' ? 'badge-danger' : 'badge-warning'));
+                  const statusLabel = isVoid ? 'Dibatalkan' : (isRetPenuh ? 'Diretur Penuh' : (statusMap[sKey] || (pj.status_bayar || '-')));
+                  const statusCls = isVoid || isRetPenuh ? 'badge-danger' : (sKey === 'lunas' ? 'badge-success' : (sKey === 'belum_lunas' ? 'badge-danger' : 'badge-warning'));
                   return `
-                  <tr>
+                  <tr style="${isVoid || isRetPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
                     <td data-label="No Nota & Tgl">
-                      <div class="row-between" style="width: 100%; align-items: center; gap: 8px;">
-                        <span class="fw-bold font-mono text-xs">${escapeHtml(pj.no_nota)}</span>
-                        <span class="text-xs text-muted">${formatTanggal(pj.created_at, true)}</span>
+                      <div class="cell-stack" style="gap: 2px;">
+                        <div class="row-between" style="width: 100%; align-items: center; gap: 8px;">
+                          <span class="fw-bold font-mono text-xs" style="${isVoid || isRetPenuh ? 'text-decoration: line-through;' : ''}">${escapeHtml(pj.no_nota)}</span>
+                          <span class="text-xs text-muted">${formatTanggal(pj.created_at, true)}</span>
+                        </div>
+                        ${noRetStr ? `<span class="text-2xs font-mono text-danger">Retur: ${escapeHtml(noRetStr)}</span>` : ''}
                       </div>
                     </td>
-                    <td class="num fw-bold" data-label="Total Belanja">${formatRupiah(pj.total)}</td>
+                    <td class="num fw-bold" data-label="Total Belanja">
+                      ${isVoid ? `
+                        <span class="text-muted" style="text-decoration: line-through;">${formatRupiah(pj.total)}</span>
+                      ` : (adaRetur ? `
+                        <div class="cell-stack" style="align-items: flex-end; gap: 1px;">
+                          <span class="text-2xs text-muted" style="text-decoration: line-through; font-weight: var(--fw-normal);">${formatRupiah(pj.total)}</span>
+                          <span>${formatRupiah(totBersih)}</span>
+                          <span class="text-2xs text-danger" style="font-weight: var(--fw-normal);">Retur -${formatRupiah(pj.total_retur || 0)}</span>
+                        </div>
+                      ` : `
+                        <div class="cell-stack" style="align-items: flex-end; gap: 1px;">
+                          <span>${formatRupiah(pj.total)}</span>
+                          ${sisaTag > 0 ? `<span class="text-2xs text-danger" style="font-weight: var(--fw-normal);">Sisa: ${formatRupiah(sisaTag)}</span>` : ''}
+                        </div>
+                      `)}
+                    </td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(metodeLabel)}</span></td>
-                    <td data-label="Status"><span class="badge ${statusCls}">${escapeHtml(statusLabel)}</span></td>
+                    <td data-label="Status">
+                      <div class="cell-stack" style="gap: 3px; align-items: flex-start;">
+                        <span class="badge ${statusCls}">${escapeHtml(statusLabel)}</span>
+                        ${isRetSebagian ? `<span class="badge badge-warning badge-xs">Diretur Sebagian</span>` : ''}
+                      </div>
+                    </td>
                     <td class="no-print" style="text-align: right;" data-label="Aksi">
                       <div class="table-actions">
                         <button type="button" class="btn btn-sm btn-primary btn-cetak-riwayat-pelanggan" data-id="${escapeHtml(pj.id)}" title="Cetak Struk Transaksi">

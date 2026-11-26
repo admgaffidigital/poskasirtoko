@@ -43,12 +43,41 @@ function aksiPelangganDetail_(ctx) {
   const limitKredit = Number(pel.limit_kredit) || 0;
   const sisaLimit = Math.max(0, limitKredit - piutangBerjalan);
 
-  // Riwayat Penjualan (15 transaksi terakhir)
+  // Riwayat Penjualan (15 transaksi terakhir, diperkaya status retur & sisa piutang)
+  const piutangByJual = {};
+  daftarPiutang.forEach(function (pt) {
+    if (pt.penjualan_id) piutangByJual[pt.penjualan_id] = pt;
+  });
+  const returByJualPel = {};
+  bacaSemua_('Retur').forEach(function (rt) {
+    if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui' || !rt.ref_id) return;
+    if (!returByJualPel[rt.ref_id]) returByJualPel[rt.ref_id] = { total_retur: 0, no_retur_list: [] };
+    returByJualPel[rt.ref_id].total_retur += (Number(rt.total) || 0);
+    if (rt.no_retur) returByJualPel[rt.ref_id].no_retur_list.push(rt.no_retur);
+  });
+
   const semuaPenjualan = bacaSemua_('Penjualan');
   const riwayatPenjualan = semuaPenjualan
-    .filter(function (pj) { return pj.pelanggan_id === pel.id && !pj.deleted; })
+    .filter(function (pj) { return pj.pelanggan_id === pel.id && !pj.deleted && pj.status !== 'pending'; })
     .sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); })
-    .slice(0, 15);
+    .slice(0, 15)
+    .map(function (pj) {
+      const copy = Object.assign({}, pj);
+      const tot = Number(pj.total) || 0;
+      const infoR = returByJualPel[pj.id] || { total_retur: 0, no_retur_list: [] };
+      const totRet = pj.status === 'void' ? 0 : Math.min(tot, Math.round(infoR.total_retur || 0));
+      const statusRet = totRet <= 0 ? '' : (tot > 0 && totRet >= tot ? 'penuh' : 'sebagian');
+      const pt = piutangByJual[pj.id];
+      const sisaTagihan = (pj.status === 'void' || statusRet === 'penuh' || !pt || pt.status === 'lunas')
+        ? 0
+        : Math.max(0, Math.round(Number(pt.sisa) || 0));
+      copy.total_retur = totRet;
+      copy.total_bersih = pj.status === 'void' ? 0 : Math.max(0, tot - totRet);
+      copy.status_retur = statusRet;
+      copy.daftar_no_retur = infoR.no_retur_list;
+      copy.sisa_tagihan = sisaTagihan;
+      return copy;
+    });
 
   // Riwayat Mutasi Poin (Poin_Log)
   const semuaPoin = bacaSemua_('Poin_Log');

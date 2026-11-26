@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.148] - 2026-11-27
+### Diperbaiki — Sinkronisasi Status Retur Penuh & Sisa Cicilan di Profil Rincian Pelanggan
+- **[PELANGGAN] [RETUR] [UI] Transparansi Riwayat Belanja Member (`07_pelanggan_loyalti_deposit.gs`, `pelanggan.js`)**:
+  - `pelanggan.detail` kini memperkaya setiap baris `riwayat_penjualan` dengan `status_retur`, `total_retur`, `total_bersih`, `daftar_no_retur`, dan `sisa_tagihan`.
+  - Di modal **Profil & Rincian Pelanggan**, nota yang diretur penuh kini tampil redup dengan badge **`Diretur Penuh`**, nomor `RT-...`, nominal awal dicoret → `Rp 0` (bukan `Lunas`), dan nota tempo cicilan menampilkan `Sisa: Rp ...` secara langsung.
+
 ## [1.0.147] - 2026-11-27
 ### Diperbaiki — Perbaikan Total Bug `Dibayar` Dobel pada Nota Tempo/Cicilan, Faktur A5, Shift Kasir, Pengiriman, & Piutang Retur Penuh
 - **[POS-JUAL] [HUTANG-PIUTANG] [CETAK] [BACKEND] Perbaikan Kritis `Penjualan.bayar` pada Transaksi Tempo & Cicilan (`04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`, `01_database_utilitas.gs`, `printer.js`)**:

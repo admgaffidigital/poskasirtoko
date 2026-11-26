@@ -947,13 +947,13 @@ function renderTabPenjualan(container, data) {
                 ${items.length === 0 ? `
                   <tr><td colspan="${isOwner ? (canVoid ? 9 : 9) : (canVoid ? 8 : 8)}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data penjualan sesuai filter</td></tr>
                 ` : items.map((j) => {
-                  const isVoided = j.status === 'void';
-                  const isReturPenuh = !isVoided && j.status_retur === 'penuh';
-                  const isReturSebagian = !isVoided && j.status_retur === 'sebagian';
-                  const adaRetur = isReturPenuh || isReturSebagian;
-                  const noReturStr = Array.isArray(j.daftar_no_retur) && j.daftar_no_retur.length ? j.daftar_no_retur.join(', ') : '';
-                  const totalBersih = j.total_bersih !== undefined ? j.total_bersih : j.total;
-                  return `
+    const isVoided = j.status === 'void';
+    const isReturPenuh = !isVoided && j.status_retur === 'penuh';
+    const isReturSebagian = !isVoided && j.status_retur === 'sebagian';
+    const adaRetur = isReturPenuh || isReturSebagian;
+    const noReturStr = Array.isArray(j.daftar_no_retur) && j.daftar_no_retur.length ? j.daftar_no_retur.join(', ') : '';
+    const totalBersih = j.total_bersih !== undefined ? j.total_bersih : j.total;
+    return `
                   <tr style="${isVoided || isReturPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
                     <td data-label="No Nota">
                       <div class="cell-stack" style="gap: 2px;">
@@ -1454,12 +1454,12 @@ function renderTabPembelian(container, data) {
                 ${items.length === 0 ? `
                   <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada faktur pembelian sesuai filter</td></tr>
                 ` : items.map((pb) => {
-                  const isRetPenuh = pb.status_retur === 'penuh';
-                  const isRetSebagian = pb.status_retur === 'sebagian';
-                  const adaRet = isRetPenuh || isRetSebagian;
-                  const noRetStr = Array.isArray(pb.daftar_no_retur) && pb.daftar_no_retur.length ? pb.daftar_no_retur.join(', ') : '';
-                  const totBersih = pb.total_bersih !== undefined ? pb.total_bersih : pb.total;
-                  return `
+    const isRetPenuh = pb.status_retur === 'penuh';
+    const isRetSebagian = pb.status_retur === 'sebagian';
+    const adaRet = isRetPenuh || isRetSebagian;
+    const noRetStr = Array.isArray(pb.daftar_no_retur) && pb.daftar_no_retur.length ? pb.daftar_no_retur.join(', ') : '';
+    const totBersih = pb.total_bersih !== undefined ? pb.total_bersih : pb.total;
+    return `
                   <tr style="${isRetPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
                     <td data-label="No Faktur">
                       <div class="cell-stack" style="gap: 2px;">

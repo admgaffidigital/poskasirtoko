@@ -2596,6 +2596,11 @@ async function runAudit() {
     const ptListRet = envGd.aksiPiutangList_({ user: ownerRow, payload: {} });
     const ptRowRet = ptListRet.items.find((x) => x.penjualan_id === jualKirimRet.penjualan.id);
     assert(ptRowRet && ptRowRet.status_retur === 'penuh', 'piutang.list wajib menandai nota diretur penuh dengan status_retur=penuh');
+    const pelDetRet = envGd.aksiPelangganDetail_({ user: ownerRow, payload: { id: pelUjiTempo.id } });
+    const pelRowRet = pelDetRet.riwayat_penjualan.find((x) => x.id === jualKirimRet.penjualan.id);
+    const pelRowCicil = pelDetRet.riwayat_penjualan.find((x) => x.id === jualTempoUji.penjualan.id);
+    assert(pelRowRet && pelRowRet.status_retur === 'penuh' && pelRowRet.total_bersih === 0 && pelRowCicil && pelRowCicil.sisa_tagihan === 30000,
+      'pelanggan.detail wajib menandai nota diretur penuh (total_bersih=0) dan sisa_tagihan cicilan yang akurat');
 
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
