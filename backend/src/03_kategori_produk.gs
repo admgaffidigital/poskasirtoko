@@ -127,6 +127,10 @@ function aksiProdukList_(ctx) {
     if (v.deleted) return;
     if (!petaVarian[v.produk_id]) petaVarian[v.produk_id] = [];
     const vCopy = Object.assign({}, v);
+    const lokV = bacaStokLokasi_(vCopy);
+    vCopy.stok_toko = lokV.stok_toko;
+    vCopy.stok_gudang = lokV.stok_gudang;
+    vCopy.stok = lokV.stok;
     if (isKasir) vCopy.hpp = null; // Kasir TIDAK BOLEH melihat HPP
     petaVarian[v.produk_id].push(vCopy);
   });
@@ -138,12 +142,35 @@ function aksiProdukList_(ctx) {
     petaSatuan[s.produk_id].push(Object.assign({}, s));
   });
 
-  // Susun data produk lengkap
+  // Susun data produk lengkap (termasuk posisi stok_toko & stok_gudang zero-migration)
   const daftarLengkap = produk.map(function (pr, idx) {
     const prAman = Object.assign({}, pr);
     prAman._idx = idx; // Indeks baris asli untuk fallback stable sort
+    const vars = petaVarian[pr.id] || [];
+    if (prAman.punya_varian && vars.length > 0) {
+      let totToko = 0;
+      let totGudang = 0;
+      vars.forEach(function (v) {
+        totToko += Number(v.stok_toko || 0);
+        totGudang += Number(v.stok_gudang || 0);
+      });
+      const lokPr = bacaStokLokasi_(prAman);
+      // Jika total varian cocok dengan stok induk, gunakan sum per lokasi; jika tidak, fallback normalisasi induk
+      if (Math.abs(bulatQty_(totToko + totGudang) - lokPr.stok) <= 0.001) {
+        prAman.stok_toko = bulatQty_(totToko);
+        prAman.stok_gudang = bulatQty_(totGudang);
+      } else {
+        prAman.stok_toko = lokPr.stok_toko;
+        prAman.stok_gudang = lokPr.stok_gudang;
+      }
+    } else {
+      const lokPr = bacaStokLokasi_(prAman);
+      prAman.stok_toko = lokPr.stok_toko;
+      prAman.stok_gudang = lokPr.stok_gudang;
+      prAman.stok = lokPr.stok;
+    }
     if (isKasir) prAman.hpp = null; // Kasir TIDAK BOLEH melihat HPP
-    prAman.varian = petaVarian[pr.id] || [];
+    prAman.varian = vars;
     prAman.satuan_konversi = petaSatuan[pr.id] || [];
     return prAman;
   });
@@ -277,7 +304,10 @@ function aksiProdukCreate_(ctx) {
   const hargaRitel = V_.rupiah(p.harga_ritel, 'Harga Ritel', { wajib: true });
   const hargaGrosir = V_.rupiah(p.harga_grosir, 'Harga Grosir', { bawaan: hargaRitel });
   const minGrosirQty = V_.qty(p.min_grosir_qty || 1, 'Min Grosir Qty');
-  const stok = V_.angka(p.stok, 'Stok Awal', { bawaan: 0 });
+  const hasStokLok = p.stok_toko !== undefined || p.stok_gudang !== undefined;
+  const stokTokoAwal = hasStokLok ? V_.angka(p.stok_toko, 'Stok Awal Toko', { bawaan: 0 }) : V_.angka(p.stok, 'Stok Awal', { bawaan: 0 });
+  const stokGudangAwal = hasStokLok ? V_.angka(p.stok_gudang, 'Stok Awal Gudang', { bawaan: 0 }) : 0;
+  const stok = bulatQty_(stokTokoAwal + stokGudangAwal);
   const stokMin = V_.angka(p.stok_min, 'Stok Minimum', { bawaan: 0 });
   const punyaVarian = !!p.punya_varian;
   const fotoUrl = V_.teks(p.foto_url, 'Foto URL', { maks: 500 });
@@ -303,6 +333,8 @@ function aksiProdukCreate_(ctx) {
     harga_grosir: hargaGrosir,
     min_grosir_qty: minGrosirQty,
     stok: stok,
+    stok_toko: stokTokoAwal,
+    stok_gudang: stokGudangAwal,
     stok_min: stokMin,
     punya_varian: punyaVarian,
     foto_url: fotoUrl,
@@ -312,6 +344,8 @@ function aksiProdukCreate_(ctx) {
   // Simpan varian jika ada
   const varianInput = Array.isArray(p.varian) ? p.varian : [];
   let totalStokVarian = 0;
+  let totalStokTokoVarian = 0;
+  let totalStokGudangVarian = 0;
   if (punyaVarian && varianInput.length) {
     const barisVarian = varianInput.map(function (v, idx) {
       const vHpp = V_.rupiah(v.hpp || hpp, 'HPP Varian', { bawaan: hpp });
@@ -319,8 +353,13 @@ function aksiProdukCreate_(ctx) {
       const vGrosir = V_.rupiah(v.harga_grosir || hargaGrosir, 'Harga Grosir Varian', { bawaan: vRitel });
       if (vRitel < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga ritel varian tidak boleh di bawah HPP.');
       if (vGrosir < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga grosir varian tidak boleh di bawah HPP.');
-      const vStok = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
-      totalStokVarian += vStok;
+      const vHasLok = v.stok_toko !== undefined || v.stok_gudang !== undefined;
+      const vStokToko = vHasLok ? V_.angka(v.stok_toko, 'Stok Toko Varian', { bawaan: 0 }) : V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
+      const vStokGudang = vHasLok ? V_.angka(v.stok_gudang, 'Stok Gudang Varian', { bawaan: 0 }) : 0;
+      const vStok = bulatQty_(vStokToko + vStokGudang);
+      totalStokVarian = bulatQty_(totalStokVarian + vStok);
+      totalStokTokoVarian = bulatQty_(totalStokTokoVarian + vStokToko);
+      totalStokGudangVarian = bulatQty_(totalStokGudangVarian + vStokGudang);
 
       let vSku = V_.teks(v.sku, 'SKU Varian', { maks: 50 });
       if (!vSku) {
@@ -340,6 +379,8 @@ function aksiProdukCreate_(ctx) {
         harga_ritel: vRitel,
         harga_grosir: vGrosir,
         stok: vStok,
+        stok_toko: vStokToko,
+        stok_gudang: vStokGudang,
         stok_min: V_.angka(v.stok_min, 'Stok Min Varian', { bawaan: stokMin }),
         aktif: v.aktif !== false
       };
@@ -347,8 +388,10 @@ function aksiProdukCreate_(ctx) {
     tambahBaris_('Varian', barisVarian, ctx.user.id);
 
     // Update stok produk induk sesuai jumlah stok varian (Aturan Bisnis #17)
-    ubahBaris_('Produk', [{ id: produkBaru.id, data: { stok: totalStokVarian } }], ctx.user.id);
+    ubahBaris_('Produk', [{ id: produkBaru.id, data: { stok: totalStokVarian, stok_toko: totalStokTokoVarian, stok_gudang: totalStokGudangVarian } }], ctx.user.id);
     produkBaru.stok = totalStokVarian;
+    produkBaru.stok_toko = totalStokTokoVarian;
+    produkBaru.stok_gudang = totalStokGudangVarian;
   }
 
   // Simpan satuan konversi jika ada

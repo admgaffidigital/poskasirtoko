@@ -359,12 +359,16 @@ async function initFormInputBeli(container) {
           varian_id: chosen.varian_id || '',
           nama: chosen.nama,
           satuan_dasar: chosen.satuan_dasar || 'Pcs',
-          hpp: chosen.hpp || 0
+          hpp: chosen.hpp || 0,
+          stok_toko: chosen.stok_toko !== undefined ? Number(chosen.stok_toko) : Number(chosen.stok || 0),
+          stok_gudang: Number(chosen.stok_gudang || 0)
         });
       },
       onSelectMultiple: (listChosen) => {
         if (!Array.isArray(listChosen) || !listChosen.length) return;
         listChosen.forEach((chosen) => {
+          const stToko = chosen.stok_toko !== undefined ? Number(chosen.stok_toko) : Number(chosen.stok || 0);
+          const stGudang = Number(chosen.stok_gudang || 0);
           const itemBaru = {
             produk_id: chosen.id,
             varian_id: chosen.varian_id || '',
@@ -375,7 +379,12 @@ async function initFormInputBeli(container) {
             qty: 1,
             qty_dasar: 1,
             harga_beli: Number(chosen.hpp || 0),
-            diskon_persen: 0
+            diskon_persen: 0,
+            stok_toko: stToko,
+            stok_gudang: stGudang,
+            lokasi_masuk: stToko <= 0 ? 'toko' : 'gudang',
+            qty_toko: 0,
+            qty_gudang: 0
           };
           hitungUlangItemBeli(itemBaru);
           keranjangBeli.push(itemBaru);
@@ -680,9 +689,15 @@ async function pilihProdukUntukBeli(container, item) {
     const prod = (res.items || []).find((p) => p.id === item.id);
     if (prod) {
       item.harga_ritel = Number(prod.harga_ritel || item.harga_ritel || 0);
+      item.stok_toko = prod.stok_toko !== undefined ? Number(prod.stok_toko) : Number(prod.stok || 0);
+      item.stok_gudang = Number(prod.stok_gudang || 0);
       if (item.varian_id && Array.isArray(prod.varian)) {
         const vr = prod.varian.find((v) => v.id === item.varian_id);
-        if (vr && Number(vr.harga_ritel) > 0) item.harga_ritel = Number(vr.harga_ritel);
+        if (vr) {
+          if (Number(vr.harga_ritel) > 0) item.harga_ritel = Number(vr.harga_ritel);
+          item.stok_toko = vr.stok_toko !== undefined ? Number(vr.stok_toko) : Number(vr.stok || 0);
+          item.stok_gudang = Number(vr.stok_gudang || 0);
+        }
       }
       if (prod.satuan_konversi && prod.satuan_konversi.length) {
         prod.satuan_konversi.forEach((sk) => {
@@ -763,6 +778,8 @@ function tambahItemKeKeranjangBeli(container) {
   }
 
   const qtyDasar = Math.round(qty * faktor * 1000) / 1000;
+  const stToko = Number(itemPilihan.stok_toko || 0);
+  const stGudang = Number(itemPilihan.stok_gudang || 0);
 
   const itemBaru = {
     produk_id: itemPilihan.id,
@@ -775,7 +792,12 @@ function tambahItemKeKeranjangBeli(container) {
     qty_dasar: qtyDasar,
     harga_beli: hargaBeli,
     harga_ritel: Number(itemPilihan.harga_ritel || 0),
-    diskon_persen: diskonPersen
+    diskon_persen: diskonPersen,
+    stok_toko: stToko,
+    stok_gudang: stGudang,
+    lokasi_masuk: stToko <= 0 ? 'toko' : 'gudang',
+    qty_toko: 0,
+    qty_gudang: 0
   };
   hitungUlangItemBeli(itemBaru);
   keranjangBeli.push(itemBaru);
@@ -871,6 +893,19 @@ function renderTabelKeranjangBeli(container) {
                 ${rawanBoncos ? `<span class="badge badge-danger badge-xs">HPP &gt; Harga Jual (${formatRupiah(it.harga_ritel)})!</span>` : ''}
               </div>
             ` : ''}
+            <div class="row items-center" style="gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+              <span class="text-2xs text-muted">Simpan ke:</span>
+              <select class="input input-sm sel-lokasi-item-beli" data-index="${idx}" style="width: auto; min-height: 28px; height: 28px; padding: 2px 8px; font-size: var(--fs-xs);">
+                <option value="gudang" ${it.lokasi_masuk === 'gudang' ? 'selected' : ''}>Gudang${Number(it.stok_toko || 0) > 0 ? ' (Saran)' : ''}</option>
+                <option value="toko" ${it.lokasi_masuk === 'toko' ? 'selected' : ''}>Toko${Number(it.stok_toko || 0) <= 0 ? ' (Toko Kosong)' : ''}</option>
+                <option value="split" ${it.lokasi_masuk === 'split' ? 'selected' : ''}>Bagi Toko &amp; Gudang</option>
+              </select>
+              ${it.lokasi_masuk === 'split' ? `
+                <span class="text-2xs text-muted">Toko:</span>
+                <input type="number" class="input input-sm tabular inp-split-toko" data-index="${idx}" min="0" max="${it.qty}" step="any" inputmode="decimal" value="${it.qty_toko || 0}" style="width: 64px; min-height: 26px; height: 26px; padding: 2px 6px; text-align: right; font-size: var(--fs-xs);">
+                <span class="text-2xs text-muted">Gdg: <strong class="font-mono">${formatQty(Math.max(0, Math.round((it.qty - Number(it.qty_toko || 0)) * 1000) / 1000))}</strong> ${escapeHtml(it.satuan)}</span>
+              ` : ''}
+            </div>
           </div>
         </td>
         <td data-label="Satuan"><span class="badge">${escapeHtml(it.satuan)}</span></td>
@@ -919,9 +954,45 @@ function renderTabelKeranjangBeli(container) {
       }
       keranjangBeli[idx].qty = qtyBaru;
       keranjangBeli[idx].qty_dasar = Math.round(qtyBaru * (Number(keranjangBeli[idx].faktor) || 1) * 1000) / 1000;
+      if (keranjangBeli[idx].lokasi_masuk === 'split') {
+        keranjangBeli[idx].qty_toko = Math.min(Number(keranjangBeli[idx].qty_toko || 0), keranjangBeli[idx].qty);
+        keranjangBeli[idx].qty_gudang = Math.round(Math.max(0, keranjangBeli[idx].qty - keranjangBeli[idx].qty_toko) * 1000) / 1000;
+      }
       hitungUlangItemBeli(keranjangBeli[idx]);
       renderTabelKeranjangBeli(container);
       renderRingkasanBeli(container);
+    });
+  });
+
+  tbody.querySelectorAll('.sel-lokasi-item-beli').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      const idx = Number(sel.getAttribute('data-index'));
+      const it = keranjangBeli[idx];
+      if (!it) return;
+      it.lokasi_masuk = sel.value;
+      if (it.lokasi_masuk === 'split') {
+        const half = Math.max(0, Math.floor(it.qty / 2));
+        it.qty_toko = half;
+        it.qty_gudang = Math.round(Math.max(0, it.qty - half) * 1000) / 1000;
+      } else {
+        it.qty_toko = 0;
+        it.qty_gudang = 0;
+      }
+      renderTabelKeranjangBeli(container);
+    });
+  });
+
+  tbody.querySelectorAll('.inp-split-toko').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      const idx = Number(inp.getAttribute('data-index'));
+      const it = keranjangBeli[idx];
+      if (!it) return;
+      let qt = parseQty(inp.value);
+      if (qt < 0) qt = 0;
+      if (qt > it.qty) qt = it.qty;
+      it.qty_toko = Math.round(qt * 1000) / 1000;
+      it.qty_gudang = Math.round(Math.max(0, it.qty - it.qty_toko) * 1000) / 1000;
+      renderTabelKeranjangBeli(container);
     });
   });
 
@@ -1090,7 +1161,10 @@ async function simpanPembelian(container) {
         faktor: it.faktor,
         qty: it.qty,
         harga_beli: it.harga_beli,
-        diskon_persen: it.diskon_persen || 0
+        diskon_persen: it.diskon_persen || 0,
+        lokasi_masuk: it.lokasi_masuk || 'otomatis',
+        qty_toko: it.lokasi_masuk === 'split' ? Number(it.qty_toko || 0) : 0,
+        qty_gudang: it.lokasi_masuk === 'split' ? Math.round(Math.max(0, it.qty - Number(it.qty_toko || 0)) * 1000) / 1000 : 0
       }))
     };
 

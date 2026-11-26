@@ -167,14 +167,21 @@ function aksiPenjualanCreate_(ctx) {
       gagal_(KODE.VALIDATION, 'Qty dibawa (' + qtyDibawa + ') tidak boleh lebih besar dari qty beli (' + qty + ').');
     }
 
-    // Cek kecukupan stok secara akumulatif lintas baris untuk produk/varian yang sama (Aturan Bisnis & Pengaturan stok_minus)
-    const kunciStok = pr.id + '::' + (varObj ? varObj.id : '');
+    // Tentukan lokasi sumber pemotongan stok (default 'toko'; boleh 'gudang' bila dipilih kasir untuk pengiriman proyek)
+    const lokasiStok = normalisasiLokasi_(it.lokasi_stok || payload.lokasi_stok, 'toko');
+    const lokObj = bacaStokLokasi_(varObj || pr);
+
+    // Cek kecukupan stok secara akumulatif lintas baris pada lokasi sumber yang dipilih
+    const kunciStok = pr.id + '::' + (varObj ? varObj.id : '') + '::' + lokasiStok;
     const totalButuhStok = bulatQty_((kebutuhanStokMap[kunciStok] || 0) + qtyDasar);
     kebutuhanStokMap[kunciStok] = totalButuhStok;
-    const stokSekarang = varObj ? Number(varObj.stok || 0) : Number(pr.stok || 0);
+    const stokSekarang = lokasiStok === 'gudang' ? lokObj.stok_gudang : lokObj.stok_toko;
     if (!pengaturan.stok_minus && stokSekarang < totalButuhStok) {
       const labelNama = varObj ? pr.nama + ' (' + varObj.nama_varian + ')' : pr.nama;
-      gagal_(KODE.STOK_KURANG, 'Stok ' + labelNama + ' tidak mencukupi (sisa: ' + stokSekarang + ' ' + pr.satuan_dasar + ', total diminta: ' + totalButuhStok + ' ' + pr.satuan_dasar + ').');
+      if (lokasiStok === 'toko' && lokObj.stok_gudang > 0) {
+        gagal_(KODE.STOK_KURANG, 'Stok Toko ' + labelNama + ' tidak mencukupi (Toko: ' + lokObj.stok_toko + ', Gudang tersedia: ' + lokObj.stok_gudang + ' ' + pr.satuan_dasar + '). Migrasi dari Gudang terlebih dahulu atau pilih ambil dari Gudang.');
+      }
+      gagal_(KODE.STOK_KURANG, 'Stok ' + (lokasiStok === 'gudang' ? 'Gudang' : 'Toko') + ' ' + labelNama + ' tidak mencukupi (sisa: ' + stokSekarang + ' ' + pr.satuan_dasar + ', total diminta: ' + totalButuhStok + ' ' + pr.satuan_dasar + ').');
     }
 
     // Tentukan HPP snapshot per satuan jual (README Aturan 11)
@@ -236,6 +243,7 @@ function aksiPenjualanCreate_(ctx) {
       diskon_nilai: diskonInput,
       diskon: diskonItemNilai,
       subtotal: subtotalItemBersih,
+      lokasi_stok: lokasiStok,
       _pr: pr,
       _var: varObj
     });
@@ -479,7 +487,8 @@ function aksiPenjualanCreate_(ctx) {
       diskon_tipe: it.diskon_tipe,
       diskon_nilai: it.diskon_nilai,
       diskon: it.diskon,
-      subtotal: it.subtotal
+      subtotal: it.subtotal,
+      lokasi_stok: it.lokasi_stok || 'toko'
     };
   });
   const itemsTersimpan = tambahBaris_('Penjualan_Item', barisItems, ctx.user.id);
@@ -508,39 +517,67 @@ function aksiPenjualanCreate_(ctx) {
   const barisKartuStok = [];
 
   itemsOlah.forEach(function (it) {
+    const lok = normalisasiLokasi_(it.lokasi_stok, 'toko');
     let saldoAkhir = 0;
-    if (it._var) {
-      const stokVarianLama = Number(it._var.stok || 0);
-      const stokVarianBaru = bulatQty_(stokVarianLama - it.qty_dasar);
-      it._var.stok = stokVarianBaru;
-      updateVarianMap[it._var.id] = { stok: stokVarianBaru };
+    let saldoTokoAkhir = 0;
+    let saldoGudangAkhir = 0;
 
-      // Hitung ulang total stok induk produk dari semua varian
+    if (it._var) {
+      const lv = bacaStokLokasi_(it._var);
+      const stTokoV = lok === 'toko' ? bulatQty_(lv.stok_toko - it.qty_dasar) : lv.stok_toko;
+      const stGudangV = lok === 'gudang' ? bulatQty_(lv.stok_gudang - it.qty_dasar) : lv.stok_gudang;
+      const stokVarianBaru = bulatQty_(stTokoV + stGudangV);
+      it._var.stok_toko = stTokoV;
+      it._var.stok_gudang = stGudangV;
+      it._var.stok = stokVarianBaru;
+      updateVarianMap[it._var.id] = { stok: stokVarianBaru, stok_toko: stTokoV, stok_gudang: stGudangV };
+
+      // Hitung ulang total stok induk produk (toko, gudang, total) dari semua varian
       const varianLain = semuaVarian.filter(function (v) { return v.produk_id === it._pr.id && !v.deleted; });
-      let totalStokInduk = 0;
-      varianLain.forEach(function (v) { totalStokInduk += Number(v.stok || 0); });
-      const totalIndukBulat = bulatQty_(totalStokInduk);
+      let totalIndukToko = 0;
+      let totalIndukGudang = 0;
+      varianLain.forEach(function (v) {
+        const lvi = bacaStokLokasi_(v);
+        totalIndukToko += lvi.stok_toko;
+        totalIndukGudang += lvi.stok_gudang;
+      });
+      const indukTokoB = bulatQty_(totalIndukToko);
+      const indukGudangB = bulatQty_(totalIndukGudang);
+      const totalIndukBulat = bulatQty_(indukTokoB + indukGudangB);
+      it._pr.stok_toko = indukTokoB;
+      it._pr.stok_gudang = indukGudangB;
       it._pr.stok = totalIndukBulat;
-      updateProdukMap[it._pr.id] = { stok: totalIndukBulat };
+      updateProdukMap[it._pr.id] = { stok: totalIndukBulat, stok_toko: indukTokoB, stok_gudang: indukGudangB };
       saldoAkhir = stokVarianBaru;
+      saldoTokoAkhir = stTokoV;
+      saldoGudangAkhir = stGudangV;
     } else {
-      const stokProdukLama = Number(it._pr.stok || 0);
-      const stokProdukBaru = bulatQty_(stokProdukLama - it.qty_dasar);
+      const lp = bacaStokLokasi_(it._pr);
+      const stTokoP = lok === 'toko' ? bulatQty_(lp.stok_toko - it.qty_dasar) : lp.stok_toko;
+      const stGudangP = lok === 'gudang' ? bulatQty_(lp.stok_gudang - it.qty_dasar) : lp.stok_gudang;
+      const stokProdukBaru = bulatQty_(stTokoP + stGudangP);
+      it._pr.stok_toko = stTokoP;
+      it._pr.stok_gudang = stGudangP;
       it._pr.stok = stokProdukBaru;
-      updateProdukMap[it._pr.id] = { stok: stokProdukBaru };
+      updateProdukMap[it._pr.id] = { stok: stokProdukBaru, stok_toko: stTokoP, stok_gudang: stGudangP };
       saldoAkhir = stokProdukBaru;
+      saldoTokoAkhir = stTokoP;
+      saldoGudangAkhir = stGudangP;
     }
 
     barisKartuStok.push({
       produk_id: it.produk_id,
       varian_id: it.varian_id,
       tipe: 'jual',
+      lokasi: lok,
       qty: -it.qty_dasar,
       saldo: saldoAkhir,
+      saldo_toko: saldoTokoAkhir,
+      saldo_gudang: saldoGudangAkhir,
       hpp: hitungHppDasarItem_(it),
       ref_id: noNota,
       user_id: ctx.user.id,
-      keterangan: 'Penjualan ' + noNota + ' (' + it.qty + ' ' + it.satuan + ')'
+      keterangan: 'Penjualan ' + noNota + ' (' + it.qty + ' ' + it.satuan + ' dari ' + (lok === 'gudang' ? 'Gudang' : 'Toko') + ')'
     });
   });
 
@@ -1965,28 +2002,51 @@ function aksiPenjualanVoid_(ctx) {
   semuaVarian.forEach(function (v) { varianPeta[v.id] = v; });
 
   items.forEach(function (it) {
+    const lok = normalisasiLokasi_(it.lokasi_stok, 'toko');
+    const qd = Number(it.qty_dasar || 0);
     let saldoAkhir = 0;
+    let saldoTokoAkhir = 0;
+    let saldoGudangAkhir = 0;
+
     if (it.varian_id) {
       const v = varianPeta[it.varian_id];
       if (v) {
-        const stokBaru = bulatQty_(Number(v.stok || 0) + Number(it.qty_dasar || 0));
-        ubahBaris_('Varian', [{ id: v.id, data: { stok: stokBaru } }], ctx.user.id);
+        const lv = bacaStokLokasi_(v);
+        const stTokoV = lok === 'toko' ? bulatQty_(lv.stok_toko + qd) : lv.stok_toko;
+        const stGudangV = lok === 'gudang' ? bulatQty_(lv.stok_gudang + qd) : lv.stok_gudang;
+        const stokBaru = bulatQty_(stTokoV + stGudangV);
+        ubahBaris_('Varian', [{ id: v.id, data: { stok: stokBaru, stok_toko: stTokoV, stok_gudang: stGudangV } }], ctx.user.id);
         v.stok = stokBaru;
+        v.stok_toko = stTokoV;
+        v.stok_gudang = stGudangV;
 
-        // Update total produk induk
         const varianLain = semuaVarian.filter(function (vl) { return vl.produk_id === v.produk_id && !vl.deleted; });
-        let totalStokInduk = 0;
-        varianLain.forEach(function (vl) { totalStokInduk += (vl.id === v.id ? stokBaru : Number(vl.stok || 0)); });
-        ubahBaris_('Produk', [{ id: v.produk_id, data: { stok: bulatQty_(totalStokInduk) } }], ctx.user.id);
+        let totToko = 0;
+        let totGudang = 0;
+        varianLain.forEach(function (vl) {
+          const lvi = bacaStokLokasi_(vl);
+          totToko += lvi.stok_toko;
+          totGudang += lvi.stok_gudang;
+        });
+        ubahBaris_('Produk', [{ id: v.produk_id, data: { stok: bulatQty_(totToko + totGudang), stok_toko: bulatQty_(totToko), stok_gudang: bulatQty_(totGudang) } }], ctx.user.id);
         saldoAkhir = stokBaru;
+        saldoTokoAkhir = stTokoV;
+        saldoGudangAkhir = stGudangV;
       }
     } else {
       const pr = produkPeta[it.produk_id];
       if (pr) {
-        const stokBaru = bulatQty_(Number(pr.stok || 0) + Number(it.qty_dasar || 0));
-        ubahBaris_('Produk', [{ id: pr.id, data: { stok: stokBaru } }], ctx.user.id);
+        const lp = bacaStokLokasi_(pr);
+        const stTokoP = lok === 'toko' ? bulatQty_(lp.stok_toko + qd) : lp.stok_toko;
+        const stGudangP = lok === 'gudang' ? bulatQty_(lp.stok_gudang + qd) : lp.stok_gudang;
+        const stokBaru = bulatQty_(stTokoP + stGudangP);
+        ubahBaris_('Produk', [{ id: pr.id, data: { stok: stokBaru, stok_toko: stTokoP, stok_gudang: stGudangP } }], ctx.user.id);
         pr.stok = stokBaru;
+        pr.stok_toko = stTokoP;
+        pr.stok_gudang = stGudangP;
         saldoAkhir = stokBaru;
+        saldoTokoAkhir = stTokoP;
+        saldoGudangAkhir = stGudangP;
       }
     }
 
@@ -1994,12 +2054,15 @@ function aksiPenjualanVoid_(ctx) {
       produk_id: it.produk_id,
       varian_id: it.varian_id || '',
       tipe: 'void',
-      qty: it.qty_dasar,
+      lokasi: lok,
+      qty: qd,
       saldo: saldoAkhir,
+      saldo_toko: saldoTokoAkhir,
+      saldo_gudang: saldoGudangAkhir,
       hpp: hitungHppDasarItem_(it),
       ref_id: penjualan.no_nota,
       user_id: ctx.user.id,
-      keterangan: 'Void penjualan ' + penjualan.no_nota + ': ' + alasan
+      keterangan: 'Void penjualan ' + penjualan.no_nota + ' (kembali ke ' + (lok === 'gudang' ? 'Gudang' : 'Toko') + '): ' + alasan
     }], ctx.user.id);
   });
 

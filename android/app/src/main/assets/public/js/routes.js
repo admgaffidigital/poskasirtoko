@@ -52,6 +52,17 @@ export const ROUTES = [
     group: 'Katalog & Stok'
   },
   {
+    path: '#/gudang',
+    id: 'gudang',
+    title: 'Gudang & Mutasi',
+    shortTitle: 'Gudang',
+    icon: ICONS.truck,
+    roles: ['owner', 'admin', 'kasir'],
+    fase: 'Fase 3',
+    inBottomNav: false,
+    group: 'Katalog & Stok'
+  },
+  {
     path: '#/lainnya',
     id: 'lainnya',
     title: 'Menu Lainnya',

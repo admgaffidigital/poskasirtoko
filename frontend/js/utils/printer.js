@@ -3637,3 +3637,113 @@ export function bukaModalHasilPenawaran(rab) {
   modal.el.querySelector('#btn-rab-hasil-tutup')?.addEventListener('click', () => modal.close());
 }
 
+/**
+ * Susun teks polos Bon Pengambilan / Mutasi Stok Gudang (58mm / 80mm)
+ * @param {Object} mutasi
+ * @param {'58'|'80'} [ukuran='58']
+ * @returns {string}
+ */
+export function susunTeksBonMutasiGudang(mutasi, ukuran = '58') {
+  const lebar = LEBAR_KERTAS[ukuran] || 32;
+  const toko = ambilInfoTokoDokumen({});
+  const items = Array.isArray(mutasi?.items) ? mutasi.items : (Array.isArray(mutasi?.items_json) ? mutasi.items_json : []);
+  const labelArah = mutasi?.arah === 'toko_ke_gudang' ? 'TOKO -> GUDANG' : 'GUDANG -> TOKO';
+
+  const baris = [];
+  baris.push(formatTengah((toko.nama || 'TOKO').toUpperCase(), lebar));
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatTengah('BON PENGAMBILAN / MUTASI STOK', lebar));
+  baris.push(formatTengah(labelArah, lebar));
+  baris.push(buatGaris(lebar, '-'));
+  baris.push('No Mutasi: ' + (mutasi?.no_mutasi || '-'));
+  baris.push('Tanggal  : ' + formatTanggal(mutasi?.tanggal, true));
+  baris.push('Petugas  : ' + (mutasi?.petugas_nama || store.get('user')?.nama || 'Petugas'));
+  if (mutasi?.pembawa) baris.push('Pembawa  : ' + mutasi.pembawa);
+  baris.push(buatGaris(lebar, '-'));
+
+  items.forEach((it, i) => {
+    baris.push(`${i + 1}. ${it.nama || 'Barang'}`);
+    const qtyLabel = `${formatQty(it.qty)} ${it.satuan || ''}`;
+    const infoDasar = Number(it.faktor || 1) > 1 ? `(${formatQty(it.qty_dasar)} ${it.satuan_dasar || ''})` : '';
+    baris.push(formatDuaKolom('   Ambil: ' + qtyLabel, infoDasar, lebar));
+  });
+
+  baris.push(buatGaris(lebar, '-'));
+  baris.push(formatDuaKolom('Total Jenis', `${items.length} barang`, lebar));
+  baris.push(formatDuaKolom('Total Unit Dasar', `${formatQty(mutasi?.total_qty_dasar || 0)}`, lebar));
+  if (mutasi?.catatan) {
+    baris.push(buatGaris(lebar, '-'));
+    baris.push('Catatan: ' + mutasi.catatan);
+  }
+  baris.push(buatGaris(lebar, '='));
+  baris.push(formatDuaKolom('Petugas Gudang', 'Penerima/Kasir', lebar));
+  baris.push('');
+  baris.push(formatDuaKolom('(............)', '(............)', lebar));
+  baris.push('');
+  return baris.join('\n');
+}
+
+/**
+ * Buka pratinjau & cetak Bon Pengambilan / Mutasi Stok Gudang (58mm / 80mm / Direct USB)
+ * @param {Object} mutasi
+ */
+export function cetakBonMutasiGudang(mutasi) {
+  const ukuranDefault = String(store.get('pengaturan')?.printer_ukuran || '58') === '80' ? '80' : '58';
+  let ukuranAktif = ukuranDefault;
+
+  const buatHtmlBon = (uk) => {
+    const teks = susunTeksBonMutasiGudang(mutasi, uk);
+    const css = buatCssThermal203Dpi(uk);
+    return `<!doctype html><html><head><meta charset="utf-8"><style>${css} pre.bon-pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:inherit;line-height:1.35;}</style></head><body><div class="rcpt-wrap"><pre class="bon-pre">${escapeHtml(teks)}</pre></div></body></html>`;
+  };
+
+  const modal = showModal({
+    title: `Bon Pengambilan Gudang — ${mutasi?.no_mutasi || ''}`,
+    size: 'sm',
+    body: `
+      <div class="stack" style="gap: var(--sp-3);">
+        <div class="row-between items-center" style="gap: var(--sp-2);">
+          <span class="text-xs text-muted">Lebar Kertas Thermal:</span>
+          <div class="row" style="gap: 4px;">
+            <button type="button" class="btn btn-xs ${ukuranAktif === '58' ? 'btn-primary' : 'btn-secondary'} btn-uk-bon" data-uk="58">58mm</button>
+            <button type="button" class="btn btn-xs ${ukuranAktif === '80' ? 'btn-primary' : 'btn-secondary'} btn-uk-bon" data-uk="80">80mm</button>
+          </div>
+        </div>
+        <pre id="pre-bon-gudang" style="margin: 0; padding: var(--sp-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1.4; overflow-x: auto; max-height: 50vh;">${escapeHtml(susunTeksBonMutasiGudang(mutasi, ukuranAktif))}</pre>
+      </div>
+    `,
+    footer: `
+      <div class="row-between" style="width: 100%; gap: var(--sp-2); flex-wrap: wrap;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-bon-tutup">Tutup</button>
+        <div class="row" style="gap: 6px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-bon-usb" title="Cetak Direct USB ESC/POS">USB Direct</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-bon-print" style="display: inline-flex; align-items: center; gap: 6px;">
+            ${ICONS.printer}
+            <span>Cetak Bon</span>
+          </button>
+        </div>
+      </div>
+    `
+  });
+
+  const preEl = modal.el.querySelector('#pre-bon-gudang');
+  modal.el.querySelectorAll('.btn-uk-bon').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      ukuranAktif = btn.getAttribute('data-uk') || '58';
+      modal.el.querySelectorAll('.btn-uk-bon').forEach((b) => {
+        b.className = `btn btn-xs ${b.getAttribute('data-uk') === ukuranAktif ? 'btn-primary' : 'btn-secondary'} btn-uk-bon`;
+      });
+      if (preEl) preEl.textContent = susunTeksBonMutasiGudang(mutasi, ukuranAktif);
+    });
+  });
+
+  modal.el.querySelector('#btn-bon-tutup')?.addEventListener('click', () => modal.close());
+  modal.el.querySelector('#btn-bon-print')?.addEventListener('click', () => {
+    cetakHtmlViaIframe(buatHtmlBon(ukuranAktif));
+  });
+  modal.el.querySelector('#btn-bon-usb')?.addEventListener('click', async () => {
+    const bytes = teksKeEscPos(susunTeksBonMutasiGudang(mutasi, ukuranAktif));
+    await cetakDirectUsbDesktop(bytes, mutasi?.no_mutasi || 'Bon Gudang');
+  });
+}
+

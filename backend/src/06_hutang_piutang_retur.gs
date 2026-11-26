@@ -790,7 +790,8 @@ function aksiReturCreate_(ctx) {
     alasan: alasan,
     status: statusAwal,
     disetujui_oleh: isOwnerAdmin ? ctx.user.id : '',
-    disetujui_at: isOwnerAdmin ? waktuSekarang : ''
+    disetujui_at: isOwnerAdmin ? waktuSekarang : '',
+    lokasi: p.lokasi ? normalisasiLokasi_(p.lokasi, 'toko') : ''
   }], ctx.user.id);
 
   const returBaru = resRetur[0];
@@ -933,32 +934,46 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
   items.forEach(function (it) {
     const qtyDasar = Number(it.qty_dasar) || 0;
     const hppDasarSnapshot = hitungHppDasarItem_(it);
+    const lokExplicit = retur.lokasi ? normalisasiLokasi_(retur.lokasi, 'toko') : '';
 
     if (tipe === 'jual') {
-      // 1. RETUR JUAL: Kembalikan stok & hitung ulang HPP memakai HPP dasar snapshot item asal (Aturan Bisnis #12)
+      const lokJual = lokExplicit || 'toko';
+      // 1. RETUR JUAL: Kembalikan stok ke lokasi tujuan & hitung ulang HPP memakai HPP dasar snapshot item asal
       if (it.varian_id) {
         const v = varianStateMap[it.varian_id];
         const p = produkStateMap[it.produk_id];
         if (!v || !p) return;
-        const stokLamaV = Number(v.stok || 0);
+        const lv = bacaStokLokasi_(v);
         const hppLamaV = Number(v.hpp || 0);
-        const hppBaruV = hitungHppBaru_(stokLamaV, hppLamaV, qtyDasar, hppDasarSnapshot);
-        const stokBaruV = bulatQty_(stokLamaV + qtyDasar);
+        const hppBaruV = hitungHppBaru_(lv.stok, hppLamaV, qtyDasar, hppDasarSnapshot);
+        const stTV = lokJual === 'toko' ? bulatQty_(lv.stok_toko + qtyDasar) : lv.stok_toko;
+        const stGV = lokJual === 'gudang' ? bulatQty_(lv.stok_gudang + qtyDasar) : lv.stok_gudang;
+        const stokBaruV = bulatQty_(stTV + stGV);
 
+        v.stok_toko = stTV;
+        v.stok_gudang = stGV;
         v.stok = stokBaruV;
         v.hpp = hppBaruV;
-        updateVarianMap[v.id] = { stok: stokBaruV, hpp: hppBaruV };
+        updateVarianMap[v.id] = { stok: stokBaruV, stok_toko: stTV, stok_gudang: stGV, hpp: hppBaruV };
 
-        const stokBaruP = bulatQty_(Number(p.stok || 0) + qtyDasar);
+        const lp = bacaStokLokasi_(p);
+        const stTP = lokJual === 'toko' ? bulatQty_(lp.stok_toko + qtyDasar) : lp.stok_toko;
+        const stGP = lokJual === 'gudang' ? bulatQty_(lp.stok_gudang + qtyDasar) : lp.stok_gudang;
+        const stokBaruP = bulatQty_(stTP + stGP);
+        p.stok_toko = stTP;
+        p.stok_gudang = stGP;
         p.stok = stokBaruP;
-        updateProdukMap[p.id] = { stok: stokBaruP };
+        updateProdukMap[p.id] = { stok: stokBaruP, stok_toko: stTP, stok_gudang: stGP };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
           varian_id: it.varian_id,
           tipe: 'retur_jual',
+          lokasi: lokJual,
           qty: qtyDasar,
           saldo: stokBaruV,
+          saldo_toko: stTV,
+          saldo_gudang: stGV,
           hpp: hppBaruV,
           ref_id: retur.no_retur,
           user_id: ctx.user.id,
@@ -967,21 +982,28 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
       } else {
         const p = produkStateMap[it.produk_id];
         if (!p) return;
-        const stokLama = Number(p.stok || 0);
+        const lp = bacaStokLokasi_(p);
         const hppLama = Number(p.hpp || 0);
-        const hppBaru = hitungHppBaru_(stokLama, hppLama, qtyDasar, hppDasarSnapshot);
-        const stokBaru = bulatQty_(stokLama + qtyDasar);
+        const hppBaru = hitungHppBaru_(lp.stok, hppLama, qtyDasar, hppDasarSnapshot);
+        const stTP = lokJual === 'toko' ? bulatQty_(lp.stok_toko + qtyDasar) : lp.stok_toko;
+        const stGP = lokJual === 'gudang' ? bulatQty_(lp.stok_gudang + qtyDasar) : lp.stok_gudang;
+        const stokBaru = bulatQty_(stTP + stGP);
 
+        p.stok_toko = stTP;
+        p.stok_gudang = stGP;
         p.stok = stokBaru;
         p.hpp = hppBaru;
-        updateProdukMap[p.id] = { stok: stokBaru, hpp: hppBaru };
+        updateProdukMap[p.id] = { stok: stokBaru, stok_toko: stTP, stok_gudang: stGP, hpp: hppBaru };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
           varian_id: '',
           tipe: 'retur_jual',
+          lokasi: lokJual,
           qty: qtyDasar,
           saldo: stokBaru,
+          saldo_toko: stTP,
+          saldo_gudang: stGP,
           hpp: hppBaru,
           ref_id: retur.no_retur,
           user_id: ctx.user.id,
@@ -994,23 +1016,42 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
         const v = varianStateMap[it.varian_id];
         const p = produkStateMap[it.produk_id];
         if (!v || !p) return;
-        const stokLamaV = Number(v.stok || 0);
+        const lv = bacaStokLokasi_(v);
         const hppV = Number(v.hpp || 0);
-        const stokBaruV = bulatQty_(stokLamaV - qtyDasar);
+        const lokBeli = lokExplicit || (lv.stok_gudang >= qtyDasar ? 'gudang' : 'toko');
+        let ambilG = lokBeli === 'gudang' ? Math.min(lv.stok_gudang, qtyDasar) : 0;
+        let ambilT = bulatQty_(qtyDasar - ambilG);
+        if (lokBeli === 'toko') {
+          ambilT = Math.min(lv.stok_toko, qtyDasar);
+          ambilG = bulatQty_(qtyDasar - ambilT);
+        }
+        const stTV = bulatQty_(lv.stok_toko - ambilT);
+        const stGV = bulatQty_(lv.stok_gudang - ambilG);
+        const stokBaruV = bulatQty_(stTV + stGV);
 
+        v.stok_toko = stTV;
+        v.stok_gudang = stGV;
         v.stok = stokBaruV;
-        updateVarianMap[v.id] = { stok: stokBaruV };
+        updateVarianMap[v.id] = { stok: stokBaruV, stok_toko: stTV, stok_gudang: stGV };
 
-        const stokBaruP = bulatQty_(Number(p.stok || 0) - qtyDasar);
+        const lp = bacaStokLokasi_(p);
+        const stTP = bulatQty_(lp.stok_toko - ambilT);
+        const stGP = bulatQty_(lp.stok_gudang - ambilG);
+        const stokBaruP = bulatQty_(stTP + stGP);
+        p.stok_toko = stTP;
+        p.stok_gudang = stGP;
         p.stok = stokBaruP;
-        updateProdukMap[p.id] = { stok: stokBaruP };
+        updateProdukMap[p.id] = { stok: stokBaruP, stok_toko: stTP, stok_gudang: stGP };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
           varian_id: it.varian_id,
           tipe: 'retur_beli',
+          lokasi: lokBeli,
           qty: -qtyDasar,
           saldo: stokBaruV,
+          saldo_toko: stTV,
+          saldo_gudang: stGV,
           hpp: hppV,
           ref_id: retur.no_retur,
           user_id: ctx.user.id,
@@ -1019,19 +1060,33 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
       } else {
         const p = produkStateMap[it.produk_id];
         if (!p) return;
-        const stokLama = Number(p.stok || 0);
+        const lp = bacaStokLokasi_(p);
         const hppP = Number(p.hpp || 0);
-        const stokBaru = bulatQty_(stokLama - qtyDasar);
+        const lokBeli = lokExplicit || (lp.stok_gudang >= qtyDasar ? 'gudang' : 'toko');
+        let ambilG = lokBeli === 'gudang' ? Math.min(lp.stok_gudang, qtyDasar) : 0;
+        let ambilT = bulatQty_(qtyDasar - ambilG);
+        if (lokBeli === 'toko') {
+          ambilT = Math.min(lp.stok_toko, qtyDasar);
+          ambilG = bulatQty_(qtyDasar - ambilT);
+        }
+        const stTP = bulatQty_(lp.stok_toko - ambilT);
+        const stGP = bulatQty_(lp.stok_gudang - ambilG);
+        const stokBaru = bulatQty_(stTP + stGP);
 
+        p.stok_toko = stTP;
+        p.stok_gudang = stGP;
         p.stok = stokBaru;
-        updateProdukMap[p.id] = { stok: stokBaru };
+        updateProdukMap[p.id] = { stok: stokBaru, stok_toko: stTP, stok_gudang: stGP };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
           varian_id: '',
           tipe: 'retur_beli',
+          lokasi: lokBeli,
           qty: -qtyDasar,
           saldo: stokBaru,
+          saldo_toko: stTP,
+          saldo_gudang: stGP,
           hpp: hppP,
           ref_id: retur.no_retur,
           user_id: ctx.user.id,

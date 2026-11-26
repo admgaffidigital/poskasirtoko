@@ -1940,8 +1940,8 @@ async function runAudit() {
       user_id: ownerRow.id, token_hash: 'rahasia_token_xyz', kedaluwarsa: '2099-01-01 00:00:00', terakhir_aktif: '2026-11-25 10:00:00', perangkat: 'Chrome'
     }], ownerRow.id);
     const resBackup = envSync.aksiSistemBackup_({ user: ownerRow, payload: {} });
-    assert(resBackup.total_sheet === 31 && resBackup.sheets && Array.isArray(resBackup.sheets.Produk),
-      `sistem.backup wajib mengekspor seluruh 31 sheet database, aktual: ${resBackup.total_sheet}`);
+    assert(resBackup.total_sheet === 33 && resBackup.sheets && Array.isArray(resBackup.sheets.Produk),
+      `sistem.backup wajib mengekspor seluruh 33 sheet database, aktual: ${resBackup.total_sheet}`);
     const userBackup = resBackup.sheets.Users[0];
     assert(userBackup && userBackup.pin_hash === undefined && userBackup.salt === undefined,
       'Backup Users WAJIB menyensor kolom pin_hash dan salt');
@@ -1954,8 +1954,8 @@ async function runAudit() {
     assert(resBackupKasir.ok === false && resBackupKasir.code === 'FORBIDDEN',
       `RBAC sistem.backup wajib menolak Kasir (FORBIDDEN), aktual: ${JSON.stringify(resBackupKasir)}`);
     const resBackupOwner = callApi('sistem.backup', tokenOwner, {});
-    assert(resBackupOwner.ok === true && resBackupOwner.data.total_sheet === 31,
-      'Owner wajib dapat mengeksekusi sistem.backup penuh (31 sheet)');
+    assert(resBackupOwner.ok === true && resBackupOwner.data.total_sheet === 33,
+      'Owner wajib dapat mengeksekusi sistem.backup penuh (33 sheet)');
   });
 
   // =========================================================================
@@ -2277,6 +2277,200 @@ async function runAudit() {
     cekTerkunci(() => envLog.aksiDepositTambah_({ user: ownerRow, payload: { pelanggan_id: pelId, jumlah: 50000, metode: 'tunai' } }), 'deposit.tambah');
     cekTerkunci(() => envLog.aksiOpnameCreate_({ user: ownerRow, payload: { produk_id: prKabelId, qty_fisik: 30, alasan: 'Tes lock', langsung_setuju: true } }), 'opname.create(langsung_setuju)');
     cekTerkunci(() => envLog.aksiReturCreate_({ user: ownerRow, payload: { tipe: 'jual', ref_id: jualRol.penjualan.id, alasan: 'Tes lock', metode_refund: 'kas', items: [{ ref_item_id: itemRol.id, produk_id: prKabelId, nama: itemRol.nama, satuan: 'ROL', faktor: 50, qty: 0.1, harga: 450000, hpp: itemRol.hpp }] } }), 'retur.create');
+  });
+
+  // =========================================================================
+  // TEST 29: MULTI-LOKASI STOK (TOKO & GUDANG), TRANSFER DOUBLE-ENTRY,
+  //          SMART RECEIVING PEMBELIAN, POS SUMBER STOK, & BARANG RUSAK + KLAIM
+  // =========================================================================
+  test('29. Multi-Lokasi (Toko & Gudang): Zero-Migration, Smart Receiving, Transfer Double-Entry, POS Gudang, Opname Lokasi, & Barang Rusak', () => {
+    const envGd = setupMockEnv();
+    envGd.setupDatabase();
+    const ownerRow = envGd.bacaSemua_('Users').find((u) => u.role === 'owner');
+    const kasirRow = envGd.tambahBaris_('Users', [{
+      username: 'kasir_gd', nama: 'Kasir Gudang', role: 'kasir', aktif: true, wajib_ganti_pin: false
+    }], ownerRow.id)[0];
+    envGd.aksiPengaturanSet_({ user: ownerRow, payload: { wajib_buka_shift: false } });
+
+    const sup = envGd.aksiSupplierCreate_({ user: ownerRow, payload: { nama: 'PT Semen Nusantara' } });
+    const supId = (sup.supplier || sup).id;
+
+    // 29a. Zero-migration produk legacy (stok=10, stok_toko=0, stok_gudang=0) -> otomatis terbaca Toko=10, Gudang=0
+    const prLegacy = envGd.tambahBaris_('Produk', [{
+      sku: 'SMN-LEG', nama: 'Semen Legacy 50Kg', satuan_dasar: 'SAK',
+      hpp: 50000, harga_ritel: 65000, stok: 10, stok_toko: 0, stok_gudang: 0, aktif: true
+    }], ownerRow.id)[0];
+    const lokLegacy = envGd.bacaStokLokasi_(prLegacy);
+    assert(lokLegacy.stok_toko === 10 && lokLegacy.stok_gudang === 0 && lokLegacy.stok === 10,
+      `Produk legacy stok=10 wajib terbaca otomatis Toko=10, Gudang=0; aktual: ${JSON.stringify(lokLegacy)}`);
+
+    // 29b. Smart Receiving Pembelian:
+    //      - Produk stok toko masih ada (10) + lokasi_masuk='otomatis' -> otomatis masuk GUDANG (40)
+    //      - Produk stok toko kosong (0) + lokasi_masuk='otomatis' -> otomatis masuk TOKO (15)
+    //      - Split 10 Toko + 20 Gudang -> tulis 2 baris Kartu_Stok terpisah!
+    const prKosong = envGd.aksiProdukCreate_({
+      user: ownerRow,
+      payload: { nama: 'Bata Ringan Hebel', satuan_dasar: 'PCS', hpp: 8000, harga_ritel: 11000, stok: 0 }
+    });
+    const prKosongId = (prKosong.produk || prKosong).id;
+
+    envGd.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: {
+        supplier_id: supId, bayar: 0,
+        items: [
+          { produk_id: prLegacy.id, qty: 40, harga_beli: 50000, lokasi_masuk: 'otomatis' },
+          { produk_id: prKosongId, qty: 15, harga_beli: 8000, lokasi_masuk: 'otomatis' }
+        ]
+      }
+    });
+    const legAfterBeli = envGd.cariById_('Produk', prLegacy.id);
+    const kosAfterBeli = envGd.cariById_('Produk', prKosongId);
+    assert(legAfterBeli.stok_toko === 10 && legAfterBeli.stok_gudang === 40 && legAfterBeli.stok === 50,
+      `Smart Receiving saat Toko ada (10) wajib taruh 40 ke Gudang; aktual T=${legAfterBeli.stok_toko}, G=${legAfterBeli.stok_gudang}`);
+    assert(kosAfterBeli.stok_toko === 15 && kosAfterBeli.stok_gudang === 0 && kosAfterBeli.stok === 15,
+      `Smart Receiving saat Toko kosong (0) wajib taruh 15 ke Toko; aktual T=${kosAfterBeli.stok_toko}, G=${kosAfterBeli.stok_gudang}`);
+
+    // Split pembelian (10 Toko + 20 Gudang)
+    envGd.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: {
+        supplier_id: supId, bayar: 0,
+        items: [{ produk_id: prKosongId, qty: 30, harga_beli: 8000, lokasi_masuk: 'split', qty_toko: 10, qty_gudang: 20 }]
+      }
+    });
+    const kosSplit = envGd.cariById_('Produk', prKosongId);
+    assert(kosSplit.stok_toko === 25 && kosSplit.stok_gudang === 20 && kosSplit.stok === 45,
+      `Split beli (10 Toko + 20 Gudang) wajib hasilkan T=25, G=20, Total=45; aktual T=${kosSplit.stok_toko}, G=${kosSplit.stok_gudang}`);
+    const ksSplitRows = envGd.bacaSemua_('Kartu_Stok').filter((k) => k.produk_id === prKosongId && k.tipe === 'beli');
+    assert(ksSplitRows.length === 3, `Split pembelian wajib menulis 2 baris Kartu_Stok terpisah (total beli=3), aktual: ${ksSplitRows.length}`);
+
+    // 29c. Transfer Stok (Gudang -> Toko oleh Kasir; Toko -> Gudang oleh Kasir DITOLAK; Void oleh Owner)
+    //      - Kasir transfer 15 SAK dari Gudang ke Toko -> Toko 10->25, Gudang 40->25, Double-Entry di Kartu_Stok!
+    const trfRes = envGd.aksiGudangTransfer_({
+      user: kasirRow,
+      payload: {
+        arah: 'gudang_ke_toko', pembawa: 'Budi', catatan: 'Isi etalase depan',
+        items: [{ produk_id: prLegacy.id, qty: 15, satuan: 'SAK', faktor: 1 }]
+      }
+    });
+    assert(trfRes.mutasi && trfRes.mutasi.no_mutasi.startsWith('TRF-'), 'Transfer wajib menghasilkan dokumen TRF-...');
+    const legAfterTrf = envGd.cariById_('Produk', prLegacy.id);
+    assert(legAfterTrf.stok_toko === 25 && legAfterTrf.stok_gudang === 25 && legAfterTrf.stok === 50 && legAfterTrf.hpp === 50000,
+      `Transfer 15 Gudang->Toko wajib jadi T=25, G=25, Total=50, HPP tetap 50000; aktual T=${legAfterTrf.stok_toko}, G=${legAfterTrf.stok_gudang}`);
+    const ksTrf = envGd.bacaSemua_('Kartu_Stok').filter((k) => k.ref_id === trfRes.mutasi.no_mutasi);
+    assert(ksTrf.length === 2 && ksTrf.some((x) => x.tipe === 'transfer_keluar' && x.lokasi === 'gudang' && x.qty === -15) &&
+      ksTrf.some((x) => x.tipe === 'transfer_masuk' && x.lokasi === 'toko' && x.qty === 15),
+      'Transfer wajib mencatat Double-Entry (transfer_keluar gudang -15 + transfer_masuk toko +15) di Kartu_Stok');
+
+    // Kasir coba transfer Toko -> Gudang WAJIB DITOLAK FORBIDDEN
+    let kasirBalikDitolak = false;
+    try {
+      envGd.aksiGudangTransfer_({
+        user: kasirRow,
+        payload: { arah: 'toko_ke_gudang', items: [{ produk_id: prLegacy.id, qty: 5, satuan: 'SAK' }] }
+      });
+    } catch (e) { kasirBalikDitolak = e.code === 'FORBIDDEN'; }
+    assert(kasirBalikDitolak === true, 'Kasir wajib ditolak (FORBIDDEN) melakukan transfer Toko -> Gudang');
+
+    // Kasir coba transfer melebihi stok gudang (30 > 25) -> WAJIB STOK_KURANG
+    let trfLebihDitolak = false;
+    try {
+      envGd.aksiGudangTransfer_({
+        user: kasirRow,
+        payload: { arah: 'gudang_ke_toko', items: [{ produk_id: prLegacy.id, qty: 30, satuan: 'SAK' }] }
+      });
+    } catch (e) { trfLebihDitolak = e.code === 'STOK_KURANG'; }
+    assert(trfLebihDitolak === true, 'Transfer melebihi stok lokasi asal wajib ditolak STOK_KURANG');
+
+    // Owner Void Transfer -> saldo balik ke T=10, G=40
+    envGd.aksiGudangTransferVoid_({ user: ownerRow, payload: { id: trfRes.mutasi.id, alasan: 'Salah hitung ambil' } });
+    const legAfterVoidTrf = envGd.cariById_('Produk', prLegacy.id);
+    assert(legAfterVoidTrf.stok_toko === 10 && legAfterVoidTrf.stok_gudang === 40,
+      `Void transfer wajib mengembalikan stok persis ke T=10, G=40; aktual T=${legAfterVoidTrf.stok_toko}, G=${legAfterVoidTrf.stok_gudang}`);
+
+    // 29d. POS Penjualan Per Lokasi:
+    //      - Jual 12 SAK dari 'toko' (Toko=10, Gudang=40) -> WAJIB ditolak STOK_KURANG + beri info tersedia di Gudang!
+    let posTokoKurang = false;
+    try {
+      envGd.aksiPenjualanCreate_({
+        user: kasirRow,
+        payload: {
+          lokasi_stok: 'toko',
+          items: [{ produk_id: prLegacy.id, qty: 12, harga: 65000 }],
+          pembayaran: [{ metode: 'tunai', jumlah: 780000 }]
+        }
+      });
+    } catch (e) {
+      posTokoKurang = e.code === 'STOK_KURANG' && String(e.message || '').includes('Gudang');
+    }
+    assert(posTokoKurang === true, 'POS jual dari Toko melebihi stok toko wajib ditolak STOK_KURANG & menyebut saldo Gudang');
+
+    //      - Jual 12 SAK langsung dari 'gudang' (kirim proyek) -> SUKSES, Gudang 40->28, Toko tetap 10!
+    const jualGdg = envGd.aksiPenjualanCreate_({
+      user: kasirRow,
+      payload: {
+        lokasi_stok: 'gudang', pengiriman: 'dikirim',
+        items: [{ produk_id: prLegacy.id, qty: 12, harga: 65000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 780000 }]
+      }
+    });
+    const legAfterJualGdg = envGd.cariById_('Produk', prLegacy.id);
+    assert(legAfterJualGdg.stok_toko === 10 && legAfterJualGdg.stok_gudang === 28 && legAfterJualGdg.stok === 38,
+      `POS jual lokasi_stok=gudang wajib potong Gudang (28) tanpa sentuh Toko (10); aktual T=${legAfterJualGdg.stok_toko}, G=${legAfterJualGdg.stok_gudang}`);
+
+    //      - Void nota gudang -> wajib kembalikan ke GUDANG (28->40), Toko tetap 10!
+    envGd.aksiPenjualanVoid_({ user: ownerRow, payload: { id: jualGdg.penjualan.id, alasan: 'Batal proyek' } });
+    const legAfterVoidJualGdg = envGd.cariById_('Produk', prLegacy.id);
+    assert(legAfterVoidJualGdg.stok_toko === 10 && legAfterVoidJualGdg.stok_gudang === 40,
+      `Void penjualan lokasi gudang wajib mengembalikan stok ke Gudang (40), Toko tetap 10; aktual T=${legAfterVoidJualGdg.stok_toko}, G=${legAfterVoidJualGdg.stok_gudang}`);
+
+    // 29e. Opname Per Lokasi (lokasi='gudang', fisik=38) -> hanya ubah Gudang (40->38), Toko tetap 10!
+    envGd.aksiOpnameCreate_({
+      user: ownerRow,
+      payload: { produk_id: prLegacy.id, lokasi: 'gudang', qty_fisik: 38, alasan: 'Hitung fisik gudang', langsung_setuju: true }
+    });
+    const legAfterOpGdg = envGd.cariById_('Produk', prLegacy.id);
+    assert(legAfterOpGdg.stok_toko === 10 && legAfterOpGdg.stok_gudang === 38 && legAfterOpGdg.stok === 48,
+      `Opname lokasi gudang wajib hanya ubah Gudang (38) & pertahankan Toko (10); aktual T=${legAfterOpGdg.stok_toko}, G=${legAfterOpGdg.stok_gudang}`);
+
+    // 29f. Barang Rusak & Klaim Supplier + Dampak ke Laba Rugi:
+    //      - Kasir lapor 2 SAK rusak di Gudang (write_off) -> status 'diajukan', stok BELUM dipotong!
+    const rskKasir = envGd.aksiRusakCreate_({
+      user: kasirRow,
+      payload: {
+        produk_id: prLegacy.id, lokasi: 'gudang', qty: 2, satuan: 'SAK',
+        kategori_rusak: 'Membatu / Kena Air', tindak_lanjut: 'write_off', keterangan: 'Rembes atap gudang'
+      }
+    });
+    assert(rskKasir.item.status === 'diajukan', 'Laporan barang rusak oleh Kasir wajib berstatus diajukan');
+    assert(envGd.cariById_('Produk', prLegacy.id).stok_gudang === 38, 'Sebelum disetujui Owner/Admin, stok gudang belum boleh terpotong');
+
+    //      - Owner setujui -> Gudang 38->36, nilai kerugian = 2 x 50.000 = Rp 100.000 masuk Laba Rugi!
+    envGd.aksiRusakApprove_({ user: ownerRow, payload: { id: rskKasir.item.id } });
+    assert(envGd.cariById_('Produk', prLegacy.id).stok_gudang === 36, 'Setelah disetujui, stok gudang wajib berkurang 2 (38 -> 36)');
+    const lrRusak = envGd.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lrRusak.ringkasan.total_kerugian_rusak === 100000 && lrRusak.ringkasan.laba_bersih_riil === -100000,
+      `Laba Rugi wajib mencatat total_kerugian_rusak=100000 & mengurangi laba_bersih_riil; aktual: ${JSON.stringify(lrRusak.ringkasan)}`);
+
+    //      - Owner lapor 1 SAK rusak di Toko dengan tindak lanjut klaim_supplier -> langsung disetujui (Toko 10->9), lalu diselesaikan diganti_barang ke Toko (9->10) & kerugian jadi 0!
+    const rskKlaim = envGd.aksiRusakCreate_({
+      user: ownerRow,
+      payload: {
+        produk_id: prLegacy.id, lokasi: 'toko', qty: 1, satuan: 'SAK',
+        kategori_rusak: 'Cacat Pabrik', tindak_lanjut: 'klaim_supplier', keterangan: 'Kemasan sobek dari pabrik'
+      }
+    });
+    assert(rskKlaim.item.status === 'disetujui' && envGd.cariById_('Produk', prLegacy.id).stok_toko === 9,
+      'Owner lapor barang rusak langsung disetujui & potong stok toko (10 -> 9)');
+    envGd.aksiRusakSelesaikanKlaim_({
+      user: ownerRow,
+      payload: { id: rskKlaim.item.id, hasil: 'diganti_barang', lokasi_tujuan: 'toko', catatan: 'Diganti sales' }
+    });
+    assert(envGd.cariById_('Produk', prLegacy.id).stok_toko === 10, 'Klaim diganti_barang wajib mengembalikan stok ke Toko (9 -> 10)');
+    const lrAfterKlaim = envGd.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lrAfterKlaim.ringkasan.total_kerugian_rusak === 100000,
+      `Barang rusak yang sudah diganti supplier tidak boleh dihitung rugi lagi (tetap 100000), aktual: ${lrAfterKlaim.ringkasan.total_kerugian_rusak}`);
   });
 
   console.log('\n=============================================');

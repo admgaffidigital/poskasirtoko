@@ -25,6 +25,9 @@ function flattenProdukItems(produkList, expandVariants = true) {
       p.varian.forEach((v) => {
         const skuVal = v.sku || p.sku || '';
         const barcodeVal = v.barcode || p.barcode || '';
+        const stokTot = Number(v.stok || 0);
+        const stToko = v.stok_toko !== undefined ? Number(v.stok_toko || 0) : stokTot;
+        const stGudang = v.stok_gudang !== undefined ? Number(v.stok_gudang || 0) : 0;
         rows.push({
           id: p.id,
           varian_id: v.id || '',
@@ -34,7 +37,10 @@ function flattenProdukItems(produkList, expandVariants = true) {
           sku: skuVal,
           barcode: barcodeVal,
           satuan_dasar: satuanDasar,
-          stok: Number(v.stok || 0),
+          satuan_konversi: Array.isArray(p.satuan_konversi) ? p.satuan_konversi : [],
+          stok: stokTot,
+          stok_toko: stToko,
+          stok_gudang: stGudang,
           stok_min: Number(v.stok_min ?? p.stok_min ?? 0),
           hpp: Number(v.hpp || p.hpp || 0),
           harga_jual: Number(v.harga_jual || p.harga_jual || 0),
@@ -44,6 +50,9 @@ function flattenProdukItems(produkList, expandVariants = true) {
         });
       });
     } else {
+      const stokTot = Number(p.stok || 0);
+      const stToko = p.stok_toko !== undefined ? Number(p.stok_toko || 0) : stokTot;
+      const stGudang = p.stok_gudang !== undefined ? Number(p.stok_gudang || 0) : 0;
       rows.push({
         id: p.id,
         varian_id: '',
@@ -53,7 +62,10 @@ function flattenProdukItems(produkList, expandVariants = true) {
         sku: p.sku || '',
         barcode: p.barcode || '',
         satuan_dasar: satuanDasar,
-        stok: Number(p.stok || 0),
+        satuan_konversi: Array.isArray(p.satuan_konversi) ? p.satuan_konversi : [],
+        stok: stokTot,
+        stok_toko: stToko,
+        stok_gudang: stGudang,
         stok_min: Number(p.stok_min || 0),
         hpp: Number(p.hpp || 0),
         harga_jual: Number(p.harga_jual || 0),
@@ -277,6 +289,9 @@ export function bukaModalPilihProduk({
         : '';
       const stokClass = item.stok <= 0 ? 'badge-danger' : (item.stok_min > 0 && item.stok <= item.stok_min ? 'badge-warning' : 'badge-success');
       const stokBadge = `<span class="badge ${stokClass}">Stok: ${formatQty(item.stok)} ${escapeHtml(item.satuan_dasar)}</span>`;
+      const lokasiBadge = item.stok_gudang > 0
+        ? `<span class="badge badge-info">Toko: ${formatQty(item.stok_toko)} • Gdg: ${formatQty(item.stok_gudang)}</span>`
+        : '';
       const isSelected = isMultiActive && selectedMap.has(getRowKey(item));
 
       let sideLabel = 'HPP / Beli';
@@ -301,6 +316,7 @@ export function bukaModalPilihProduk({
             <div class="prod-picker-item-meta">
               ${skuBadge}
               ${stokBadge}
+              ${lokasiBadge}
               ${katBadge}
             </div>
           </div>

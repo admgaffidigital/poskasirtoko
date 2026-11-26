@@ -16,6 +16,21 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.140] - 2026-11-26
+### Ditambahkan — Multi-Lokasi Stok (Stok Toko & Stok Gudang), Transfer Mutasi Double-Entry, Smart Receiving, & Pengelolaan Barang Rusak
+- **[DB] [BACKEND] [MIGRASI] Pemisahan Stok Toko & Gudang Zero-Migration (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `03_kategori_produk.gs`)**:
+  - Menambahkan kolom `stok_toko` & `stok_gudang` pada `Produk` & `Varian`, `lokasi_stok` pada `Penjualan_Item`, `lokasi_masuk`/`qty_toko`/`qty_gudang` pada `Pembelian_Item`, `lokasi`/`saldo_toko`/`saldo_gudang` pada `Kartu_Stok`, `lokasi` pada `Opname` & `Retur`, serta 2 sheet baru `Mutasi_Lokasi` & `Barang_Rusak` (total 33 sheet, otomatis dibuat saat `sistem.ping`).
+  - Helper `bacaStokLokasi_()` menjaga 100% kompatibilitas data lama (produk lama otomatis terbaca di `Stok Toko`, `Stok Gudang = 0`).
+- **[PRODUK] [UI] [CETAK] Menu Baru `Gudang & Mutasi` 3-Tab untuk Semua Role (`frontend/js/modules/gudang.js`, `routes.js`, `app.js`, `api.js`, `sw.js`, `printer.js`)**:
+  - **Tab Stok Toko vs Gudang**: KPI posisi stok & filter cepat *"Perlu Isi Ulang Toko"* beserta tombol 1-klik **Isi ke Toko**.
+  - **Tab Transfer Stok (`TRF-...`)**: Migrasi multi-item `Gudang → Toko` (semua role) & `Toko → Gudang` (Owner/Admin), pencatatan berpasangan (*double-entry*) di `Kartu_Stok`, cetak **Bon Pengambilan Gudang (58mm/80mm/USB Direct)**, dan pembatalan transfer (*Void* khusus Owner).
+  - **Tab Barang Rusak (`RSK-...`)**: Pelaporan barang pecah/membatu/cacat/susut beserta unggah foto bukti opsional; Kasir mengajukan (`diajukan`) → Owner/Admin menyetujui (`disetujui`) sebelum stok dipotong & kerugian (`qty × HPP`) dibukukan ke Laba Rugi; mendukung penyelesaian **Klaim Supplier** (`diganti_barang` mengembalikan stok & menolkan kerugian, atau `ditolak_supplier`).
+- **[POS-JUAL] [POS-BELI] [OPNAME] [DASHBOARD] Integrasi Multi-Lokasi Menyeluruh (`pos.js`, `pembelian.js`, `kartu-stok.js`, `opname.js`, `laporan.js`, `produk-picker.js`, `04_pos_penjualan.gs`, `05_pembelian_stok.gs`, `06_hutang_piutang_retur.gs`, `08_laporan_biaya.gs`)**:
+  - **POS Kasir**: Badge `Toko` vs `Gudang` pada katalog, modal cepat **Ambil dari Gudang ke Toko** bila etalase kosong, dan opsi **Sumber Pengambilan Stok** (*Toko* default vs *Langsung Gudang* untuk pengiriman proyek).
+  - **POS Pembelian (Smart Receiving)**: Saran lokasi otomatis (*Toko* bila etalase kosong, *Gudang* bila toko masih ada) + dukungan **Bagi Toko & Gudang (Split)** dengan pencatatan terpisah di Kartu Stok.
+  - **Kartu Stok, Stok Opname, & Laporan**: Filter lokasi & rincian saldo `Toko/Gudang`, opname per lokasi, dan pos **Kerugian Barang Rusak** pada Laporan Laba Rugi & Evaluasi Bulanan.
+- **[TEST] Penambahan Uji Regresi Test #29 (`tests/test_debug_final.js`)**: Memverifikasi penuh zero-migration, Smart Receiving + Split, Transfer double-entry + RBAC + Void, POS lokasi gudang, Opname per lokasi, dan siklus Barang Rusak + Klaim Supplier (29/29 LULUS).
+
 ## [1.0.139] - 2026-11-26
 ### Diperbaiki — Penyempurnaan Logika Inti Akuntansi, Stok Multi-Varian, Multi-Satuan, & Period Lock Menyeluruh
 - **[DASHBOARD] [POS-JUAL] [RETUR] [BACKEND] Perbaikan Kritis HPP Multi-Satuan (`faktor > 1`) (`01_database_utilitas.gs`, `04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`, `08_laporan_biaya.gs`)**:

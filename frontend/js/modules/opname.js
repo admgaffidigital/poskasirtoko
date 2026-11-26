@@ -136,9 +136,12 @@ async function muatDataOpname(container, canEdit) {
             ${formatTanggal(op.tanggal)}
           </td>
           <td data-label="Produk & Varian">
-            <div class="cell-stack">
+            <div class="cell-stack" style="gap: 2px;">
               <div class="fw-semibold">${escapeHtml(op.produk_nama)}</div>
-              ${op.varian_nama ? `<div class="text-xs text-primary">${escapeHtml(op.varian_nama)}</div>` : ''}
+              <div class="row" style="gap: 6px; align-items: center;">
+                ${op.varian_nama ? `<span class="text-xs text-primary">${escapeHtml(op.varian_nama)}</span>` : ''}
+                <span class="badge ${op.lokasi === 'gudang' ? 'badge-primary' : 'badge-secondary'} badge-xs">${op.lokasi === 'gudang' ? 'Gudang' : 'Toko'}</span>
+              </div>
             </div>
           </td>
           <td style="text-align: right;" class="tabular" data-label="Stok Sistem">
@@ -247,6 +250,14 @@ async function bukaModalInputOpname(container) {
           <div id="op-dropdown-produk" class="autocomplete-dropdown"></div>
         </div>
 
+        <div class="field">
+          <label class="field-label" for="op-lokasi">Lokasi Stok Opname <span class="wajib">*</span></label>
+          <select class="input" id="op-lokasi">
+            <option value="toko">Stok Toko (Etalase)</option>
+            <option value="gudang">Stok Gudang</option>
+          </select>
+        </div>
+
         <div class="row" style="gap: var(--sp-2);">
           <div class="field grow">
             <label class="field-label">Stok Sistem Saat Ini</label>
@@ -291,11 +302,18 @@ async function bukaModalInputOpname(container) {
   let targetProduk = null;
   const inputCari = $('#op-cari-produk', modal.el);
   const dropdown = $('#op-dropdown-produk', modal.el);
+  const selectLokasi = $('#op-lokasi', modal.el);
   const inputStokSistem = $('#op-stok-sistem', modal.el);
   const inputQtyFisik = $('#op-qty-fisik', modal.el);
   const labelSelisih = $('#op-selisih-kalkulasi', modal.el);
   const btnSimpan = $('#btn-simpan-opname', modal.el);
   let timeoutCari = null;
+
+  const getStokSistemLokasi = () => {
+    if (!targetProduk) return 0;
+    const lok = selectLokasi?.value || 'toko';
+    return lok === 'gudang' ? Number(targetProduk.stok_gudang || 0) : Number(targetProduk.stok_toko || 0);
+  };
 
   // Pilih Produk dari Katalog Lengkap (Modal / Bottom Sheet lega)
   modal.el.querySelector('#btn-katalog-opname')?.addEventListener('click', () => {
@@ -305,7 +323,7 @@ async function bukaModalInputOpname(container) {
       mode: 'opname',
       initialQuery: inputCari?.value?.trim() || '',
       onSelect: (chosen) => {
-        pilihItemOpname(chosen.id, chosen.varian_id || '', chosen.nama, chosen.stok, chosen.satuan_dasar || 'Pcs');
+        pilihItemOpname(chosen.id, chosen.varian_id || '', chosen.nama, chosen.stok, chosen.satuan_dasar || 'Pcs', chosen.stok_toko, chosen.stok_gudang);
       }
     });
   });
@@ -318,7 +336,7 @@ async function bukaModalInputOpname(container) {
         const res = await apiCall('produk.list', { q: kode, limit: 1, aktif_saja: true });
         const prods = res.items || [];
         if (prods.length > 0) {
-          pilihItemOpname(prods[0].id, '', prods[0].nama, prods[0].stok, prods[0].satuan_dasar);
+          pilihItemOpname(prods[0].id, '', prods[0].nama, prods[0].stok, prods[0].satuan_dasar, prods[0].stok_toko, prods[0].stok_gudang);
         } else {
           showToast(`Produk dengan barcode "${kode}" tidak ditemukan`, 'warning');
         }
@@ -328,18 +346,30 @@ async function bukaModalInputOpname(container) {
     });
   });
 
-  const pilihItemOpname = (prodId, varId, nama, stok, satuan) => {
-    targetProduk = { id: prodId, varian_id: varId, nama, stok: Number(stok) || 0, satuan };
+  const pilihItemOpname = (prodId, varId, nama, stok, satuan, stokToko, stokGudang) => {
+    const sTot = Number(stok) || 0;
+    const sToko = stokToko !== undefined ? Number(stokToko || 0) : sTot;
+    const sGudang = stokGudang !== undefined ? Number(stokGudang || 0) : 0;
+    targetProduk = { id: prodId, varian_id: varId, nama, stok: sTot, stok_toko: sToko, stok_gudang: sGudang, satuan };
     inputCari.value = nama;
     dropdown.style.display = 'none';
 
-    inputStokSistem.value = `${formatQty(stok)} ${satuan}`;
+    const stokLok = getStokSistemLokasi();
+    inputStokSistem.value = `${formatQty(stokLok)} ${satuan}`;
     inputQtyFisik.disabled = false;
-    inputQtyFisik.value = stok;
+    inputQtyFisik.value = stokLok;
     btnSimpan.disabled = false;
     updateSelisih();
     inputQtyFisik.focus();
   };
+
+  selectLokasi?.addEventListener('change', () => {
+    if (!targetProduk) return;
+    const stokLok = getStokSistemLokasi();
+    inputStokSistem.value = `${formatQty(stokLok)} ${targetProduk.satuan}`;
+    inputQtyFisik.value = stokLok;
+    updateSelisih();
+  });
 
   inputCari?.addEventListener('input', () => {
     clearTimeout(timeoutCari);
@@ -388,7 +418,7 @@ async function bukaModalInputOpname(container) {
               html += `
                 <div class="autocomplete-item item-op-select"
                      data-prod-id="${p.id}" data-var-id="${v.id}" data-nama="${escapeHtml(p.nama + ' - ' + v.nama_varian)}"
-                     data-stok="${v.stok}" data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}">
+                     data-stok="${v.stok}" data-stok-toko="${v.stok_toko !== undefined ? v.stok_toko : v.stok}" data-stok-gudang="${v.stok_gudang || 0}" data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}">
                   <div class="autocomplete-item-icon">
                     ${ICONS.box}
                   </div>
@@ -415,7 +445,7 @@ async function bukaModalInputOpname(container) {
             html += `
               <div class="autocomplete-item item-op-select"
                    data-prod-id="${p.id}" data-var-id="" data-nama="${escapeHtml(p.nama)}"
-                   data-stok="${p.stok}" data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}">
+                   data-stok="${p.stok}" data-stok-toko="${p.stok_toko !== undefined ? p.stok_toko : p.stok}" data-stok-gudang="${p.stok_gudang || 0}" data-satuan="${escapeHtml(p.satuan_dasar || 'Pcs')}">
                 <div class="autocomplete-item-icon">
                   ${ICONS.box}
                 </div>
@@ -449,9 +479,11 @@ async function bukaModalInputOpname(container) {
             const varId = el.getAttribute('data-var-id');
             const nama = el.getAttribute('data-nama');
             const stok = Number(el.getAttribute('data-stok')) || 0;
+            const stToko = Number(el.getAttribute('data-stok-toko')) || 0;
+            const stGudang = Number(el.getAttribute('data-stok-gudang')) || 0;
             const satuan = el.getAttribute('data-satuan');
 
-            pilihItemOpname(prodId, varId, nama, stok, satuan);
+            pilihItemOpname(prodId, varId, nama, stok, satuan, stToko, stGudang);
           });
         });
       } catch (err) {
@@ -470,7 +502,8 @@ async function bukaModalInputOpname(container) {
   const updateSelisih = () => {
     if (!targetProduk) return;
     const fisik = parseQty(inputQtyFisik.value);
-    const selisih = Math.round((fisik - targetProduk.stok) * 1000) / 1000;
+    const stokLok = getStokSistemLokasi();
+    const selisih = Math.round((fisik - stokLok) * 1000) / 1000;
     labelSelisih.textContent = `${selisih > 0 ? '+' : ''}${formatQty(selisih)} ${targetProduk.satuan}`;
     if (selisih < 0) {
       labelSelisih.className = 'tabular fw-bold text-base text-danger';
@@ -507,6 +540,7 @@ async function bukaModalInputOpname(container) {
       const res = await apiCall('opname.create', {
         produk_id: targetProduk.id,
         varian_id: targetProduk.varian_id || '',
+        lokasi: selectLokasi?.value || 'toko',
         qty_fisik: fisik,
         alasan: alasan,
         langsung_setuju: langsungSetuju

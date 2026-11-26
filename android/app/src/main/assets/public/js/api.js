@@ -40,6 +40,9 @@ const CACHE_CONFIG = {
   'auth.me': 45000,                // 45 detik
   'kartuStok.list': 60000,         // 1 menit
   'opname.list': 60000,            // 1 menit
+  'gudang.ringkasan': 45000,       // 45 detik
+  'gudang.transferList': 45000,    // 45 detik
+  'rusak.list': 45000,             // 45 detik
   'pembelian.list': 60000,         // 1 menit
   'pembelian.detail': 60000,       // 1 menit
   'penjualan.list': 60000,         // 1 menit
@@ -90,15 +93,17 @@ const PERSISTABLE_ACTIONS = new Set([
 // Pola mutasi data yang otomatis mengosongkan cache terkait secara instan
 const MUTATION_PATTERNS = [
   { trigger: 'kategori.', targets: ['kategori.', 'produk.', 'laporan.'] },
-  { trigger: 'produk.', targets: ['produk.', 'kartuStok.', 'laporan.'] },
-  { trigger: 'penjualan.', targets: ['produk.', 'pelanggan.', 'penjualan.', 'shift.', 'pengiriman.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
+  { trigger: 'produk.', targets: ['produk.', 'gudang.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'penjualan.', targets: ['produk.', 'gudang.', 'pelanggan.', 'penjualan.', 'shift.', 'pengiriman.', 'piutang.', 'kartuStok.', 'laporan.', 'member.', 'deposit.'] },
   { trigger: 'shift.', targets: ['shift.', 'penjualan.', 'laporan.', 'tutupBuku.'] },
   { trigger: 'tutupBuku.', targets: ['tutupBuku.', 'shift.', 'laporan.'] },
   { trigger: 'pengiriman.', targets: ['pengiriman.', 'penjualan.', 'laporan.'] },
   { trigger: 'penawaran.', targets: ['penawaran.'] },
-  { trigger: 'pembelian.', targets: ['produk.', 'supplier.', 'pembelian.', 'hutang.', 'kartuStok.', 'laporan.'] },
-  { trigger: 'opname.', targets: ['produk.', 'opname.', 'kartuStok.', 'laporan.'] },
-  { trigger: 'retur.', targets: ['produk.', 'retur.', 'piutang.', 'hutang.', 'kartuStok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'shift.', 'member.', 'deposit.'] },
+  { trigger: 'pembelian.', targets: ['produk.', 'gudang.', 'supplier.', 'pembelian.', 'hutang.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'opname.', targets: ['produk.', 'gudang.', 'opname.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'gudang.', targets: ['gudang.', 'produk.', 'kartuStok.', 'laporan.'] },
+  { trigger: 'rusak.', targets: ['rusak.', 'gudang.', 'produk.', 'kartuStok.', 'laporan.', 'tutupBuku.'] },
+  { trigger: 'retur.', targets: ['produk.', 'gudang.', 'retur.', 'piutang.', 'hutang.', 'kartuStok.', 'laporan.', 'pelanggan.', 'supplier.', 'penjualan.', 'shift.', 'member.', 'deposit.'] },
   { trigger: 'piutang.', targets: ['piutang.', 'pelanggan.', 'penjualan.', 'shift.', 'laporan.', 'member.'] },
   { trigger: 'hutang.', targets: ['hutang.', 'supplier.', 'pembelian.', 'laporan.'] },
   { trigger: 'pelanggan.', targets: ['pelanggan.', 'piutang.', 'deposit.', 'laporan.'] },

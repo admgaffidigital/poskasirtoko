@@ -44,11 +44,24 @@ export async function renderKartuStokModule(container) {
               <option value="">Semua Mutasi</option>
               <option value="beli">Beli (Masuk)</option>
               <option value="jual">Jual (Keluar)</option>
+              <option value="transfer_masuk">Transfer Masuk</option>
+              <option value="transfer_keluar">Transfer Keluar</option>
+              <option value="rusak">Barang Rusak</option>
+              <option value="klaim_ganti">Ganti Klaim Supplier</option>
               <option value="opname">Stok Opname</option>
               <option value="koreksi">Saldo Awal / Koreksi</option>
               <option value="void">Void Transaksi</option>
               <option value="retur_jual">Retur Jual</option>
               <option value="retur_beli">Retur Beli</option>
+            </select>
+          </div>
+
+          <div class="field" style="min-width: 0;">
+            <label class="field-label" for="filter-ks-lokasi">Lokasi Stok</label>
+            <select class="input" id="filter-ks-lokasi">
+              <option value="">Semua Lokasi</option>
+              <option value="toko">Stok Toko</option>
+              <option value="gudang">Stok Gudang</option>
             </select>
           </div>
 
@@ -133,6 +146,7 @@ export async function renderKartuStokModule(container) {
     });
   });
   $('#filter-ks-tipe', container)?.addEventListener('change', pemicuMuat);
+  $('#filter-ks-lokasi', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-dari', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sampai', container)?.addEventListener('change', pemicuMuat);
   $('#filter-ks-sembunyikan-terhapus', container)?.addEventListener('change', pemicuMuat);
@@ -176,6 +190,7 @@ async function muatDataKartuStok(container) {
   const isOwner = store.get('user')?.role === 'owner';
   const produkId = $('#filter-ks-produk', container)?.value || '';
   const tipe = $('#filter-ks-tipe', container)?.value || '';
+  const lokasi = $('#filter-ks-lokasi', container)?.value || '';
   const dari = $('#filter-ks-dari', container)?.value || '';
   const sampai = $('#filter-ks-sampai', container)?.value || '';
   const sembunyikanTerhapus = $('#filter-ks-sembunyikan-terhapus', container)?.checked ?? true;
@@ -185,6 +200,7 @@ async function muatDataKartuStok(container) {
     const res = await apiCall('kartuStok.list', {
       produk_id: produkId,
       tipe: tipe,
+      lokasi: lokasi,
       dari: dari,
       sampai: sampai,
       sembunyikan_terhapus: sembunyikanTerhapus,
@@ -248,7 +264,23 @@ async function muatDataKartuStok(container) {
       } else if (ks.tipe === 'retur_beli') {
         badgeClass = 'badge-danger';
         labelTipe = 'Retur Beli';
+      } else if (ks.tipe === 'transfer_masuk') {
+        badgeClass = 'badge-primary';
+        labelTipe = 'Trf Masuk';
+      } else if (ks.tipe === 'transfer_keluar') {
+        badgeClass = 'badge-info';
+        labelTipe = 'Trf Keluar';
+      } else if (ks.tipe === 'rusak') {
+        badgeClass = 'badge-danger';
+        labelTipe = 'Rusak';
+      } else if (ks.tipe === 'klaim_ganti') {
+        badgeClass = 'badge-success';
+        labelTipe = 'Klaim Ganti';
       }
+
+      const lokBadge = ks.lokasi === 'gudang'
+        ? '<span class="badge badge-primary" style="font-size: var(--fs-2xs); padding: 1px 6px;">Gudang</span>'
+        : '<span class="badge badge-secondary" style="font-size: var(--fs-2xs); padding: 1px 6px;">Toko</span>';
 
       // Pemisahan Tanggal & Waktu agar hemat ruang horizontal
       const rawTgl = formatTanggal(ks.created_at) || '-';
@@ -277,7 +309,10 @@ async function muatDataKartuStok(container) {
             </div>
           </td>
           <td data-label="Jenis" style="text-align: center; white-space: nowrap;">
-            <span class="badge ${badgeClass}" style="font-size: var(--fs-2xs); padding: 2px 7px;">${labelTipe}</span>
+            <div class="cell-stack" style="align-items: center; gap: 3px;">
+              <span class="badge ${badgeClass}" style="font-size: var(--fs-2xs); padding: 2px 7px;">${labelTipe}</span>
+              ${lokBadge}
+            </div>
           </td>
           <td data-label="No. Referensi">
             ${refHtml}
@@ -286,7 +321,8 @@ async function muatDataKartuStok(container) {
             ${isMasuk ? '+' : ''}${formatQty(ks.qty)} <span class="text-2xs fw-normal text-muted">${escapeHtml(ks.satuan_dasar)}</span>
           </td>
           <td style="text-align: right; white-space: nowrap;" class="tabular font-mono text-xs fw-semibold" data-label="Saldo Akhir">
-            ${formatQty(ks.saldo)} <span class="text-2xs fw-normal text-muted">${escapeHtml(ks.satuan_dasar)}</span>
+            <div>${formatQty(ks.saldo)} <span class="text-2xs fw-normal text-muted">${escapeHtml(ks.satuan_dasar)}</span></div>
+            ${Number(ks.saldo_gudang || 0) > 0 || ks.lokasi === 'gudang' ? `<div class="text-2xs text-muted fw-normal">T:${formatQty(ks.saldo_toko || 0)} • G:${formatQty(ks.saldo_gudang || 0)}</div>` : ''}
           </td>
           <td style="text-align: right; white-space: nowrap;" class="tabular font-mono text-xs" data-label="HPP Mutasi">
             ${formatRupiah(ks.hpp)}

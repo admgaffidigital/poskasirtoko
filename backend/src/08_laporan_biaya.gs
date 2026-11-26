@@ -718,7 +718,18 @@ function aksiLaporanLabaRugi_(ctx) {
     }
   });
 
-  const labaBersihRiil = Math.round(labaKotorBersih - totalBiayaOperasional);
+  // Hitung Kerugian Barang Rusak / Susut disetujui (bukan yang sudah diganti supplier)
+  let totalKerugianRusak = 0;
+  bacaSemua_('Barang_Rusak').forEach(function (rsk) {
+    if (rsk.deleted || rsk.status !== 'disetujui') return;
+    if (rsk.klaim_status === 'diganti_barang') return;
+    const tglR = String(rsk.tanggal || rsk.created_at || '').substring(0, 10);
+    if (tglR >= rentang.dari && tglR <= rentang.sampai) {
+      totalKerugianRusak += Math.round(Number(rsk.nilai_kerugian) || 0);
+    }
+  });
+
+  const labaBersihRiil = Math.round(labaKotorBersih - totalBiayaOperasional - totalKerugianRusak);
   const marginBersihPersen = omsetBersih > 0 ? Math.round((labaBersihRiil / omsetBersih) * 10000) / 100 : 0;
 
   const rincianBiayaList = Object.keys(biayaKatAgg).map(function (kat) {
@@ -745,6 +756,7 @@ function aksiLaporanLabaRugi_(ctx) {
       laba_kotor_bersih: labaKotorBersih,
       margin_persen: marginPersen,
       total_biaya_operasional: totalBiayaOperasional,
+      total_kerugian_rusak: totalKerugianRusak,
       laba_bersih_riil: labaBersihRiil,
       margin_bersih_persen: marginBersihPersen
     },
@@ -941,6 +953,8 @@ function aksiLaporanStokValuasi_(ctx) {
 
   const list = [];
   let totalUnitStok = 0;
+  let totalUnitToko = 0;
+  let totalUnitGudang = 0;
   let totalAsetStok = 0;
   let countHabis = 0;
   let countKritis = 0;
@@ -952,11 +966,14 @@ function aksiLaporanStokValuasi_(ctx) {
 
     if (pdk.punya_varian && varianByProduk[pdk.id] && varianByProduk[pdk.id].length > 0) {
       varianByProduk[pdk.id].forEach(function (v) {
-        const s = Number(v.stok) || 0;
+        const lv = bacaStokLokasi_(v);
+        const s = lv.stok;
         const sMin = Number(v.stok_min) || 0;
         const h = Number(v.hpp) || 0;
         const nilai = s * h;
         totalUnitStok += s;
+        totalUnitToko += lv.stok_toko;
+        totalUnitGudang += lv.stok_gudang;
         totalAsetStok += nilai;
 
         let status = 'aman';
@@ -974,6 +991,8 @@ function aksiLaporanStokValuasi_(ctx) {
           kategori: katNama,
           satuan: pdk.satuan_dasar || 'Pcs',
           stok: s,
+          stok_toko: lv.stok_toko,
+          stok_gudang: lv.stok_gudang,
           stok_min: sMin,
           hpp: h,
           nilai_aset: nilai,
@@ -981,11 +1000,14 @@ function aksiLaporanStokValuasi_(ctx) {
         });
       });
     } else {
-      const s = Number(pdk.stok) || 0;
+      const lp = bacaStokLokasi_(pdk);
+      const s = lp.stok;
       const sMin = Number(pdk.stok_min) || 0;
       const h = Number(pdk.hpp) || 0;
       const nilai = s * h;
       totalUnitStok += s;
+      totalUnitToko += lp.stok_toko;
+      totalUnitGudang += lp.stok_gudang;
       totalAsetStok += nilai;
 
       let status = 'aman';
@@ -1003,6 +1025,8 @@ function aksiLaporanStokValuasi_(ctx) {
         kategori: katNama,
         satuan: pdk.satuan_dasar || 'Pcs',
         stok: s,
+        stok_toko: lp.stok_toko,
+        stok_gudang: lp.stok_gudang,
         stok_min: sMin,
         hpp: h,
         nilai_aset: nilai,
@@ -1042,6 +1066,8 @@ function aksiLaporanStokValuasi_(ctx) {
     ringkasan: {
       total_item: list.length,
       total_unit_stok: totalUnitStok,
+      total_unit_toko: bulatQty_(totalUnitToko),
+      total_unit_gudang: bulatQty_(totalUnitGudang),
       total_nilai_aset: isOwner ? Math.round(totalAsetStok) : null,
       total_habis: countHabis,
       total_kritis: countKritis,
@@ -1374,6 +1400,7 @@ function aksiTutupBukuRekapHarian_(ctx) {
       total_hpp: lr.ringkasan.total_hpp,
       laba_kotor: lr.ringkasan.laba_kotor_bersih,
       total_biaya: lr.ringkasan.total_biaya_operasional,
+      total_kerugian_rusak: lr.ringkasan.total_kerugian_rusak || 0,
       laba_bersih: lr.ringkasan.laba_bersih_riil,
       arus_kas_masuk: ak.ringkasan.total_kas_masuk,
       arus_kas_keluar: ak.ringkasan.total_kas_keluar,
@@ -1601,6 +1628,7 @@ function hitungMetrikSatuBulan_(ctx, ymStr) {
       laba_kotor: lr.ringkasan.laba_kotor_bersih,
       margin_persen: lr.ringkasan.margin_persen,
       total_biaya: lr.ringkasan.total_biaya_operasional,
+      total_kerugian_rusak: lr.ringkasan.total_kerugian_rusak || 0,
       laba_bersih: lr.ringkasan.laba_bersih_riil,
       margin_bersih_persen: lr.ringkasan.margin_bersih_persen,
       total_transaksi: semuaPenjualan.length,

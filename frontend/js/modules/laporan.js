@@ -807,9 +807,9 @@ function buatKomposisiMetodeBayar(metodeMap, totalOmset) {
   return `
     <div class="stack" style="gap: var(--sp-3);">
       ${list.map((m) => {
-        const item = metodeMap[m.key] || { total: 0, count: 0 };
-        const persen = totalOmset > 0 ? Math.round((item.total / totalOmset) * 100) : 0;
-        return `
+    const item = metodeMap[m.key] || { total: 0, count: 0 };
+    const persen = totalOmset > 0 ? Math.round((item.total / totalOmset) * 100) : 0;
+    return `
           <div>
             <div class="cluster" style="justify-content: space-between; font-size: var(--fs-xs); margin-bottom: 4px;">
               <span style="font-weight: var(--fw-medium); color: var(--text-main);">${escapeHtml(m.nama)} (${formatAngka(item.count)}x)</span>
@@ -820,7 +820,7 @@ function buatKomposisiMetodeBayar(metodeMap, totalOmset) {
             </div>
           </div>
         `;
-      }).join('')}
+  }).join('')}
     </div>
   `;
 }
@@ -944,8 +944,8 @@ function renderTabPenjualan(container, data) {
                 ${items.length === 0 ? `
                   <tr><td colspan="${isOwner ? (canVoid ? 9 : 9) : (canVoid ? 8 : 8)}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data penjualan sesuai filter</td></tr>
                 ` : items.map((j) => {
-                  const isVoided = j.status === 'void';
-                  return `
+    const isVoided = j.status === 'void';
+    return `
                   <tr style="${isVoided ? 'opacity: 0.65; background: var(--bg-surface-variant);' : ''}">
                     <td data-label="No Nota">
                       <span style="font-family: var(--font-mono); font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</span>
@@ -1690,6 +1690,12 @@ function renderTabLabaRugi(container, data) {
               <span>Pengurang: Total Biaya Operasional:</span>
               <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_biaya_operasional || 0)}</span>
             </div>
+            ${Number(r.total_kerugian_rusak || 0) > 0 ? `
+              <div class="cluster" style="justify-content: space-between; font-size: var(--fs-base); color: var(--danger);">
+                <span>Pengurang: Kerugian Barang Rusak / Susut:</span>
+                <span style="font-weight: var(--fw-semibold);">- ${formatRupiah(r.total_kerugian_rusak || 0)}</span>
+              </div>
+            ` : ''}
 
             <div class="cluster" style="justify-content: space-between; font-size: var(--fs-xl); font-weight: var(--fw-bold); background: var(--primary-soft); border: 2px solid var(--primary); padding: var(--sp-3); border-radius: var(--radius-md); margin-top: var(--sp-2);">
               <span style="color: var(--primary);">LABA BERSIH RIIL TOKO:</span>
@@ -1829,7 +1835,7 @@ function renderTabStokValuasi(container, data) {
             <div class="stat-card-icon icon-purple">${ICONS.package}</div>
           </div>
           <div class="stat-card-value" style="color: var(--info);">${formatAngka(r.total_unit_stok || 0)} Unit</div>
-          <div class="stat-card-desc">Akumulasi seluruh satuan dasar</div>
+          <div class="stat-card-desc">${Number(r.total_unit_gudang || 0) > 0 ? `Toko: ${formatAngka(r.total_unit_toko || 0)} • Gudang: ${formatAngka(r.total_unit_gudang || 0)}` : 'Akumulasi seluruh satuan dasar'}</div>
         </div>
         ${isOwner ? `
           <div class="stat-card-pro">
@@ -1903,7 +1909,8 @@ function renderTabStokValuasi(container, data) {
                     <td style="font-weight: var(--fw-medium);" data-label="Produk">${escapeHtml(it.nama)}</td>
                     <td data-label="Kategori"><span class="badge badge-info">${escapeHtml(it.kategori)}</span></td>
                     <td style="text-align: right; font-weight: var(--fw-bold); color: ${it.stok <= 0 ? 'var(--danger)' : (it.status === 'kritis' ? 'var(--warning)' : 'var(--text-main)')};" data-label="Stok Fisik">
-                      ${formatAngka(it.stok)} ${escapeHtml(it.satuan)}
+                      <div>${formatAngka(it.stok)} ${escapeHtml(it.satuan)}</div>
+                      ${Number(it.stok_gudang || 0) > 0 ? `<div style="font-size: var(--fs-2xs); font-weight: var(--fw-normal); color: var(--text-muted);">T:${formatAngka(it.stok_toko || 0)} • G:${formatAngka(it.stok_gudang || 0)}</div>` : ''}
                     </td>
                     <td style="text-align: right; color: var(--text-muted);" data-label="Batas Min">
                       ${formatAngka(it.stok_min)} ${escapeHtml(it.satuan)}
@@ -2031,7 +2038,10 @@ function jalankanEksporCsv() {
       ['Harga Pokok Penjualan (HPP)', data.ringkasan.total_hpp || 0, 'Cost of Goods Sold (Snapshot)'],
       ['Laba Kotor Sebelum Retur', data.ringkasan.laba_kotor_sebelum_retur || 0, 'Gross Profit Awal'],
       ['Retur Penjualan', data.ringkasan.total_retur_penjualan || 0, 'Barang Kembali'],
-      ['Laba Kotor Bersih Akhir', data.ringkasan.laba_kotor_bersih || 0, `Margin: ${data.ringkasan.margin_persen || 0}%`]
+      ['Laba Kotor Bersih Akhir', data.ringkasan.laba_kotor_bersih || 0, `Margin: ${data.ringkasan.margin_persen || 0}%`],
+      ['Biaya Operasional', data.ringkasan.total_biaya_operasional || 0, 'Pengeluaran Operasional'],
+      ['Kerugian Barang Rusak', data.ringkasan.total_kerugian_rusak || 0, 'Barang Rusak Disetujui'],
+      ['LABA BERSIH RIIL', data.ringkasan.laba_bersih_riil || 0, `Margin Bersih: ${data.ringkasan.margin_bersih_persen || 0}%`]
     ];
     unduhCsv(`laporan_laba_rugi_${tglStr}.csv`, headers, rows);
   } else if (tab === 'stok') {
@@ -2040,13 +2050,15 @@ function jalankanEksporCsv() {
       showToast('Belum ada data stok untuk diekspor.', 'warning');
       return;
     }
-    const headers = ['SKU', 'Barcode', 'Nama Barang', 'Kategori', 'Satuan', 'Stok Saat Ini', 'Stok Minimum', 'Status', 'HPP', 'Nilai Aset'];
+    const headers = ['SKU', 'Barcode', 'Nama Barang', 'Kategori', 'Satuan', 'Stok Toko', 'Stok Gudang', 'Stok Total', 'Stok Minimum', 'Status', 'HPP', 'Nilai Aset'];
     const rows = data.items.map((it) => [
       it.sku,
       it.barcode,
       it.nama,
       it.kategori,
       it.satuan,
+      it.stok_toko !== undefined ? it.stok_toko : it.stok,
+      it.stok_gudang || 0,
       it.stok,
       it.stok_min,
       it.status,
@@ -2175,16 +2187,16 @@ function renderTabShiftKasir(container, data, rootContainer) {
                 </thead>
                 <tbody>
                   ${items.map((sh) => {
-                    const isAktif = sh.status === 'aktif';
-                    const sel = Number(sh.selisih || 0);
-                    const badgeSelisih = isAktif
-                      ? '<span class="text-muted text-xs">Berjalan</span>'
-                      : (sel === 0
-                        ? '<span class="badge badge-success mono">PAS Rp 0</span>'
-                        : (sel > 0
-                          ? `<span class="badge badge-info mono">+${formatRupiah(sel)}</span>`
-                          : `<span class="badge badge-danger mono">-${formatRupiah(Math.abs(sel))}</span>`));
-                    return `
+    const isAktif = sh.status === 'aktif';
+    const sel = Number(sh.selisih || 0);
+    const badgeSelisih = isAktif
+      ? '<span class="text-muted text-xs">Berjalan</span>'
+      : (sel === 0
+        ? '<span class="badge badge-success mono">PAS Rp 0</span>'
+        : (sel > 0
+          ? `<span class="badge badge-info mono">+${formatRupiah(sel)}</span>`
+          : `<span class="badge badge-danger mono">-${formatRupiah(Math.abs(sel))}</span>`));
+    return `
                       <tr>
                         <td data-label="No. Shift">
                           <div class="cell-stack">
@@ -2210,8 +2222,8 @@ function renderTabShiftKasir(container, data, rootContainer) {
                         <td data-label="Selisih" class="text-right">${badgeSelisih}</td>
                         <td data-label="Status">
                           ${isAktif
-                            ? '<span class="badge badge-warning">Aktif</span>'
-                            : '<span class="badge badge-secondary">Ditutup</span>'}
+        ? '<span class="badge badge-warning">Aktif</span>'
+        : '<span class="badge badge-secondary">Ditutup</span>'}
                         </td>
                         <td data-label="Aksi" class="text-right no-print">
                           <div class="table-actions">
@@ -2228,7 +2240,7 @@ function renderTabShiftKasir(container, data, rootContainer) {
                         </td>
                       </tr>
                     `;
-                  }).join('')}
+  }).join('')}
                 </tbody>
               </table>
             </div>
@@ -2439,16 +2451,16 @@ function renderTabPengiriman(container, data, rootContainer) {
                 </thead>
                 <tbody>
                   ${items.map((k) => {
-                    const semuaIt = k.items || [];
-                    const itBelumKirim = semuaIt.filter((it) => Number(it.sisa_kirim || 0) > 0);
-                    const jmlSudahBawa = semuaIt.length - itBelumKirim.length;
-                    const sumberTampil = itBelumKirim.length > 0 ? itBelumKirim : semuaIt;
-                    const ringkasItem = sumberTampil.slice(0, 2).map((it) => {
-                      const qShow = itBelumKirim.length > 0 ? it.sisa_kirim : it.qty;
-                      return `${escapeHtml(it.nama)} (${formatQty(qShow)} ${escapeHtml(it.satuan || '')})`;
-                    }).join(', ');
-                    const ekstraItem = sumberTampil.length > 2 ? ` +${sumberTampil.length - 2} lainnya` : '';
-                    return `
+    const semuaIt = k.items || [];
+    const itBelumKirim = semuaIt.filter((it) => Number(it.sisa_kirim || 0) > 0);
+    const jmlSudahBawa = semuaIt.length - itBelumKirim.length;
+    const sumberTampil = itBelumKirim.length > 0 ? itBelumKirim : semuaIt;
+    const ringkasItem = sumberTampil.slice(0, 2).map((it) => {
+      const qShow = itBelumKirim.length > 0 ? it.sisa_kirim : it.qty;
+      return `${escapeHtml(it.nama)} (${formatQty(qShow)} ${escapeHtml(it.satuan || '')})`;
+    }).join(', ');
+    const ekstraItem = sumberTampil.length > 2 ? ` +${sumberTampil.length - 2} lainnya` : '';
+    return `
                       <tr>
                         <td data-label="No. Nota">
                           <div class="cell-stack">
@@ -2489,7 +2501,7 @@ function renderTabPengiriman(container, data, rootContainer) {
                         </td>
                       </tr>
                     `;
-                  }).join('')}
+  }).join('')}
                 </tbody>
               </table>
             </div>

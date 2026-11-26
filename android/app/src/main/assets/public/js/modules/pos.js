@@ -765,10 +765,16 @@ export function renderPosModule(container) {
 
       let badgeStok = '';
       const stok = Number(p.stok || 0);
+      const stokToko = p.stok_toko !== undefined ? Number(p.stok_toko || 0) : stok;
+      const stokGudang = Number(p.stok_gudang || 0);
       const stokMin = Number(p.stok_min || 0);
 
       if (stok <= 0) {
         badgeStok = `<span class="badge badge-danger">Habis</span>`;
+      } else if (stokToko <= 0 && stokGudang > 0) {
+        badgeStok = `<span class="badge badge-warning">Toko 0 • Gdg ${formatQty(stokGudang)}</span>`;
+      } else if (stokGudang > 0) {
+        badgeStok = `<span class="badge ${stokToko <= stokMin ? 'badge-warning' : 'badge-success'}">T:${formatQty(stokToko)} • G:${formatQty(stokGudang)}</span>`;
       } else if (stok <= stokMin) {
         badgeStok = `<span class="badge badge-warning">${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}</span>`;
       } else {
@@ -873,11 +879,17 @@ export function renderPosModule(container) {
       const punyaVarian = p.punya_varian && (p.varian || []).length > 0;
       const punyaSatuanKonversi = (p.satuan_konversi || []).length > 0;
       const stok = Number(p.stok || 0);
+      const stokToko = p.stok_toko !== undefined ? Number(p.stok_toko || 0) : stok;
+      const stokGudang = Number(p.stok_gudang || 0);
       const stokMin = Number(p.stok_min || 0);
 
       let badgeStok = '';
       if (stok <= 0) {
         badgeStok = `<span class="badge badge-danger">Habis</span>`;
+      } else if (stokToko <= 0 && stokGudang > 0) {
+        badgeStok = `<span class="badge badge-warning">Toko 0 • Gdg ${formatQty(stokGudang)}</span>`;
+      } else if (stokGudang > 0) {
+        badgeStok = `<span class="badge ${stokToko <= stokMin ? 'badge-warning' : 'badge-success'}">Toko ${formatQty(stokToko)} • Gdg ${formatQty(stokGudang)}</span>`;
       } else if (stok <= stokMin) {
         badgeStok = `<span class="badge badge-warning">${formatQty(stok)} ${escapeHtml(p.satuan_dasar)}</span>`;
       } else {
@@ -1013,33 +1025,112 @@ export function renderPosModule(container) {
     const punyaVarian = p.punya_varian && (p.varian || []).length > 0;
     const punyaSatuanKonversi = (p.satuan_konversi || []).length > 0;
 
-    // Jika produk sederhana (tanpa varian dan tanpa satuan alternatif) -> langsung tambah ke keranjang
+    // Jika produk sederhana (tanpa varian dan tanpa satuan alternatif) -> cek stok toko vs gudang
     if (!punyaVarian && !punyaSatuanKonversi) {
-      tambahItemKeKeranjang({
-        produk_id: p.id,
-        varian_id: '',
-        nama: p.nama,
-        satuan: p.satuan_dasar,
-        faktor: 1,
-        qty: 1,
-        qty_dibawa: 1,
-        tipe_harga: 'ritel',
-        harga_asli: p.harga_ritel,
-        harga: p.harga_ritel,
-        hpp: p.hpp || 0,
-        diskon_tipe: '',
-        diskon_nilai: 0,
-        diskon: 0,
-        subtotal: p.harga_ritel,
-        _pr: p,
-        _var: null
-      });
-      bunyikanBeep();
+      const stToko = p.stok_toko !== undefined ? Number(p.stok_toko || 0) : Number(p.stok || 0);
+      const stGudang = Number(p.stok_gudang || 0);
+      const pushSederhana = () => {
+        tambahItemKeKeranjang({
+          produk_id: p.id,
+          varian_id: '',
+          nama: p.nama,
+          satuan: p.satuan_dasar,
+          faktor: 1,
+          qty: 1,
+          qty_dibawa: 1,
+          tipe_harga: 'ritel',
+          harga_asli: p.harga_ritel,
+          harga: p.harga_ritel,
+          hpp: p.hpp || 0,
+          diskon_tipe: '',
+          diskon_nilai: 0,
+          diskon: 0,
+          subtotal: p.harga_ritel,
+          _pr: p,
+          _var: null
+        });
+        bunyikanBeep();
+      };
+
+      if (stToko <= 0 && stGudang > 0 && !state.pengaturan?.stok_minus) {
+        bukaModalAmbilDariGudangPos(p, pushSederhana);
+        return;
+      }
+
+      pushSederhana();
       return;
     }
 
     // Jika memiliki varian atau satuan bertingkat -> buka dialog pemilihan
     bukaModalPilihVarianSatuan(p);
+  }
+
+  function bukaModalAmbilDariGudangPos(p, onMasukKeranjang) {
+    const stGudang = Number(p.stok_gudang || 0);
+    const modal = showModal({
+      title: 'Stok Toko Habis — Tersedia di Gudang',
+      size: 'sm',
+      body: `
+        <div class="stack" style="gap: var(--sp-3);">
+          <div class="alert alert-warning" style="margin: 0; font-size: var(--fs-xs);">
+            ${ICONS.alertTriangle}
+            <div>Stok etalase <strong>${escapeHtml(p.nama)}</strong> kosong (0), namun tersedia <strong class="font-mono">${formatQty(stGudang)} ${escapeHtml(p.satuan_dasar)}</strong> di Gudang.</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="pos-trf-qty">Ambil ke Stok Toko Sekarang (${escapeHtml(p.satuan_dasar)})</label>
+            <input type="number" class="input tabular fw-bold" id="pos-trf-qty" min="0.001" max="${stGudang}" step="any" inputmode="decimal" value="${Math.min(stGudang, Math.max(1, Math.min(10, stGudang)))}">
+          </div>
+          <div class="stack" style="gap: var(--sp-2);">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-pos-trf-langsung" style="width: 100%; justify-content: center; gap: 6px;">
+              ${ICONS.truck}
+              <span>Pindahkan ke Toko &amp; Masuk Keranjang</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-pakai-gudang" style="width: 100%; justify-content: center;">
+              Masuk Keranjang (Potong Gudang saat Bayar)
+            </button>
+          </div>
+        </div>
+      `,
+      footer: `
+        <div class="row" style="width: 100%; justify-content: flex-end;">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-pos-trf-batal">Tutup</button>
+        </div>
+      `
+    });
+
+    modal.el.querySelector('#btn-pos-trf-batal')?.addEventListener('click', () => modal.close());
+    modal.el.querySelector('#btn-pos-pakai-gudang')?.addEventListener('click', () => {
+      state.lokasiStokDefault = 'gudang';
+      modal.close();
+      onMasukKeranjang();
+      showToast('Item masuk keranjang. Sumber stok saat bayar otomatis diset ke Gudang.', 'info', 3000);
+    });
+    modal.el.querySelector('#btn-pos-trf-langsung')?.addEventListener('click', async () => {
+      const btn = modal.el.querySelector('#btn-pos-trf-langsung');
+      const qty = parseQty(modal.el.querySelector('#pos-trf-qty')?.value);
+      if (qty <= 0 || qty > stGudang) {
+        showToast(`Jumlah harus 0 < qty <= ${formatQty(stGudang)}.`, 'warning');
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const res = await api.post('gudang.transfer', {
+          arah: 'gudang_ke_toko',
+          catatan: 'Pengambilan cepat dari layar POS Kasir',
+          items: [{ produk_id: p.id, varian_id: '', satuan: p.satuan_dasar, faktor: 1, qty }]
+        });
+        if (!res.ok) throw new Error(res.error || 'Gagal transfer stok.');
+        p.stok_toko = Math.round((Number(p.stok_toko || 0) + qty) * 1000) / 1000;
+        p.stok_gudang = Math.round(Math.max(0, stGudang - qty) * 1000) / 1000;
+        renderKatalog();
+        modal.close();
+        showToast(`Berhasil pindahkan ${formatQty(qty)} ${p.satuan_dasar} ke Stok Toko!`, 'success', 2800);
+        onMasukKeranjang();
+      } catch (err) {
+        showToast(err.message || 'Gagal memindahkan stok dari gudang.', 'error');
+        btn.disabled = false;
+      }
+    });
   }
 
   function bukaModalPilihVarianSatuan(p) {
@@ -2178,6 +2269,15 @@ export function renderPosModule(container) {
               </div>
             </div>
 
+            <!-- Sumber Pengambilan Stok (Toko Default / Langsung Gudang untuk Kirim Proyek) -->
+            <div>
+              <label class="form-label fw-bold" for="checkout-lokasi-stok">Sumber Pengambilan Stok:</label>
+              <select id="checkout-lokasi-stok" class="input input-sm">
+                <option value="toko" ${state.lokasiStokDefault !== 'gudang' ? 'selected' : ''}>Potong Stok Toko / Etalase (Default)</option>
+                <option value="gudang" ${state.lokasiStokDefault === 'gudang' ? 'selected' : ''}>Ambil Langsung dari Stok Gudang (Proyek / Armada)</option>
+              </select>
+            </div>
+
             <!-- Biaya Ongkir & Alamat Kirim (Muncul jika opsi 'dikirim') -->
             <div id="box-detail-kirim" class="stack" style="display: ${state.pengiriman === 'dikirim' ? 'flex' : 'none'}; gap: var(--sp-2); background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
               <div>
@@ -2757,11 +2857,13 @@ export function renderPosModule(container) {
 
         const alamatKirimVal = modal.el.querySelector('#checkout-alamat')?.value.trim() || '';
         const catatanVal = modal.el.querySelector('#checkout-catatan')?.value.trim() || '';
+        const lokasiStokVal = modal.el.querySelector('#checkout-lokasi-stok')?.value === 'gudang' ? 'gudang' : 'toko';
         const semuaSudahDibawa = payloadItems.every((it) => Number(it.qty_dibawa) >= Number(it.qty));
 
         const payload = {
           pelanggan_id: state.pelanggan ? state.pelanggan.id : '',
           pengiriman: state.pengiriman,
+          lokasi_stok: lokasiStokVal,
           alamat_kirim: alamatKirimVal,
           status_antar: state.pengiriman === 'dikirim' && semuaSudahDibawa ? 'selesai' : undefined,
           ongkir: getOngkirAktif(),
@@ -2781,6 +2883,7 @@ export function renderPosModule(container) {
         }
 
         // Transaksi Sukses!
+        state.lokasiStokDefault = 'toko';
         bunyikanBeep();
         haptic.success();
         modal.close();

@@ -113,7 +113,9 @@ const MASTER_CACHE_SHEETS = Object.freeze({
   Biaya: 90,
   Deposit_Log: 90,
   Shift_Kasir: 60,
-  Penawaran: 60
+  Penawaran: 60,
+  Mutasi_Lokasi: 60,
+  Barang_Rusak: 60
 });
 
 /** Hapus cache L2 CacheService untuk sheet master saat ada penulisan data. */
@@ -424,7 +426,7 @@ function cacheHapus_(key) {
  * WAJIB dipanggil di dalam denganKunci_ agar tidak ada nomor ganda.
  */
 function nomorBerikut_(prefix) {
-  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP', 'DEP', 'SHF', 'RAB'];
+  const valid = ['INV', 'PB', 'RT', 'OP', 'TK', 'MBR', 'SKU', 'BC', 'PLG', 'EXP', 'DEP', 'SHF', 'RAB', 'TRF', 'RSK'];
   if (valid.indexOf(prefix) === -1) gagal_(KODE.SERVER, 'Prefix nomor tidak dikenal: ' + prefix);
   const key = prefix + '-' + Utilities.formatDate(new Date(), APP.TZ, 'yyyyMMdd');
   const baris = bacaSemua_('Counter').filter(function (c) { return c.key === key; })[0];
@@ -611,6 +613,37 @@ function hitungHppDasarItem_(it) {
   const hppSatuanJual = Number(it && it.hpp) || 0;
   const faktor = Math.max(1, Number(it && it.faktor) || 1);
   return faktor > 1 ? Math.round(hppSatuanJual / faktor) : Math.round(hppSatuanJual);
+}
+
+/** Normalisasi nama lokasi stok: hanya 'toko' atau 'gudang'. */
+function normalisasiLokasi_(val, bawaan) {
+  const s = String(val || '').trim().toLowerCase();
+  if (s === 'gudang') return 'gudang';
+  if (s === 'toko') return 'toko';
+  return bawaan === 'gudang' ? 'gudang' : 'toko';
+}
+
+/**
+ * Baca posisi stok 2 lokasi (toko + gudang) secara zero-migration.
+ * Untuk data lama yang belum memiliki kolom stok_toko/stok_gudang (keduanya 0/kosong tapi stok != 0),
+ * seluruh stok lama otomatis dianggap berada di `stok_toko` dan `stok_gudang = 0`.
+ */
+function bacaStokLokasi_(obj) {
+  const total = bulatQty_(Number(obj && obj.stok) || 0);
+  const rawToko = obj && obj.stok_toko !== undefined && obj.stok_toko !== '' ? Number(obj.stok_toko) : null;
+  const rawGudang = obj && obj.stok_gudang !== undefined && obj.stok_gudang !== '' ? Number(obj.stok_gudang) : null;
+  if (rawToko === null && rawGudang === null) {
+    return { stok_toko: total, stok_gudang: 0, stok: total };
+  }
+  const stToko = bulatQty_(rawToko || 0);
+  const stGudang = bulatQty_(rawGudang || 0);
+  if (stToko === 0 && stGudang === 0 && total !== 0) {
+    return { stok_toko: total, stok_gudang: 0, stok: total };
+  }
+  if (Math.abs((stToko + stGudang) - total) > 0.001) {
+    return { stok_toko: bulatQty_(total - stGudang), stok_gudang: stGudang, stok: total };
+  }
+  return { stok_toko: stToko, stok_gudang: stGudang, stok: bulatQty_(stToko + stGudang) };
 }
 
 /** Validator input. Semua melempar VALIDATION dengan pesan Bahasa Indonesia. */
