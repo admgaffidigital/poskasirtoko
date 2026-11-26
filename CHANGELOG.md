@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.147] - 2026-11-27
+### Diperbaiki — Perbaikan Total Bug `Dibayar` Dobel pada Nota Tempo/Cicilan, Faktur A5, Shift Kasir, Pengiriman, & Piutang Retur Penuh
+- **[POS-JUAL] [HUTANG-PIUTANG] [CETAK] [BACKEND] Perbaikan Kritis `Penjualan.bayar` pada Transaksi Tempo & Cicilan (`04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`, `01_database_utilitas.gs`, `printer.js`)**:
+  - Memperbaiki bug di `penjualan.create` yang sebelumnya ikut menghitung nominal **TEMPO/Kredit** ke dalam `Penjualan.bayar` sehingga saat pelanggan membayar cicilan piutang, angka `Dibayar` menjadi dobel (cth. Grand Total Rp 3.704.000 + cicilan Rp 3.000.000 tercetak `Dibayar Rp 6.704.000`).
+  - Memperbaiki `piutang.bayar` & `penjualan.detail` agar selalu menghitung `bayar` riil (`DP + total cicilan`) dan `sisa_tagihan` secara self-healing (termasuk untuk seluruh nota historis di Spreadsheet), serta menambahkan perbaikan massal otomatis di `sistem.maintenance`.
+  - Memperbarui **Faktur Besar A5**, **Struk Thermal 58/80mm**, dan **WhatsApp** (`printer.js`) untuk menampilkan riwayat cicilan, total sudah dibayar riil, **SISA TAGIHAN**, jatuh tempo, dan stempel **DIRETUR PENUH** secara presisi.
+- **[DASHBOARD] [RETUR] [UI] Sinkronisasi Retur Penuh pada Tab Shift Kasir, Antrean Pengiriman, & Hutang-Piutang (`04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`, `laporan.js`, `hutang-piutang.js`)**:
+  - **Tab Shift Kasir**: omset bersih shift & total akumulasi shift otomatis memotong retur penjualan (termasuk shift yang sudah ditutup).
+  - **Tab Pengiriman & Surat Jalan**: nota yang diretur penuh otomatis berubah ke status `Diretur Penuh` (`sisa_kirim = 0`), keluar dari hitungan `Menunggu Kirim`, tombol `Surat Jalan` & `Update` disembunyikan, dan backend memblokir pengiriman ulang (`CONFLICT`).
+  - **Tab Hutang & Piutang**: nota piutang yang selesai karena retur penuh kini berlabel `Diretur Penuh` + nomor `RT-...` (bukan `Lunas`).
+
 ## [1.0.146] - 2026-11-27
 ### Disempurnakan — Presisi Akuntansi 100% Sinkron Lintas Seluruh 9 Laporan (Dashboard, Penjualan, Pembelian, Arus Kas, Laba Rugi, & Tutup Buku)
 - **[DASHBOARD] [BACKEND] Sinkronisasi Omset Bersih, Retur Penjualan/Pembelian, Ranking, & Tren Harian (`08_laporan_biaya.gs`)**:

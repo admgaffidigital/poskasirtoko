@@ -13,6 +13,14 @@ function aksiPiutangList_(ctx) {
   const penjualanPeta = {};
   semuaPenjualan.forEach(function (pj) { penjualanPeta[pj.id] = pj; });
 
+  const returByJualPt = {};
+  bacaSemua_('Retur').forEach(function (rt) {
+    if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui' || !rt.ref_id) return;
+    if (!returByJualPt[rt.ref_id]) returByJualPt[rt.ref_id] = { total_retur: 0, no_retur_list: [] };
+    returByJualPt[rt.ref_id].total_retur += (Number(rt.total) || 0);
+    if (rt.no_retur) returByJualPt[rt.ref_id].no_retur_list.push(rt.no_retur);
+  });
+
   const hariIni = Utilities.formatDate(new Date(), APP.TZ, 'yyyy-MM-dd');
   let totalPiutangBerjalan = 0;
 
@@ -20,6 +28,11 @@ function aksiPiutangList_(ctx) {
     const pel = pelangganPeta[pt.pelanggan_id] || {};
     const pj = penjualanPeta[pt.penjualan_id] || {};
     const sisa = Number(pt.sisa) || 0;
+    const totTagihan = Number(pt.total) || 0;
+    const totNotaPj = Number(pj.total) || totTagihan;
+    const infoRet = returByJualPt[pt.penjualan_id] || { total_retur: 0, no_retur_list: [] };
+    const retNota = Math.min(totNotaPj, Math.round(infoRet.total_retur || 0));
+    const statusRetur = retNota <= 0 ? '' : (totNotaPj > 0 && retNota >= totNotaPj ? 'penuh' : 'sebagian');
 
     if (pt.status !== 'lunas') {
       totalPiutangBerjalan += sisa;
@@ -44,9 +57,12 @@ function aksiPiutangList_(ctx) {
       pelanggan_kode: pel.kode || '',
       pelanggan_hp: hpPelanggan,
       hp_pelanggan: hpPelanggan,
-      total: Number(pt.total) || 0,
+      total: totTagihan,
       terbayar: Number(pt.terbayar) || 0,
       sisa: sisa,
+      total_retur: retNota,
+      status_retur: statusRetur,
+      daftar_no_retur: infoRet.no_retur_list,
       jatuh_tempo: pt.jatuh_tempo || '',
       lewat_jatuh_tempo: sudahLewat,
       jatuh_tempo_lewat: sudahLewat,
@@ -186,15 +202,18 @@ function aksiPiutangBayar_(ctx) {
     catatan: p.catatan || ('Pembayaran piutang nota ' + (piutang.penjualan_id || ''))
   }], ctx.user.id);
 
-  // 3. Update status bayar di Penjualan asal
+  // 3. Update status bayar & total bayar riil di Penjualan asal (anti dobel hitung porsi tempo)
   if (piutang.penjualan_id) {
     const pj = cariById_('Penjualan', piutang.penjualan_id);
     if (pj) {
-      const bayarBaru = (Number(pj.bayar) || 0) + jumlahBayar;
+      const totalNotaPj = Number(pj.total) || 0;
+      const dpAwalPj = Math.max(0, totalNotaPj - (Number(piutang.total) || 0));
+      const bayarBaru = Math.min(totalNotaPj, Math.round(dpAwalPj + terbayarBaru));
       ubahBaris_('Penjualan', [{
         id: pj.id,
         data: {
           bayar: bayarBaru,
+          kembalian: 0,
           status_bayar: statusBaru
         }
       }], ctx.user.id);
@@ -1212,6 +1231,20 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
           saldo: saldoBaru,
           ref_id: retur.no_retur,
           catatan: 'Pengembalian dana retur ' + retur.no_retur
+        }], ctx.user.id);
+      }
+    }
+
+    // Jika total retur disetujui sudah mencapai 100% nilai nota pengiriman, batalkan status antrean pengiriman secara otomatis
+    if (pjAsal && Number(pjAsal.total || 0) > 0 && pjAsal.pengiriman === 'dikirim') {
+      const akumulasiReturPj = bacaSemua_('Retur').reduce(function (acc, r) {
+        return (!r.deleted && r.tipe === 'jual' && r.status === 'disetujui' && r.ref_id === pjAsal.id)
+          ? acc + (Number(r.total) || 0) : acc;
+      }, 0);
+      if (akumulasiReturPj >= Number(pjAsal.total || 0)) {
+        ubahBaris_('Penjualan', [{
+          id: pjAsal.id,
+          data: { status_antar: 'diretur' }
         }], ctx.user.id);
       }
     }

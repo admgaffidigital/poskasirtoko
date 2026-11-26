@@ -765,6 +765,54 @@ function bersihkanSesiKedaluwarsa_() {
   return perubahan.length;
 }
 
+/**
+ * Perbaiki otomatis anomali data historis Penjualan (kolom bayar pada nota tempo/cicilan
+ * dan status_antar pada nota kirim yang sudah diretur penuh).
+ */
+function sinkronkanDataHistorisPenjualan_(userId) {
+  const semuaPj = bacaSemua_('Penjualan');
+  const piutangByPj = {};
+  bacaSemua_('Piutang').forEach(function (pt) {
+    if (!pt.deleted && pt.penjualan_id) piutangByPj[pt.penjualan_id] = pt;
+  });
+  const returByPj = {};
+  bacaSemua_('Retur').forEach(function (rt) {
+    if (!rt.deleted && rt.tipe === 'jual' && rt.status === 'disetujui' && rt.ref_id) {
+      returByPj[rt.ref_id] = (returByPj[rt.ref_id] || 0) + (Number(rt.total) || 0);
+    }
+  });
+
+  const perbaikan = [];
+  semuaPj.forEach(function (pj) {
+    if (pj.deleted || pj.status !== 'final') return;
+    const tot = Number(pj.total) || 0;
+    const patch = {};
+    const pt = piutangByPj[pj.id];
+    const retTot = Math.round(returByPj[pj.id] || 0);
+    const isReturPenuh = tot > 0 && retTot >= tot;
+
+    if (pt) {
+      const dpAwal = Math.max(0, tot - (Number(pt.total) || 0));
+      const bayarSeharusnya = isReturPenuh ? 0 : Math.min(tot, Math.round(dpAwal + (Number(pt.terbayar) || 0)));
+      if (Math.round(Number(pj.bayar) || 0) !== bayarSeharusnya) {
+        patch.bayar = bayarSeharusnya;
+        patch.kembalian = 0;
+      }
+    }
+    if (isReturPenuh && pj.pengiriman === 'dikirim' && String(pj.status_antar || '').toLowerCase() !== 'diretur') {
+      patch.status_antar = 'diretur';
+    }
+    if (Object.keys(patch).length > 0) {
+      perbaikan.push({ id: pj.id, data: patch });
+    }
+  });
+
+  if (perbaikan.length > 0) {
+    ubahBaris_('Penjualan', perbaikan, userId || 'sistem');
+  }
+  return perbaikan.length;
+}
+
 /** sistem.maintenance — Segarkan cache server, bersihkan sesi kedaluwarsa, & cek kesehatan DB (Owner/Admin). */
 function aksiSistemMaintenance_(ctx) {
   const namaMaster = Object.keys(MASTER_CACHE_SHEETS);
@@ -772,6 +820,7 @@ function aksiSistemMaintenance_(ctx) {
   cacheHapus_('pengaturan');
 
   const sesiDibersihkan = bersihkanSesiKedaluwarsa_();
+  const notaDiperbaiki = sinkronkanDataHistorisPenjualan_(ctx.user.id);
 
   const ringkasan = {
     produk: bacaSemua_('Produk', { lewatCache: true }).length,
@@ -784,13 +833,17 @@ function aksiSistemMaintenance_(ctx) {
 
   catatAudit_(ctx.user.id, 'sistem_maintenance', 'SISTEM', '', {
     cache_dibersihkan: namaMaster.length,
-    sesi_dibersihkan: sesiDibersihkan
+    sesi_dibersihkan: sesiDibersihkan,
+    nota_diperbaiki: notaDiperbaiki
   });
 
   return {
-    pesan: 'Perawatan server dan penyegaran cache berhasil.',
+    pesan: notaDiperbaiki > 0
+      ? ('Perawatan server berhasil & ' + notaDiperbaiki + ' nota historis disinkronkan.')
+      : 'Perawatan server dan penyegaran cache berhasil.',
     cache_dibersihkan: namaMaster.length,
     sesi_dibersihkan: sesiDibersihkan,
+    nota_diperbaiki: notaDiperbaiki,
     ringkasan_db: ringkasan,
     waktu_server: sekarang_()
   };

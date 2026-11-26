@@ -2540,6 +2540,63 @@ async function runAudit() {
       eodSinkron.ringkasan.laba_bersih === lrSinkron.ringkasan.laba_bersih_riil,
       'Dashboard, Laporan Penjualan, Laba Rugi, & Tutup Harian wajib 100% identik hingga rupiah terakhir');
 
+    // 29f6. Anti-Bug Nota Tempo+Cicilan (bayar tidak dobel), Pengiriman & Shift & Piutang sinkron Retur Penuh
+    const pelUjiTempo = envGd.aksiPelangganCreate_({
+      user: ownerRow,
+      payload: { nama: 'Mbk Ina Uji', hp: '085700011122', tipe: 'member', limit_kredit: 10000000 }
+    }).pelanggan;
+    const jualTempoUji = envGd.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelUjiTempo.id,
+        lokasi_stok: 'toko',
+        pengiriman: 'dikirim',
+        alamat_kirim: 'Pakem',
+        items: [{ produk_id: prLegacy.id, qty: 2, qty_dibawa: 0, harga: 65000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 130000 }]
+      }
+    });
+    assert(jualTempoUji.penjualan.bayar === 0, `Penjualan 100% tempo wajib mencatat bayar=0 (bukan 130000), aktual: ${jualTempoUji.penjualan.bayar}`);
+    const ptUji = envGd.bacaSemua_('Piutang').find((x) => x.penjualan_id === jualTempoUji.penjualan.id);
+    envGd.aksiPiutangBayar_({ user: ownerRow, payload: { id: ptUji.id, jumlah: 100000, metode: 'tunai' } });
+    const detTempoCicil = envGd.aksiPenjualanDetail_({ user: ownerRow, payload: { id: jualTempoUji.penjualan.id } });
+    assert(detTempoCicil.penjualan.bayar === 100000 && detTempoCicil.sisa_tagihan === 30000 && detTempoCicil.cicilan_piutang.length === 1,
+      `Setelah cicilan Rp 100k dari Rp 130k, bayar wajib 100000 & sisa_tagihan=30000 (bukan dobel 230000), aktual: bayar=${detTempoCicil.penjualan.bayar}, sisa=${detTempoCicil.sisa_tagihan}`);
+
+    // Nota pengiriman yang diretur penuh wajib otomatis keluar dari antrean Menunggu Kirim & diblokir update kirimnya
+    const jualKirimRet = envGd.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelUjiTempo.id,
+        lokasi_stok: 'toko',
+        pengiriman: 'dikirim',
+        alamat_kirim: 'Pakem',
+        items: [{ produk_id: prLegacy.id, qty: 1, qty_dibawa: 0, harga: 65000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 65000 }]
+      }
+    });
+    envGd.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual', ref_id: jualKirimRet.penjualan.id, lokasi: 'toko', alasan: 'Uji retur penuh nota kirim', metode_refund: 'potong_piutang',
+        items: [{ produk_id: prLegacy.id, nama: prLegacy.nama, satuan: 'SAK', faktor: 1, qty: 1, harga: 65000, hpp: 50000 }]
+      }
+    });
+    const listKirim = envGd.aksiPengirimanList_({ user: ownerRow, payload: {} });
+    const rowKirimRet = listKirim.items.find((x) => x.id === jualKirimRet.penjualan.id);
+    assert(rowKirimRet && rowKirimRet.status_antar === 'diretur' && rowKirimRet.total_qty_sisa === 0 && listKirim.ringkasan.diretur >= 1,
+      `Nota kirim yang diretur penuh wajib berstatus 'diretur' & total_qty_sisa=0; aktual: ${JSON.stringify(rowKirimRet)}`);
+    let blokirKirimRet = false;
+    try {
+      envGd.aksiPengirimanUpdateStatus_({ user: ownerRow, payload: { id: jualKirimRet.penjualan.id, status_antar: 'diantar' } });
+    } catch (e) {
+      blokirKirimRet = e.code === 'CONFLICT';
+    }
+    assert(blokirKirimRet, 'pengiriman.updateStatus wajib menolak mengirim ulang nota yang sudah diretur penuh');
+    const ptListRet = envGd.aksiPiutangList_({ user: ownerRow, payload: {} });
+    const ptRowRet = ptListRet.items.find((x) => x.penjualan_id === jualKirimRet.penjualan.id);
+    assert(ptRowRet && ptRowRet.status_retur === 'penuh', 'piutang.list wajib menandai nota diretur penuh dengan status_retur=penuh');
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');

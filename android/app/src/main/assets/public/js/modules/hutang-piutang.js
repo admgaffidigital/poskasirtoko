@@ -392,12 +392,21 @@ async function muatDataPiutang(container) {
           </thead>
           <tbody>
             ${items.map((it) => {
-              let badgeStatus = '<span class="badge badge-warning">Belum Lunas</span>';
-              if (it.status === 'sebagian') badgeStatus = '<span class="badge badge-info">Sebagian</span>';
-              if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
+              const isReturPenuh = it.status_retur === 'penuh';
+              const isReturSebagian = !isReturPenuh && it.status_retur === 'sebagian';
+              const noReturStr = Array.isArray(it.daftar_no_retur) && it.daftar_no_retur.length ? it.daftar_no_retur.join(', ') : '';
 
-              const isOverdue = it.jatuh_tempo_lewat && it.status !== 'lunas';
-              const isSegera = it.segera_tempo && it.status !== 'lunas';
+              let badgeStatus = '<span class="badge badge-warning">Belum Lunas</span>';
+              if (isReturPenuh) {
+                badgeStatus = '<span class="badge badge-danger">Diretur Penuh</span>';
+              } else {
+                if (it.status === 'sebagian') badgeStatus = '<span class="badge badge-info">Sebagian</span>';
+                if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
+                if (isReturSebagian) badgeStatus += ' <span class="badge badge-warning badge-xs">Diretur Sebagian</span>';
+              }
+
+              const isOverdue = !isReturPenuh && it.jatuh_tempo_lewat && it.status !== 'lunas';
+              const isSegera = !isReturPenuh && it.segera_tempo && it.status !== 'lunas';
               const tglJatuhTempo = it.jatuh_tempo ? formatTanggal(it.jatuh_tempo) : '-';
 
               let badgeTempoHtml = '';
@@ -411,9 +420,10 @@ async function muatDataPiutang(container) {
               }
 
               return `
-                <tr data-id="${escapeHtml(it.id)}">
+                <tr data-id="${escapeHtml(it.id)}" style="${isReturPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
                   <td data-label="No Nota & Tgl">
-                    <div class="fw-semibold">${escapeHtml(it.no_nota || '-')}</div>
+                    <div class="fw-semibold" style="${isReturPenuh ? 'text-decoration: line-through;' : ''}">${escapeHtml(it.no_nota || '-')}</div>
+                    ${noReturStr ? `<div class="text-2xs font-mono text-danger">Retur: ${escapeHtml(noReturStr)}</div>` : ''}
                     <div class="text-xs text-muted">${formatTanggal(it.tanggal_nota, true)}</div>
                   </td>
                   <td data-label="Pelanggan">
@@ -422,7 +432,10 @@ async function muatDataPiutang(container) {
                       <div class="text-xs text-muted">${escapeHtml(it.hp_pelanggan || '-')}</div>
                     </div>
                   </td>
-                  <td class="num fw-semibold" data-label="Total Tagihan">${formatRupiah(it.total)}</td>
+                  <td class="num fw-semibold" data-label="Total Tagihan">
+                    <span style="${isReturPenuh ? 'text-decoration: line-through; color: var(--text-muted);' : ''}">${formatRupiah(it.total)}</span>
+                    ${Number(it.total_retur || 0) > 0 ? `<div class="text-2xs text-danger">Retur -${formatRupiah(it.total_retur)}</div>` : ''}
+                  </td>
                   <td class="num" data-label="Sisa Piutang">
                     <span class="fw-bold ${it.sisa > 0 ? 'text-danger' : 'text-success'}">${formatRupiah(it.sisa)}</span>
                   </td>

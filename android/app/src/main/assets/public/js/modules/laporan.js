@@ -1317,6 +1317,16 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
               <span>TOTAL BERSIH SETELAH RETUR:</span><span style="color: var(--success);">${formatRupiah(totalBersih)}</span>
             </div>
           ` : ''}
+          ${(Number(d.sisa_tagihan || 0) > 0 || (Array.isArray(d.cicilan_piutang) && d.cicilan_piutang.length > 0)) && statusRetur !== 'penuh' ? `
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-sm); color: var(--success); margin-top: 4px;">
+              <span>Sudah Dibayar / Cicilan:</span><span class="fw-semibold">${formatRupiah(j.bayar || 0)}</span>
+            </div>
+            ${Number(d.sisa_tagihan || 0) > 0 ? `
+              <div class="cluster" style="justify-content: space-between; font-weight: var(--fw-bold); font-size: var(--fs-base); color: var(--danger); margin-top: 2px;">
+                <span>SISA TAGIHAN (PIUTANG):</span><span>${formatRupiah(d.sisa_tagihan)}</span>
+              </div>
+            ` : ''}
+          ` : ''}
         </div>
       </div>
     `;
@@ -2205,11 +2215,14 @@ function renderTabShiftKasir(container, data, rootContainer) {
 
         <div class="stat-card-pro">
           <div class="stat-card-header">
-            <span class="stat-card-title">Total Omset Shift</span>
+            <span class="stat-card-title">Total Omset Bersih Shift</span>
             <div class="stat-card-icon icon-purple">${ICONS.chart}</div>
           </div>
           <div class="stat-card-value mono" style="color: var(--primary);">${formatRupiah(r.total_omset || 0)}</div>
-          <div class="stat-card-desc">Akumulasi penjualan shift</div>
+          <div class="stat-card-desc" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span>Akumulasi penjualan bersih shift</span>
+            ${Number(r.total_retur_penjualan || 0) > 0 ? `<span class="badge badge-warning">Retur -${formatRupiah(r.total_retur_penjualan)}</span>` : ''}
+          </div>
         </div>
 
         <div class="stat-card-pro">
@@ -2288,7 +2301,8 @@ function renderTabShiftKasir(container, data, rootContainer) {
                         <td data-label="No. Shift">
                           <div class="cell-stack">
                             <div class="fw-bold mono text-sm">${escapeHtml(sh.no_shift)}</div>
-                            <div class="text-xs text-muted">${sh.total_transaksi || 0} nota • Omset ${formatRupiah(sh.total_penjualan || 0)}</div>
+                            <div class="text-xs text-muted">${sh.total_transaksi || 0} nota aktif • Omset ${formatRupiah(sh.total_penjualan || 0)}</div>
+                            ${Number(sh.total_retur_penjualan || 0) > 0 ? `<div class="text-2xs text-danger">Retur -${formatRupiah(sh.total_retur_penjualan)}</div>` : ''}
                           </div>
                         </td>
                         <td data-label="Kasir">
@@ -2458,6 +2472,7 @@ function renderTabPengiriman(container, data, rootContainer) {
     if (st === 'diantar') return '<span class="badge badge-info">Sedang Diantar</span>';
     if (st === 'sebagian') return '<span class="badge badge-primary">Kirim Sebagian</span>';
     if (st === 'selesai') return '<span class="badge badge-success">Selesai</span>';
+    if (st === 'diretur') return '<span class="badge badge-danger">Diretur Penuh</span>';
     return `<span class="badge badge-secondary">${escapeHtml(st || '-')}</span>`;
   };
 
@@ -2514,6 +2529,7 @@ function renderTabPengiriman(container, data, rootContainer) {
               <option value="diantar" ${stateLaporan.filterPengiriman.status_antar === 'diantar' ? 'selected' : ''}>Sedang Diantar</option>
               <option value="sebagian" ${stateLaporan.filterPengiriman.status_antar === 'sebagian' ? 'selected' : ''}>Kirim Sebagian (Bon)</option>
               <option value="selesai" ${stateLaporan.filterPengiriman.status_antar === 'selesai' ? 'selected' : ''}>Selesai</option>
+              <option value="diretur" ${stateLaporan.filterPengiriman.status_antar === 'diretur' ? 'selected' : ''}>Diretur Penuh</option>
             </select>
           </div>
         </div>
@@ -2538,6 +2554,9 @@ function renderTabPengiriman(container, data, rootContainer) {
                 </thead>
                 <tbody>
                   ${items.map((k) => {
+    const isDireturPenuh = k.status_antar === 'diretur' || k.status_retur === 'penuh';
+    const isDireturSebagian = !isDireturPenuh && k.status_retur === 'sebagian';
+    const noReturStr = Array.isArray(k.daftar_no_retur) && k.daftar_no_retur.length ? k.daftar_no_retur.join(', ') : '';
     const semuaIt = k.items || [];
     const itBelumKirim = semuaIt.filter((it) => Number(it.sisa_kirim || 0) > 0);
     const jmlSudahBawa = semuaIt.length - itBelumKirim.length;
@@ -2548,10 +2567,11 @@ function renderTabPengiriman(container, data, rootContainer) {
     }).join(', ');
     const ekstraItem = sumberTampil.length > 2 ? ` +${sumberTampil.length - 2} lainnya` : '';
     return `
-                      <tr>
+                      <tr style="${isDireturPenuh ? 'opacity: 0.65; background: var(--bg-surface-variant);' : ''}">
                         <td data-label="No. Nota">
                           <div class="cell-stack">
-                            <div class="fw-bold mono text-sm">${escapeHtml(k.no_nota)}</div>
+                            <div class="fw-bold mono text-sm" style="${isDireturPenuh ? 'text-decoration: line-through;' : ''}">${escapeHtml(k.no_nota)}</div>
+                            ${noReturStr ? `<div class="text-2xs mono text-danger">Retur: ${escapeHtml(noReturStr)}</div>` : ''}
                             <div class="text-xs text-muted">${escapeHtml(formatTanggal(k.tanggal, true))}</div>
                           </div>
                         </td>
@@ -2563,27 +2583,34 @@ function renderTabPengiriman(container, data, rootContainer) {
                         </td>
                         <td data-label="Muatan Barang">
                           <div class="cell-stack">
-                            <div class="text-xs">${ringkasItem}${ekstraItem}</div>
-                            ${k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa kirim: ${formatQty(k.total_qty_sisa)} unit${jmlSudahBawa > 0 ? ` (${jmlSudahBawa} item sudah dibawa)` : ''}</div>` : ''}
+                            <div class="text-xs" style="${isDireturPenuh ? 'text-decoration: line-through; color: var(--text-muted);' : ''}">${ringkasItem}${ekstraItem}</div>
+                            ${isDireturPenuh ? `<div class="text-xs fw-semibold text-danger">Pengiriman dibatalkan karena retur penuh (0 unit dikirim)</div>` : (k.total_qty_sisa > 0 ? `<div class="text-xs fw-semibold text-warning">Sisa kirim: ${formatQty(k.total_qty_sisa)} unit${jmlSudahBawa > 0 ? ` (${jmlSudahBawa} item sudah dibawa)` : ''}</div>` : '')}
                           </div>
                         </td>
                         <td data-label="Status">
-                          ${badgeStatusAntar(k.status_antar)}
+                          <div class="cell-stack" style="gap: 3px; align-items: flex-start;">
+                            ${badgeStatusAntar(k.status_antar)}
+                            ${isDireturSebagian ? `<span class="badge badge-warning badge-xs">Diretur Sebagian</span>` : ''}
+                          </div>
                         </td>
                         <td data-label="Aksi" class="text-right no-print">
                           <div class="table-actions">
-                            <button type="button" class="btn btn-secondary btn-sm btn-sj-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Surat Jalan (Tanpa Harga)">
-                              ${ICONS.truck}
-                              <span>Surat Jalan</span>
-                            </button>
+                            ${!isDireturPenuh ? `
+                              <button type="button" class="btn btn-secondary btn-sm btn-sj-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Surat Jalan (Tanpa Harga)">
+                                ${ICONS.truck}
+                                <span>Surat Jalan</span>
+                              </button>
+                            ` : ''}
                             <button type="button" class="btn btn-secondary btn-sm btn-faktur-antrean" data-id="${escapeHtml(k.id)}" title="Cetak Faktur Besar A5">
                               ${ICONS.clipboard}
                               <span>Faktur A5</span>
                             </button>
-                            <button type="button" class="btn btn-primary btn-sm btn-update-antrean" data-id="${escapeHtml(k.id)}" title="Update Status & Kirim Bertahap">
-                              ${ICONS.edit}
-                              <span>Update</span>
-                            </button>
+                            ${!isDireturPenuh ? `
+                              <button type="button" class="btn btn-primary btn-sm btn-update-antrean" data-id="${escapeHtml(k.id)}" title="Update Status & Kirim Bertahap">
+                                ${ICONS.edit}
+                                <span>Update</span>
+                              </button>
+                            ` : ''}
                           </div>
                         </td>
                       </tr>

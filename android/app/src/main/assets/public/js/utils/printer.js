@@ -106,6 +106,78 @@ export function formatTengah(teks, lebar) {
 }
 
 /**
+ * Helper konsisten: hitung ringkasan pembayaran riil, cicilan piutang, sisa tagihan,
+ * dan status retur agar Struk Thermal, Faktur A5, dan WhatsApp 100% sinkron & bebas korupsi bayar.
+ */
+function hitungRingkasanBayarDokumen(data) {
+  const pj = data.penjualan || {};
+  const pembayaran = Array.isArray(data.pembayaran) ? data.pembayaran : [];
+  const piutang = data.piutang || null;
+  const cicilan = Array.isArray(data.cicilan_piutang) ? data.cicilan_piutang : [];
+  const total = Math.round(Number(pj.total || 0));
+  const totalRetur = Math.min(total, Math.round(Number(data.total_retur || pj.total_retur || 0)));
+  const totalBersih = Math.max(0, total - totalRetur);
+  const statusRetur = data.status_retur || pj.status_retur || (totalRetur <= 0 ? '' : (total > 0 && totalRetur >= total ? 'penuh' : 'sebagian'));
+
+  // Hitung pembayaran riil (tidak menghitung porsi tempo sebagai uang masuk)
+  const nonTempoAwal = pembayaran
+    .filter((b) => String(b.metode || '').toLowerCase() !== 'tempo')
+    .reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+  const totalCicilan = cicilan.reduce((s, c) => s + (Number(c.jumlah) || 0), 0);
+
+  let bayarRiil = 0;
+  let sisaTagihan = 0;
+  let kembalian = Number(pj.kembalian || 0);
+  let jatuhTempo = pj.jatuh_tempo || (piutang ? (piutang.jatuh_tempo || '') : '');
+
+  if (statusRetur === 'penuh') {
+    bayarRiil = 0;
+    sisaTagihan = 0;
+    kembalian = 0;
+  } else if (piutang) {
+    const dpAwal = Math.max(0, total - (Number(piutang.total) || 0));
+    const terbayarPiutang = Number(piutang.terbayar || totalCicilan || 0);
+    bayarRiil = Math.min(total, Math.round(dpAwal + terbayarPiutang));
+    sisaTagihan = piutang.status === 'lunas' ? 0 : Math.max(0, Math.round(Number(piutang.sisa || 0)));
+    kembalian = 0;
+  } else if (data.sisa_tagihan !== undefined || pj.sisa_tagihan !== undefined) {
+    sisaTagihan = Math.max(0, Math.round(Number(data.sisa_tagihan !== undefined ? data.sisa_tagihan : pj.sisa_tagihan)));
+    bayarRiil = sisaTagihan > 0
+      ? Math.max(0, total - sisaTagihan)
+      : Math.round(Number(pj.bayar || nonTempoAwal || total));
+    if (sisaTagihan > 0) kembalian = 0;
+  } else {
+    const adaTempo = pembayaran.some((b) => String(b.metode || '').toLowerCase() === 'tempo');
+    if (adaTempo) {
+      const porsiTempo = pembayaran
+        .filter((b) => String(b.metode || '').toLowerCase() === 'tempo')
+        .reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+      bayarRiil = Math.min(total, Math.round(nonTempoAwal + totalCicilan));
+      sisaTagihan = Math.max(0, Math.round(porsiTempo - totalCicilan));
+      kembalian = 0;
+    } else {
+      const rawBayar = Math.round(Number(pj.bayar || nonTempoAwal || 0));
+      bayarRiil = (kembalian <= 0 && rawBayar > total && total > 0) ? total : rawBayar;
+      sisaTagihan = 0;
+    }
+  }
+
+  return {
+    total,
+    totalRetur,
+    totalBersih,
+    statusRetur,
+    bayarRiil,
+    kembalian,
+    sisaTagihan,
+    jatuhTempo,
+    cicilan,
+    pakaiDeposit: String(pj.metode_bayar || '').toLowerCase() === 'deposit' ||
+      pembayaran.some((b) => String(b.metode || '').toLowerCase() === 'deposit')
+  };
+}
+
+/**
  * Susun teks polos nota lengkap siap cetak atau salin
  * @param {Object} data  Data struk { penjualan, items, pembayaran, pelanggan, kasir, toko }
  * @param {'58'|'80'} [ukuran='58']
@@ -212,23 +284,41 @@ export function susunTeksStruk(data, ukuran = '58') {
 
   baris.push(buatGaris(lebar, '='));
   baris.push(formatDuaKolom('TOTAL', formatRupiah(pj.total), lebar));
+
+  const ringBayar = hitungRingkasanBayarDokumen(data);
+  if (ringBayar.totalRetur > 0) {
+    baris.push(formatDuaKolom('Retur Disetujui', '-' + formatRupiah(ringBayar.totalRetur), lebar));
+    baris.push(formatDuaKolom('TOTAL BERSIH', formatRupiah(ringBayar.totalBersih), lebar));
+  }
   baris.push(buatGaris(lebar, '-'));
 
-  // Rincian Metode Bayar
-  let pakaiDeposit = String(pj.metode_bayar || '').toLowerCase() === 'deposit';
+  // Rincian Metode Bayar & Cicilan Piutang
   pembayaran.forEach((byr) => {
     const mLow = String(byr.metode || 'tunai').toLowerCase();
-    if (mLow === 'deposit') pakaiDeposit = true;
     const labelMetode = mLow === 'deposit' ? 'SALDO TITIPAN' : mLow.toUpperCase();
-    baris.push(formatDuaKolom(`Bayar (${labelMetode})`, formatRupiah(byr.jumlah), lebar));
+    const prefix = mLow === 'tempo' ? 'Tempo Awal' : `Bayar (${labelMetode})`;
+    baris.push(formatDuaKolom(prefix, formatRupiah(byr.jumlah), lebar));
+  });
+  ringBayar.cicilan.forEach((c, idx) => {
+    const mLow = String(c.metode || 'tunai').toLowerCase();
+    baris.push(formatDuaKolom(`Cicilan ${idx + 1} (${mLow.toUpperCase()})`, formatRupiah(c.jumlah), lebar));
   });
 
-  if (pj.kembalian > 0) {
-    baris.push(formatDuaKolom('Kembalian', formatRupiah(pj.kembalian), lebar));
+  if (ringBayar.bayarRiil > 0 && (ringBayar.sisaTagihan > 0 || ringBayar.cicilan.length > 0)) {
+    baris.push(formatDuaKolom('Total Dibayar', formatRupiah(ringBayar.bayarRiil), lebar));
+  }
+  if (ringBayar.sisaTagihan > 0) {
+    baris.push(formatDuaKolom('SISA TAGIHAN', formatRupiah(ringBayar.sisaTagihan), lebar));
+    if (ringBayar.jatuhTempo) {
+      baris.push(formatDuaKolom('Jatuh Tempo', formatTanggal(ringBayar.jatuhTempo), lebar));
+    }
+  }
+  if (ringBayar.kembalian > 0) {
+    baris.push(formatDuaKolom('Kembalian', formatRupiah(ringBayar.kembalian), lebar));
   }
 
   // Sisa Saldo Titipan / Deposit jika transaksi menggunakan saldo deposit
-  if (pakaiDeposit && pelanggan && pelanggan.saldo_deposit !== undefined) {
+  if (ringBayar.pakaiDeposit && pelanggan && pelanggan.saldo_deposit !== undefined) {
     baris.push(formatDuaKolom('Sisa Saldo Titipan', formatRupiah(pelanggan.saldo_deposit), lebar));
   }
 
@@ -788,13 +878,19 @@ function buatHtmlThermalPenjualan(data) {
   const kasir = data.kasir || { nama: pj.kasir_nama || 'Kasir' };
   const pelanggan = data.pelanggan || null;
 
-  let pakaiDeposit = String(pj.metode_bayar || '').toLowerCase() === 'deposit';
-  const bayarHtml = pembayaran.map((byr) => {
-    const mLow = String(byr.metode || 'tunai').toLowerCase();
-    if (mLow === 'deposit') pakaiDeposit = true;
-    const labelMetode = mLow === 'deposit' ? 'SALDO TITIPAN' : mLow.toUpperCase();
-    return `<div class="rcpt-row"><span class="rcpt-row-label">Bayar (${escapeHtml(labelMetode)})</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(byr.jumlah))}</span></div>`;
-  }).join('');
+  const ringBayar = hitungRingkasanBayarDokumen(data);
+  const bayarHtml = [
+    ...pembayaran.map((byr) => {
+      const mLow = String(byr.metode || 'tunai').toLowerCase();
+      const labelMetode = mLow === 'deposit' ? 'SALDO TITIPAN' : mLow.toUpperCase();
+      const judul = mLow === 'tempo' ? 'Tempo Awal' : `Bayar (${labelMetode})`;
+      return `<div class="rcpt-row"><span class="rcpt-row-label">${escapeHtml(judul)}</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(byr.jumlah))}</span></div>`;
+    }),
+    ...ringBayar.cicilan.map((c, idx) => {
+      const mLow = String(c.metode || 'tunai').toLowerCase();
+      return `<div class="rcpt-row"><span class="rcpt-row-label">Cicilan ${idx + 1} (${escapeHtml(mLow.toUpperCase())})</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(c.jumlah))}</span></div>`;
+    })
+  ].join('');
 
   const itemsHtml = items.map((it) => {
     let namaLengkap = it.nama || 'Barang';
@@ -851,10 +947,19 @@ function buatHtmlThermalPenjualan(data) {
     ${Number(pj.pembulatan || 0) !== 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Pembulatan</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.pembulatan))}</span></div>` : ''}
     <hr class="rcpt-hr-solid">
     <div class="rcpt-total-row"><span>TOTAL</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.total))}</span></div>
+    ${ringBayar.totalRetur > 0 ? `
+      <div class="rcpt-row"><span class="rcpt-row-label">Retur Disetujui</span><span class="rcpt-row-val">-${escapeHtml(formatRupiah(ringBayar.totalRetur))}</span></div>
+      <div class="rcpt-total-row"><span>TOTAL BERSIH</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(ringBayar.totalBersih))}</span></div>
+    ` : ''}
     <hr class="rcpt-hr-dash">
     ${bayarHtml}
-    ${Number(pj.kembalian || 0) > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Kembalian</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pj.kembalian))}</span></div>` : ''}
-    ${pakaiDeposit && pelanggan && pelanggan.saldo_deposit !== undefined ? `<div class="rcpt-row"><span class="rcpt-row-label">Sisa Saldo Titipan</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pelanggan.saldo_deposit))}</span></div>` : ''}
+    ${ringBayar.bayarRiil > 0 && (ringBayar.sisaTagihan > 0 || ringBayar.cicilan.length > 0) ? `<div class="rcpt-row"><span class="rcpt-row-label">Total Dibayar</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(ringBayar.bayarRiil))}</span></div>` : ''}
+    ${ringBayar.sisaTagihan > 0 ? `
+      <div class="rcpt-total-row"><span>SISA TAGIHAN</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(ringBayar.sisaTagihan))}</span></div>
+      ${ringBayar.jatuhTempo ? `<div class="rcpt-row"><span class="rcpt-row-label">Jatuh Tempo</span><span class="rcpt-row-val">${escapeHtml(formatTanggal(ringBayar.jatuhTempo))}</span></div>` : ''}
+    ` : ''}
+    ${ringBayar.kembalian > 0 ? `<div class="rcpt-row"><span class="rcpt-row-label">Kembalian</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(ringBayar.kembalian))}</span></div>` : ''}
+    ${ringBayar.pakaiDeposit && pelanggan && pelanggan.saldo_deposit !== undefined ? `<div class="rcpt-row"><span class="rcpt-row-label">Sisa Saldo Titipan</span><span class="rcpt-row-val">${escapeHtml(formatRupiah(pelanggan.saldo_deposit))}</span></div>` : ''}
     ${Number(pj.poin_didapat || 0) > 0 && pelanggan ? `
       <hr class="rcpt-hr-dot">
       <div class="rcpt-row"><span class="rcpt-row-label">Poin Didapat</span><span class="rcpt-row-val">+${escapeHtml(String(pj.poin_didapat))} Poin</span></div>
@@ -1889,13 +1994,20 @@ export function buatTautanWhatsApp(dataStruk, nomorHp = '') {
   if (pj.diskon > 0) pesan += `Diskon: -${formatRupiah(pj.diskon)}\n`;
   if (Number(pj.ongkir) > 0) pesan += `Ongkos Kirim: ${formatRupiah(pj.ongkir)}\n`;
   const metodeBayarWa = String(pj.metode_bayar || 'tunai').toLowerCase();
-  const pembayaranList = Array.isArray(dataStruk.pembayaran) ? dataStruk.pembayaran : [];
-  const pakaiDepositWa = metodeBayarWa === 'deposit' || pembayaranList.some((b) => String(b.metode || '').toLowerCase() === 'deposit');
+  const ringBayarWa = hitungRingkasanBayarDokumen(dataStruk);
   const pelWa = dataStruk.pelanggan || null;
   pesan += `*TOTAL : ${formatRupiah(pj.total)}*\n`;
+  if (ringBayarWa.totalRetur > 0) {
+    pesan += `Retur Disetujui : -${formatRupiah(ringBayarWa.totalRetur)}\n`;
+    pesan += `*TOTAL BERSIH : ${formatRupiah(ringBayarWa.totalBersih)}*\n`;
+  }
   pesan += `Metode : ${metodeBayarWa === 'deposit' ? 'SALDO TITIPAN' : metodeBayarWa.toUpperCase()}\n`;
-  pesan += `Status : ${String(pj.status_bayar || 'lunas').toUpperCase()}\n`;
-  if (pakaiDepositWa && pelWa && pelWa.saldo_deposit !== undefined) {
+  pesan += `Status : ${ringBayarWa.statusRetur === 'penuh' ? 'DIRETUR PENUH' : String(pj.status_bayar || 'lunas').toUpperCase()}\n`;
+  if (ringBayarWa.bayarRiil > 0 && ringBayarWa.sisaTagihan > 0) {
+    pesan += `Sudah Dibayar : ${formatRupiah(ringBayarWa.bayarRiil)}\n`;
+    pesan += `*Sisa Tagihan : ${formatRupiah(ringBayarWa.sisaTagihan)}*\n`;
+  }
+  if (ringBayarWa.pakaiDeposit && pelWa && pelWa.saldo_deposit !== undefined) {
     pesan += `Sisa Saldo Titipan : ${formatRupiah(pelWa.saldo_deposit)}\n`;
   }
   pesan += `\n${toko.nota_footer || 'Terima kasih atas kunjungan Anda.'}`;
@@ -3169,20 +3281,34 @@ function buatHtmlFakturA5(data) {
   const kasir = data.kasir || { nama: pj.kasir_nama || 'Kasir' };
   const toko = ambilInfoTokoDokumen(data);
 
+  const ringBayar = hitungRingkasanBayarDokumen(data);
   const statusBayar = String(pj.status_bayar || 'lunas').toLowerCase();
-  const labelStatus = statusBayar === 'lunas' ? 'LUNAS' : (statusBayar === 'sebagian' ? 'BAYAR SEBAGIAN' : 'BELUM LUNAS / TEMPO');
+  const labelStatus = ringBayar.statusRetur === 'penuh'
+    ? 'DIRETUR PENUH'
+    : (statusBayar === 'lunas' ? 'LUNAS' : (statusBayar === 'sebagian' ? 'BAYAR SEBAGIAN' : 'BELUM LUNAS / TEMPO'));
   const subtotal = Number(pj.subtotal || items.reduce((s, x) => s + Number(x.subtotal || 0), 0));
   const diskon = Number(pj.diskon || 0);
   const pajak = Number(pj.pajak || 0);
   const ongkir = Number(pj.ongkir || 0);
-  const total = Number(pj.total || 0);
-  const bayar = Number(pj.bayar || 0);
-  const kembalian = Number(pj.kembalian || 0);
-  const pakaiDeposit = String(pj.metode_bayar || '').toLowerCase() === 'deposit' || pembayaran.some((b) => String(b.metode || '').toLowerCase() === 'deposit');
+  const total = ringBayar.total;
+  const bayar = ringBayar.bayarRiil;
+  const kembalian = ringBayar.kembalian;
+  const sisaTagihan = ringBayar.sisaTagihan;
+  const pakaiDeposit = ringBayar.pakaiDeposit;
 
-  const labelMetode = pembayaran.length > 0
-    ? pembayaran.map((b) => `${String(b.metode || 'tunai').toUpperCase()} (${formatRupiah(b.jumlah)})`).join(', ')
-    : String(pj.metode_bayar || 'TUNAI').toUpperCase();
+  const bagianMetode = [];
+  if (pembayaran.length > 0) {
+    pembayaran.forEach((b) => {
+      const mUp = String(b.metode || 'tunai').toUpperCase();
+      bagianMetode.push(`${mUp === 'DEPOSIT' ? 'SALDO TITIPAN' : mUp} (${formatRupiah(b.jumlah)})`);
+    });
+  } else {
+    bagianMetode.push(String(pj.metode_bayar || 'TUNAI').toUpperCase());
+  }
+  const labelMetode = bagianMetode.join(', ');
+  const labelCicilan = ringBayar.cicilan.length > 0
+    ? ringBayar.cicilan.map((c, idx) => `Cicilan ${idx + 1}: ${String(c.metode || 'tunai').toUpperCase()} ${formatRupiah(c.jumlah)} (${formatTanggal(c.tanggal)})`).join(' • ')
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="id">
@@ -3292,6 +3418,8 @@ function buatHtmlFakturA5(data) {
     <div class="bottom-wrap">
       <div class="left-block">
         <div><strong>Pembayaran:</strong> ${escapeHtml(labelMetode)}</div>
+        ${labelCicilan ? `<div><strong>Riwayat Cicilan:</strong> ${escapeHtml(labelCicilan)}</div>` : ''}
+        ${sisaTagihan > 0 && ringBayar.jatuhTempo ? `<div><strong>Jatuh Tempo:</strong> ${escapeHtml(formatTanggal(ringBayar.jatuhTempo))}</div>` : ''}
         ${pakaiDeposit && pel && pel.saldo_deposit !== undefined ? `<div><strong>Sisa Saldo Titipan:</strong> ${formatRupiah(pel.saldo_deposit)}</div>` : ''}
         ${pj.catatan ? `<div><strong>Catatan:</strong> ${escapeHtml(pj.catatan)}</div>` : ''}
         <div class="ttd-wrap">
@@ -3315,7 +3443,9 @@ function buatHtmlFakturA5(data) {
         ${pajak > 0 ? `<div class="sum-row"><span>PPN / Pajak</span><span class="r">${formatRupiah(pajak)}</span></div>` : ''}
         ${ongkir > 0 ? `<div class="sum-row"><span>Ongkos Kirim</span><span class="r">${formatRupiah(ongkir)}</span></div>` : ''}
         <div class="sum-total"><span>GRAND TOTAL</span><span class="r">${formatRupiah(total)}</span></div>
-        ${bayar > 0 ? `<div class="sum-row"><span>Dibayar</span><span class="r">${formatRupiah(bayar)}</span></div>` : ''}
+        ${ringBayar.totalRetur > 0 ? `<div class="sum-row"><span>Retur Disetujui</span><span class="r">-${formatRupiah(ringBayar.totalRetur)}</span></div><div class="sum-row" style="font-weight:700;"><span>TOTAL BERSIH</span><span class="r">${formatRupiah(ringBayar.totalBersih)}</span></div>` : ''}
+        ${bayar > 0 ? `<div class="sum-row"><span>${sisaTagihan > 0 || ringBayar.cicilan.length > 0 ? 'Dibayar / Cicilan' : 'Dibayar'}</span><span class="r">${formatRupiah(bayar)}</span></div>` : ''}
+        ${sisaTagihan > 0 ? `<div class="sum-row" style="font-weight: 800; border-top: 1px dashed #111827; padding-top: 3px; margin-top: 2px;"><span>SISA TAGIHAN</span><span class="r">${formatRupiah(sisaTagihan)}</span></div>` : ''}
         ${kembalian > 0 ? `<div class="sum-row"><span>Kembalian</span><span class="r">${formatRupiah(kembalian)}</span></div>` : ''}
       </div>
     </div>

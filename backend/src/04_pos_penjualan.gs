@@ -391,7 +391,8 @@ function aksiPenjualanCreate_(ctx) {
   }
 
   const kembalian = totalTunai > 0 ? Math.max(0, totalSemuaBayar - grandTotal) : 0;
-  const bayarTercatat = Math.min(totalSemuaBayar, grandTotal + kembalian);
+  // Bayar tercatat hanya uang yang benar-benar dibayarkan (Tunai/Transfer/QRIS/Deposit), TIDAK termasuk porsi TEMPO/Kredit
+  const bayarTercatat = Math.max(0, totalSemuaBayar - totalTempo);
 
   // Status Pengiriman & Status Barang Dibawa (README 6.3 & Aturan 9)
   const pengiriman = payload.pengiriman === 'dikirim' ? 'dikirim' : 'ambil';
@@ -987,10 +988,61 @@ function aksiPenjualanDetail_(ctx) {
   const totNota = Number(penjualan.total) || 0;
   const statusRetur = totalReturDisetujui <= 0 ? '' : (totalReturDisetujui >= totNota && totNota > 0 ? 'penuh' : 'sebagian');
 
+  // Ambil data Piutang & riwayat cicilan terkait nota ini agar bayar & sisa tagihan 100% akurat (self-healing nota historis)
+  const piutangTerkait = bacaSemua_('Piutang').filter(function (pt) {
+    return !pt.deleted && pt.penjualan_id === penjualan.id;
+  })[0] || null;
+
+  let cicilanPiutang = [];
+  let sisaTagihan = 0;
+  const penjualanFinal = Object.assign({}, penjualan);
+
+  if (piutangTerkait) {
+    cicilanPiutang = bacaSemua_('Pembayaran').filter(function (byr) {
+      return !byr.deleted && byr.tipe === 'piutang' && byr.ref_id === piutangTerkait.id;
+    }).sort(function (a, b) {
+      return String(a.tanggal || a.created_at || '').localeCompare(String(b.tanggal || b.created_at || ''));
+    }).map(function (byr) {
+      return {
+        id: byr.id,
+        tanggal: byr.tanggal || byr.created_at,
+        metode: byr.metode || 'tunai',
+        jumlah: Number(byr.jumlah) || 0,
+        catatan: byr.catatan || ''
+      };
+    });
+
+    const totalPiutangAwal = Number(piutangTerkait.total) || 0;
+    const terbayarPiutang = Number(piutangTerkait.terbayar) || 0;
+    const dpAwal = Math.max(0, totNota - totalPiutangAwal);
+    const bayarAktual = statusRetur === 'penuh'
+      ? 0
+      : Math.min(totNota, Math.round(dpAwal + terbayarPiutang));
+    sisaTagihan = (statusRetur === 'penuh' || piutangTerkait.status === 'lunas')
+      ? 0
+      : Math.max(0, Math.round(Number(piutangTerkait.sisa) || 0));
+
+    penjualanFinal.bayar = bayarAktual;
+    penjualanFinal.kembalian = 0;
+    penjualanFinal.sisa_tagihan = sisaTagihan;
+    penjualanFinal.jatuh_tempo = piutangTerkait.jatuh_tempo || '';
+  } else {
+    // Pastikan nota non-piutang yang tidak memiliki kembalian tidak melebihi grand total
+    const rawBayar = Number(penjualanFinal.bayar) || 0;
+    const rawKemb = Number(penjualanFinal.kembalian) || 0;
+    if (rawKemb <= 0 && rawBayar > totNota && totNota > 0) {
+      penjualanFinal.bayar = totNota;
+    }
+    penjualanFinal.sisa_tagihan = 0;
+  }
+
   return {
-    penjualan: penjualan,
+    penjualan: penjualanFinal,
     items: items,
     pembayaran: pembayaran,
+    piutang: piutangTerkait,
+    cicilan_piutang: cicilanPiutang,
+    sisa_tagihan: sisaTagihan,
     retur_list: returList,
     total_retur: Math.min(totNota, Math.round(totalReturDisetujui)),
     total_bersih: Math.max(0, totNota - Math.min(totNota, Math.round(totalReturDisetujui))),
@@ -1048,8 +1100,17 @@ function hitungRekapShiftKasir_(targetKasirId, opsi) {
     bayarByPenjualan[byr.penjualan_id].push(byr);
   });
 
-  let totalTransaksi = penjualanShift.length;
-  let totalPenjualan = 0;
+  // Map retur penjualan disetujui per penjualan_id agar omset shift & jumlah nota bersih dari retur
+  const semuaReturKasir = bacaSemua_('Retur');
+  const returByJualShift = {};
+  semuaReturKasir.forEach(function (rt) {
+    if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui' || !rt.ref_id) return;
+    returByJualShift[rt.ref_id] = (returByJualShift[rt.ref_id] || 0) + (Number(rt.total) || 0);
+  });
+
+  let totalTransaksi = 0;
+  let totalPenjualanKotor = 0;
+  let totalReturPenjualan = 0;
   let totalTunai = 0;
   let totalTransfer = 0;
   let totalTempo = 0;
@@ -1058,8 +1119,14 @@ function hitungRekapShiftKasir_(targetKasirId, opsi) {
 
   penjualanShift.forEach(function (pj) {
     const tot = Number(pj.total) || 0;
-    totalPenjualan += tot;
-    totalDiskon += Number(pj.diskon) || 0;
+    const retNota = Math.min(tot, Math.round(returByJualShift[pj.id] || 0));
+    const isReturPenuh = tot > 0 && retNota >= tot;
+    totalPenjualanKotor += tot;
+    totalReturPenjualan += retNota;
+    if (!isReturPenuh) {
+      totalTransaksi += 1;
+      totalDiskon += Number(pj.diskon) || 0;
+    }
 
     const rincianBayar = bayarByPenjualan[pj.id];
     if (rincianBayar && rincianBayar.length > 0) {
@@ -1113,7 +1180,7 @@ function hitungRekapShiftKasir_(targetKasirId, opsi) {
 
   // Refund Retur Penjualan Tunai (keluar dari laci kasir)
   let totalRefundTunai = 0;
-  bacaSemua_('Retur').forEach(function (rt) {
+  semuaReturKasir.forEach(function (rt) {
     if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui') return;
     if (String(rt.metode_refund || '').toLowerCase() !== 'kas') return;
     if (!cocokRentangWaktuShift_(rt.disetujui_at, rt.tanggal, opsi)) return;
@@ -1167,6 +1234,7 @@ function hitungRekapShiftKasir_(targetKasirId, opsi) {
     }
   });
 
+  const totalPenjualan = Math.max(0, Math.round(totalPenjualanKotor - totalReturPenjualan));
   const totalLaci = Math.max(0, modalAwal + totalTunai + totalPiutangTunai + totalDepositTunai - totalBiayaKasir - totalRefundTunai - totalTarikDepositTunai);
 
   return {
@@ -1178,6 +1246,8 @@ function hitungRekapShiftKasir_(targetKasirId, opsi) {
     modal_awal: modalAwal,
     total_transaksi: totalTransaksi,
     total_penjualan: totalPenjualan,
+    total_penjualan_kotor: Math.round(totalPenjualanKotor),
+    total_retur_penjualan: Math.round(totalReturPenjualan),
     total_tunai: totalTunai,
     total_transfer: totalTransfer,
     total_tempo: totalTempo,
@@ -1524,9 +1594,19 @@ function aksiShiftList_(ctx) {
     return String(b.waktu_buka || b.created_at || '').localeCompare(String(a.waktu_buka || a.created_at || ''));
   });
 
-  // Enrich shift aktif dengan hitungan live agar Owner/Admin langsung melihat posisi kas saat ini
+  // Enrich shift aktif & sinkronkan efek retur penjualan untuk shift historis yg sudah ditutup
   const waktuSkrg = sekarang_();
+  const semuaJualFinalShift = bacaSemua_('Penjualan').filter(function (pj) {
+    return !pj.deleted && pj.status === 'final';
+  });
+  const returJualByNota = {};
+  bacaSemua_('Retur').forEach(function (rt) {
+    if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui' || !rt.ref_id) return;
+    returJualByNota[rt.ref_id] = (returJualByNota[rt.ref_id] || 0) + (Number(rt.total) || 0);
+  });
+
   let totalOmset = 0;
+  let totalReturSemuaShift = 0;
   let totalKasSistem = 0;
   let totalKasFisik = 0;
   let totalSelisih = 0;
@@ -1550,6 +1630,8 @@ function aksiShiftList_(ctx) {
       });
       item.total_transaksi = live.total_transaksi;
       item.total_penjualan = live.total_penjualan;
+      item.total_penjualan_kotor = live.total_penjualan_kotor || live.total_penjualan;
+      item.total_retur_penjualan = live.total_retur_penjualan || 0;
       item.total_tunai = live.total_tunai;
       item.total_transfer = live.total_transfer;
       item.total_tempo = live.total_tempo;
@@ -1564,12 +1646,43 @@ function aksiShiftList_(ctx) {
       item.kas_sistem = live.total_laci;
       item.total_laci = live.total_laci;
       totalOmset += Number(live.total_penjualan || 0);
+      totalReturSemuaShift += Number(live.total_retur_penjualan || 0);
       totalKasSistem += Number(live.total_laci || 0);
     } else {
       shiftDitutupCount++;
+      // Hitung ulang omset bersih & retur untuk nota-nota yang dibuat selama rentang shift ini (menjaga akurasi historis setelah retur)
+      const opsiHist = {
+        waktuMulai: item.waktu_buka,
+        waktuSelesai: item.waktu_tutup || waktuSkrg,
+        targetTgl: String(item.waktu_buka || '').substring(0, 10)
+      };
+      const notaHist = semuaJualFinalShift.filter(function (pj) {
+        if (item.kasir_id && pj.kasir_id !== item.kasir_id) return false;
+        return cocokRentangWaktuShift_(pj.created_at, pj.tanggal, opsiHist);
+      });
+      if (notaHist.length > 0) {
+        let sumKotor = 0;
+        let sumRet = 0;
+        let cntAktif = 0;
+        notaHist.forEach(function (pj) {
+          const t = Number(pj.total) || 0;
+          const r = Math.min(t, Math.round(returJualByNota[pj.id] || 0));
+          sumKotor += t;
+          sumRet += r;
+          if (!(t > 0 && r >= t)) cntAktif++;
+        });
+        item.total_penjualan_kotor = Math.round(sumKotor);
+        item.total_retur_penjualan = Math.round(sumRet);
+        item.total_penjualan = Math.max(0, Math.round(sumKotor - sumRet));
+        item.total_transaksi = cntAktif;
+      } else {
+        item.total_penjualan_kotor = Number(item.total_penjualan || 0);
+        item.total_retur_penjualan = 0;
+      }
       item.total_laci = Number(item.kas_sistem || 0);
       const sel = Number(item.selisih || 0);
       totalOmset += Number(item.total_penjualan || 0);
+      totalReturSemuaShift += Number(item.total_retur_penjualan || 0);
       totalKasSistem += Number(item.kas_sistem || 0);
       totalKasFisik += Number(item.kas_fisik || 0);
       totalSelisih += sel;
@@ -1586,6 +1699,7 @@ function aksiShiftList_(ctx) {
     shift_aktif: shiftAktifCount,
     shift_ditutup: shiftDitutupCount,
     total_omset: totalOmset,
+    total_retur_penjualan: totalReturSemuaShift,
     total_kas_sistem: totalKasSistem,
     total_kas_fisik: totalKasFisik,
     total_selisih: totalSelisih,
@@ -1617,6 +1731,33 @@ function aksiPengirimanList_(ctx) {
     itemsByPj[it.penjualan_id].push(it);
   });
 
+  // Map retur penjualan disetujui per penjualan_id & per item agar nota diretur penuh/sebagian tidak ikut dikirim ulang
+  const returInfoByPj = {};
+  const returIdToPj = {};
+  bacaSemua_('Retur').forEach(function (rt) {
+    if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui' || !rt.ref_id) return;
+    returIdToPj[rt.id] = rt.ref_id;
+    if (!returInfoByPj[rt.ref_id]) returInfoByPj[rt.ref_id] = { total_retur: 0, no_retur_list: [] };
+    returInfoByPj[rt.ref_id].total_retur += (Number(rt.total) || 0);
+    if (rt.no_retur) returInfoByPj[rt.ref_id].no_retur_list.push(rt.no_retur);
+  });
+
+  const qtyReturByItemId = {};
+  const qtyReturByPjProd = {};
+  if (Object.keys(returIdToPj).length > 0) {
+    bacaSemua_('Retur_Item').forEach(function (ri) {
+      if (ri.deleted) return;
+      const pjId = returIdToPj[ri.retur_id];
+      if (!pjId) return;
+      const qR = bulatQty_(Number(ri.qty || 0));
+      if (ri.ref_item_id) {
+        qtyReturByItemId[ri.ref_item_id] = bulatQty_((qtyReturByItemId[ri.ref_item_id] || 0) + qR);
+      }
+      const pk = pjId + '::' + String(ri.produk_id || '') + '::' + String(ri.varian_id || '');
+      qtyReturByPjProd[pk] = bulatQty_((qtyReturByPjProd[pk] || 0) + qR);
+    });
+  }
+
   const semua = bacaSemua_('Penjualan').filter(function (pj) {
     if (pj.deleted || pj.status === 'void' || pj.status === 'pending') return false;
     const adalahKirim = pj.pengiriman === 'dikirim';
@@ -1636,19 +1777,35 @@ function aksiPengirimanList_(ctx) {
   let cntDiantar = 0;
   let cntSebagian = 0;
   let cntSelesai = 0;
+  let cntDiretur = 0;
 
   const lengkap = semua.map(function (pj) {
-    const st = String(pj.status_antar || 'belum_dikirim').toLowerCase();
-    if (st === 'belum_dikirim') cntBelum++;
-    else if (st === 'diantar') cntDiantar++;
-    else if (st === 'sebagian') cntSebagian++;
-    else if (st === 'selesai') cntSelesai++;
+    const totPj = Number(pj.total || 0);
+    const infoR = returInfoByPj[pj.id] || { total_retur: 0, no_retur_list: [] };
+    const returNota = Math.min(totPj, Math.round(infoR.total_retur || 0));
+    const statusRetur = returNota <= 0 ? '' : (totPj > 0 && returNota >= totPj ? 'penuh' : 'sebagian');
+    let st = String(pj.status_antar || 'belum_dikirim').toLowerCase();
+    const isDireturPenuh = statusRetur === 'penuh' || st === 'diretur';
 
     const pel = pj.pelanggan_id ? pelPeta[pj.pelanggan_id] : null;
+    const sisaReturProdDipakai = {};
     const daftarItem = (itemsByPj[pj.id] || []).map(function (it) {
       const qty = bulatQty_(Number(it.qty || 0));
-      const dibawa = bulatQty_(Number(it.qty_dibawa !== undefined ? it.qty_dibawa : qty));
-      const sisa = bulatQty_(Math.max(0, qty - dibawa));
+      let qtyRetur = 0;
+      if (isDireturPenuh) {
+        qtyRetur = qty;
+      } else if (qtyReturByItemId[it.id] !== undefined) {
+        qtyRetur = Math.min(qty, qtyReturByItemId[it.id]);
+      } else {
+        const pk = pj.id + '::' + String(it.produk_id || '') + '::' + String(it.varian_id || '');
+        const totalRetProd = qtyReturByPjProd[pk] || 0;
+        const sudahPakai = sisaReturProdDipakai[pk] || 0;
+        qtyRetur = Math.min(qty, Math.max(0, bulatQty_(totalRetProd - sudahPakai)));
+        sisaReturProdDipakai[pk] = bulatQty_(sudahPakai + qtyRetur);
+      }
+      const qtyAktif = bulatQty_(Math.max(0, qty - qtyRetur));
+      const dibawa = isDireturPenuh ? 0 : bulatQty_(Math.min(qtyAktif, Number(it.qty_dibawa !== undefined ? it.qty_dibawa : qtyAktif)));
+      const sisa = isDireturPenuh ? 0 : bulatQty_(Math.max(0, qtyAktif - dibawa));
       return {
         id: it.id,
         produk_id: it.produk_id,
@@ -1656,6 +1813,7 @@ function aksiPengirimanList_(ctx) {
         nama: it.nama,
         satuan: it.satuan,
         qty: qty,
+        qty_retur: qtyRetur,
         qty_dibawa: dibawa,
         sisa_kirim: sisa
       };
@@ -1668,6 +1826,19 @@ function aksiPengirimanList_(ctx) {
       totalQtySisa += it.sisa_kirim;
     });
 
+    if (isDireturPenuh) {
+      st = 'diretur';
+      cntDiretur++;
+    } else {
+      if (statusRetur === 'sebagian' && totalQtySisa === 0 && st !== 'selesai') {
+        st = 'selesai';
+      }
+      if (st === 'belum_dikirim') cntBelum++;
+      else if (st === 'diantar') cntDiantar++;
+      else if (st === 'sebagian') cntSebagian++;
+      else if (st === 'selesai') cntSelesai++;
+    }
+
     return {
       id: pj.id,
       no_nota: pj.no_nota,
@@ -1675,8 +1846,11 @@ function aksiPengirimanList_(ctx) {
       pengiriman: pj.pengiriman,
       alamat_kirim: pj.alamat_kirim || (pel ? pel.alamat : '') || '',
       status_antar: st,
+      status_retur: statusRetur,
+      total_retur: returNota,
+      daftar_no_retur: infoR.no_retur_list,
       ongkir: Number(pj.ongkir || 0),
-      total: Number(pj.total || 0),
+      total: totPj,
       status_bayar: pj.status_bayar || 'lunas',
       catatan: pj.catatan || '',
       pelanggan_id: pj.pelanggan_id || '',
@@ -1696,11 +1870,12 @@ function aksiPengirimanList_(ctx) {
 
   const hasilPag = paginasi_(tersaring, p, ['no_nota', 'pelanggan_nama', 'alamat_kirim', 'catatan']);
   hasilPag.ringkasan = {
-    total_antrean: lengkap.length,
+    total_antrean: cntBelum + cntDiantar + cntSebagian + cntSelesai,
     belum_dikirim: cntBelum,
     diantar: cntDiantar,
     sebagian: cntSebagian,
-    selesai: cntSelesai
+    selesai: cntSelesai,
+    diretur: cntDiretur
   };
   return hasilPag;
 }
@@ -1722,6 +1897,13 @@ function aksiPengirimanUpdateStatus_(ctx) {
   const pj = cariById_('Penjualan', id);
   if (!pj || pj.deleted) gagal_(KODE.NOT_FOUND, 'Transaksi penjualan tidak ditemukan.');
   if (pj.status === 'void') gagal_(KODE.CONFLICT, 'Transaksi sudah dibatalkan (void) dan tidak dapat dikirim.');
+  const totalReturPj = bacaSemua_('Retur').reduce(function (acc, rt) {
+    return (!rt.deleted && rt.tipe === 'jual' && rt.status === 'disetujui' && rt.ref_id === pj.id)
+      ? acc + (Number(rt.total) || 0) : acc;
+  }, 0);
+  if (String(pj.status_antar || '').toLowerCase() === 'diretur' || (Number(pj.total || 0) > 0 && totalReturPj >= Number(pj.total || 0))) {
+    gagal_(KODE.CONFLICT, 'Transaksi ' + pj.no_nota + ' sudah diretur penuh sehingga pengiriman otomatis dibatalkan.');
+  }
 
   const semuaItem = bacaSemua_('Penjualan_Item').filter(function (it) {
     return !it.deleted && it.penjualan_id === pj.id;
