@@ -595,6 +595,24 @@ function hitungHppBaru_(stokLama, hppLama, qtyMasuk, hargaBeli) {
   return Math.round((stokLama * hppLama + qtyMasuk * hargaBeli) / (stokLama + qtyMasuk));
 }
 
+/**
+ * Total HPP (COGS) untuk 1 baris Penjualan_Item / Retur_Item.
+ * Karena kolom `hpp` menyimpan snapshot HPP per satuan jual (`hppDasar * faktor`),
+ * total HPP baris WAJIB dikalikan `qty` (bukan `qty_dasar`) agar penjualan multi-satuan (ROL/DUS/IKAT) 100% akurat.
+ */
+function hitungTotalHppItem_(it) {
+  const hppSatuanJual = Number(it && it.hpp) || 0;
+  const qtyJual = Number(it && it.qty) || Number(it && it.qty_dasar) || 0;
+  return Math.round(hppSatuanJual * qtyJual);
+}
+
+/** HPP per satuan dasar untuk Kartu_Stok & kalkulasi ulang moving-average HPP pada retur multi-satuan. */
+function hitungHppDasarItem_(it) {
+  const hppSatuanJual = Number(it && it.hpp) || 0;
+  const faktor = Math.max(1, Number(it && it.faktor) || 1);
+  return faktor > 1 ? Math.round(hppSatuanJual / faktor) : Math.round(hppSatuanJual);
+}
+
 /** Validator input. Semua melempar VALIDATION dengan pesan Bahasa Indonesia. */
 const V_ = {
   teks: function (nilai, label, opsi) {

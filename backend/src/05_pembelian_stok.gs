@@ -349,11 +349,21 @@ function aksiPembelianCreate_(ctx) {
 
   const pembelianBaru = resBeli[0];
 
-  // 2. Simpan Item Pembelian & Proses Efek Stok + HPP Moving Average (termasuk Landed Cost Ongkir & Bongkar)
+  // 2. Simpan Item Pembelian & Proses Efek Stok + HPP Moving Average secara berantai (aman untuk multi-varian & multi-baris produk sama)
   const rowsItemBeli = [];
   const rowsKartuStok = [];
-  const perbaruiProdukList = [];
-  const perbaruiVarianList = [];
+  const updateProdukMap = {};
+  const updateVarianMap = {};
+  const produkStateMap = {};
+  const varianStateMap = {};
+  const semuaVarianBeli = bacaSemua_('Varian');
+  semuaVarianBeli.forEach(function (v) {
+    if (!v.deleted) varianStateMap[v.id] = v;
+  });
+  itemsDiproses.forEach(function (it) {
+    if (!produkStateMap[it.produk.id]) produkStateMap[it.produk.id] = it.produk;
+    if (it.varian && !varianStateMap[it.varian.id]) varianStateMap[it.varian.id] = it.varian;
+  });
   const totalQtyDasarFaktur = itemsDiproses.reduce(function (acc, it) { return acc + (Number(it.qty_dasar) || 0); }, 0);
   const ketLanded = totalBiayaTambahan > 0 ? ' [+Ongkir/Bongkar]' : '';
 
@@ -392,33 +402,26 @@ function aksiPembelianCreate_(ctx) {
       subtotal: item.subtotal
     });
 
+    const prRef = produkStateMap[item.produk.id];
     if (item.varian) {
-      const stokLamaVarian = Number(item.varian.stok || 0);
-      const hppLamaVarian = Number(item.varian.hpp || 0);
+      const varRef = varianStateMap[item.varian.id] || item.varian;
+      const stokLamaVarian = Number(varRef.stok || 0);
+      const hppLamaVarian = Number(varRef.hpp || 0);
       const hppBaruVarian = hitungHppBaru_(stokLamaVarian, hppLamaVarian, item.qty_dasar, hargaBeliDasarEfektif);
-      const stokBaruVarian = Math.round((stokLamaVarian + item.qty_dasar) * 1000) / 1000;
+      const stokBaruVarian = bulatQty_(stokLamaVarian + item.qty_dasar);
 
-      perbaruiVarianList.push({
-        id: item.varian.id,
-        data: {
-          stok: stokBaruVarian,
-          hpp: hppBaruVarian
-        }
-      });
+      varRef.stok = stokBaruVarian;
+      varRef.hpp = hppBaruVarian;
+      updateVarianMap[varRef.id] = { stok: stokBaruVarian, hpp: hppBaruVarian };
 
-      // Update stok total produk induk
-      const stokLamaProduk = Number(item.produk.stok || 0);
-      const stokBaruProduk = Math.round((stokLamaProduk + item.qty_dasar) * 1000) / 1000;
-      perbaruiProdukList.push({
-        id: item.produk.id,
-        data: {
-          stok: stokBaruProduk
-        }
-      });
+      // Akumulasi stok total produk induk secara berantai di memori (anti-overwrite multi-varian)
+      const stokBaruProduk = bulatQty_(Number(prRef.stok || 0) + item.qty_dasar);
+      prRef.stok = stokBaruProduk;
+      updateProdukMap[prRef.id] = { stok: stokBaruProduk };
 
       rowsKartuStok.push({
-        produk_id: item.produk.id,
-        varian_id: item.varian.id,
+        produk_id: prRef.id,
+        varian_id: varRef.id,
         tipe: 'beli',
         qty: item.qty_dasar,
         saldo: stokBaruVarian,
@@ -428,21 +431,17 @@ function aksiPembelianCreate_(ctx) {
         keterangan: 'Pembelian ' + noFaktur + ' (' + supplier.nama + ')' + ketLanded
       });
     } else {
-      const stokLama = Number(item.produk.stok || 0);
-      const hppLama = Number(item.produk.hpp || 0);
+      const stokLama = Number(prRef.stok || 0);
+      const hppLama = Number(prRef.hpp || 0);
       const hppBaru = hitungHppBaru_(stokLama, hppLama, item.qty_dasar, hargaBeliDasarEfektif);
-      const stokBaru = Math.round((stokLama + item.qty_dasar) * 1000) / 1000;
+      const stokBaru = bulatQty_(stokLama + item.qty_dasar);
 
-      perbaruiProdukList.push({
-        id: item.produk.id,
-        data: {
-          stok: stokBaru,
-          hpp: hppBaru
-        }
-      });
+      prRef.stok = stokBaru;
+      prRef.hpp = hppBaru;
+      updateProdukMap[prRef.id] = { stok: stokBaru, hpp: hppBaru };
 
       rowsKartuStok.push({
-        produk_id: item.produk.id,
+        produk_id: prRef.id,
         varian_id: '',
         tipe: 'beli',
         qty: item.qty_dasar,
@@ -455,6 +454,8 @@ function aksiPembelianCreate_(ctx) {
     }
   });
 
+  const perbaruiProdukList = Object.keys(updateProdukMap).map(function (id) { return { id: id, data: updateProdukMap[id] }; });
+  const perbaruiVarianList = Object.keys(updateVarianMap).map(function (id) { return { id: id, data: updateVarianMap[id] }; });
   if (rowsItemBeli.length > 0) tambahBaris_('Pembelian_Item', rowsItemBeli, ctx.user.id);
   if (perbaruiProdukList.length > 0) ubahBaris_('Produk', perbaruiProdukList, ctx.user.id);
   if (perbaruiVarianList.length > 0) ubahBaris_('Varian', perbaruiVarianList, ctx.user.id);
@@ -774,8 +775,9 @@ function aksiOpnameCreate_(ctx) {
   const alasan = V_.teks(p.alasan, 'Alasan Selisih', { wajib: true, maks: 300 });
 
   const langsungSetuju = p.langsung_setuju === true;
-  const noOpname = nomorBerikut_('OP');
   const waktuOpname = sekarang_();
+  if (langsungSetuju) cekPeriodeTerkunci_(waktuOpname);
+  const noOpname = nomorBerikut_('OP');
 
   const dataOpname = {
     no_opname: noOpname,
@@ -877,6 +879,7 @@ function aksiOpnameApprove_(ctx) {
   const qtyFisik = Number(opname.qty_fisik);
   const selisihAktual = Math.round((qtyFisik - stokSistemAktual) * 1000) / 1000;
   const waktuSetuju = sekarang_();
+  cekPeriodeTerkunci_(waktuSetuju);
 
   // Terapkan penyesuaian stok ke master
   if (varian) {

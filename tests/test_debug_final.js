@@ -2130,6 +2130,155 @@ async function runAudit() {
     assert(blokirShiftKemarin === true, 'Transaksi wajib diblokir (SHIFT_KEMARIN_BELUM_TUTUP) bila shift hari kemarin belum ditutup');
   });
 
+  // =========================================================================
+  // TEST 28: PENYEMPURNAAN LOGIKA INTI — HPP MULTI-SATUAN, MULTI-VARIAN BELI/RETUR,
+  //          AKUMULASI CEK STOK POS, GUARD STOK RETUR BELI, & PERIOD LOCK KEDAP BOCOR
+  // =========================================================================
+  test('28. Logika Inti: HPP Multi-Satuan Akurat, Multi-Varian Anti-Overwrite, Akumulasi Stok POS, & Period Lock Menyeluruh', () => {
+    const envLog = setupMockEnv();
+    envLog.setupDatabase();
+    const ownerRow = envLog.bacaSemua_('Users').find((u) => u.role === 'owner');
+    envLog.aksiPengaturanSet_({ user: ownerRow, payload: { wajib_buka_shift: false } });
+
+    const sup = envLog.aksiSupplierCreate_({ user: ownerRow, payload: { nama: 'PT Kabel & Cat Jaya' } });
+    const supId = (sup.supplier || sup).id;
+    const pel = envLog.aksiPelangganCreate_({ user: ownerRow, payload: { nama: 'Pak Mandor Logika', hp: '081234567890', tipe: 'member', limit_kredit: 5000000, tempo_hari: 14 } });
+    const pelId = (pel.pelanggan || pel).id;
+
+    // 28a. Produk Multi-Satuan (Kabel NYM: 1 ROL = 50 MTR, HPP Rp 7.000/MTR, Stok 55 MTR)
+    const prKabelRes = envLog.aksiProdukCreate_({
+      user: ownerRow,
+      payload: {
+        nama: 'Kabel NYM Multi Satuan', satuan_dasar: 'MTR', hpp: 7000, harga_ritel: 10000, stok: 55,
+        satuan_konversi: [{ satuan: 'ROL', faktor: 50, harga_ritel: 450000 }]
+      }
+    });
+    const prKabelId = (prKabelRes.produk || prKabelRes).id;
+
+    // Akumulasi cek stok POS: stok 55 MTR, beli 1 ROL (50) + 10 MTR = 60 MTR -> WAJIB DITOLAK STOK_KURANG
+    let ditolakAkumulasi = false;
+    try {
+      envLog.aksiPenjualanCreate_({
+        user: ownerRow,
+        payload: {
+          items: [
+            { produk_id: prKabelId, satuan: 'ROL', qty: 1, harga: 450000 },
+            { produk_id: prKabelId, satuan: 'MTR', qty: 10, harga: 10000 }
+          ],
+          pembayaran: [{ metode: 'tunai', jumlah: 550000 }]
+        }
+      });
+    } catch (e) {
+      ditolakAkumulasi = e.code === 'STOK_KURANG';
+    }
+    assert(ditolakAkumulasi === true, 'POS wajib menolak keranjang ganda (1 ROL + 10 MTR = 60 > stok 55) dengan STOK_KURANG');
+
+    // Jual 1 ROL (Rp 450.000, HPP harus Rp 350.000 -> Laba Rp 100.000, BUKAN HPP 50x = Rp 17.500.000!)
+    const jualRol = envLog.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelId,
+        items: [{ produk_id: prKabelId, satuan: 'ROL', qty: 1, harga: 450000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 450000 }]
+      }
+    });
+    const lrRol = envLog.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(lrRol.ringkasan.total_hpp === 350000 && lrRol.ringkasan.laba_kotor_bersih === 100000,
+      `Laba Rugi multi-satuan (1 ROL=50 MTR) wajib HPP=350000 & Laba=100000, aktual: HPP=${lrRol.ringkasan.total_hpp}, Laba=${lrRol.ringkasan.laba_kotor_bersih}`);
+    const ksJualRol = envLog.bacaSemua_('Kartu_Stok').find((k) => k.produk_id === prKabelId && k.tipe === 'jual');
+    assert(ksJualRol && ksJualRol.hpp === 7000 && ksJualRol.qty === -50,
+      `Kartu_Stok penjualan multi-satuan wajib catat hpp dasar 7000 & qty -50, aktual: hpp=${ksJualRol && ksJualRol.hpp}, qty=${ksJualRol && ksJualRol.qty}`);
+
+    // Retur jual 0.5 ROL (25 MTR) -> HPP produk wajib tetap Rp 7.000/MTR (BUKAN melesat 50x!)
+    const itemRol = jualRol.items[0];
+    envLog.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual', ref_id: jualRol.penjualan.id, alasan: 'Batal setengah rol', metode_refund: 'potong_piutang',
+        items: [{ ref_item_id: itemRol.id, produk_id: prKabelId, nama: itemRol.nama, satuan: 'ROL', faktor: 50, qty: 0.5, harga: 450000, hpp: itemRol.hpp }]
+      }
+    });
+    const kabelSetelahRetur = envLog.cariById_('Produk', prKabelId);
+    assert(kabelSetelahRetur.stok === 30 && kabelSetelahRetur.hpp === 7000,
+      `Setelah retur 0.5 ROL (25 MTR), stok wajib 30 & HPP dasar tetap 7000, aktual: stok=${kabelSetelahRetur.stok}, hpp=${kabelSetelahRetur.hpp}`);
+
+    // 28b. Pembelian & Retur Multi-Varian dari Produk Induk Sama (Anti-Overwrite Stok Induk)
+    const prCatRes = envLog.aksiProdukCreate_({
+      user: ownerRow,
+      payload: {
+        nama: 'Cat No Drop Multi Varian', satuan_dasar: 'KLG', punya_varian: true, hpp: 50000, harga_ritel: 65000,
+        varian: [
+          { nama_varian: 'Putih', hpp: 50000, harga_ritel: 65000, stok: 0 },
+          { nama_varian: 'Abu-Abu', hpp: 52000, harga_ritel: 68000, stok: 0 }
+        ]
+      }
+    });
+    const prCatId = (prCatRes.produk || prCatRes).id;
+    const varCats = envLog.bacaSemua_('Varian').filter((v) => v.produk_id === prCatId && !v.deleted);
+    const vPutih = varCats.find((v) => v.nama_varian === 'Putih');
+    const vAbu = varCats.find((v) => v.nama_varian === 'Abu-Abu');
+
+    const beliMulti = envLog.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: {
+        supplier_id: supId, bayar: 0,
+        items: [
+          { produk_id: prCatId, varian_id: vPutih.id, qty: 10, harga_beli: 50000 },
+          { produk_id: prCatId, varian_id: vAbu.id, qty: 15, harga_beli: 52000 }
+        ]
+      }
+    });
+    assert(envLog.cariById_('Produk', prCatId).stok === 25,
+      `Pembelian 2 varian (10 + 15) dalam 1 faktur wajib hasilkan stok induk 25 (anti-overwrite), aktual: ${envLog.cariById_('Produk', prCatId).stok}`);
+
+    // Retur Beli 2 varian dalam 1 dokumen (Putih 2 + Abu 3 = 5) -> stok induk wajib 20
+    envLog.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'beli', ref_id: beliMulti.id, alasan: 'Kaleng penyok', metode_refund: 'potong_hutang',
+        items: [
+          { produk_id: prCatId, varian_id: vPutih.id, nama: 'Cat Putih', satuan: 'KLG', faktor: 1, qty: 2, harga: 50000 },
+          { produk_id: prCatId, varian_id: vAbu.id, nama: 'Cat Abu', satuan: 'KLG', faktor: 1, qty: 3, harga: 52000 }
+        ]
+      }
+    });
+    assert(envLog.cariById_('Produk', prCatId).stok === 20 && envLog.cariById_('Varian', vPutih.id).stok === 8 && envLog.cariById_('Varian', vAbu.id).stok === 12,
+      `Retur 2 varian sekaligus wajib kurangi keduanya secara utuh (induk=20, putih=8, abu=12), aktual: induk=${envLog.cariById_('Produk', prCatId).stok}`);
+
+    // Retur Beli melebihi stok gudang (minta retur 9 > sisa stok putih 8) -> WAJIB ditolak STOK_KURANG
+    envLog.ubahBaris_('Varian', [{ id: vPutih.id, data: { stok: 3 } }], ownerRow.id);
+    let ditolakReturBeliStok = false;
+    try {
+      envLog.aksiReturCreate_({
+        user: ownerRow,
+        payload: {
+          tipe: 'beli', ref_id: beliMulti.id, alasan: 'Uji stok kurang', metode_refund: 'kas',
+          items: [{ produk_id: prCatId, varian_id: vPutih.id, nama: 'Cat Putih', satuan: 'KLG', faktor: 1, qty: 5, harga: 50000 }]
+        }
+      });
+    } catch (e) {
+      ditolakReturBeliStok = e.code === 'STOK_KURANG';
+    }
+    assert(ditolakReturBeliStok === true, 'Retur pembelian melebihi stok gudang saat ini wajib ditolak STOK_KURANG');
+
+    // 28c. Period Lock Kedap Bocor: Tutup Buku bulan ini -> piutang.bayar, hutang.bayar, deposit, opname, retur WAJIB ditolak!
+    const blnLock = envLog.sekarang_().substring(0, 7);
+    envLog.aksiTutupBukuTutupBulanan_({ user: ownerRow, payload: { periode: blnLock, catatan: 'Uji lock total' } });
+
+    const piutangAda = envLog.bacaSemua_('Piutang')[0];
+    const hutangAda = envLog.bacaSemua_('Hutang')[0];
+    const cekTerkunci = (fn, label) => {
+      let ok = false;
+      try { fn(); } catch (e) { ok = String(e.message || '').includes('PERIODE_TERKUNCI'); }
+      assert(ok === true, `Period Lock wajib memblokir ${label} pada bulan terkunci`);
+    };
+    cekTerkunci(() => envLog.aksiPiutangBayar_({ user: ownerRow, payload: { id: piutangAda.id, jumlah: 10000, metode: 'tunai' } }), 'piutang.bayar');
+    cekTerkunci(() => envLog.aksiHutangBayar_({ user: ownerRow, payload: { id: hutangAda.id, jumlah: 10000, metode: 'tunai' } }), 'hutang.bayar');
+    cekTerkunci(() => envLog.aksiDepositTambah_({ user: ownerRow, payload: { pelanggan_id: pelId, jumlah: 50000, metode: 'tunai' } }), 'deposit.tambah');
+    cekTerkunci(() => envLog.aksiOpnameCreate_({ user: ownerRow, payload: { produk_id: prKabelId, qty_fisik: 30, alasan: 'Tes lock', langsung_setuju: true } }), 'opname.create(langsung_setuju)');
+    cekTerkunci(() => envLog.aksiReturCreate_({ user: ownerRow, payload: { tipe: 'jual', ref_id: jualRol.penjualan.id, alasan: 'Tes lock', metode_refund: 'kas', items: [{ ref_item_id: itemRol.id, produk_id: prKabelId, nama: itemRol.nama, satuan: 'ROL', faktor: 50, qty: 0.1, harga: 450000, hpp: itemRol.hpp }] } }), 'retur.create');
+  });
+
   console.log('\n=============================================');
   console.log(`TOTAL UJI AUDIT: ${passed + failed} | LULUS: ${passed} | GAGAL: ${failed}`);
   console.log('=============================================');

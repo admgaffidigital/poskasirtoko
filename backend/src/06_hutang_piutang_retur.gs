@@ -164,6 +164,7 @@ function aksiPiutangBayar_(ctx) {
   const terbayarBaru = (Number(piutang.terbayar) || 0) + jumlahBayar;
   const statusBaru = sisaBaru === 0 ? 'lunas' : 'sebagian';
   const waktuBayar = sekarang_();
+  cekPeriodeTerkunci_(waktuBayar);
 
   // 1. Perbarui record Piutang
   ubahBaris_('Piutang', [{
@@ -438,6 +439,7 @@ function aksiHutangBayar_(ctx) {
   const terbayarBaru = (Number(hutang.terbayar) || 0) + jumlahBayar;
   const statusBaru = sisaBaru === 0 ? 'lunas' : 'sebagian';
   const waktuBayar = sekarang_();
+  cekPeriodeTerkunci_(waktuBayar);
 
   // 1. Update record Hutang
   ubahBaris_('Hutang', [{
@@ -710,6 +712,9 @@ function aksiReturCreate_(ctx) {
   const isOwnerAdmin = ctx.user.role === ROLE.OWNER || ctx.user.role === ROLE.ADMIN;
   const statusAwal = isOwnerAdmin ? 'disetujui' : 'diajukan';
   const waktuSekarang = sekarang_();
+  cekPeriodeTerkunci_(waktuSekarang);
+  const pengaturanRetur = ambilPengaturan_();
+  const kebutuhanStokReturBeli = {};
   const noRetur = nomorBerikut_('RT');
 
   let totalRetur = 0;
@@ -745,6 +750,18 @@ function aksiReturCreate_(ctx) {
     }
 
     totalRetur += itemSubtotal;
+
+    // Untuk retur pembelian ke supplier, pastikan stok gudang mencukupi secara akumulatif (kecuali stok_minus aktif)
+    if (tipe === 'beli' && !pengaturanRetur.stok_minus) {
+      const kStok = String(it.produk_id || '') + '::' + String(it.varian_id || '');
+      const butuhStok = bulatQty_((kebutuhanStokReturBeli[kStok] || 0) + qtyDasar);
+      kebutuhanStokReturBeli[kStok] = butuhStok;
+      const objStok = it.varian_id ? cariById_('Varian', it.varian_id) : cariById_('Produk', it.produk_id);
+      const stokAda = objStok ? Number(objStok.stok || 0) : 0;
+      if (stokAda < butuhStok) {
+        gagal_(KODE.STOK_KURANG, 'Stok gudang "' + (it.nama || it.nama_produk || 'Barang') + '" tidak mencukupi untuk retur ke supplier (sisa: ' + stokAda + ', diminta retur: ' + butuhStok + ').');
+      }
+    }
 
     itemsValid.push({
       ref_item_id: it.ref_item_id || '',
@@ -824,6 +841,7 @@ function aksiReturApprove_(ctx) {
   }
 
   const waktuSetuju = sekarang_();
+  cekPeriodeTerkunci_(waktuSetuju);
   ubahBaris_('Retur', [{
     id: retur.id,
     data: {
@@ -886,29 +904,54 @@ function aksiReturReject_(ctx) {
  */
 function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
   const tipe = retur.tipe;
-  const perbaruiProdukList = [];
-  const perbaruiVarianList = [];
+  const pengaturan = ambilPengaturan_();
+  const updateProdukMap = {};
+  const updateVarianMap = {};
   const rowsKartuStok = [];
+
+  const produkStateMap = {};
+  bacaSemua_('Produk').forEach(function (pr) { produkStateMap[pr.id] = pr; });
+  const semuaVarianRetur = bacaSemua_('Varian');
+  const varianStateMap = {};
+  semuaVarianRetur.forEach(function (v) { varianStateMap[v.id] = v; });
+
+  // Validasi kecukupan stok untuk retur pembelian sebelum menulis ke database
+  if (tipe === 'beli' && !pengaturan.stok_minus) {
+    const butuhBeliMap = {};
+    items.forEach(function (it) {
+      const qd = Number(it.qty_dasar) || 0;
+      const k = String(it.produk_id || '') + '::' + String(it.varian_id || '');
+      butuhBeliMap[k] = bulatQty_((butuhBeliMap[k] || 0) + qd);
+      const refObj = it.varian_id ? varianStateMap[it.varian_id] : produkStateMap[it.produk_id];
+      const stokAda = refObj ? Number(refObj.stok || 0) : 0;
+      if (stokAda < butuhBeliMap[k]) {
+        gagal_(KODE.STOK_KURANG, 'Stok gudang "' + (it.nama || 'Barang') + '" tidak mencukupi untuk menyetujui retur pembelian (sisa: ' + stokAda + ', diminta: ' + butuhBeliMap[k] + ').');
+      }
+    });
+  }
 
   items.forEach(function (it) {
     const qtyDasar = Number(it.qty_dasar) || 0;
+    const hppDasarSnapshot = hitungHppDasarItem_(it);
 
     if (tipe === 'jual') {
-      // 1. RETUR JUAL: Kembalikan stok & hitung ulang HPP memakai HPP snapshot item asal (Aturan Bisnis #12)
+      // 1. RETUR JUAL: Kembalikan stok & hitung ulang HPP memakai HPP dasar snapshot item asal (Aturan Bisnis #12)
       if (it.varian_id) {
-        const v = cariById_('Varian', it.varian_id);
-        const p = cariById_('Produk', it.produk_id);
+        const v = varianStateMap[it.varian_id];
+        const p = produkStateMap[it.produk_id];
+        if (!v || !p) return;
         const stokLamaV = Number(v.stok || 0);
         const hppLamaV = Number(v.hpp || 0);
-        const hppSnapshot = Number(it.hpp || 0);
-        const hppBaruV = hitungHppBaru_(stokLamaV, hppLamaV, qtyDasar, hppSnapshot);
-        const stokBaruV = Math.round((stokLamaV + qtyDasar) * 1000) / 1000;
+        const hppBaruV = hitungHppBaru_(stokLamaV, hppLamaV, qtyDasar, hppDasarSnapshot);
+        const stokBaruV = bulatQty_(stokLamaV + qtyDasar);
 
-        perbaruiVarianList.push({ id: v.id, data: { stok: stokBaruV, hpp: hppBaruV } });
+        v.stok = stokBaruV;
+        v.hpp = hppBaruV;
+        updateVarianMap[v.id] = { stok: stokBaruV, hpp: hppBaruV };
 
-        const stokLamaP = Number(p.stok || 0);
-        const stokBaruP = Math.round((stokLamaP + qtyDasar) * 1000) / 1000;
-        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaruP } });
+        const stokBaruP = bulatQty_(Number(p.stok || 0) + qtyDasar);
+        p.stok = stokBaruP;
+        updateProdukMap[p.id] = { stok: stokBaruP };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
@@ -922,14 +965,16 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
           keterangan: 'Retur penjualan ' + retur.no_retur + ': ' + retur.alasan
         });
       } else {
-        const p = cariById_('Produk', it.produk_id);
+        const p = produkStateMap[it.produk_id];
+        if (!p) return;
         const stokLama = Number(p.stok || 0);
         const hppLama = Number(p.hpp || 0);
-        const hppSnapshot = Number(it.hpp || 0);
-        const hppBaru = hitungHppBaru_(stokLama, hppLama, qtyDasar, hppSnapshot);
-        const stokBaru = Math.round((stokLama + qtyDasar) * 1000) / 1000;
+        const hppBaru = hitungHppBaru_(stokLama, hppLama, qtyDasar, hppDasarSnapshot);
+        const stokBaru = bulatQty_(stokLama + qtyDasar);
 
-        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaru, hpp: hppBaru } });
+        p.stok = stokBaru;
+        p.hpp = hppBaru;
+        updateProdukMap[p.id] = { stok: stokBaru, hpp: hppBaru };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
@@ -946,17 +991,19 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
     } else {
       // 2. RETUR BELI: Kurangi stok pada HPP berjalan (Aturan Bisnis #12: HPP tidak berubah)
       if (it.varian_id) {
-        const v = cariById_('Varian', it.varian_id);
-        const p = cariById_('Produk', it.produk_id);
+        const v = varianStateMap[it.varian_id];
+        const p = produkStateMap[it.produk_id];
+        if (!v || !p) return;
         const stokLamaV = Number(v.stok || 0);
         const hppV = Number(v.hpp || 0);
-        const stokBaruV = Math.max(0, Math.round((stokLamaV - qtyDasar) * 1000) / 1000);
+        const stokBaruV = bulatQty_(stokLamaV - qtyDasar);
 
-        perbaruiVarianList.push({ id: v.id, data: { stok: stokBaruV } });
+        v.stok = stokBaruV;
+        updateVarianMap[v.id] = { stok: stokBaruV };
 
-        const stokLamaP = Number(p.stok || 0);
-        const stokBaruP = Math.max(0, Math.round((stokLamaP - qtyDasar) * 1000) / 1000);
-        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaruP } });
+        const stokBaruP = bulatQty_(Number(p.stok || 0) - qtyDasar);
+        p.stok = stokBaruP;
+        updateProdukMap[p.id] = { stok: stokBaruP };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
@@ -970,12 +1017,14 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
           keterangan: 'Retur pembelian ' + retur.no_retur + ': ' + retur.alasan
         });
       } else {
-        const p = cariById_('Produk', it.produk_id);
+        const p = produkStateMap[it.produk_id];
+        if (!p) return;
         const stokLama = Number(p.stok || 0);
         const hppP = Number(p.hpp || 0);
-        const stokBaru = Math.max(0, Math.round((stokLama - qtyDasar) * 1000) / 1000);
+        const stokBaru = bulatQty_(stokLama - qtyDasar);
 
-        perbaruiProdukList.push({ id: p.id, data: { stok: stokBaru } });
+        p.stok = stokBaru;
+        updateProdukMap[p.id] = { stok: stokBaru };
 
         rowsKartuStok.push({
           produk_id: it.produk_id,
@@ -992,6 +1041,8 @@ function terapkanEfekRetur_(retur, items, transaksiAsal, ctx) {
     }
   });
 
+  const perbaruiProdukList = Object.keys(updateProdukMap).map(function (id) { return { id: id, data: updateProdukMap[id] }; });
+  const perbaruiVarianList = Object.keys(updateVarianMap).map(function (id) { return { id: id, data: updateVarianMap[id] }; });
   if (perbaruiProdukList.length > 0) ubahBaris_('Produk', perbaruiProdukList, ctx.user.id);
   if (perbaruiVarianList.length > 0) ubahBaris_('Varian', perbaruiVarianList, ctx.user.id);
   if (rowsKartuStok.length > 0) tambahBaris_('Kartu_Stok', rowsKartuStok, ctx.user.id);

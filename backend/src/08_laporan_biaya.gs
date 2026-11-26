@@ -63,9 +63,7 @@ function hitungEfekReturPenjualan_(rentang) {
   if (Object.keys(returIdSet).length > 0) {
     bacaSemua_('Retur_Item').forEach(function (it) {
       if (it.deleted || !returIdSet[it.retur_id]) return;
-      const qtyDasar = Number(it.qty_dasar) || (Number(it.qty || 0) * Math.max(1, Number(it.faktor) || 1));
-      const hpp = Number(it.hpp) || 0;
-      totalReturHpp += (hpp * qtyDasar);
+      totalReturHpp += hitungTotalHppItem_(it);
     });
   }
 
@@ -163,10 +161,9 @@ function aksiLaporanDashboard_(ctx) {
     if (it.deleted || !penjualanIdSet[it.penjualan_id]) return;
     const qty = Number(it.qty_dasar) || Number(it.qty) || 0;
     const subtotal = Number(it.subtotal) || 0;
-    const hpp = Number(it.hpp) || 0;
 
     totalItemTerjual += qty;
-    totalHpp += (hpp * qty);
+    totalHpp += hitungTotalHppItem_(it);
 
     const key = it.produk_id || it.nama;
     if (!produkAgg[key]) {
@@ -409,9 +406,7 @@ function aksiLaporanPenjualan_(ctx) {
   if (isOwner) {
     semuaItems.forEach(function (it) {
       if (it.deleted) return;
-      const h = Number(it.hpp) || 0;
-      const q = Number(it.qty_dasar) || Number(it.qty) || 0;
-      hppByJual[it.penjualan_id] = (hppByJual[it.penjualan_id] || 0) + (h * q);
+      hppByJual[it.penjualan_id] = (hppByJual[it.penjualan_id] || 0) + hitungTotalHppItem_(it);
       itemCountByJual[it.penjualan_id] = (itemCountByJual[it.penjualan_id] || 0) + 1;
     });
   }
@@ -659,8 +654,7 @@ function aksiLaporanLabaRugi_(ctx) {
     if (it.deleted || !penjualanIdSet[it.penjualan_id]) return;
     const qty = Number(it.qty_dasar) || Number(it.qty) || 0;
     const subtotal = Number(it.subtotal) || 0;
-    const hpp = Number(it.hpp) || 0;
-    const hppItemTotal = hpp * qty;
+    const hppItemTotal = hitungTotalHppItem_(it);
     const labaItem = subtotal - hppItemTotal;
 
     totalHpp += hppItemTotal;
@@ -1528,7 +1522,7 @@ function hitungMetrikSatuBulan_(ctx, ymStr) {
       itemTerlarisMap[k] = { produk_id: it.produk_id || '', nama: it.nama || '-', qty: 0, omset: 0, hpp: 0, laba: 0 };
     }
     const sub = Number(it.subtotal) || 0;
-    const hppTot = (Number(it.hpp) || 0) * (Number(it.qty_dasar || it.qty) || 0);
+    const hppTot = hitungTotalHppItem_(it);
     itemTerlarisMap[k].qty = bulatQty_(itemTerlarisMap[k].qty + (Number(it.qty) || 0));
     itemTerlarisMap[k].omset += sub;
     itemTerlarisMap[k].hpp += Math.round(hppTot);

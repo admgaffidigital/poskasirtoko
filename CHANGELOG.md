@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.139] - 2026-11-26
+### Diperbaiki — Penyempurnaan Logika Inti Akuntansi, Stok Multi-Varian, Multi-Satuan, & Period Lock Menyeluruh
+- **[DASHBOARD] [POS-JUAL] [RETUR] [BACKEND] Perbaikan Kritis HPP Multi-Satuan (`faktor > 1`) (`01_database_utilitas.gs`, `04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`, `08_laporan_biaya.gs`)**:
+  - Menambahkan helper `hitungTotalHppItem_()` dan `hitungHppDasarItem_()` sehingga penjualan/retur satuan konversi (`ROL`, `DUS`, `IKAT`, dll.) tidak lagi mengalikan ganda `hpp × qty_dasar` di Dashboard, Laporan Penjualan, Laba Rugi, Tutup Buku Bulanan, Kartu Stok, maupun kalkulasi ulang HPP Retur Jual.
+- **[POS-BELI] [RETUR] [BACKEND] Eliminasi Overwrite Stok Multi-Varian / Multi-Baris (`05_pembelian_stok.gs`, `06_hutang_piutang_retur.gs`)**:
+  - Memperbarui state stok & HPP secara berantai di memori dan merekalkulasi stok produk induk dari seluruh varian aktif (Aturan Bisnis #17) saat 1 faktur pembelian atau 1 dokumen retur memuat lebih dari satu varian/baris dari produk yang sama.
+- **[POS-JUAL] [RETUR] [BACKEND] Akumulasi Cek Stok POS & Guard Stok Retur Beli (`04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`)**:
+  - `penjualan.create` kini menjumlahkan akumulasi `qty_dasar` lintas baris untuk produk/varian yang sama di keranjang sebelum memvalidasi stok (cegah lolos stok minus saat membeli 2 satuan berbeda dalam 1 nota).
+  - `retur.create` & `retur.approve` tipe `beli` kini memvalidasi kecukupan stok gudang (menolak `STOK_KURANG`) agar saldo master stok & Kartu Stok selalu klop 100%.
+- **[BACKEND] Period Lock Kedap Bocor pada Seluruh Aksi Keuangan & Stok (`05_pembelian_stok.gs`, `06_hutang_piutang_retur.gs`, `07_pelanggan_loyalti_deposit.gs`)**:
+  - Memasang `cekPeriodeTerkunci_()` di `piutang.bayar`, `hutang.bayar`, `retur.create`, `retur.approve`, `opname.create(langsung_setuju)`, `opname.approve`, `deposit.tambah`, dan `deposit.tarik`.
+- **[TEST] Penambahan Uji Regresi Test #28 (`tests/test_debug_final.js`)**: Memverifikasi penuh HPP multi-satuan, anti-overwrite multi-varian, akumulasi stok POS, guard stok retur beli, dan Period Lock menyeluruh (28/28 LULUS).
+
 ## [1.0.138] - 2026-11-25
 ### Disempurnakan — Konsistensi Tipografi 100% & Preload Google Font Zero-FOUT
 - **[UI] Preload Instan Google Fonts di `<head>` (`index.html`)**: Menyuntikkan stylesheet Google Font pilihan user (*Plus Jakarta Sans*, *Inter*, *Poppins*, *Roboto*, *JetBrains Mono*) langsung di script Zero-FOUC sebelum first paint untuk menghilangkan kedipan pergantian font saat muat ulang.

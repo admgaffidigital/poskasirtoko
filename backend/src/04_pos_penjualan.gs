@@ -127,6 +127,7 @@ function aksiPenjualanCreate_(ctx) {
   let totalDiskonItem = 0;
   let totalHppTransaksi = 0;
   const itemsOlah = [];
+  const kebutuhanStokMap = {};
 
   for (let i = 0; i < rawItems.length; i++) {
     const it = rawItems[i];
@@ -166,17 +167,20 @@ function aksiPenjualanCreate_(ctx) {
       gagal_(KODE.VALIDATION, 'Qty dibawa (' + qtyDibawa + ') tidak boleh lebih besar dari qty beli (' + qty + ').');
     }
 
-    // Cek kecukupan stok (Aturan Bisnis & Pengaturan stok_minus)
+    // Cek kecukupan stok secara akumulatif lintas baris untuk produk/varian yang sama (Aturan Bisnis & Pengaturan stok_minus)
+    const kunciStok = pr.id + '::' + (varObj ? varObj.id : '');
+    const totalButuhStok = bulatQty_((kebutuhanStokMap[kunciStok] || 0) + qtyDasar);
+    kebutuhanStokMap[kunciStok] = totalButuhStok;
     const stokSekarang = varObj ? Number(varObj.stok || 0) : Number(pr.stok || 0);
-    if (!pengaturan.stok_minus && stokSekarang < qtyDasar) {
+    if (!pengaturan.stok_minus && stokSekarang < totalButuhStok) {
       const labelNama = varObj ? pr.nama + ' (' + varObj.nama_varian + ')' : pr.nama;
-      gagal_(KODE.STOK_KURANG, 'Stok ' + labelNama + ' tidak mencukupi (sisa: ' + stokSekarang + ' ' + pr.satuan_dasar + ', diminta: ' + qtyDasar + ' ' + pr.satuan_dasar + ').');
+      gagal_(KODE.STOK_KURANG, 'Stok ' + labelNama + ' tidak mencukupi (sisa: ' + stokSekarang + ' ' + pr.satuan_dasar + ', total diminta: ' + totalButuhStok + ' ' + pr.satuan_dasar + ').');
     }
 
     // Tentukan HPP snapshot per satuan jual (README Aturan 11)
     const hppDasar = varObj ? Number(varObj.hpp || 0) : Number(pr.hpp || 0);
     const hppSnapshot = Math.round(hppDasar * faktor);
-    const totalHppItem = Math.round(hppSnapshot * qty);
+    const totalHppItem = Math.round(hppDasar * qtyDasar);
 
     // Tentukan harga jual
     const hargaAsli = V_.rupiah(it.harga_asli !== undefined ? it.harga_asli : it.harga, 'Harga asli');
@@ -533,7 +537,7 @@ function aksiPenjualanCreate_(ctx) {
       tipe: 'jual',
       qty: -it.qty_dasar,
       saldo: saldoAkhir,
-      hpp: it.hpp,
+      hpp: hitungHppDasarItem_(it),
       ref_id: noNota,
       user_id: ctx.user.id,
       keterangan: 'Penjualan ' + noNota + ' (' + it.qty + ' ' + it.satuan + ')'
@@ -1992,7 +1996,7 @@ function aksiPenjualanVoid_(ctx) {
       tipe: 'void',
       qty: it.qty_dasar,
       saldo: saldoAkhir,
-      hpp: it.hpp,
+      hpp: hitungHppDasarItem_(it),
       ref_id: penjualan.no_nota,
       user_id: ctx.user.id,
       keterangan: 'Void penjualan ' + penjualan.no_nota + ': ' + alasan

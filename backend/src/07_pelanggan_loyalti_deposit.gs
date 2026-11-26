@@ -275,6 +275,7 @@ function aksiDepositTambah_(ctx) {
   const pel = cariById_('Pelanggan', pelangganId);
   if (!pel || pel.deleted) gagal_(KODE.NOT_FOUND, 'Data pelanggan tidak ditemukan.');
   if (pel.aktif === false) gagal_(KODE.VALIDATION, 'Pelanggan berstatus nonaktif tidak dapat menerima titipan.');
+  cekPeriodeTerkunci_(sekarang_());
 
   const saldoLama = Number(pel.saldo_deposit) || 0;
   const saldoBaru = saldoLama + jumlah;
@@ -326,6 +327,7 @@ function aksiDepositTarik_(ctx) {
 
   const pel = cariById_('Pelanggan', pelangganId);
   if (!pel || pel.deleted) gagal_(KODE.NOT_FOUND, 'Data pelanggan tidak ditemukan.');
+  cekPeriodeTerkunci_(sekarang_());
 
   const saldoLama = Number(pel.saldo_deposit) || 0;
   if (jumlah > saldoLama) {
