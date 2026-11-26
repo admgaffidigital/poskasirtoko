@@ -1214,6 +1214,7 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
     const returList = Array.isArray(d.retur_list) ? d.retur_list : [];
     const totalRetur = Number(d.total_retur || 0);
     const totalBersih = d.total_bersih !== undefined ? Number(d.total_bersih) : Number(j.total || 0);
+    const statusRetur = d.status_retur || (totalRetur <= 0 ? '' : (Number(j.total || 0) > 0 && totalRetur >= Number(j.total || 0) ? 'penuh' : 'sebagian'));
     const adaRetur = returList.length > 0;
 
     const modalBody = `
@@ -1249,6 +1250,8 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
           <div style="text-align: right;">
             ${isVoided ? `
               <span class="badge badge-danger">Dibatalkan (Void)</span>
+            ` : statusRetur === 'penuh' ? `
+              <span class="badge badge-warning">Diretur Penuh</span>
             ` : `
               <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'sebagian' ? 'badge-warning' : 'badge-danger')}">${escapeHtml(formatLabelStatusBayar(j.status_bayar || 'lunas'))}</span>
             `}

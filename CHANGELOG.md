@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.151] - 2026-11-27
+### Diperbaiki — Perbaikan ReferenceError `statusRetur is not defined` pada Modal Rincian Penjualan
+- **[DASHBOARD] [POS-JUAL] [RETUR] [UI] Perbaikan Crash Modal Rincian Nota (`laporan.js`)**:
+  - Mendeklarasikan `statusRetur` pada fungsi `bukaDetailPenjualan` di `frontend/js/modules/laporan.js` sehingga klik tombol **Rincian** pada daftar nota penjualan di Laporan Penjualan tidak lagi memunculkan error `statusRetur is not defined`.
+  - Menampilkan badge **`Diretur Penuh`** di pojok kanan atas modal Rincian Transaksi Penjualan saat seluruh nilai nota sudah diretur.
+  - Terverifikasi 0 *undefined variable* (`no-undef`) di seluruh 36 file JavaScript frontend via pemindaian AST ESLint.
+
 ## [1.0.150] - 2026-11-27
 ### Keamanan & Diperbaiki — Audit Total: Hardening RBAC Tutup Harian/Bulanan, Anti-Leak HPP Kasir, & Validasi Harga/HPP Retur Server-Side
 - **[AUTH] [DASHBOARD] [POS-JUAL] [BACKEND] Perbaikan RBAC & Kerahasiaan Laba pada Tutup Harian (EOD) & Tutup Buku Bulanan (`00_konfig_skema_router.gs`, `08_laporan_biaya.gs`, `pos.js`, `laporan.js`)**:
