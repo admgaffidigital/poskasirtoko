@@ -47,17 +47,33 @@ function hitungRentangTanggal_(dari, sampai, periode) {
  */
 function hitungEfekReturPenjualan_(rentang) {
   const semuaRetur = bacaSemua_('Retur');
+  const pjTotalMap = {};
+  bacaSemua_('Penjualan').forEach(function (pj) {
+    if (!pj.deleted && pj.status !== 'void') {
+      pjTotalMap[pj.id] = Number(pj.total) || 0;
+    }
+  });
+
   const returIdSet = {};
   const returByTgl = {};
   const returByPel = {};
   const returByJual = {};
+  const returAkumulasiNota = {};
   let totalReturJual = 0;
 
   semuaRetur.forEach(function (rt) {
     if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui') return;
     const tgl = String(rt.tanggal || '').substring(0, 10);
     if (tgl >= rentang.dari && tgl <= rentang.sampai) {
-      const nom = Number(rt.total) || 0;
+      let nom = Number(rt.total) || 0;
+      // Cegah nominal retur melebihi total bersih nota asal (mis. nota berdiskon)
+      if (rt.ref_id && pjTotalMap[rt.ref_id] !== undefined) {
+        const maksNota = pjTotalMap[rt.ref_id];
+        const sudah = returAkumulasiNota[rt.ref_id] || 0;
+        const sisaBoleh = Math.max(0, maksNota - sudah);
+        nom = Math.min(nom, sisaBoleh);
+        returAkumulasiNota[rt.ref_id] = sudah + nom;
+      }
       returIdSet[rt.id] = true;
       totalReturJual += nom;
       returByTgl[tgl] = (returByTgl[tgl] || 0) + nom;
@@ -346,9 +362,8 @@ function aksiLaporanDashboard_(ctx) {
     .sort(function (a, b) { return b.total_belanja - a.total_belanja; })
     .slice(0, 10);
 
-  // 7. Komposisi Metode Pembayaran (bersih tanpa uang kembalian)
+  // 7. Komposisi Metode Pembayaran (akan dihitung bersih setelah mengecualikan nota diretur penuh di bawah)
   const semuaJualBayar = bacaSemua_('Penjualan_Bayar');
-  const metodeBayarAgg = agregasiBayarBersih_(penjualanFinal, semuaJualBayar);
 
   // 8. Grafik Tren Harian
   const trenPeta = {};
@@ -392,7 +407,32 @@ function aksiLaporanDashboard_(ctx) {
     .sort(function (a, b) { return b.qty_terjual - a.qty_terjual; })
     .slice(0, 10);
 
-  // Kurangkan retur penjualan dari agregasi pelangganTerbaik
+  // Hitung transaksi aktif & tandai nota yang diretur penuh (agar tidak dihitung di jumlah belanja member & metode bayar)
+  let countDireturPenuh = 0;
+  const notaDireturPenuhSet = {};
+  penjualanFinal.forEach(function (j) {
+    const tot = Number(j.total) || 0;
+    const rTot = efekRetur.retur_by_jual[j.id] || 0;
+    if (tot > 0 && rTot >= tot) {
+      countDireturPenuh += 1;
+      notaDireturPenuhSet[j.id] = true;
+      if (j.pelanggan_id && memberAgg[j.pelanggan_id]) {
+        memberAgg[j.pelanggan_id].total_transaksi = Math.max(0, memberAgg[j.pelanggan_id].total_transaksi - 1);
+      }
+    }
+  });
+
+  // Komposisi Metode Pembayaran: kecualikan nota diretur penuh & kurangkan retur sebagian agar total 100% sinkron
+  const penjualanAktifBayar = penjualanFinal
+    .filter(function (j) { return !notaDireturPenuhSet[j.id]; })
+    .map(function (j) {
+      const rTot = efekRetur.retur_by_jual[j.id] || 0;
+      if (rTot <= 0) return j;
+      return Object.assign({}, j, { total: Math.max(0, (Number(j.total) || 0) - rTot) });
+    });
+  const metodeBayarAgg = agregasiBayarBersih_(penjualanAktifBayar, semuaJualBayar);
+
+  // Kurangkan retur penjualan dari agregasi pelangganTerbaik (total belanja & transaksi bersih)
   Object.keys(efekRetur.retur_by_pelanggan).forEach(function (pid) {
     if (memberAgg[pid]) {
       memberAgg[pid].total_belanja = Math.max(0, Math.round(memberAgg[pid].total_belanja - efekRetur.retur_by_pelanggan[pid]));
@@ -416,14 +456,6 @@ function aksiLaporanDashboard_(ctx) {
   });
   const trenBersih = Object.values(trenPeta).sort(function (a, b) {
     return a.tanggal.localeCompare(b.tanggal);
-  });
-
-  // Hitung transaksi aktif (tidak menghitung nota yang diretur penuh)
-  let countDireturPenuh = 0;
-  penjualanFinal.forEach(function (j) {
-    const tot = Number(j.total) || 0;
-    const rTot = efekRetur.retur_by_jual[j.id] || 0;
-    if (tot > 0 && rTot >= tot) countDireturPenuh += 1;
   });
 
   const totalPenjualanBersih = Math.max(0, Math.round(totalPenjualan - efekRetur.total_retur_jual));

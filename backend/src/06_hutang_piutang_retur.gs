@@ -797,6 +797,18 @@ function aksiReturCreate_(ctx) {
     });
   }
 
+  // Pastikan total nominal retur penjualan tidak pernah melebihi sisa nilai bersih nota asal (mis. nota berdiskon)
+  if (tipe === 'jual' && transaksiAsal && Number(transaksiAsal.total || 0) > 0) {
+    const sudahReturNominal = bacaSemua_('Retur').reduce(function (acc, r) {
+      return (!r.deleted && r.tipe === 'jual' && r.ref_id === refId && r.status !== 'ditolak')
+        ? acc + (Number(r.total) || 0) : acc;
+    }, 0);
+    const sisaNilaiNota = Math.max(0, Math.round(Number(transaksiAsal.total || 0) - sudahReturNominal));
+    if (totalRetur > sisaNilaiNota) {
+      totalRetur = sisaNilaiNota;
+    }
+  }
+
   // Simpan Dokumen Retur
   const resRetur = tambahBaris_('Retur', [{
     no_retur: noRetur,

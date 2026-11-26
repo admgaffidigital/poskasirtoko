@@ -684,6 +684,18 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
 
   $('#btn-batal-form-rj', modalBody)?.addEventListener('click', () => modalInstance.close());
 
+  // Harga satuan efektif per item (memperhitungkan diskon item & diskon nota proporsional agar nilai retur tidak melebihi total nota)
+  const totalSubItemNota = items.reduce((s, it) => s + Number(it.subtotal || (Number(it.harga || 0) * Number(it.qty || 0))), 0);
+  const totalBarangNetNota = Math.max(0, Number(pj.total || 0) - Number(pj.ongkir || 0));
+  const rasioNetNota = (totalSubItemNota > 0 && totalBarangNetNota > 0 && totalBarangNetNota < totalSubItemNota)
+    ? (totalBarangNetNota / totalSubItemNota)
+    : 1;
+  const hargaEfektifRetur = (it) => {
+    const q = Math.max(0.001, Number(it.qty || 1));
+    const subItem = Number(it.subtotal !== undefined ? it.subtotal : (Number(it.harga || 0) * q));
+    return Math.round((subItem / q) * rasioNetNota);
+  };
+
   // Logika kalkulasi total nilai retur secara realtime
   const hitungTotalRetur = () => {
     let grandTotal = 0;
@@ -705,7 +717,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
           q = 0;
           inputQ.value = 0;
         }
-        const sub = Math.round(q * item.harga);
+        const sub = Math.round(q * hargaEfektifRetur(item));
         if (labelSub) labelSub.textContent = formatRupiah(sub);
         grandTotal += sub;
       } else {
@@ -713,6 +725,10 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
         if (labelSub) labelSub.textContent = 'Rp 0';
       }
     });
+
+    if (totalBarangNetNota > 0 && grandTotal > totalBarangNetNota) {
+      grandTotal = totalBarangNetNota;
+    }
 
     const lblTotal = $('#total-nilai-retur-label', modalBody);
     if (lblTotal) lblTotal.textContent = formatRupiah(grandTotal);
@@ -745,7 +761,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
             satuan: item.satuan || '',
             faktor: item.faktor || 1,
             qty: qty,
-            harga: item.harga,
+            harga: hargaEfektifRetur(item),
             hpp: item.hpp_snapshot || item.hpp || 0
           });
         }

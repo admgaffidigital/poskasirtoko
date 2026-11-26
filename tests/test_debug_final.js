@@ -2602,6 +2602,32 @@ async function runAudit() {
     assert(pelRowRet && pelRowRet.status_retur === 'penuh' && pelRowRet.total_bersih === 0 && pelRowCicil && pelRowCicil.sisa_tagihan === 30000,
       'pelanggan.detail wajib menandai nota diretur penuh (total_bersih=0) dan sisa_tagihan cicilan yang akurat');
 
+    // 29f7. Anti-153% Komposisi Metode Bayar, Cap Retur Nota Berdiskon, & Jumlah Belanja Pelanggan Terbesar di Dashboard
+    const jualDiskRet = envGd.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        pelanggan_id: pelUjiTempo.id,
+        lokasi_stok: 'toko',
+        diskon_tipe: 'nominal',
+        diskon_nilai: 10000,
+        items: [{ produk_id: prLegacy.id, qty: 2, harga: 65000 }],
+        pembayaran: [{ metode: 'tempo', jumlah: 120000 }]
+      }
+    });
+    envGd.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual', ref_id: jualDiskRet.penjualan.id, lokasi: 'toko', alasan: 'Uji cap retur nota diskon', metode_refund: 'potong_piutang',
+        items: [{ produk_id: prLegacy.id, nama: prLegacy.nama, satuan: 'SAK', faktor: 1, qty: 2, harga: 65000, hpp: 50000 }]
+      }
+    });
+    const dashCap = envGd.aksiLaporanDashboard_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    const pelTopUji = dashCap.pelanggan_terbaik.find((x) => x.pelanggan_id === pelUjiTempo.id);
+    assert(dashCap.metode_bayar.tempo.total === 130000 && dashCap.ringkasan.total_penjualan === 130000,
+      `Dashboard komposisi metode bayar (tempo=${dashCap.metode_bayar.tempo.total}) wajib 100% sinkron dengan omset bersih (${dashCap.ringkasan.total_penjualan}), bukan >100%`);
+    assert(pelTopUji && pelTopUji.total_transaksi === 1 && pelTopUji.total_belanja === 130000,
+      `Pelanggan Terbesar wajib menghitung 1x belanja aktif & Rp 130.000 (bukan over-subtract diskon retur); aktual: ${JSON.stringify(pelTopUji)}`);
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');

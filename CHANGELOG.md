@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.149] - 2026-11-27
+### Diperbaiki — Presisi 100% Komposisi Metode Bayar Dashboard, Cap Nilai Retur Nota Berdiskon, & Hitungan Pelanggan Terbesar
+- **[DASHBOARD] [RETUR] [BACKEND] Anti-153% Komposisi Pembayaran & Cap Nilai Retur (`08_laporan_biaya.gs`, `06_hutang_piutang_retur.gs`, `retur.js`)**:
+  - `laporan.dashboard` kini mengecualikan nota diretur penuh (dan memotong retur sebagian) dari **Komposisi Metode Pembayaran** sehingga total persentase metode bayar selalu tepat **100%** (tidak lagi tembus >100%).
+  - `hitungEfekReturPenjualan_` & `retur.create` membatasi nominal retur per nota maksimal sebesar nilai bersih nota asal (`Penjualan.total`) agar nota berdiskon tidak pernah kelebihan potong omset maupun saldo belanja pelanggan lain.
+  - **Pelanggan Terbesar** di Dashboard kini menghitung tepat jumlah belanja aktif saja (tidak menghitung nota diretur penuh) dan menampilkan total belanja bersih akurat.
+  - Form **Buat Retur Penjualan** (`retur.js`) kini otomatis memakai harga satuan bersih setelah diskon item/nota.
+
 ## [1.0.148] - 2026-11-27
 ### Diperbaiki — Sinkronisasi Status Retur Penuh & Sisa Cicilan di Profil Rincian Pelanggan
 - **[PELANGGAN] [RETUR] [UI] Transparansi Riwayat Belanja Member (`07_pelanggan_loyalti_deposit.gs`, `pelanggan.js`)**:
