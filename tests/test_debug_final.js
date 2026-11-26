@@ -2471,6 +2471,13 @@ async function runAudit() {
     const lrAfterKlaim = envGd.aksiLaporanLabaRugi_({ user: ownerRow, payload: { periode: 'hari_ini' } });
     assert(lrAfterKlaim.ringkasan.total_kerugian_rusak === 100000,
       `Barang rusak yang sudah diganti supplier tidak boleh dihitung rugi lagi (tetap 100000), aktual: ${lrAfterKlaim.ringkasan.total_kerugian_rusak}`);
+
+    // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, RBAC menolak Kasir, Owner sukses
+    const resCantikKasir = callApi('sistem.percantikSheet', tokenKasir, {});
+    assert(resCantikKasir.ok === false && resCantikKasir.code === 'FORBIDDEN', 'Kasir wajib ditolak menjalankan sistem.percantikSheet');
+    const resCantikOwner = callApi('sistem.percantikSheet', tokenOwner, {});
+    assert(resCantikOwner.ok === true && resCantikOwner.data.total_sheet === 33 && resCantikOwner.data.semua_terdaftar === true,
+      `Owner wajib sukses menjalankan sistem.percantikSheet pada seluruh 33 sheet & terdaftar lengkap, aktual: ${JSON.stringify(resCantikOwner)}`);
   });
 
   console.log('\n=============================================');

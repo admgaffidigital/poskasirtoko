@@ -557,7 +557,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.140'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.141'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -610,7 +610,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.140'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.141'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1806,6 +1806,12 @@ class App {
                 <span>Jalankan Perawatan Server &amp; Database</span>
               </button>
             ` : ''}
+            ${store.get('user') && store.get('user').role === 'owner' ? `
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-percantik-spreadsheet">
+                ${ICONS.fileSpreadsheet}
+                <span>Percantik &amp; Sinkronkan 33 Sheet Spreadsheet</span>
+              </button>
+            ` : ''}
           </div>
 
           <div id="hasil-maintenance-server"></div>
@@ -1834,7 +1840,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.140'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.141'}</div>
         </div>
       `;
     };
@@ -1913,6 +1919,51 @@ class App {
           outEl.innerHTML = `<div class="alert alert-danger">${ICONS.alertTriangle}<div>${escapeHtml(err.message || 'Gagal menjalankan perawatan server.')}</div></div>`;
         }
         showToast(err.message || 'Gagal menjalankan perawatan server', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.removeAttribute('aria-busy');
+        }
+      }
+    });
+
+    $('#btn-percantik-spreadsheet', container)?.addEventListener('click', async () => {
+      const btn = $('#btn-percantik-spreadsheet', container);
+      const outEl = $('#hasil-maintenance-server', container);
+      if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+      }
+      if (outEl) {
+        outEl.innerHTML = `<div class="row text-sm text-muted" style="gap: 8px;"><div class="spinner-sm"></div><span>Menyinkronkan skema &amp; menata tampilan seluruh 33 sheet Spreadsheet (mohon tunggu 5–15 detik)...</span></div>`;
+      }
+      const mulai = Date.now();
+      try {
+        const res = await apiCall('sistem.percantikSheet', {}, { skipCache: true });
+        const durasi = Date.now() - mulai;
+        const migList = Array.isArray(res?.migrasi) ? res.migrasi : [];
+        if (outEl) {
+          outEl.innerHTML = `
+            <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1px solid var(--border); padding: var(--sp-3);">
+              <div class="row-between">
+                <span class="badge badge-success">Spreadsheet Dipercantik (${durasi} ms)</span>
+                <span class="text-xs text-muted mono">${escapeHtml(res?.waktu_server || '')}</span>
+              </div>
+              <dl class="kv" style="margin-top: 4px;">
+                <dt>Total Sheet Ditata</dt>
+                <dd>${res?.total_sheet ?? 0} / ${res?.total_skema ?? 33} sheet tersinkron &amp; seragam</dd>
+                <dt>Pembaruan Skema</dt>
+                <dd class="text-xs">${migList.length > 0 ? escapeHtml(migList.join(' • ')) : 'Seluruh sheet &amp; kolom sudah mutakhir'}</dd>
+              </dl>
+            </div>
+          `;
+        }
+        showToast(res?.pesan || 'Seluruh 33 sheet Spreadsheet berhasil dipercantik!', 'success', 4000);
+      } catch (err) {
+        if (outEl) {
+          outEl.innerHTML = `<div class="alert alert-danger">${ICONS.alertTriangle}<div>${escapeHtml(err.message || 'Gagal menata Spreadsheet.')}</div></div>`;
+        }
+        showToast(err.message || 'Gagal menata Spreadsheet', 'error');
       } finally {
         if (btn) {
           btn.disabled = false;

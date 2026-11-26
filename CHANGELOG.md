@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.141] - 2026-11-26
+### Disempurnakan — Spreadsheet Beautifier & Sinkronisasi 33 Sheet Otomatis (Anti-Salah Format Rupiah + Tombol 1-Klik di Aplikasi)
+- **[DB] [BACKEND] Pembaruan Menyeluruh Beautifier 33 Sheet (`09_setup_trigger_beautifier.gs`, `00_konfig_skema_router.gs`)**:
+  - Melengkapi peta warna tab & urutan 7 kelompok modul untuk seluruh **33 sheet** termasuk `Tutup_Buku`, `Mutasi_Lokasi`, dan `Barang_Rusak`, serta sinkronisasi kolom baru otomatis sebelum penataan (*zero-data-loss*).
+  - Memperbaiki klasifikasi format angka: kolom stok/qty (`stok`, `stok_toko`, `stok_gudang`, `qty*`, `Kartu_Stok.saldo*`, `total_qty_dasar`) kini berformat angka desimal `#,##0.###` (tidak lagi salah tampil Rupiah); kolom count (`total_item`, `total_transaksi`, `poin*`) berformat bulat `#,##0`; kolom kerugian (`Barang_Rusak.nilai_kerugian`, `Biaya.nominal`) berformat Rupiah merah tebal; kolom persen berformat `0.0%`; kolom JSON/URL di-`CLIP` dengan lebar terukur agar tidak memanjangkan tinggi baris.
+  - Menambahkan badge warna bersyarat untuk status baru (`disetujui`, `diajukan`, `menunggu`, `ditolak`, `terkunci`, `diganti_barang`, `ditolak_supplier`), kolom lokasi (`toko`, `gudang`, `split`), arah transfer (`gudang_ke_toko`, `toko_ke_gudang`), dan baris `deleted=TRUE`.
+- **[UI] Tombol 1-Klik `Percantik & Sinkronkan 33 Sheet Spreadsheet` (`frontend/js/app.js`)**:
+  - Owner kini dapat langsung menyinkronkan & merapikan seluruh 33 sheet Spreadsheet langsung dari menu **Status & Diagnostik Sistem (`#/sistem`)** maupun dari menu Spreadsheet (`POS Kasir → Percantik Tampilan Spreadsheet`).
+
 ## [1.0.140] - 2026-11-26
 ### Ditambahkan — Multi-Lokasi Stok (Stok Toko & Stok Gudang), Transfer Mutasi Double-Entry, Smart Receiving, & Pengelolaan Barang Rusak
 - **[DB] [BACKEND] [MIGRASI] Pemisahan Stok Toko & Gudang Zero-Migration (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `03_kategori_produk.gs`)**:
