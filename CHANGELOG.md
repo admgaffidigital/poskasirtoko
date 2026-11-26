@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.145] - 2026-11-27
+### Diperbaiki — Deteksi Shift Lewat Tengah Malam & Pemulihan Otomatis Transaksi POS
+- **[POS-JUAL] [UI] Deteksi Realtime Shift Kemarin & Auto-Redirect Modal Tutup Shift (`frontend/js/modules/pos.js`)**:
+  - Menambahkan pengecekan tanggal lokal secara realtime (`cekShiftLewatTanggal`) saat menekan tombol **BAYAR** & tombol **Shift (F3)** sehingga bila jam melewati tengah malam (`00:00`) ketika tab POS masih terbuka, sistem langsung mendeteksi shift kemarin dan mengarahkan ke tab **Tutup Shift**.
+  - Memperbaiki bug state `shiftKemarinBelumTutup` yang sebelumnya tidak ikut direset otomatis setelah `shift.tutup` dan `shift.buka` selesai dilakukan.
+  - Saat server mengembalikan `SHIFT_KEMARIN_BELUM_TUTUP` atau `SHIFT_BELUM_DIBUKA`, modal pembayaran otomatis ditutup (keranjang belanja tetap aman), pesan tampil bersih tanpa kode teknis, dan modal **Tutup Shift / Buka Shift** langsung dibuka agar kasir dapat melanjutkan transaksi tanpa mengetik ulang keranjang.
+
 ## [1.0.144] - 2026-11-27
 ### Diperbaiki — Transparansi Status & Nominal Bersih Nota Diretur di Laporan Penjualan, Detail Nota, & Dashboard
 - **[DASHBOARD] [POS-JUAL] [RETUR] [BACKEND] Pemotongan Otomatis Nilai Retur di `laporan.penjualan` & `penjualan.detail` (`08_laporan_biaya.gs`, `04_pos_penjualan.gs`)**:

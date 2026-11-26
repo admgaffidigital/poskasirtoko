@@ -2215,6 +2215,9 @@ export function renderPosModule(container) {
     const wajibShift = state.wajibBukaShift !== undefined
       ? Boolean(state.wajibBukaShift)
       : (store.get('pengaturan')?.wajib_buka_shift !== false);
+    if (state.shiftAktif && cekShiftLewatTanggal(state.shiftAktif)) {
+      perbaruiIndikatorShift(state.shiftAktif, { shift_kemarin_belum_tutup: true });
+    }
     if (wajibShift && !state.shiftAktif) {
       haptic.warning();
       showToast('Wajib Buka Shift Kasir terlebih dahulu sebelum memproses transaksi!', 'warning', 4000);
@@ -2223,7 +2226,7 @@ export function renderPosModule(container) {
     }
     if (wajibShift && state.shiftKemarinBelumTutup) {
       haptic.warning();
-      showToast('Shift kasir kemarin belum ditutup! Tutup shift kemarin dulu sebelum transaksi hari ini.', 'warning', 4500);
+      showToast(`Shift kemarin (${state.shiftAktif?.no_shift || ''}) belum ditutup. Tutup shift kemarin dulu, keranjang belanja Anda tetap aman.`, 'warning', 5000);
       bukaModalShiftKasir('tutup');
       return;
     }
@@ -2974,6 +2977,27 @@ export function renderPosModule(container) {
         // Refresh katalog produk untuk update stok lokal
         muatDataKatalog();
       } catch (err) {
+        const errMsgRaw = String(err?.message || '');
+        const isShiftKemarinErr = errMsgRaw.includes('SHIFT_KEMARIN_BELUM_TUTUP');
+        const isShiftBelumBukaErr = errMsgRaw.includes('SHIFT_BELUM_DIBUKA');
+
+        if (isShiftKemarinErr || isShiftBelumBukaErr) {
+          console.warn('Transaksi ditahan oleh aturan shift:', errMsgRaw);
+          haptic.warning();
+          const pesanBersih = errMsgRaw
+            .replace(/^SHIFT_KEMARIN_BELUM_TUTUP:\s*/i, '')
+            .replace(/^SHIFT_BELUM_DIBUKA:\s*/i, '');
+          if (isShiftKemarinErr) {
+            perbaruiIndikatorShift(state.shiftAktif, { shift_kemarin_belum_tutup: true });
+          } else {
+            perbaruiIndikatorShift(null, { shift_kemarin_belum_tutup: false });
+          }
+          modal.close();
+          showToast(`${pesanBersih} Keranjang belanja Anda tetap aman.`, 'warning', 5500);
+          bukaModalShiftKasir(isShiftKemarinErr ? 'tutup' : 'utama');
+          return;
+        }
+
         console.error('Error simpan penjualan:', err);
         haptic.warning();
 
@@ -3134,10 +3158,24 @@ export function renderPosModule(container) {
   }
 
   // ---------- Manajemen Buka & Tutup Shift Kasir + Tutup Harian (EOD) ----------
+  const cekShiftLewatTanggal = (shiftObj) => {
+    if (!shiftObj || !shiftObj.waktu_buka) return false;
+    const now = new Date();
+    const hariIni = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tglBuka = String(shiftObj.waktu_buka).substring(0, 10);
+    return Boolean(tglBuka && tglBuka < hariIni);
+  };
+
   const perbaruiIndikatorShift = (shiftObj, meta = {}) => {
     state.shiftAktif = shiftObj || null;
     if (meta.wajib_buka_shift !== undefined) state.wajibBukaShift = Boolean(meta.wajib_buka_shift);
-    if (meta.shift_kemarin_belum_tutup !== undefined) state.shiftKemarinBelumTutup = Boolean(meta.shift_kemarin_belum_tutup);
+    if (!state.shiftAktif) {
+      state.shiftKemarinBelumTutup = false;
+    } else if (meta.shift_kemarin_belum_tutup !== undefined) {
+      state.shiftKemarinBelumTutup = Boolean(meta.shift_kemarin_belum_tutup);
+    } else {
+      state.shiftKemarinBelumTutup = cekShiftLewatTanggal(state.shiftAktif);
+    }
     if (meta.saran_modal_awal !== undefined) state.saranModalAwal = Number(meta.saran_modal_awal || 0);
 
     const btnShift = container.querySelector('#btn-pos-shift');
@@ -3731,7 +3769,7 @@ export function renderPosModule(container) {
             });
             shiftAktif = res.shift;
             ringkasanAktif = res.ringkasan;
-            perbaruiIndikatorShift(shiftAktif);
+            perbaruiIndikatorShift(shiftAktif, { shift_kemarin_belum_tutup: false });
             haptic.success();
             showToast(res.pesan || 'Shift kasir berhasil dibuka!', 'success');
             tabAktif = 'utama';
@@ -3808,6 +3846,12 @@ export function renderPosModule(container) {
 
       elContainer.innerHTML = `
         ${renderNavTab()}
+        ${state.shiftKemarinBelumTutup ? `
+          <div class="alert alert-warning text-xs" style="margin: 0; padding: 10px 12px;">
+            ${ICONS.alertTriangle}
+            <div><strong>Shift Kemarin Belum Ditutup (${escapeHtml(String(shiftAktif.waktu_buka || '').substring(0, 10))}).</strong> Tutup shift ini terlebih dahulu lalu buka shift hari ini agar transaksi POS dapat dilanjutkan. <em>Keranjang belanja Anda di layar POS tetap tersimpan aman.</em></div>
+          </div>
+        ` : ''}
         <div style="background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-md); border: 1px solid var(--border);">
           <div class="row" style="justify-content: space-between; align-items: center;">
             <div>
@@ -3998,7 +4042,7 @@ export function renderPosModule(container) {
             kas_fisik: kasFisikVal,
             catatan
           });
-          perbaruiIndikatorShift(null);
+          perbaruiIndikatorShift(null, { shift_kemarin_belum_tutup: false });
           haptic.success();
           showToast(res.pesan || 'Shift kasir berhasil ditutup!', 'success', 4500);
           modal.close();
@@ -4018,7 +4062,10 @@ export function renderPosModule(container) {
   }
 
   // Bind tombol Shift Kasir di Header POS Cart
-  container.querySelector('#btn-pos-shift')?.addEventListener('click', () => bukaModalShiftKasir('utama'));
+  container.querySelector('#btn-pos-shift')?.addEventListener('click', () => {
+    const mode = state.shiftAktif && (state.shiftKemarinBelumTutup || cekShiftLewatTanggal(state.shiftAktif)) ? 'tutup' : 'utama';
+    bukaModalShiftKasir(mode);
+  });
   window.bukaModalShiftKasirGlobal = bukaModalShiftKasir;
 
   // ---------- Modal Kas Keluar Kasir (Petty Cash Laci) ----------
