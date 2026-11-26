@@ -2472,11 +2472,16 @@ async function runAudit() {
     assert(lrAfterKlaim.ringkasan.total_kerugian_rusak === 100000,
       `Barang rusak yang sudah diganti supplier tidak boleh dihitung rugi lagi (tetap 100000), aktual: ${lrAfterKlaim.ringkasan.total_kerugian_rusak}`);
 
-    // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, RBAC menolak Kasir, Owner sukses
+    // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
+    const resPing33 = callApi('sistem.ping', '', {});
+    assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');
     const resCantikKasir = callApi('sistem.percantikSheet', tokenKasir, {});
     assert(resCantikKasir.ok === false && resCantikKasir.code === 'FORBIDDEN', 'Kasir wajib ditolak menjalankan sistem.percantikSheet');
+    const resBatch1 = callApi('sistem.percantikSheet', tokenOwner, { offset: 0, batch_size: 6 });
+    assert(resBatch1.ok === true && resBatch1.data.selesai === false && resBatch1.data.diproses === 6 && resBatch1.data.next_offset === 6,
+      `Mode batch beautifier wajib memproses 6 sheet per batch & next_offset=6, aktual: ${JSON.stringify(resBatch1)}`);
     const resCantikOwner = callApi('sistem.percantikSheet', tokenOwner, {});
-    assert(resCantikOwner.ok === true && resCantikOwner.data.total_sheet === 33 && resCantikOwner.data.semua_terdaftar === true,
+    assert(resCantikOwner.ok === true && resCantikOwner.data.selesai === true && resCantikOwner.data.total_sheet === 33 && resCantikOwner.data.semua_terdaftar === true,
       `Owner wajib sukses menjalankan sistem.percantikSheet pada seluruh 33 sheet & terdaftar lengkap, aktual: ${JSON.stringify(resCantikOwner)}`);
   });
 

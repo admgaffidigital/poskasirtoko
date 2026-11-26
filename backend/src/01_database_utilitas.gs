@@ -741,6 +741,7 @@ function aksiSistemPing_() {
     versi: APP.VERSI,
     versi_skema: APP.VERSI_SKEMA,
     versi_skema_db: versiSkemaDb,
+    total_sheet: Object.keys(SKEMA).length,
     db_siap: dbSiap,
     waktu_server: sekarang_()
   };

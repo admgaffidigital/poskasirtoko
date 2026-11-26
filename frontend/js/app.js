@@ -557,7 +557,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.141'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.142'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -610,7 +610,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.141'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.142'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1840,7 +1840,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.141'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.142'}</div>
         </div>
       `;
     };
@@ -1934,31 +1934,69 @@ class App {
         btn.disabled = true;
         btn.setAttribute('aria-busy', 'true');
       }
-      if (outEl) {
-        outEl.innerHTML = `<div class="row text-sm text-muted" style="gap: 8px;"><div class="spinner-sm"></div><span>Menyinkronkan skema &amp; menata tampilan seluruh 33 sheet Spreadsheet (mohon tunggu 5–15 detik)...</span></div>`;
-      }
       const mulai = Date.now();
+      const batchSize = 6;
+      let offset = 0;
+      let selesai = false;
+      let totalSkema = 33;
+      let waktuServer = '';
+      const semuaMigrasi = [];
+
+      const renderProgres = (sudah, total, daftarAktif) => {
+        if (!outEl) return;
+        const pct = total > 0 ? Math.min(100, Math.round((sudah / total) * 100)) : 0;
+        outEl.innerHTML = `
+          <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1px solid var(--border); padding: var(--sp-3);">
+            <div class="row-between items-center">
+              <div class="row text-sm fw-semibold" style="gap: 8px;">
+                <div class="spinner-sm"></div>
+                <span>Menata &amp; menyinkronkan Spreadsheet (${sudah} / ${total} sheet)...</span>
+              </div>
+              <span class="badge badge-info mono">${pct}%</span>
+            </div>
+            <div style="height: 8px; background: var(--surface-3); border-radius: var(--radius-full); overflow: hidden;">
+              <div style="height: 100%; width: ${pct}%; background: var(--primary); transition: width 0.25s ease;"></div>
+            </div>
+            ${daftarAktif ? `<div class="text-xs text-muted">Batch selesai: ${escapeHtml(daftarAktif)}</div>` : ''}
+          </div>
+        `;
+      };
+
+      renderProgres(0, totalSkema, '');
       try {
-        const res = await apiCall('sistem.percantikSheet', {}, { skipCache: true });
-        const durasi = Date.now() - mulai;
-        const migList = Array.isArray(res?.migrasi) ? res.migrasi : [];
+        let guard = 0;
+        while (!selesai && guard < 15) {
+          guard++;
+          const res = await apiCall('sistem.percantikSheet', { offset, batch_size: batchSize }, { skipCache: true });
+          totalSkema = res?.total_skema || totalSkema;
+          waktuServer = res?.waktu_server || waktuServer;
+          if (Array.isArray(res?.migrasi) && res.migrasi.length) {
+            semuaMigrasi.push(...res.migrasi);
+          }
+          offset = Number(res?.next_offset || (offset + batchSize));
+          selesai = Boolean(res?.selesai || offset >= totalSkema);
+          const namaBatch = Array.isArray(res?.sheet_diproses) ? res.sheet_diproses.join(', ') : '';
+          renderProgres(Math.min(offset, totalSkema), totalSkema, namaBatch);
+        }
+
+        const durasiDetik = ((Date.now() - mulai) / 1000).toFixed(1);
         if (outEl) {
           outEl.innerHTML = `
             <div class="card card-body stack-sm" style="background: var(--surface-2); border: 1px solid var(--border); padding: var(--sp-3);">
               <div class="row-between">
-                <span class="badge badge-success">Spreadsheet Dipercantik (${durasi} ms)</span>
-                <span class="text-xs text-muted mono">${escapeHtml(res?.waktu_server || '')}</span>
+                <span class="badge badge-success">Spreadsheet Dipercantik (${durasiDetik} dtk)</span>
+                <span class="text-xs text-muted mono">${escapeHtml(waktuServer)}</span>
               </div>
               <dl class="kv" style="margin-top: 4px;">
                 <dt>Total Sheet Ditata</dt>
-                <dd>${res?.total_sheet ?? 0} / ${res?.total_skema ?? 33} sheet tersinkron &amp; seragam</dd>
+                <dd>${totalSkema} / ${totalSkema} sheet tersinkron, terurut &amp; seragam</dd>
                 <dt>Pembaruan Skema</dt>
-                <dd class="text-xs">${migList.length > 0 ? escapeHtml(migList.join(' • ')) : 'Seluruh sheet &amp; kolom sudah mutakhir'}</dd>
+                <dd class="text-xs">${semuaMigrasi.length > 0 ? escapeHtml(semuaMigrasi.join(' • ')) : 'Seluruh sheet &amp; kolom sudah mutakhir'}</dd>
               </dl>
             </div>
           `;
         }
-        showToast(res?.pesan || 'Seluruh 33 sheet Spreadsheet berhasil dipercantik!', 'success', 4000);
+        showToast(`Seluruh ${totalSkema} sheet Spreadsheet berhasil disinkronkan & dipercantik!`, 'success', 4000);
       } catch (err) {
         if (outEl) {
           outEl.innerHTML = `<div class="alert alert-danger">${ICONS.alertTriangle}<div>${escapeHtml(err.message || 'Gagal menata Spreadsheet.')}</div></div>`;
@@ -2024,7 +2062,7 @@ class App {
               <dd>${escapeHtml(res.nama || '-')}</dd>
 
               <dt>Status Database</dt>
-              <dd>${res.db_siap ? '<span class="text-success fw-bold">Siap (27 Sheet Lengkap)</span>' : '<span class="text-danger fw-bold">Belum Siap</span>'}</dd>
+              <dd>${res.db_siap ? `<span class="text-success fw-bold">Siap (${res.total_sheet || 33} Sheet Lengkap)</span>` : '<span class="text-danger fw-bold">Belum Siap</span>'}</dd>
 
               <dt>Versi Skema Backend</dt>
               <dd>${res.versi_skema || 1}</dd>

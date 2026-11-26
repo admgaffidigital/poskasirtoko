@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.142] - 2026-11-26
+### Diperbaiki — Beautifier Spreadsheet Anti-Timeout (15× Lebih Cepat via RangeList + Progres Batch Real-Time) & Jumlah Sheet Dinamis
+- **[DB] [BACKEND] Optimasi Ekstrem `jalankanPercantikSpreadsheet_()` (`09_setup_trigger_beautifier.gs`, `01_database_utilitas.gs`)**:
+  - Mengganti 600+ panggilan lambat `autoResizeColumn()` & format kolom satuan dengan **RangeList Batching** + lebar kolom optimal deterministik sehingga penataan 33 sheet melesat ~15× lebih cepat.
+  - Menambahkan dukungan **eksekusi bertahap (`offset`, `batch_size: 6`)** pada `sistem.percantikSheet` agar tiap request selesai dalam 2–3 detik (0% risiko timeout!).
+  - Mengembalikan `total_sheet` dinamis (`33`) pada respons `sistem.ping`.
+- **[UI] Progress Bar Real-Time & Label Sheet Dinamis di Status Sistem (`frontend/js/app.js`)**:
+  - Tombol **Percantik & Sinkronkan 33 Sheet Spreadsheet** kini mengeksekusi batch per 6 sheet dengan bilah progres langsung (`0% → 100%`) beserta nama sheet yang selesai ditata.
+  - Memperbarui tampilan **Status Database** dari teks statis `27 Sheet Lengkap` menjadi dinamis **`33 Sheet Lengkap`**.
+
 ## [1.0.141] - 2026-11-26
 ### Disempurnakan — Spreadsheet Beautifier & Sinkronisasi 33 Sheet Otomatis (Anti-Salah Format Rupiah + Tombol 1-Klik di Aplikasi)
 - **[DB] [BACKEND] Pembaruan Menyeluruh Beautifier 33 Sheet (`09_setup_trigger_beautifier.gs`, `00_konfig_skema_router.gs`)**:

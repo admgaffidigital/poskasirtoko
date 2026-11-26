@@ -329,37 +329,59 @@ const URUTAN_SHEET_SPREADSHEET_ = [
 ];
 
 /**
+ * Hitung lebar kolom optimal deterministik (tanpa autoResizeColumn yang lambat di GAS).
+ */
+function lebarKolomOptimal_(colName) {
+  if (/_json$|foto_url|bukti_url|^value$/.test(colName)) return 200;
+  if (/keterangan|catatan|deskripsi|alamat|alasan/.test(colName)) return 260;
+  if (/^no_|no_transaksi|no_faktur|no_nota|no_retur/.test(colName)) return 175;
+  if (/tanggal|jatuh_tempo|berlaku_sampai|created_at|updated_at|waktu|disetujui_at|void_at|klaim_at|last_login|kunci_sampai|kedaluwarsa|terakhir_aktif/.test(colName)) return 155;
+  if (/nominal|harga|hpp|total|subtotal|bayar|terbayar|sisa|nilai|omset|laba|valuasi|saldo|ongkir|biaya|diskon|kembalian|limit_kredit|modal_awal|kas_sistem|kas_fisik|setoran|arus_kas/.test(colName)) return 135;
+  if (/kategori|judul_proyek|pembawa/.test(colName)) return 175;
+  if (/nama/.test(colName)) return 210;
+  if (/lokasi|arah|status|metode|sumber_dana|tindak_lanjut|pengiriman|level|role|tipe|jenis/.test(colName)) return 125;
+  if (/^id$|_id$|sku|barcode|kode|periode|hp/.test(colName)) return 140;
+  if (/qty|stok|faktor|poin|persen|selisih|urutan|tempo_hari/.test(colName)) return 105;
+  if (/satuan|aktif|deleted|punya_varian/.test(colName)) return 95;
+  return 115;
+}
+
+/**
  * Menyelaraskan skema 33 sheet (buat sheet baru + tambahkan kolom baru tanpa hapus data),
  * mengurutkan tab per kelompok modul, dan menata desain seluruh tabel agar tampil modern & konsisten.
+ * Mendukung mode batch (opsi.offset & opsi.batch_size) agar eksekusi via Web App selalu super cepat (< 4 dtk/batch, bebas timeout).
  */
-function jalankanPercantikSpreadsheet_(ss) {
+function jalankanPercantikSpreadsheet_(ss, opsi) {
+  opsi = opsi || {};
+  const semuaNamaSkema = Object.keys(SKEMA);
+  const daftarUrut = URUTAN_SHEET_SPREADSHEET_.filter(function (n) { return Boolean(SKEMA[n]); });
+  semuaNamaSkema.forEach(function (n) {
+    if (daftarUrut.indexOf(n) === -1) daftarUrut.push(n);
+  });
+
+  const offset = Math.max(0, parseInt(opsi.offset, 10) || 0);
+  const batchSize = parseInt(opsi.batch_size, 10) || 0;
+  const targetDaftar = batchSize > 0 ? daftarUrut.slice(offset, offset + batchSize) : daftarUrut;
+  const isBatchPertama = offset === 0;
+  const isBatchTerakhir = batchSize <= 0 || (offset + targetDaftar.length >= daftarUrut.length);
+
   const migrasiLog = [];
 
-  // Langkah A: Sinkronkan seluruh 33 sheet & kolom terbaru dari SKEMA (zero-data-loss)
-  Object.keys(SKEMA).forEach(function (nama) {
+  // Langkah A: Sinkronkan sheet & kolom terbaru dari SKEMA untuk batch aktif (zero-data-loss)
+  targetDaftar.forEach(function (nama) {
     const info = siapkanSheet_(ss, nama);
     if (info) migrasiLog.push(info);
   });
-  hapusSheetBawaanKosong_(ss);
+  if (isBatchPertama) {
+    hapusSheetBawaanKosong_(ss);
+  }
 
-  // Langkah B: Urutkan posisi tab sheet per kelompok modul (aman jika mock tidak mendukung moveActiveSheet)
-  try {
-    let pos = 1;
-    URUTAN_SHEET_SPREADSHEET_.forEach(function (nama) {
-      const sh = ss.getSheetByName(nama);
-      if (sh && typeof ss.setActiveSheet === 'function' && typeof ss.moveActiveSheet === 'function') {
-        ss.setActiveSheet(sh);
-        ss.moveActiveSheet(pos);
-        pos++;
-      }
-    });
-  } catch (e) {}
-
-  const sheets = ss.getSheets();
   let totalDitata = 0;
+  const sheetDiproses = [];
 
-  sheets.forEach(function (sh) {
-    const nama = sh.getName();
+  targetDaftar.forEach(function (nama) {
+    const sh = ss.getSheetByName(nama);
+    if (!sh) return;
     const lastRow = sh.getLastRow();
     const lastCol = sh.getLastColumn();
     if (lastCol < 1) return;
@@ -388,7 +410,7 @@ function jalankanPercantikSpreadsheet_(ss) {
 
     const headerValues = headerRange.getValues()[0];
 
-    // 4. Format Data Rows (Minimal 50 baris agar sheet kosong tetap langsung cantik saat terisi)
+    // 4. Format Data Rows (Minimal 50 baris agar sheet kosong langsung cantik saat terisi)
     const maxRows = typeof sh.getMaxRows === 'function' ? sh.getMaxRows() : Math.max(lastRow, 50);
     const barisTarget = Math.max(lastRow, Math.min(maxRows, 50));
     const jumlahData = barisTarget - 1;
@@ -424,16 +446,25 @@ function jalankanPercantikSpreadsheet_(ss) {
 
       // Tinggi Baris Data Konsisten (26px)
       try {
-        sh.setRowHeights(2, jumlahData, 26);
-      } catch (e) {
-        try {
-          const batasBaris = Math.min(barisTarget, 50);
-          for (let r = 2; r <= batasBaris; r++) sh.setRowHeight(r, 26);
-        } catch (e2) {}
-      }
+        if (typeof sh.setRowHeights === 'function') {
+          sh.setRowHeights(2, jumlahData, 26);
+        }
+      } catch (e) {}
 
-      // 5. Format Presisi per Nama Kolom (Bebas Salah Format Rupiah pada Qty/Stok!)
+      // 5. Kelompokkan Range A1 per Tipe Format (RangeList = 10x lebih cepat daripada 1-per-1 RPC!)
+      const a1Rupiah = [];
+      const a1RupiahMerah = [];
+      const a1Qty = [];
+      const a1Count = [];
+      const a1Persen = [];
+      const a1Tanggal = [];
+      const a1Right = [];
+      const a1Center = [];
+      const a1Left = [];
+      const a1Wrap = [];
+      const a1Clip = [];
       const condRules = [];
+
       const addRule = function (regex, bg, fg, bold, italic, range) {
         try {
           if (typeof SpreadsheetApp.newConditionalFormatRule !== 'function') return;
@@ -450,7 +481,8 @@ function jalankanPercantikSpreadsheet_(ss) {
       headerValues.forEach(function (h, idx) {
         const colIdx = idx + 1;
         const colName = String(h || '').trim().toLowerCase();
-        const colRange = sh.getRange(2, colIdx, jumlahData, 1);
+        const colLetter = hurufKolom_(colIdx);
+        const a1 = colLetter + '2:' + colLetter + barisTarget;
 
         const isQtyStok = (
           /^(qty|qty_dasar|qty_dibawa|qty_toko|qty_gudang|qty_sistem|qty_fisik|stok|stok_toko|stok_gudang|stok_min|min_grosir_qty|faktor|total_qty_dasar)$/.test(colName) ||
@@ -476,92 +508,101 @@ function jalankanPercantikSpreadsheet_(ss) {
         const isLokasiCol = /^(lokasi|lokasi_stok|lokasi_masuk|asal|tujuan)$/.test(colName);
         const isArahCol = colName === 'arah';
 
-        try {
-          if (isRupiahMerah) {
-            colRange.setNumberFormat('"Rp"#,##0').setHorizontalAlignment('right').setFontWeight('bold').setFontColor('#DC2626');
-          } else if (isPersen) {
-            colRange.setNumberFormat('0.0"%"').setHorizontalAlignment('right');
-          } else if (isQtyStok) {
-            colRange.setNumberFormat('#,##0.###').setHorizontalAlignment('right');
-          } else if (isCounterBulat) {
-            colRange.setNumberFormat('#,##0').setHorizontalAlignment('right');
-          } else if (isRupiah) {
-            colRange.setNumberFormat('"Rp"#,##0').setHorizontalAlignment('right');
-          } else if (isTanggal) {
-            colRange.setNumberFormat('yyyy-mm-dd hh:mm').setHorizontalAlignment('center');
-          } else if (isJsonOrUrl) {
-            colRange.setHorizontalAlignment('left');
-            if (typeof colRange.setWrapStrategy === 'function' && SpreadsheetApp.WrapStrategy) {
-              colRange.setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
-            }
-          } else if (isKeterangan) {
-            colRange.setHorizontalAlignment('left').setWrap(true);
-          } else if (isKode) {
-            colRange.setHorizontalAlignment('center');
-          } else if (isStatusCol || isLokasiCol || isArahCol || /^(sumber_dana|metode|metode_bayar|metode_refund|tipe|jenis|role|pengiriman|level|tindak_lanjut|aktif|deleted|punya_varian|wajib_ganti_pin)$/.test(colName)) {
-            colRange.setHorizontalAlignment('center');
-          }
-        } catch (e) {}
+        if (isRupiahMerah) { a1RupiahMerah.push(a1); a1Right.push(a1); }
+        else if (isPersen) { a1Persen.push(a1); a1Right.push(a1); }
+        else if (isQtyStok) { a1Qty.push(a1); a1Right.push(a1); }
+        else if (isCounterBulat) { a1Count.push(a1); a1Right.push(a1); }
+        else if (isRupiah) { a1Rupiah.push(a1); a1Right.push(a1); }
+        else if (isTanggal) { a1Tanggal.push(a1); a1Center.push(a1); }
+        else if (isJsonOrUrl) { a1Left.push(a1); a1Clip.push(a1); }
+        else if (isKeterangan) { a1Left.push(a1); a1Wrap.push(a1); }
+        else if (isKode || isStatusCol || isLokasiCol || isArahCol || /^(sumber_dana|metode|metode_bayar|metode_refund|tipe|jenis|role|pengiriman|level|tindak_lanjut|aktif|deleted|punya_varian|wajib_ganti_pin)$/.test(colName)) {
+          a1Center.push(a1);
+        }
 
-        // 6. Badge Warna Bersyarat (Status, Lokasi Toko/Gudang, Arah Transfer, Deleted)
-        if (isStatusCol) {
-          addRule('(?i)^(aktif|lunas|selesai|setuju|disetujui|diganti_barang|diambil)$', '#DCFCE7', '#166534', true, false, colRange);
-          addRule('(?i)^(terkunci|dikirim|dibuka_kembali)$', '#DBEAFE', '#1E40AF', true, false, colRange);
-          addRule('(?i)^(tempo|sebagian|draft|pending|diajukan|menunggu|belum_lunas|diproses)$', '#FEF3C7', '#92400E', true, false, colRange);
-          addRule('(?i)^(batal|belum|kritis|habis|tolak|ditolak|ditolak_supplier|hutang)$', '#FEE2E2', '#991B1B', true, false, colRange);
-          addRule('(?i)^(void|nonaktif|ditutup)$', '#F1F5F9', '#64748B', false, true, colRange);
-        } else if (isLokasiCol) {
-          addRule('(?i)^toko$', '#CCFBF1', '#115E59', true, false, colRange);
-          addRule('(?i)^gudang$', '#E0E7FF', '#3730A3', true, false, colRange);
-          addRule('(?i)^split$', '#FEF3C7', '#92400E', true, false, colRange);
-        } else if (isArahCol) {
-          addRule('(?i)^gudang_ke_toko$', '#DCFCE7', '#166534', true, false, colRange);
-          addRule('(?i)^toko_ke_gudang$', '#DBEAFE', '#1E40AF', true, false, colRange);
-        } else if (colName === 'deleted') {
-          addRule('(?i)^true$', '#F1F5F9', '#94A3B8', false, true, colRange);
+        // Badge Warna Bersyarat (Status, Lokasi Toko/Gudang, Arah Transfer, Deleted)
+        if (isStatusCol || isLokasiCol || isArahCol || colName === 'deleted') {
+          const colRange = sh.getRange(2, colIdx, jumlahData, 1);
+          if (isStatusCol) {
+            addRule('(?i)^(aktif|lunas|selesai|setuju|disetujui|diganti_barang|diambil)$', '#DCFCE7', '#166534', true, false, colRange);
+            addRule('(?i)^(terkunci|dikirim|dibuka_kembali)$', '#DBEAFE', '#1E40AF', true, false, colRange);
+            addRule('(?i)^(tempo|sebagian|draft|pending|diajukan|menunggu|belum_lunas|diproses)$', '#FEF3C7', '#92400E', true, false, colRange);
+            addRule('(?i)^(batal|belum|kritis|habis|tolak|ditolak|ditolak_supplier|hutang)$', '#FEE2E2', '#991B1B', true, false, colRange);
+            addRule('(?i)^(void|nonaktif|ditutup)$', '#F1F5F9', '#64748B', false, true, colRange);
+          } else if (isLokasiCol) {
+            addRule('(?i)^toko$', '#CCFBF1', '#115E59', true, false, colRange);
+            addRule('(?i)^gudang$', '#E0E7FF', '#3730A3', true, false, colRange);
+            addRule('(?i)^split$', '#FEF3C7', '#92400E', true, false, colRange);
+          } else if (isArahCol) {
+            addRule('(?i)^gudang_ke_toko$', '#DCFCE7', '#166534', true, false, colRange);
+            addRule('(?i)^toko_ke_gudang$', '#DBEAFE', '#1E40AF', true, false, colRange);
+          } else if (colName === 'deleted') {
+            addRule('(?i)^true$', '#F1F5F9', '#94A3B8', false, true, colRange);
+          }
         }
       });
+
+      // Eksekusi batch RangeList (jauh lebih cepat!)
+      try { if (a1Rupiah.length) sh.getRangeList(a1Rupiah).setNumberFormat('"Rp"#,##0'); } catch (e) {}
+      try { if (a1RupiahMerah.length) sh.getRangeList(a1RupiahMerah).setNumberFormat('"Rp"#,##0').setFontWeight('bold').setFontColor('#DC2626'); } catch (e) {}
+      try { if (a1Qty.length) sh.getRangeList(a1Qty).setNumberFormat('#,##0.###'); } catch (e) {}
+      try { if (a1Count.length) sh.getRangeList(a1Count).setNumberFormat('#,##0'); } catch (e) {}
+      try { if (a1Persen.length) sh.getRangeList(a1Persen).setNumberFormat('0.0"%"'); } catch (e) {}
+      try { if (a1Tanggal.length) sh.getRangeList(a1Tanggal).setNumberFormat('yyyy-mm-dd hh:mm'); } catch (e) {}
+      try { if (a1Right.length) sh.getRangeList(a1Right).setHorizontalAlignment('right'); } catch (e) {}
+      try { if (a1Center.length) sh.getRangeList(a1Center).setHorizontalAlignment('center'); } catch (e) {}
+      try { if (a1Left.length) sh.getRangeList(a1Left).setHorizontalAlignment('left'); } catch (e) {}
+      try { if (a1Wrap.length) sh.getRangeList(a1Wrap).setWrap(true); } catch (e) {}
+      try {
+        if (a1Clip.length && SpreadsheetApp.WrapStrategy) {
+          sh.getRangeList(a1Clip).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+        }
+      } catch (e) {}
 
       if (condRules.length > 0 && typeof sh.setConditionalFormatRules === 'function') {
         try { sh.setConditionalFormatRules(condRules); } catch (e) {}
       }
     }
 
-    // 7. Auto-Fit & Penyetelan Lebar Kolom Proporsional (Anti-Terpotong & Anti-Lebar Berlebih)
+    // 7. Penyetelan Lebar Kolom Optimal & Konsisten (tanpa autoResizeColumn yang memicu timeout!)
     headerValues.forEach(function (h, idx) {
-      const colIdx = idx + 1;
       const colName = String(h || '').trim().toLowerCase();
       try {
-        sh.autoResizeColumn(colIdx);
-        const lebarAuto = sh.getColumnWidth(colIdx);
-
-        let minLebar = 95;
-        let maxLebar = 320;
-        if (/_json$|foto_url|bukti_url|^value$/.test(colName)) { minLebar = 150; maxLebar = 240; }
-        else if (/keterangan|catatan|deskripsi|alamat|alasan/.test(colName)) { minLebar = 230; maxLebar = 320; }
-        else if (/^no_|no_transaksi|no_faktur|no_nota|no_retur/.test(colName)) { minLebar = 165; maxLebar = 210; }
-        else if (/tanggal|jatuh_tempo|created_at|updated_at|waktu|disetujui_at|void_at|klaim_at/.test(colName)) { minLebar = 148; maxLebar = 185; }
-        else if (/nominal|harga|hpp|total|subtotal|bayar|sisa|nilai|omset|laba|valuasi|saldo/.test(colName)) { minLebar = 128; maxLebar = 175; }
-        else if (/kategori/.test(colName)) { minLebar = 160; maxLebar = 220; }
-        else if (/nama/.test(colName)) { minLebar = 195; maxLebar = 280; }
-        else if (/lokasi|arah|status|metode|sumber_dana|tindak_lanjut/.test(colName)) { minLebar = 118; maxLebar = 165; }
-        else if (/id|sku|barcode|kode/.test(colName)) { minLebar = 125; maxLebar = 190; }
-
-        const lebarFinal = Math.min(maxLebar, Math.max(lebarAuto + 16, minLebar));
-        sh.setColumnWidth(colIdx, lebarFinal);
+        sh.setColumnWidth(idx + 1, lebarKolomOptimal_(colName));
       } catch (e) {}
     });
 
     totalDitata++;
+    sheetDiproses.push(nama);
   });
 
+  // Langkah C: Urutkan posisi tab sheet hanya sekali di akhir proses
+  if (isBatchTerakhir) {
+    try {
+      let pos = 1;
+      daftarUrut.forEach(function (nama) {
+        const sh = ss.getSheetByName(nama);
+        if (sh && typeof ss.setActiveSheet === 'function' && typeof ss.moveActiveSheet === 'function') {
+          ss.setActiveSheet(sh);
+          ss.moveActiveSheet(pos);
+          pos++;
+        }
+      });
+    } catch (e) {}
+  }
+
   SpreadsheetApp.flush();
-  const semuaNamaSkema = Object.keys(SKEMA);
   const semuaTerdaftar = semuaNamaSkema.every(function (n) {
     return Boolean(TAB_WARNA_SPREADSHEET_[n]) && URUTAN_SHEET_SPREADSHEET_.indexOf(n) !== -1;
   });
+  const nextOffset = offset + targetDaftar.length;
   return {
-    total_sheet: totalDitata,
+    selesai: nextOffset >= daftarUrut.length,
+    offset: offset,
+    next_offset: nextOffset,
+    diproses: totalDitata,
+    sheet_diproses: sheetDiproses,
+    total_sheet: batchSize > 0 ? Math.min(nextOffset, daftarUrut.length) : totalDitata,
     total_skema: semuaNamaSkema.length,
     semua_terdaftar: semuaTerdaftar,
     migrasi: migrasiLog
@@ -593,17 +634,29 @@ function percantikTampilanSpreadsheet() {
 }
 
 /**
- * sistem.percantikSheet — Endpoint API (Khusus Owner) untuk menyinkronkan skema & menata tampilan seluruh 33 sheet Spreadsheet langsung dari aplikasi.
+ * sistem.percantikSheet — Endpoint API (Khusus Owner) mendukung batch (offset & batch_size) agar bebas timeout & tampilkan progres real-time.
  */
 function aksiSistemPercantikSheet_(ctx) {
+  const p = ctx.payload || {};
   const ss = ss_();
-  const hasil = jalankanPercantikSpreadsheet_(ss);
-  catatAudit_(ctx.user.id, 'sistem_percantik_sheet', 'SISTEM', '', {
-    total_sheet: hasil.total_sheet,
-    migrasi_count: hasil.migrasi.length
+  const hasil = jalankanPercantikSpreadsheet_(ss, {
+    offset: p.offset || 0,
+    batch_size: p.batch_size || 0
   });
+  if (hasil.selesai) {
+    catatAudit_(ctx.user.id, 'sistem_percantik_sheet', 'SISTEM', '', {
+      total_sheet: hasil.total_skema,
+      migrasi_count: hasil.migrasi.length
+    });
+  }
   return {
-    pesan: 'Seluruh ' + hasil.total_sheet + ' sheet Spreadsheet berhasil disinkronkan & dipercantik konsisten!',
+    pesan: hasil.selesai
+      ? 'Seluruh ' + hasil.total_skema + ' sheet Spreadsheet berhasil disinkronkan & dipercantik konsisten!'
+      : 'Menata ' + hasil.total_sheet + ' / ' + hasil.total_skema + ' sheet...',
+    selesai: hasil.selesai,
+    next_offset: hasil.next_offset,
+    diproses: hasil.diproses,
+    sheet_diproses: hasil.sheet_diproses,
     total_sheet: hasil.total_sheet,
     total_skema: hasil.total_skema,
     semua_terdaftar: hasil.semua_terdaftar,
