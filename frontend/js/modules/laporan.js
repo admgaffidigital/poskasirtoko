@@ -495,7 +495,7 @@ function renderTabDashboard(container, data) {
             <div class="stat-card-icon icon-amber">${ICONS.shoppingBag}</div>
           </div>
           <div class="stat-card-value tabular" style="color: var(--primary);">${formatRupiah(r.total_penjualan || 0)}</div>
-          <div class="stat-card-desc">${formatAngka(r.total_transaksi || 0)} transaksi • ${formatAngka(r.total_item_terjual || 0)} item</div>
+          <div class="stat-card-desc">${formatAngka(r.total_transaksi || 0)} transaksi • ${formatAngka(r.total_item_terjual || 0)} item${Number(r.total_retur_penjualan || 0) > 0 ? ` • Retur -${formatRupiah(r.total_retur_penjualan)}` : ''}</div>
         </div>
 
         <div class="stat-card-pro">
@@ -864,12 +864,13 @@ function renderTabPenjualan(container, data) {
       <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
         <div class="stat-card-pro">
           <div class="stat-card-header">
-            <span class="stat-card-title">Total Omset Penjualan</span>
+            <span class="stat-card-title">Total Omset Bersih</span>
             <div class="stat-card-icon icon-emerald">${ICONS.shoppingBag}</div>
           </div>
           <div class="stat-card-value" style="color: var(--primary);">${formatRupiah(r.total_omset || 0)}</div>
           <div class="stat-card-desc" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <span class="badge badge-primary">${formatAngka(r.total_transaksi || 0)} Transaksi Aktif</span>
+            ${(r.total_retur || 0) > 0 ? `<span class="badge badge-warning">Retur -${formatRupiah(r.total_retur)}</span>` : ''}
             ${(r.total_void || 0) > 0 ? `<span class="badge badge-danger">${formatAngka(r.total_void)} Batal</span>` : ''}
           </div>
         </div>
@@ -908,9 +909,11 @@ function renderTabPenjualan(container, data) {
           <div class="lap-subfilter-bar no-print">
             <select id="sel-filter-bayar-jual" class="input input-sm">
               <option value="">Semua Status</option>
+              <option value="aktif_bersih" ${stateLaporan.filterPenjualan.status_bayar === 'aktif_bersih' ? 'selected' : ''}>Aktif (Tanpa Void/Retur Penuh)</option>
               <option value="lunas" ${stateLaporan.filterPenjualan.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
               <option value="belum_lunas" ${stateLaporan.filterPenjualan.status_bayar === 'belum_lunas' ? 'selected' : ''}>Belum Lunas (Tempo)</option>
               <option value="sebagian" ${stateLaporan.filterPenjualan.status_bayar === 'sebagian' ? 'selected' : ''}>Sebagian</option>
+              <option value="diretur" ${stateLaporan.filterPenjualan.status_bayar === 'diretur' ? 'selected' : ''}>Pernah Diretur</option>
             </select>
             <select id="sel-filter-metode-jual" class="input input-sm">
               <option value="">Semua Metode</option>
@@ -944,28 +947,51 @@ function renderTabPenjualan(container, data) {
                 ${items.length === 0 ? `
                   <tr><td colspan="${isOwner ? (canVoid ? 9 : 9) : (canVoid ? 8 : 8)}" style="text-align: center; color: var(--text-muted); padding: var(--sp-6);">Tidak ada data penjualan sesuai filter</td></tr>
                 ` : items.map((j) => {
-    const isVoided = j.status === 'void';
-    return `
-                  <tr style="${isVoided ? 'opacity: 0.65; background: var(--bg-surface-variant);' : ''}">
+                  const isVoided = j.status === 'void';
+                  const isReturPenuh = !isVoided && j.status_retur === 'penuh';
+                  const isReturSebagian = !isVoided && j.status_retur === 'sebagian';
+                  const adaRetur = isReturPenuh || isReturSebagian;
+                  const noReturStr = Array.isArray(j.daftar_no_retur) && j.daftar_no_retur.length ? j.daftar_no_retur.join(', ') : '';
+                  const totalBersih = j.total_bersih !== undefined ? j.total_bersih : j.total;
+                  return `
+                  <tr style="${isVoided || isReturPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
                     <td data-label="No Nota">
-                      <span style="font-family: var(--font-mono); font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</span>
+                      <div class="cell-stack" style="gap: 2px;">
+                        <span style="font-family: var(--font-mono); font-weight: var(--fw-bold); ${isVoided || isReturPenuh ? 'text-decoration: line-through;' : ''}">${escapeHtml(j.no_nota)}</span>
+                        ${noReturStr ? `<span class="text-2xs font-mono text-warning">Retur: ${escapeHtml(noReturStr)}</span>` : ''}
+                      </div>
                     </td>
                     <td style="font-size: var(--fs-xs); color: var(--text-muted);" data-label="Tanggal">${formatTanggal(j.tanggal)}</td>
                     <td data-label="Kasir">${escapeHtml(j.kasir_nama || 'Kasir')}</td>
                     <td data-label="Pelanggan">${escapeHtml(j.pelanggan_nama || 'Umum')}</td>
                     <td data-label="Metode"><span class="badge badge-info">${escapeHtml(formatLabelMetodeBayar(j.metode_bayar || 'tunai'))}</span></td>
                     <td data-label="Status">
-                      ${isVoided ? `
-                        <span class="badge badge-danger" title="Transaksi Dibatalkan / Void">Dibatalkan</span>
-                      ` : `
-                        <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'tempo' || j.status_bayar === 'belum_lunas' ? 'badge-danger' : 'badge-warning')}">
-                          ${escapeHtml(formatLabelStatusBayar(j.status_bayar || 'lunas'))}
-                        </span>
-                      `}
+                      <div class="cell-stack" style="gap: 3px; align-items: flex-start;">
+                        ${isVoided ? `
+                          <span class="badge badge-danger" title="Transaksi Dibatalkan / Void">Dibatalkan</span>
+                        ` : (isReturPenuh ? `
+                          <span class="badge badge-warning" title="Seluruh nilai nota telah diretur">Diretur Penuh</span>
+                        ` : `
+                          <span class="badge ${j.status_bayar === 'lunas' ? 'badge-success' : (j.status_bayar === 'tempo' || j.status_bayar === 'belum_lunas' ? 'badge-danger' : 'badge-warning')}">
+                            ${escapeHtml(formatLabelStatusBayar(j.status_bayar || 'lunas'))}
+                          </span>
+                          ${isReturSebagian ? `<span class="badge badge-warning badge-xs">Diretur Sebagian</span>` : ''}
+                        `)}
+                      </div>
                     </td>
-                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold); ${isVoided ? 'text-decoration: line-through;' : ''}" data-label="Total Transaksi">${formatRupiah(j.total)}</td>
+                    <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-bold);" data-label="Total Transaksi">
+                      ${isVoided ? `
+                        <span style="text-decoration: line-through; color: var(--text-muted);">${formatRupiah(j.total)}</span>
+                      ` : (adaRetur ? `
+                        <div class="cell-stack" style="align-items: flex-end; gap: 1px;">
+                          <span class="text-2xs text-muted" style="text-decoration: line-through; font-weight: var(--fw-normal);">${formatRupiah(j.total)}</span>
+                          <span style="color: ${isReturPenuh ? 'var(--text-muted)' : 'var(--text)'};">${formatRupiah(totalBersih)}</span>
+                          <span class="text-2xs text-danger" style="font-weight: var(--fw-normal);">Retur -${formatRupiah(j.total_retur || 0)}</span>
+                        </div>
+                      ` : formatRupiah(j.total))}
+                    </td>
                     ${isOwner ? `
-                      <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-semibold); color: ${isVoided ? 'var(--text-muted)' : 'var(--success)'};" data-label="Laba Kotor">
+                      <td class="tabular" style="text-align: right; white-space: nowrap; font-weight: var(--fw-semibold); color: ${isVoided || isReturPenuh ? 'var(--text-muted)' : 'var(--success)'};" data-label="Laba Kotor">
                         ${isVoided ? '-' : formatRupiah(j.laba_kotor || 0)}
                       </td>
                     ` : ''}
@@ -979,7 +1005,7 @@ function renderTabPenjualan(container, data) {
                           ${ICONS.eye}
                           <span>Rincian</span>
                         </button>
-                        ${canVoid && !isVoided ? `
+                        ${canVoid && !isVoided && !adaRetur ? `
                           <button type="button" class="btn btn-sm btn-outline-danger btn-void-nota" data-id="${j.id}" data-nonota="${escapeHtml(j.no_nota)}" data-total="${formatRupiah(j.total)}" title="Batalkan / Void Transaksi">
                             ${ICONS.trash}
                             <span>Void</span>
@@ -1183,6 +1209,10 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
     const role = user?.role;
     const canVoid = role === 'owner' || role === 'admin';
     const isVoided = j.status === 'void';
+    const returList = Array.isArray(d.retur_list) ? d.retur_list : [];
+    const totalRetur = Number(d.total_retur || 0);
+    const totalBersih = d.total_bersih !== undefined ? Number(d.total_bersih) : Number(j.total || 0);
+    const adaRetur = returList.length > 0;
 
     const modalBody = `
       <div class="stack" style="gap: var(--sp-3);">
@@ -1193,6 +1223,18 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
               <strong>TRANSAKSI INI TELAH DIBATALKAN (VOID)</strong>
               ${(j.void_alasan || j.alasan_void) ? `<div style="margin-top: 2px;"><strong>Alasan:</strong> ${escapeHtml(j.void_alasan || j.alasan_void)}</div>` : ''}
               ${j.void_at ? `<div style="font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px;">Waktu Batal: ${formatTanggal(j.void_at)}</div>` : ''}
+            </div>
+          </div>
+        ` : ''}
+        ${adaRetur ? `
+          <div class="alert alert-warning" style="display: flex; gap: var(--sp-2); align-items: flex-start; margin-bottom: var(--sp-1);">
+            <span style="flex-shrink: 0; margin-top: 2px;">${ICONS.rotateCcw}</span>
+            <div style="font-size: var(--fs-sm);">
+              <strong>NOTA INI MEMILIKI RIWAYAT RETUR (${d.status_retur === 'penuh' ? 'DIRETUR PENUH' : (d.status_retur === 'sebagian' ? 'DIRETUR SEBAGIAN' : 'MENUNGGU PERSETUJUAN')})</strong>
+              <div style="margin-top: 4px; font-size: var(--fs-xs);">
+                ${returList.map((rt) => `<div>• <strong class="font-mono">${escapeHtml(rt.no_retur)}</strong> (${escapeHtml(rt.status)}): -${formatRupiah(rt.total)} — ${escapeHtml(rt.alasan || '-')}</div>`).join('')}
+              </div>
+              <div style="margin-top: 4px; font-size: var(--fs-xs);">Nota tetap disimpan sebagai arsip akuntansi. Nilai bersih setelah retur: <strong>${formatRupiah(totalBersih)}</strong>.</div>
             </div>
           </div>
         ` : ''}
@@ -1267,6 +1309,14 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
           <div class="cluster" style="justify-content: space-between; font-weight: var(--fw-bold); font-size: var(--fs-base); margin-top: 4px;">
             <span>TOTAL TRANSAKSI:</span><span style="color: var(--primary);">${formatRupiah(j.total)}</span>
           </div>
+          ${totalRetur > 0 ? `
+            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-sm); color: var(--danger); margin-top: 2px;">
+              <span>Retur Disetujui:</span><span>- ${formatRupiah(totalRetur)}</span>
+            </div>
+            <div class="cluster" style="justify-content: space-between; font-weight: var(--fw-bold); font-size: var(--fs-base); border-top: 1px dashed var(--border); padding-top: 4px; margin-top: 4px;">
+              <span>TOTAL BERSIH SETELAH RETUR:</span><span style="color: var(--success);">${formatRupiah(totalBersih)}</span>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -1278,7 +1328,7 @@ async function bukaModalDetailNota(penjualanId, onUpdated) {
             ${ICONS.printer}
             <span>Cetak Struk</span>
           </button>
-          ${canVoid && !isVoided ? `
+          ${canVoid && !isVoided && !adaRetur ? `
             <button type="button" class="btn btn-danger btn-sm btn-modal-void-nota" title="Batalkan / Hapus Transaksi Ini">
               ${ICONS.trash}
               <span>Batalkan Transaksi (Void)</span>

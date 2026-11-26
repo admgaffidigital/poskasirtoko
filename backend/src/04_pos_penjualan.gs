@@ -864,9 +864,20 @@ function aksiPenjualanList_(ctx) {
   const pelangganPeta = {};
   semuaPelanggan.forEach(function (pl) { pelangganPeta[pl.id] = pl.nama; });
 
+  const returMap = {};
+  bacaSemua_('Retur').forEach(function (rt) {
+    if (rt.deleted || rt.tipe !== 'jual' || rt.status !== 'disetujui' || !rt.ref_id) return;
+    returMap[rt.ref_id] = (returMap[rt.ref_id] || 0) + (Number(rt.total) || 0);
+  });
+
   let data = semuaPenjualan.map(function (pj) {
     const copy = Object.assign({}, pj);
     copy.pelanggan_nama = pelangganPeta[pj.pelanggan_id] || (pj.pelanggan_id ? 'Pelanggan' : 'Umum (Non-Member)');
+    const tot = Number(pj.total) || 0;
+    const totRet = Math.min(tot, Math.round(returMap[pj.id] || 0));
+    copy.total_retur = totRet;
+    copy.total_bersih = Math.max(0, tot - totRet);
+    copy.status_retur = totRet <= 0 ? '' : (totRet >= tot && tot > 0 ? 'penuh' : 'sebagian');
     return copy;
   });
 
@@ -957,10 +968,33 @@ function aksiPenjualanDetail_(ctx) {
   const kasir = penjualan.kasir_id ? cariById_('Users', penjualan.kasir_id) : null;
   const peng = ambilPengaturan_();
 
+  const returList = bacaSemua_('Retur').filter(function (rt) {
+    return !rt.deleted && rt.tipe === 'jual' && rt.ref_id === penjualan.id && rt.status !== 'ditolak';
+  }).map(function (rt) {
+    return {
+      id: rt.id,
+      no_retur: rt.no_retur,
+      tanggal: rt.tanggal,
+      total: Number(rt.total) || 0,
+      metode_refund: rt.metode_refund,
+      alasan: rt.alasan,
+      status: rt.status
+    };
+  });
+  const totalReturDisetujui = returList
+    .filter(function (rt) { return rt.status === 'disetujui'; })
+    .reduce(function (s, rt) { return s + rt.total; }, 0);
+  const totNota = Number(penjualan.total) || 0;
+  const statusRetur = totalReturDisetujui <= 0 ? '' : (totalReturDisetujui >= totNota && totNota > 0 ? 'penuh' : 'sebagian');
+
   return {
     penjualan: penjualan,
     items: items,
     pembayaran: pembayaran,
+    retur_list: returList,
+    total_retur: Math.min(totNota, Math.round(totalReturDisetujui)),
+    total_bersih: Math.max(0, totNota - Math.min(totNota, Math.round(totalReturDisetujui))),
+    status_retur: statusRetur,
     pelanggan: pelanggan,
     kasir: kasir ? { id: kasir.id, nama: kasir.nama || kasir.username } : null,
     toko: {

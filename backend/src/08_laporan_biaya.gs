@@ -379,6 +379,7 @@ function aksiLaporanDashboard_(ctx) {
       total_hutang_aktif: totalHutangAktif,
       count_hutang_aktif: countHutangAktif,
       total_nilai_aset_stok: isOwner ? Math.round(totalAsetStok) : null,
+      total_retur_penjualan: Math.round(efekRetur.total_retur || 0),
       laba_kotor: labaKotor,
       margin_persen: marginPersen,
       total_biaya_operasional: totalBiayaOperasional,
@@ -411,7 +412,7 @@ function aksiLaporanPenjualan_(ctx) {
   const pelMap = {};
   semuaPelanggan.forEach(function (pel) { pelMap[pel.id] = pel.nama; });
 
-  // Map HPP snapshot item jika Owner
+  // Map HPP snapshot item jika Owner & Map Retur Penjualan Disetujui per Nota
   const semuaItems = isOwner ? bacaSemua_('Penjualan_Item') : [];
   const hppByJual = {};
   const itemCountByJual = {};
@@ -420,6 +421,29 @@ function aksiLaporanPenjualan_(ctx) {
       if (it.deleted) return;
       hppByJual[it.penjualan_id] = (hppByJual[it.penjualan_id] || 0) + hitungTotalHppItem_(it);
       itemCountByJual[it.penjualan_id] = (itemCountByJual[it.penjualan_id] || 0) + 1;
+    });
+  }
+
+  const semuaReturJual = bacaSemua_('Retur').filter(function (rt) {
+    return !rt.deleted && rt.tipe === 'jual' && rt.status === 'disetujui';
+  });
+  const returIdToJual = {};
+  const returByJual = {};
+  semuaReturJual.forEach(function (rt) {
+    if (!rt.ref_id) return;
+    returIdToJual[rt.id] = rt.ref_id;
+    if (!returByJual[rt.ref_id]) {
+      returByJual[rt.ref_id] = { total_retur: 0, retur_hpp: 0, no_retur_list: [] };
+    }
+    returByJual[rt.ref_id].total_retur += (Number(rt.total) || 0);
+    if (rt.no_retur) returByJual[rt.ref_id].no_retur_list.push(rt.no_retur);
+  });
+  if (isOwner && semuaReturJual.length > 0) {
+    bacaSemua_('Retur_Item').forEach(function (ri) {
+      if (ri.deleted) return;
+      const jualId = returIdToJual[ri.retur_id];
+      if (!jualId || !returByJual[jualId]) return;
+      returByJual[jualId].retur_hpp += hitungTotalHppItem_(ri);
     });
   }
 
@@ -433,7 +457,16 @@ function aksiLaporanPenjualan_(ctx) {
     if (p.kasir_id && j.kasir_id !== p.kasir_id) return false;
     if (p.pelanggan_id && j.pelanggan_id !== p.pelanggan_id) return false;
     if (p.metode_bayar && j.metode_bayar !== p.metode_bayar) return false;
-    if (p.status_bayar && j.status_bayar !== p.status_bayar) return false;
+    if (p.status_bayar === 'diretur') {
+      const infoR = returByJual[j.id];
+      if (!infoR || infoR.total_retur <= 0) return false;
+    } else if (p.status_bayar === 'aktif_bersih') {
+      const infoR = returByJual[j.id];
+      const totR = infoR ? infoR.total_retur : 0;
+      if (j.status === 'void' || (Number(j.total || 0) > 0 && totR >= Number(j.total || 0))) return false;
+    } else if (p.status_bayar && j.status_bayar !== p.status_bayar) {
+      return false;
+    }
 
     return true;
   });
@@ -443,12 +476,16 @@ function aksiLaporanPenjualan_(ctx) {
     return new Date(b.tanggal || b.created_at || 0) - new Date(a.tanggal || a.created_at || 0);
   });
 
+  let totalOmsetKotor = 0;
+  let totalRetur = 0;
   let totalOmset = 0;
   let totalDiskon = 0;
   let totalPajak = 0;
   let totalLaba = 0;
   let totalTransaksiAktif = 0;
   let totalVoid = 0;
+  let totalDireturPenuh = 0;
+  let totalDireturSebagian = 0;
 
   const items = filtered.map(function (j) {
     const total = Number(j.total) || 0;
@@ -456,12 +493,23 @@ function aksiLaporanPenjualan_(ctx) {
     const pajak = Number(j.pajak) || 0;
     const isVoid = j.status === 'void';
     const isAktif = !isVoid && j.status !== 'pending';
+    const infoR = returByJual[j.id] || { total_retur: 0, retur_hpp: 0, no_retur_list: [] };
+    const returNota = isAktif ? Math.min(total, Math.round(infoR.total_retur || 0)) : 0;
+    const totalBersih = isAktif ? Math.max(0, total - returNota) : 0;
+    const statusRetur = returNota <= 0 ? '' : (returNota >= total && total > 0 ? 'penuh' : 'sebagian');
 
     if (isAktif) {
-      totalOmset += total;
+      totalOmsetKotor += total;
+      totalRetur += returNota;
+      totalOmset += totalBersih;
       totalDiskon += diskon;
       totalPajak += pajak;
-      totalTransaksiAktif += 1;
+      if (statusRetur === 'penuh') {
+        totalDireturPenuh += 1;
+      } else {
+        totalTransaksiAktif += 1;
+        if (statusRetur === 'sebagian') totalDireturSebagian += 1;
+      }
     } else if (isVoid) {
       totalVoid += 1;
     }
@@ -479,6 +527,10 @@ function aksiLaporanPenjualan_(ctx) {
       pajak: pajak,
       pembulatan: Number(j.pembulatan) || 0,
       total: total,
+      total_retur: returNota,
+      total_bersih: totalBersih,
+      status_retur: statusRetur,
+      daftar_no_retur: infoR.no_retur_list,
       bayar: Number(j.bayar) || 0,
       kembalian: Number(j.kembalian) || 0,
       metode_bayar: j.metode_bayar,
@@ -490,7 +542,9 @@ function aksiLaporanPenjualan_(ctx) {
 
     if (isOwner) {
       const hppTot = hppByJual[j.id] || 0;
-      const laba = isAktif ? Math.round(total - hppTot) : 0;
+      const returHpp = isAktif ? Math.round(infoR.retur_hpp || 0) : 0;
+      const dampakLabaRetur = returNota - returHpp;
+      const laba = isAktif ? (statusRetur === 'penuh' ? 0 : Math.round((total - hppTot) - dampakLabaRetur)) : 0;
       row.laba_kotor = laba;
       row.hpp_total = hppTot;
       if (isAktif) totalLaba += laba;
@@ -507,10 +561,14 @@ function aksiLaporanPenjualan_(ctx) {
     rentang: rentang,
     ringkasan: {
       total_omset: totalOmset,
+      total_omset_kotor: totalOmsetKotor,
+      total_retur: totalRetur,
       total_diskon: totalDiskon,
       total_pajak: totalPajak,
       total_transaksi: totalTransaksiAktif,
       total_void: totalVoid,
+      total_diretur_penuh: totalDireturPenuh,
+      total_diretur_sebagian: totalDireturSebagian,
       total_laba: isOwner ? totalLaba : null
     },
     items: items.slice(mulai, mulai + limit),

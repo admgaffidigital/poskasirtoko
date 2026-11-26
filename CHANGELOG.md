@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.144] - 2026-11-27
+### Diperbaiki — Transparansi Status & Nominal Bersih Nota Diretur di Laporan Penjualan, Detail Nota, & Dashboard
+- **[DASHBOARD] [POS-JUAL] [RETUR] [BACKEND] Pemotongan Otomatis Nilai Retur di `laporan.penjualan` & `penjualan.detail` (`08_laporan_biaya.gs`, `04_pos_penjualan.gs`)**:
+  - Nota yang sudah diretur tetap tersimpan sebagai arsip akuntansi, namun kini otomatis ditandai `status_retur` (`penuh` / `sebagian`), `total_retur`, `total_bersih`, dan `daftar_no_retur` (`RT-...`).
+  - `ringkasan.total_omset` & `ringkasan.total_laba` pada **Laporan Penjualan** kini menghitung **Omset & Laba Bersih Setelah Retur** (100% klop dengan Laba Rugi & Dashboard), plus opsi filter **Aktif (Tanpa Void/Retur Penuh)** dan **Pernah Diretur**.
+- **[UI] Badge `Diretur Penuh` / `Diretur Sebagian`, Coretan Nominal Lama, & Banner Retur di Detail Nota (`frontend/js/modules/laporan.js`)**:
+  - Baris nota yang diretur penuh tampil redup dengan badge `Diretur Penuh`, nomor `RT-...`, nominal lama dicoret, total bersih `Rp 0`, dan tombol `Void` otomatis disembunyikan agar tidak terjadi pembatalan ganda.
+  - Modal **Rincian Transaksi Penjualan** kini menampilkan banner peringatan riwayat retur lengkap dengan rincian `Total Bersih Setelah Retur`.
+
 ## [1.0.143] - 2026-11-26
 ### Disempurnakan — Sinkronisasi Akuntansi Dashboard, Engine API Retry & Cache Fix, Multi-Lokasi Produk/Retur/POS, & Tata Letak Responsif
 - **[DASHBOARD] [BACKEND] Sinkronisasi 100% Kerugian Barang Rusak pada Dashboard (`08_laporan_biaya.gs`, `laporan.js`)**:

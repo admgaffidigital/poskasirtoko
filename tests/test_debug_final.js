@@ -2500,6 +2500,32 @@ async function runAudit() {
     assert(varMerahAfter.stok_toko === 4 && varMerahAfter.stok_gudang === 16 && prVarAfter.stok_toko === 4 && prVarAfter.stok_gudang === 16,
       `produk.update wajib mempertahankan stok_toko=4 & stok_gudang=16 varian & induk; aktual var=(${varMerahAfter.stok_toko},${varMerahAfter.stok_gudang})`);
 
+    // 29f4. Transaksi diretur penuh/sebagian wajib tampil status_retur & mengurangi omset/laba di laporan.penjualan
+    const jualRetUji = envGd.aksiPenjualanCreate_({
+      user: ownerRow,
+      payload: {
+        lokasi_stok: 'toko',
+        items: [{ produk_id: prLegacy.id, qty: 2, harga: 65000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 130000 }]
+      }
+    });
+    envGd.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual', ref_id: jualRetUji.penjualan.id, lokasi: 'toko', alasan: 'Uji retur penuh laporan penjualan', metode_refund: 'kas',
+        items: [{ produk_id: prLegacy.id, nama: prLegacy.nama, satuan: 'SAK', faktor: 1, qty: 2, harga: 65000, hpp: 50000 }]
+      }
+    });
+    const lapJualRet = envGd.aksiLaporanPenjualan_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    const rowRetPenuh = lapJualRet.items.find((x) => x.id === jualRetUji.penjualan.id);
+    assert(rowRetPenuh && rowRetPenuh.status_retur === 'penuh' && rowRetPenuh.total_retur === 130000 && rowRetPenuh.total_bersih === 0 && rowRetPenuh.laba_kotor === 0,
+      `Nota diretur penuh wajib berstatus_retur='penuh', total_bersih=0, laba_kotor=0; aktual: ${JSON.stringify(rowRetPenuh)}`);
+    assert(lapJualRet.ringkasan.total_omset === 0 && lapJualRet.ringkasan.total_retur === 130000 && lapJualRet.ringkasan.total_diretur_penuh === 1,
+      `Ringkasan laporan.penjualan wajib memotong omset retur penuh (omset=0, retur=130000); aktual: ${JSON.stringify(lapJualRet.ringkasan)}`);
+    const detRetPenuh = envGd.aksiPenjualanDetail_({ user: ownerRow, payload: { id: jualRetUji.penjualan.id } });
+    assert(detRetPenuh.status_retur === 'penuh' && detRetPenuh.total_retur === 130000 && detRetPenuh.retur_list.length === 1,
+      'penjualan.detail wajib menyertakan status_retur, total_retur, & daftar retur_list');
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');
