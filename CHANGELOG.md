@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.150] - 2026-11-27
+### Keamanan & Diperbaiki — Audit Total: Hardening RBAC Tutup Harian/Bulanan, Anti-Leak HPP Kasir, & Validasi Harga/HPP Retur Server-Side
+- **[AUTH] [DASHBOARD] [POS-JUAL] [BACKEND] Perbaikan RBAC & Kerahasiaan Laba pada Tutup Harian (EOD) & Tutup Buku Bulanan (`00_konfig_skema_router.gs`, `08_laporan_biaya.gs`, `pos.js`, `laporan.js`)**:
+  - Memisahkan perhitungan internal `bangunRekapHarian_` + masker `samarkanRekapNonOwner_` sehingga **Kasir/Admin tidak lagi gagal `FORBIDDEN`** saat membuka tab Tutup Harian di POS, sekaligus menyembunyikan metrik rahasia (`total_hpp`, `laba_kotor`, `laba_bersih`, `margin_persen`, `total_kerugian_rusak`, dan `arus_kas` untuk Kasir) dari respons API, UI, maupun format pesan WhatsApp EOD.
+  - Membatasi endpoint `tutupBuku.evaluasiBulanan`, `tutupBuku.list`, serta tab **Tutup Bulanan** di `laporan.js` khusus untuk **Owner** (sebelumnya terbuka ke Admin padahal membaca Laba Rugi Owner-only).
+- **[AUTH] [POS-JUAL] [RETUR] [BACKEND] Anti-Kebocoran HPP & Isolasi Retur Pembelian untuk Kasir (`04_pos_penjualan.gs`, `06_hutang_piutang_retur.gs`)**:
+  - Menghapus field `hpp` pada respons `penjualan.create`, `penjualan.detail`, dan `retur.detail` saat diakses role **Kasir**.
+  - Memfilter `retur.list` agar Kasir hanya melihat retur penjualan (`tipe: 'jual'`) dan memblokir `retur.detail` untuk dokumen retur pembelian (`tipe: 'beli'`) dengan `FORBIDDEN`.
+- **[RETUR] [BACKEND] Validasi Harga Bersih & HPP Retur Penjualan 100% Server-Side (`06_hutang_piutang_retur.gs`)**:
+  - `retur.create` (`tipe: 'jual'`) kini menghitung harga satuan bersih (setelah diskon item & diskon nota proporsional) serta HPP snapshot langsung dari `Penjualan_Item` di sisi server, kebal terhadap manipulasi payload klien.
+
 ## [1.0.149] - 2026-11-27
 ### Diperbaiki — Presisi 100% Komposisi Metode Bayar Dashboard, Cap Nilai Retur Nota Berdiskon, & Hitungan Pelanggan Terbesar
 - **[DASHBOARD] [RETUR] [BACKEND] Anti-153% Komposisi Pembayaran & Cap Nilai Retur (`08_laporan_biaya.gs`, `06_hutang_piutang_retur.gs`, `retur.js`)**:

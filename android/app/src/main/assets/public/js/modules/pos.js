@@ -3565,7 +3565,7 @@ export function renderPosModule(container) {
             <div class="detail-kv-row"><span class="text-muted">Omset Bersih Hari Ini</span><span class="fw-bold mono text-primary">${formatRupiah(rEod.omset_bersih || 0)}</span></div>
             <div class="detail-kv-row"><span class="text-muted">Tunai / Non-Tunai / Tempo</span><span class="fw-semibold mono text-xs">${formatRupiah(rEod.total_tunai || 0)} / ${formatRupiah(rEod.total_transfer || 0)} / ${formatRupiah(rEod.total_tempo || 0)}</span></div>
             <div class="detail-kv-row"><span class="text-muted">Biaya Operasional Hari Ini</span><span class="fw-bold mono text-danger">-${formatRupiah(rEod.total_biaya || 0)}</span></div>
-            <div class="detail-kv-row"><span class="text-muted">Estimasi Laba Bersih Hari Ini</span><span class="fw-bold mono text-success">${formatRupiah(rEod.laba_bersih || 0)}</span></div>
+            ${user.role === 'owner' ? `<div class="detail-kv-row"><span class="text-muted">Estimasi Laba Bersih Hari Ini</span><span class="fw-bold mono text-success">${formatRupiah(rEod.laba_bersih || 0)}</span></div>` : ''}
             <div class="detail-kv-row"><span class="text-muted">Total Kas Fisik Semua Shift</span><span class="fw-bold mono">${formatRupiah(rEod.total_kas_fisik || 0)}</span></div>
             <div class="detail-kv-row"><span class="text-muted">Akumulasi Selisih Laci</span><span class="fw-bold mono ${Number(rEod.total_selisih || 0) === 0 ? 'text-success' : (Number(rEod.total_selisih || 0) < 0 ? 'text-danger' : 'text-info')}">${Number(rEod.total_selisih || 0) >= 0 ? '+' : ''}${formatRupiah(rEod.total_selisih || 0)}</span></div>
           </div>
@@ -3611,7 +3611,7 @@ export function renderPosModule(container) {
             `- Transfer/QRIS : ${formatRupiah(rEod.total_transfer || 0)}`,
             `- Tempo/Piutang : ${formatRupiah(rEod.total_tempo || 0)}`,
             `Biaya Hari Ini  : ${formatRupiah(rEod.total_biaya || 0)}`,
-            `Laba Bersih Est : *${formatRupiah(rEod.laba_bersih || 0)}*`,
+            user.role === 'owner' ? `Laba Bersih Est : *${formatRupiah(rEod.laba_bersih || 0)}*` : '',
             `--------------------------------`,
             `Kas Fisik Shift : ${formatRupiah(rEod.total_kas_fisik || 0)}`,
             `Selisih Laci    : ${formatRupiah(rEod.total_selisih || 0)}`,

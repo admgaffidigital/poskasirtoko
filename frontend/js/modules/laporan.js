@@ -129,10 +129,12 @@ export async function renderLaporanModule(container) {
           ${ICONS.truck}
           <span>Pengiriman</span>
         </button>
-        <button type="button" id="tab-btn-tutupbuku" class="btn btn-sm" aria-pressed="${stateLaporan.tabAktif === 'tutupbuku'}">
-          ${ICONS.calendar}
-          <span>Tutup Bulanan</span>
-        </button>
+        ${isOwner ? `
+          <button type="button" id="tab-btn-tutupbuku" class="btn btn-sm" aria-pressed="${stateLaporan.tabAktif === 'tutupbuku'}">
+            ${ICONS.calendar}
+            <span>Tutup Bulanan</span>
+          </button>
+        ` : ''}
       </div>
 
       <!-- Wadah Konten Tab Aktif -->

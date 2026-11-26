@@ -1592,7 +1592,45 @@ function hitungMoM_(sekarangVal, laluVal) {
 /**
  * tutupBuku.rekapHarian — Rekap gabungan End-of-Day (EOD) seluruh shift & transaksi pada 1 tanggal.
  */
+/** Helper: samarkan data laba/HPP/arus kas pada ringkasan & arsip Tutup Harian untuk role non-Owner. */
+function samarkanRekapNonOwner_(role, ringkasan, arsip) {
+  if (role === ROLE.OWNER) return { ringkasan: ringkasan, arsip: arsip };
+  const r = Object.assign({}, ringkasan);
+  r.total_hpp = null;
+  r.laba_kotor = null;
+  r.laba_bersih = null;
+  r.total_kerugian_rusak = null;
+  if (role !== ROLE.ADMIN) {
+    r.arus_kas_masuk = null;
+    r.arus_kas_keluar = null;
+    r.arus_kas_bersih = null;
+  }
+  let a = arsip;
+  if (arsip) {
+    a = Object.assign({}, arsip);
+    a.total_hpp = null;
+    a.laba_kotor = null;
+    a.laba_bersih = null;
+    a.margin_persen = null;
+    a.snapshot_json = null;
+  }
+  return { ringkasan: r, arsip: a };
+}
+
+/**
+ * tutupBuku.rekapHarian — Rekap gabungan End-of-Day (EOD) seluruh shift & transaksi pada 1 tanggal.
+ * Dapat diakses semua role; data laba/HPP otomatis disamarkan untuk non-Owner.
+ */
 function aksiTutupBukuRekapHarian_(ctx) {
+  const hasil = bangunRekapHarian_(ctx);
+  const m = samarkanRekapNonOwner_(ctx.user.role, hasil.ringkasan, hasil.arsip);
+  hasil.ringkasan = m.ringkasan;
+  hasil.arsip = m.arsip;
+  return hasil;
+}
+
+/** Pembangun rekap harian lengkap (internal, tanpa penyamaran) — dipakai juga oleh tutupHarian untuk arsip akurat. */
+function bangunRekapHarian_(ctx) {
   const p = ctx.payload || {};
   const tanggal = (p.tanggal && /^\d{4}-\d{2}-\d{2}$/.test(String(p.tanggal).trim()))
     ? String(p.tanggal).trim()
@@ -1610,8 +1648,9 @@ function aksiTutupBukuRekapHarian_(ctx) {
     return !j.deleted && j.status === 'pending';
   });
 
-  const lr = aksiLaporanLabaRugi_({ user: ctx.user, payload: { dari: tanggal, sampai: tanggal } });
-  const ak = aksiLaporanArusKas_({ user: ctx.user, payload: { dari: tanggal, sampai: tanggal } });
+  const ctxInternalOwner = { id: ctx.user.id, username: ctx.user.username, role: ROLE.OWNER };
+  const lr = aksiLaporanLabaRugi_({ user: ctxInternalOwner, payload: { dari: tanggal, sampai: tanggal } });
+  const ak = aksiLaporanArusKas_({ user: ctxInternalOwner, payload: { dari: tanggal, sampai: tanggal } });
 
   const penjualanHari = bacaSemua_('Penjualan').filter(function (j) {
     return !j.deleted && j.status === 'final' && String(j.tanggal || '').substring(0, 10) === tanggal;
@@ -1721,7 +1760,7 @@ function aksiTutupBukuTutupHarian_(ctx) {
 
   cekPeriodeTerkunci_(tanggal);
 
-  const rekap = aksiTutupBukuRekapHarian_({ user: ctx.user, payload: { tanggal: tanggal } });
+  const rekap = bangunRekapHarian_({ user: ctx.user, payload: { tanggal: tanggal } });
   if (rekap.precheck.shift_aktif_count > 0) {
     gagal_(KODE.CONFLICT, 'Masih ada ' + rekap.precheck.shift_aktif_count + ' shift kasir yang belum ditutup hari ini (' +
       rekap.precheck.shift_aktif_list.map(function (s) { return s.no_shift + ' - ' + s.kasir_nama; }).join(', ') +
@@ -1780,10 +1819,11 @@ function aksiTutupBukuTutupHarian_(ctx) {
     sisa_modal_besok: sisaModalBesok
   });
 
+  const hasilSamar = samarkanRekapNonOwner_(ctx.user.role, r, tersimpan);
   return {
     pesan: 'Tutup Harian tanggal ' + tanggal + ' berhasil disimpan.',
-    arsip: tersimpan,
-    ringkasan: r
+    arsip: hasilSamar.arsip,
+    ringkasan: hasilSamar.ringkasan
   };
 }
 

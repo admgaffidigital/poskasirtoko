@@ -391,10 +391,10 @@ const RUTE = {
   // Tutup Harian (EOD) & Tutup Buku Bulanan + Evaluasi Analisa
   'tutupBuku.rekapHarian': { publik: false, roles: SEMUA_ROLE, handler: aksiTutupBukuRekapHarian_ },
   'tutupBuku.tutupHarian': { publik: false, roles: SEMUA_ROLE, tulis: true, handler: aksiTutupBukuTutupHarian_ },
-  'tutupBuku.evaluasiBulanan': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiTutupBukuEvaluasiBulanan_ },
+  'tutupBuku.evaluasiBulanan': { publik: false, roles: [ROLE.OWNER], handler: aksiTutupBukuEvaluasiBulanan_ },
   'tutupBuku.tutupBulanan': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiTutupBukuTutupBulanan_ },
   'tutupBuku.bukaKunci': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiTutupBukuBukaKunci_ },
-  'tutupBuku.list': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], handler: aksiTutupBukuList_ },
+  'tutupBuku.list': { publik: false, roles: [ROLE.OWNER], handler: aksiTutupBukuList_ },
 
   // Multi-Lokasi Stok (Toko & Gudang), Migrasi/Transfer Stok, & Pengelolaan Barang Rusak
   'gudang.ringkasan': { publik: false, roles: SEMUA_ROLE, handler: aksiGudangRingkasan_ },

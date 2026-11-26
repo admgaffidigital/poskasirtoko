@@ -2628,6 +2628,83 @@ async function runAudit() {
     assert(pelTopUji && pelTopUji.total_transaksi === 1 && pelTopUji.total_belanja === 130000,
       `Pelanggan Terbesar wajib menghitung 1x belanja aktif & Rp 130.000 (bukan over-subtract diskon retur); aktual: ${JSON.stringify(pelTopUji)}`);
 
+    // 29f8. Hardening Audit Total: RBAC EOD/Tutup Buku, Anti-Leak HPP Kasir, & Validasi Harga/HPP Retur Server-Side
+    const adminRow = envGd.tambahBaris_('Users', [{
+      username: 'admin_gd', nama: 'Admin Audit', role: 'admin', aktif: true, wajib_ganti_pin: false
+    }], ownerRow.id)[0];
+
+    // 29f8a. tutupBuku.rekapHarian sukses untuk Kasir & Admin tanpa error FORBIDDEN, serta menyamarkan HPP & Laba
+    const eodKasir = envGd.aksiTutupBukuRekapHarian_({ user: kasirRow, payload: {} });
+    const eodAdmin = envGd.aksiTutupBukuRekapHarian_({ user: adminRow, payload: {} });
+    assert(eodKasir && eodKasir.ringkasan && eodKasir.ringkasan.laba_bersih === null && eodKasir.ringkasan.laba_kotor === null && eodKasir.ringkasan.total_hpp === null && eodKasir.ringkasan.arus_kas_masuk === null,
+      `tutupBuku.rekapHarian untuk Kasir wajib menyamarkan HPP, Laba, & Arus Kas; aktual: ${JSON.stringify(eodKasir && eodKasir.ringkasan)}`);
+    assert(eodAdmin && eodAdmin.ringkasan && eodAdmin.ringkasan.laba_bersih === null && eodAdmin.ringkasan.laba_kotor === null && eodAdmin.ringkasan.total_hpp === null,
+      `tutupBuku.rekapHarian untuk Admin wajib menyamarkan HPP & Laba; aktual: ${JSON.stringify(eodAdmin && eodAdmin.ringkasan)}`);
+
+    // 29f8b. Router tutupBuku.evaluasiBulanan & tutupBuku.list hanya untuk Owner (Admin wajib FORBIDDEN)
+    const resEvalAdmin = callApi('tutupBuku.evaluasiBulanan', tokenAdmin, {});
+    assert(resEvalAdmin.ok === false && resEvalAdmin.code === 'FORBIDDEN',
+      `tutupBuku.evaluasiBulanan wajib menolak Admin dengan FORBIDDEN; aktual: ${JSON.stringify(resEvalAdmin)}`);
+    const resListAdmin = callApi('tutupBuku.list', tokenAdmin, {});
+    assert(resListAdmin.ok === false && resListAdmin.code === 'FORBIDDEN',
+      `tutupBuku.list wajib menolak Admin dengan FORBIDDEN; aktual: ${JSON.stringify(resListAdmin)}`);
+    const resEodKasirApi = callApi('tutupBuku.rekapHarian', tokenKasir, {});
+    assert(resEodKasirApi.ok === true && resEodKasirApi.data.ringkasan.laba_bersih === null,
+      `tutupBuku.rekapHarian via router wajib sukses untuk Kasir dengan laba_bersih=null; aktual: ${JSON.stringify(resEodKasirApi)}`);
+
+    // 29f8c. penjualan.create & penjualan.detail menyembunyikan HPP dari Kasir
+    const jualKasir = envGd.aksiPenjualanCreate_({
+      user: kasirRow,
+      payload: {
+        lokasi_stok: 'toko',
+        diskon_tipe: 'nominal',
+        diskon_nilai: 5000,
+        items: [{ produk_id: prLegacy.id, qty: 1, harga: 65000 }],
+        pembayaran: [{ metode: 'tunai', jumlah: 60000 }]
+      }
+    });
+    assert(jualKasir.items[0].hpp === undefined, 'penjualan.create wajib menyembunyikan HPP dari respons Kasir');
+    const detKasir = envGd.aksiPenjualanDetail_({ user: kasirRow, payload: { id: jualKasir.penjualan.id } });
+    assert(detKasir.items[0].hpp === undefined, 'penjualan.detail wajib menyembunyikan HPP dari respons Kasir');
+
+    // 29f8d. retur.create memaksa harga bersih & HPP dari server (menolak manipulasi harga/HPP klien)
+    const retServerSide = envGd.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'jual', ref_id: jualKasir.penjualan.id, lokasi: 'toko', alasan: 'Uji manipulasi harga retur', metode_refund: 'kas',
+        items: [{ produk_id: prLegacy.id, nama: prLegacy.nama, satuan: 'SAK', faktor: 1, qty: 1, harga: 9999999, hpp: 1 }]
+      }
+    });
+    const retServerRow = envGd.bacaSemua_('Retur').find((r) => r.no_retur === retServerSide.no_retur);
+    const retOwnerDet = envGd.aksiReturDetail_({ user: ownerRow, payload: { id: retServerRow.id } });
+    assert(retServerRow.total === 60000 && retOwnerDet.items[0].harga === 60000 && retOwnerDet.items[0].hpp === 50000,
+      `retur.create wajib memakai harga bersih server (60000) & HPP snapshot (50000), bukan input klien; aktual total=${retServerRow.total}, harga=${retOwnerDet.items[0].harga}, hpp=${retOwnerDet.items[0].hpp}`);
+
+    // 29f8e. retur.detail menyembunyikan HPP dari Kasir, serta memblokir akses retur pembelian (tipe='beli')
+    const retKasirDet = envGd.aksiReturDetail_({ user: kasirRow, payload: { id: retServerRow.id } });
+    assert(retKasirDet.items[0].hpp === undefined, 'retur.detail wajib menyembunyikan HPP dari Kasir');
+    const beliAudit = envGd.aksiPembelianCreate_({
+      user: ownerRow,
+      payload: { supplier_id: supId, bayar: 0, items: [{ produk_id: prLegacy.id, qty: 2, harga_beli: 50000, lokasi: 'toko' }] }
+    });
+    const retBeliAudit = envGd.aksiReturCreate_({
+      user: ownerRow,
+      payload: {
+        tipe: 'beli', ref_id: beliAudit.id, lokasi: 'toko', alasan: 'Uji RBAC retur beli', metode_refund: 'potong_hutang',
+        items: [{ produk_id: prLegacy.id, nama: prLegacy.nama, satuan: 'SAK', faktor: 1, qty: 1, harga: 50000 }]
+      }
+    });
+    const retBeliRow = envGd.bacaSemua_('Retur').find((r) => r.no_retur === retBeliAudit.no_retur);
+    const listRetKasir = envGd.aksiReturList_({ user: kasirRow, payload: {} });
+    assert(listRetKasir.items.every((r) => r.tipe === 'jual'), 'retur.list untuk Kasir tidak boleh menampilkan retur pembelian (tipe=beli)');
+    let blokirRetBeliKasir = false;
+    try {
+      envGd.aksiReturDetail_({ user: kasirRow, payload: { id: retBeliRow.id } });
+    } catch (e) {
+      blokirRetBeliKasir = e.code === 'FORBIDDEN';
+    }
+    assert(blokirRetBeliKasir, 'retur.detail wajib menolak akses Kasir terhadap dokumen retur pembelian');
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');

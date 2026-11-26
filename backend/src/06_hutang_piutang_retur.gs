@@ -558,6 +558,10 @@ function aksiReturList_(ctx) {
     };
   });
 
+  if (ctx.user && ctx.user.role === ROLE.KASIR) {
+    data = data.filter(function (rt) { return rt.tipe === 'jual'; });
+  }
+
   if (p.tipe) {
     data = data.filter(function (rt) { return rt.tipe === p.tipe; });
   }
@@ -600,6 +604,11 @@ function aksiReturDetail_(ctx) {
   const retur = cariById_('Retur', p.id);
   if (!retur) gagal_(KODE.NOT_FOUND, 'Data retur tidak ditemukan.');
 
+  const isKasir = ctx.user && ctx.user.role === ROLE.KASIR;
+  if (isKasir && retur.tipe === 'beli') {
+    gagal_(KODE.FORBIDDEN, 'Retur pembelian ke supplier hanya dapat diakses oleh Owner atau Admin.');
+  }
+
   const semuaProduk = bacaSemua_('Produk');
   const produkPeta = {};
   semuaProduk.forEach(function (pr) { produkPeta[pr.id] = pr.nama; });
@@ -610,12 +619,14 @@ function aksiReturDetail_(ctx) {
     .map(function (it) {
       const namaBarang = it.nama || it.nama_produk || produkPeta[it.produk_id] || 'Produk';
       const sub = Number(it.subtotal || it.total || (Number(it.qty) * Number(it.harga))) || 0;
-      return Object.assign({}, it, {
+      const itemOut = Object.assign({}, it, {
         nama: namaBarang,
         nama_produk: namaBarang,
         subtotal: sub,
         total: sub
       });
+      if (isKasir) delete itemOut.hpp;
+      return itemOut;
     });
 
   let pihak = null;
@@ -739,13 +750,39 @@ function aksiReturCreate_(ctx) {
   let totalRetur = 0;
   const itemsValid = [];
 
+  // Agregasi nilai & HPP item nota asal agar harga/HPP retur penjualan dihitung SERVER-SIDE
+  // (tidak mempercayai input klien yang dapat dimanipulasi untuk menggelembungkan refund/HPP).
+  const asalAgg = {};
+  let rasioNetNotaJual = 1;
+  if (tipe === 'jual' && itemAsalList.length > 0) {
+    let sumSubAsal = 0;
+    itemAsalList.forEach(function (ai) {
+      const pkA = String(ai.produk_id || '') + '::' + String(ai.varian_id || '');
+      const qdA = Number(ai.qty_dasar) || (Number(ai.qty || 0) * Math.max(1, Number(ai.faktor) || 1));
+      if (!asalAgg[pkA]) asalAgg[pkA] = { sub: 0, qd: 0, hppTotal: 0 };
+      asalAgg[pkA].sub += Number(ai.subtotal) || 0;
+      asalAgg[pkA].qd += qdA;
+      asalAgg[pkA].hppTotal += hitungTotalHppItem_(ai);
+      sumSubAsal += Number(ai.subtotal) || 0;
+    });
+    const barangNetAsal = Math.max(0, Number(transaksiAsal.total || 0) - Math.max(0, Number(transaksiAsal.ongkir || 0)));
+    if (sumSubAsal > 0 && barangNetAsal < sumSubAsal) rasioNetNotaJual = barangNetAsal / sumSubAsal;
+  }
+
   for (let i = 0; i < rawItems.length; i++) {
     const it = rawItems[i];
     const qty = V_.qty(it.qty, 'Qty Retur Item ' + (i + 1));
     const faktor = Math.max(1, Number(it.faktor) || 1);
     const qtyDasar = Math.round(qty * faktor * 1000) / 1000;
-    const harga = V_.rupiah(it.harga, 'Harga Item ' + (i + 1), { wajib: true, min: 0 });
-    const hpp = Number(it.hpp) || 0;
+    let harga = V_.rupiah(it.harga, 'Harga Item ' + (i + 1), { wajib: true, min: 0 });
+    let hpp = Number(it.hpp) || 0;
+    if (tipe === 'jual') {
+      const aggItem = asalAgg[String(it.produk_id || '') + '::' + String(it.varian_id || '')];
+      if (aggItem && aggItem.qd > 0) {
+        harga = Math.round((aggItem.sub / aggItem.qd) * rasioNetNotaJual * faktor);
+        hpp = Math.round((aggItem.hppTotal / aggItem.qd) * faktor);
+      }
+    }
     const itemSubtotal = Math.round(qty * harga);
 
     // Cek batas qty terhadap nota/faktur asal (jika item asal tersedia)
@@ -797,15 +834,45 @@ function aksiReturCreate_(ctx) {
     });
   }
 
-  // Pastikan total nominal retur penjualan tidak pernah melebihi sisa nilai bersih nota asal (mis. nota berdiskon)
-  if (tipe === 'jual' && transaksiAsal && Number(transaksiAsal.total || 0) > 0) {
+  // Batasi nominal retur penjualan: tidak melebihi sisa nilai barang bersih nota asal (setelah diskon),
+  // dan bila seluruh sisa qty barang diretur, nominal dipaskan tepat ke sisa nilai agar status "Diretur Penuh" presisi.
+  if (tipe === 'jual' && transaksiAsal && Number(transaksiAsal.total || 0) > 0 && itemsValid.length > 0) {
+    const ongkirNotaR = Math.max(0, Number(transaksiAsal.ongkir || 0));
+    const barangNetR = Math.max(0, Number(transaksiAsal.total || 0) - ongkirNotaR);
     const sudahReturNominal = bacaSemua_('Retur').reduce(function (acc, r) {
       return (!r.deleted && r.tipe === 'jual' && r.ref_id === refId && r.status !== 'ditolak')
         ? acc + (Number(r.total) || 0) : acc;
     }, 0);
-    const sisaNilaiNota = Math.max(0, Math.round(Number(transaksiAsal.total || 0) - sudahReturNominal));
-    if (totalRetur > sisaNilaiNota) {
-      totalRetur = sisaNilaiNota;
+    const sisaBarangR = Math.max(0, Math.round(barangNetR - sudahReturNominal));
+
+    const reqThis = {};
+    itemsValid.forEach(function (iv) {
+      const k = String(iv.produk_id || '') + '::' + String(iv.varian_id || '');
+      reqThis[k] = (reqThis[k] || 0) + iv.qty_dasar;
+    });
+    let habisSemua = itemAsalList.length > 0;
+    Object.keys(qtyAsalByProd).forEach(function (k) {
+      const sisaQ = (qtyAsalByProd[k] || 0) - (qtySudahReturByProd[k] || 0);
+      if ((reqThis[k] || 0) < sisaQ - 0.0001) habisSemua = false;
+    });
+
+    let targetTotal = Math.min(totalRetur, sisaBarangR);
+    if (habisSemua) targetTotal = sisaBarangR;
+
+    if (targetTotal !== totalRetur) {
+      const sumSubIv = itemsValid.reduce(function (s, iv) { return s + iv.subtotal; }, 0);
+      if (sumSubIv > 0) {
+        const rasioSkala = targetTotal / sumSubIv;
+        let akum = 0;
+        itemsValid.forEach(function (iv, idx) {
+          let sb = idx === itemsValid.length - 1 ? (targetTotal - akum) : Math.round(iv.subtotal * rasioSkala);
+          sb = Math.max(0, sb);
+          akum += sb;
+          iv.subtotal = sb;
+          iv.harga = iv.qty > 0 ? Math.round(sb / iv.qty) : iv.harga;
+        });
+      }
+      totalRetur = targetTotal;
     }
   }
 

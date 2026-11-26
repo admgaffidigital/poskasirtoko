@@ -700,9 +700,18 @@ function aksiPenjualanCreate_(ctx) {
   // Hapus cache katalog produk
   cacheHapus_('produk');
 
+  // Kasir tidak boleh melihat HPP/harga modal barang pada respons transaksi
+  const itemsRespon = (ctx.user && ctx.user.role === ROLE.KASIR)
+    ? itemsTersimpan.map(function (it) {
+        const salin = Object.assign({}, it);
+        delete salin.hpp;
+        return salin;
+      })
+    : itemsTersimpan;
+
   return {
     penjualan: penjualanTersimpan,
-    items: itemsTersimpan,
+    items: itemsRespon,
     pembayaran: bayarTersimpan,
     pelanggan: pelangganRespon,
     kasir: {
@@ -956,9 +965,13 @@ function aksiPenjualanDetail_(ctx) {
 
   if (!penjualan) gagal_(KODE.NOT_FOUND, 'Transaksi penjualan tidak ditemukan.');
 
-  const items = bacaSemua_('Penjualan_Item').filter(function (it) {
+  const itemsRaw = bacaSemua_('Penjualan_Item').filter(function (it) {
     return it.penjualan_id === penjualan.id && !it.deleted;
   });
+  // Kasir tidak boleh melihat HPP/modal barang melalui API (kebijakan: HPP hanya untuk Owner/Admin)
+  const items = ctx.user.role === ROLE.KASIR
+    ? itemsRaw.map(function (it) { const c = Object.assign({}, it); delete c.hpp; return c; })
+    : itemsRaw;
 
   const pembayaran = bacaSemua_('Penjualan_Bayar').filter(function (byr) {
     return byr.penjualan_id === penjualan.id && !byr.deleted;
