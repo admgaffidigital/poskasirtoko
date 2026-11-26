@@ -335,7 +335,7 @@ function aksiLaporanDashboard_(ctx) {
     return a.tanggal.localeCompare(b.tanggal);
   });
 
-  // Hitung Laba Kotor, Efek Retur Penjualan (sinkron dengan Laba Rugi) & Biaya Operasional (Khusus Owner)
+  // Hitung Laba Kotor, Efek Retur Penjualan, Kerugian Barang Rusak & Biaya Operasional (100% sinkron dengan Laba Rugi & Tutup Buku)
   const efekRetur = hitungEfekReturPenjualan_(rentang);
   const semuaBiaya = bacaSemua_('Biaya');
   let totalBiayaOperasional = 0;
@@ -347,9 +347,20 @@ function aksiLaporanDashboard_(ctx) {
     }
   });
 
+  let totalKerugianRusak = 0;
+  try {
+    bacaSemua_('Barang_Rusak').forEach(function (rsk) {
+      if (rsk.deleted || rsk.status !== 'disetujui' || rsk.klaim_status === 'diganti_barang') return;
+      const tgl = String(rsk.tanggal || rsk.created_at || '').substring(0, 10);
+      if (tgl >= rentang.dari && tgl <= rentang.sampai) {
+        totalKerugianRusak += (Number(rsk.nilai_kerugian) || 0);
+      }
+    });
+  } catch (_) {}
+
   const labaKotor = isOwner ? Math.round((totalPenjualan - totalHpp) - efekRetur.dampak_laba_retur) : null;
   const marginPersen = isOwner ? (totalPenjualan > 0 ? Math.round((labaKotor / totalPenjualan) * 10000) / 100 : 0) : null;
-  const labaBersihRiil = isOwner ? Math.round((labaKotor || 0) - totalBiayaOperasional) : null;
+  const labaBersihRiil = isOwner ? Math.round((labaKotor || 0) - totalBiayaOperasional - totalKerugianRusak) : null;
   const marginBersihPersen = isOwner ? (totalPenjualan > 0 ? Math.round((labaBersihRiil / totalPenjualan) * 10000) / 100 : 0) : null;
 
   return {
@@ -371,6 +382,7 @@ function aksiLaporanDashboard_(ctx) {
       laba_kotor: labaKotor,
       margin_persen: marginPersen,
       total_biaya_operasional: totalBiayaOperasional,
+      total_kerugian_rusak: isOwner ? Math.round(totalKerugianRusak) : null,
       laba_bersih_riil: labaBersihRiil,
       margin_bersih_persen: marginBersihPersen
     },

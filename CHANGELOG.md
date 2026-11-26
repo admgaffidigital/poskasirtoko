@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.143] - 2026-11-26
+### Disempurnakan — Sinkronisasi Akuntansi Dashboard, Engine API Retry & Cache Fix, Multi-Lokasi Produk/Retur/POS, & Tata Letak Responsif
+- **[DASHBOARD] [BACKEND] Sinkronisasi 100% Kerugian Barang Rusak pada Dashboard (`08_laporan_biaya.gs`, `laporan.js`)**:
+  - `laporan.dashboard` kini mengurangkan `total_kerugian_rusak` (barang rusak disetujui yang belum diganti supplier) dari `laba_bersih_riil` sehingga angka Dashboard, Laba Rugi, dan Tutup Buku Bulanan 100% klop.
+- **[PRODUK] [BACKEND] Konsistensi Multi-Lokasi pada `produk.create`, `produk.update`, & `produk.importMassal` (`03_kategori_produk.gs`)**:
+  - Menjaga utuh `stok_toko` & `stok_gudang` varian serta induk saat edit produk bervarian (`produk.update`), melengkapi `lokasi`/`saldo_toko`/`saldo_gudang` di `Kartu_Stok` saldo awal & import massal Excel/CSV.
+- **[BACKEND] [UI] Perbaikan Engine Cache & Auto-Retry Jaringan (`frontend/js/api.js`)**:
+  - Menambahkan `.transferList`, `.rekapHarian`, dan `.evaluasiBulanan` ke `READ_SUFFIXES` agar aksi baca tidak lagi memicu invalidasi cache massal; menambahkan `gudang.ringkasan` ke cache persisten SWR (0ms reload); menambahkan **auto-retry 1× (650ms)** khusus aksi baca saat terjadi gangguan jaringan sesaat.
+- **[PRODUK] [RETUR] [POS-JUAL] [UI] Paritas UI/UX Multi-Lokasi & Perapian Tata Letak (`produk.js`, `retur.js`, `pos.js`, `components.css`)**:
+  - **Manajemen Produk**: Menampilkan rincian `T: X • G: Y` pada tampilan tabel (desktop & mobile) dan grid.
+  - **Retur Jual & Beli**: Menambahkan pilihan **Lokasi Stok Retur** (`Toko` / `Gudang`) di form input serta badge lokasi pada daftar riwayat retur.
+  - **POS Kasir**: Menampilkan rincian `T/G` langsung pada tombol pilih varian dan peringatan pintar otomatis di modal pembayaran bila stok etalase kurang namun stok gudang mencukupi.
+  - **Kartu Stok**: Menyelaraskan `.ks-filter-bar` untuk 6 kolom presisi (`1.8fr 1.1fr 1fr 0.95fr 0.95fr auto`) di desktop & grid 2 kolom simetris di mobile.
+
 ## [1.0.142] - 2026-11-26
 ### Diperbaiki — Beautifier Spreadsheet Anti-Timeout (15× Lebih Cepat via RangeList + Progres Batch Real-Time) & Jumlah Sheet Dinamis
 - **[DB] [BACKEND] Optimasi Ekstrem `jalankanPercantikSpreadsheet_()` (`09_setup_trigger_beautifier.gs`, `01_database_utilitas.gs`)**:

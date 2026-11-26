@@ -421,20 +421,45 @@ function aksiProdukCreate_(ctx) {
     tambahBaris_('Satuan_Konversi', barisSatuan, ctx.user.id);
   }
 
-  // Catat stok awal ke Kartu_Stok jika ada saldo awal (Aturan Bisnis #5)
+  // Catat stok awal ke Kartu_Stok jika ada saldo awal (Aturan Bisnis #5 + Multi-Lokasi)
   const saldoAkhir = punyaVarian ? totalStokVarian : stok;
+  const saldoTokoAkhir = punyaVarian ? totalStokTokoVarian : stokTokoAwal;
+  const saldoGudangAkhir = punyaVarian ? totalStokGudangVarian : stokGudangAwal;
   if (saldoAkhir > 0) {
-    tambahBaris_('Kartu_Stok', [{
-      produk_id: produkBaru.id,
-      varian_id: '',
-      tipe: 'koreksi',
-      qty: saldoAkhir,
-      saldo: saldoAkhir,
-      hpp: hpp,
-      ref_id: 'STOK-AWAL',
-      user_id: ctx.user.id,
-      keterangan: 'Saldo stok awal saat produk dibuat'
-    }], ctx.user.id);
+    const rowsKsAwal = [];
+    if (saldoTokoAkhir > 0) {
+      rowsKsAwal.push({
+        produk_id: produkBaru.id,
+        varian_id: '',
+        tipe: 'koreksi',
+        lokasi: 'toko',
+        qty: saldoTokoAkhir,
+        saldo: saldoTokoAkhir,
+        saldo_toko: saldoTokoAkhir,
+        saldo_gudang: 0,
+        hpp: hpp,
+        ref_id: 'STOK-AWAL',
+        user_id: ctx.user.id,
+        keterangan: 'Saldo stok awal Toko saat produk dibuat'
+      });
+    }
+    if (saldoGudangAkhir > 0) {
+      rowsKsAwal.push({
+        produk_id: produkBaru.id,
+        varian_id: '',
+        tipe: 'koreksi',
+        lokasi: 'gudang',
+        qty: saldoGudangAkhir,
+        saldo: saldoAkhir,
+        saldo_toko: saldoTokoAkhir,
+        saldo_gudang: saldoGudangAkhir,
+        hpp: hpp,
+        ref_id: 'STOK-AWAL',
+        user_id: ctx.user.id,
+        keterangan: 'Saldo stok awal Gudang saat produk dibuat'
+      });
+    }
+    if (rowsKsAwal.length) tambahBaris_('Kartu_Stok', rowsKsAwal, ctx.user.id);
   }
 
   catatAudit_(ctx.user.id, 'produk_tambah', 'PRODUK', produkBaru.id, { nama: nama, sku: sku, hpp: hpp, harga_ritel: hargaRitel });
@@ -491,19 +516,48 @@ function aksiProdukUpdate_(ctx) {
     }
   }], ctx.user.id)[0];
 
-  // Sinkronisasi varian jika array dikirimkan
+  // Sinkronisasi varian jika array dikirimkan (menjaga konsistensi stok_toko & stok_gudang)
   if (Array.isArray(p.varian)) {
     const varianLama = bacaSemua_('Varian').filter(function (v) { return v.produk_id === id && !v.deleted; });
+    const varianLamaMap = {};
+    varianLama.forEach(function (vl) { varianLamaMap[vl.id] = vl; });
     const idBaru = {};
     let totalStokVarian = 0;
+    let totalStokTokoVarian = 0;
+    let totalStokGudangVarian = 0;
 
     p.varian.forEach(function (v, idx) {
       const vHpp = V_.rupiah(v.hpp || hpp, 'HPP Varian', { bawaan: hpp });
       const vRitel = V_.rupiah(v.harga_ritel || hargaRitel, 'Harga Ritel Varian', { wajib: true });
       const vGrosir = V_.rupiah(v.harga_grosir || hargaGrosir, 'Harga Grosir Varian', { bawaan: vRitel });
       if (vRitel < vHpp || vGrosir < vHpp) gagal_(KODE.HARGA_DI_BAWAH_HPP, 'Harga varian tidak boleh di bawah HPP.');
-      const vStok = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
-      totalStokVarian += vStok;
+
+      const vLama = v.id ? varianLamaMap[v.id] : null;
+      const vHasLok = v.stok_toko !== undefined || v.stok_gudang !== undefined;
+      let vStokToko = 0;
+      let vStokGudang = 0;
+      if (vHasLok) {
+        vStokToko = V_.angka(v.stok_toko, 'Stok Toko Varian', { bawaan: 0 });
+        vStokGudang = V_.angka(v.stok_gudang, 'Stok Gudang Varian', { bawaan: 0 });
+      } else if (vLama) {
+        const lokLama = bacaStokLokasi_(vLama);
+        const vStokInput = V_.angka(v.stok, 'Stok Varian', { bawaan: lokLama.stok });
+        if (Math.abs(vStokInput - lokLama.stok) < 0.001) {
+          vStokToko = lokLama.stok_toko;
+          vStokGudang = lokLama.stok_gudang;
+        } else {
+          // Perubahan total stok manual pada varian: jaga stok gudang bila mencukupi, selisih diterapkan ke toko
+          vStokGudang = Math.min(lokLama.stok_gudang, Math.max(0, vStokInput));
+          vStokToko = bulatQty_(Math.max(0, vStokInput - vStokGudang));
+        }
+      } else {
+        vStokToko = V_.angka(v.stok, 'Stok Varian', { bawaan: 0 });
+        vStokGudang = 0;
+      }
+      const vStok = bulatQty_(vStokToko + vStokGudang);
+      totalStokVarian = bulatQty_(totalStokVarian + vStok);
+      totalStokTokoVarian = bulatQty_(totalStokTokoVarian + vStokToko);
+      totalStokGudangVarian = bulatQty_(totalStokGudangVarian + vStokGudang);
 
       let vSku = V_.teks(v.sku, 'SKU Varian', { maks: 50 });
       if (!vSku) {
@@ -526,6 +580,8 @@ function aksiProdukUpdate_(ctx) {
             harga_ritel: vRitel,
             harga_grosir: vGrosir,
             stok: vStok,
+            stok_toko: vStokToko,
+            stok_gudang: vStokGudang,
             stok_min: V_.angka(v.stok_min, 'Stok Min Varian', { bawaan: stokMin }),
             aktif: v.aktif !== false
           }
@@ -540,6 +596,8 @@ function aksiProdukUpdate_(ctx) {
           harga_ritel: vRitel,
           harga_grosir: vGrosir,
           stok: vStok,
+          stok_toko: vStokToko,
+          stok_gudang: vStokGudang,
           stok_min: V_.angka(v.stok_min, 'Stok Min Varian', { bawaan: stokMin }),
           aktif: v.aktif !== false
         }], ctx.user.id)[0];
@@ -553,8 +611,10 @@ function aksiProdukUpdate_(ctx) {
     });
 
     if (punyaVarian) {
-      ubahBaris_('Produk', [{ id: id, data: { stok: totalStokVarian } }], ctx.user.id);
+      ubahBaris_('Produk', [{ id: id, data: { stok: totalStokVarian, stok_toko: totalStokTokoVarian, stok_gudang: totalStokGudangVarian } }], ctx.user.id);
       diubah.stok = totalStokVarian;
+      diubah.stok_toko = totalStokTokoVarian;
+      diubah.stok_gudang = totalStokGudangVarian;
     }
   }
 
@@ -942,16 +1002,24 @@ function aksiProdukImportMassal_(ctx) {
           if (minGrosirIn !== null && minGrosirIn > 0) patch.min_grosir_qty = minGrosirIn;
         }
         if (perbaruiStok && stokIn !== null && !targetPrd.punya_varian) {
-          const stokLama = bulatQty_(Number(targetPrd.stok || 0));
+          const lokLama = bacaStokLokasi_(targetPrd);
+          const stokLama = lokLama.stok;
           const stokBaru = bulatQty_(Math.max(0, stokIn));
           if (stokBaru !== stokLama) {
+            const stGudangBaru = Math.min(lokLama.stok_gudang, stokBaru);
+            const stTokoBaru = bulatQty_(Math.max(0, stokBaru - stGudangBaru));
             patch.stok = stokBaru;
+            patch.stok_toko = stTokoBaru;
+            patch.stok_gudang = stGudangBaru;
             kartuStokQueue.push({
               produk_id: targetPrd.id,
               varian_id: '',
               tipe: 'koreksi',
+              lokasi: 'toko',
               qty: bulatQty_(stokBaru - stokLama),
               saldo: stokBaru,
+              saldo_toko: stTokoBaru,
+              saldo_gudang: stGudangBaru,
               hpp: hppFinal,
               ref_id: 'IMPORT-' + (targetPrd.sku || targetPrd.id),
               user_id: ctx.user.id,
@@ -1012,6 +1080,8 @@ function aksiProdukImportMassal_(ctx) {
           harga_grosir: grosirBaru,
           min_grosir_qty: minGrosirBaru,
           stok: stokBaru,
+          stok_toko: stokBaru,
+          stok_gudang: 0,
           stok_min: stokMinBaru,
           punya_varian: false,
           foto_url: String(raw.foto_url || '').trim().slice(0, 500),

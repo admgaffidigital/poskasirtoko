@@ -483,7 +483,7 @@ function renderTabDashboard(container, data) {
               </div>
               <div class="stack" style="align-items: flex-end; gap: 4px;">
                 <span class="badge badge-primary">Margin Bersih ${r.margin_bersih_persen || 0}%</span>
-                <span class="text-xs text-muted">Omset − HPP − Biaya Operasional</span>
+                <span class="text-xs text-muted">${Number(r.total_kerugian_rusak || 0) > 0 ? `Omset − HPP − Biaya − Rusak (${formatRupiah(r.total_kerugian_rusak)})` : 'Omset − HPP − Biaya Operasional'}</span>
               </div>
             </div>
           </div>

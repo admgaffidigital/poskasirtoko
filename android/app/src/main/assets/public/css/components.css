@@ -5048,32 +5048,30 @@ a.list-item:hover {
   width: 100% !important;
 }
 
-/* Filter Bar & Tabel Kartu Stok */
+/* Filter Bar & Tabel Kartu Stok (5 Filter + Tombol Aksi Presisi Mobile/Desktop) */
 .ks-filter-bar {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-2);
   align-items: flex-end;
 }
 
 .ks-filter-bar > .field:first-child,
-.ks-filter-bar > .field:nth-child(2),
 .ks-filter-bar > .row {
   grid-column: 1 / -1;
 }
 
 @media (min-width: 640px) {
   .ks-filter-bar {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1024px) {
   .ks-filter-bar {
-    grid-template-columns: 2fr 1.2fr 1fr 1fr auto;
+    grid-template-columns: 1.8fr 1.1fr 1fr 0.95fr 0.95fr auto;
   }
   .ks-filter-bar > .field:first-child,
-  .ks-filter-bar > .field:nth-child(2),
   .ks-filter-bar > .row {
     grid-column: auto;
   }

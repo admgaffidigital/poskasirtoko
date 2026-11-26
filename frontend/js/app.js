@@ -84,7 +84,7 @@ function preloadRouteModule(routeId) {
   if (!routeId || !ROUTE_MODULE_LOADERS[routeId] || loadedRouteModules.has(routeId) || pendingRouteLoads.has(routeId)) {
     return;
   }
-  loadRouteModule(routeId).catch(() => {});
+  loadRouteModule(routeId).catch(() => { });
 }
 
 let cachedPrinterModalFn = null;
@@ -122,7 +122,7 @@ class App {
       if (localStorage.getItem('pos_sidebar_collapsed') === 'true') {
         $('.app')?.classList.add('sidebar-collapsed');
       }
-    } catch (_) {}
+    } catch (_) { }
     this.updateBrandUI();
     this.bindGlobalEvents();
     this.setupNavHoverPrefetch();
@@ -264,7 +264,7 @@ class App {
         if (hasFreshApiCache(item.action, item.payload)) continue;
         try {
           await apiCall(item.action, item.payload);
-        } catch (_) {}
+        } catch (_) { }
         await new Promise((r) => setTimeout(r, 250));
       }
       this._warmupRunning = false;
@@ -344,19 +344,19 @@ class App {
       const token = store.get('token');
       const syncSessionPromise = token
         ? apiCall('auth.me', {}, { skipCache: true })
-            .then((res) => {
-              if (res && res.user) {
-                store.set('user', res.user);
-                if (res.pengaturan) {
-                  store.set('pengaturan', res.pengaturan);
-                  seedApiCache('pengaturan.get', {}, { pengaturan: res.pengaturan });
-                }
-                if (res.toko) store.setToko(res.toko);
-                this.updateUserUI(res.user);
-                this.updateBrandUI();
+          .then((res) => {
+            if (res && res.user) {
+              store.set('user', res.user);
+              if (res.pengaturan) {
+                store.set('pengaturan', res.pengaturan);
+                seedApiCache('pengaturan.get', {}, { pengaturan: res.pengaturan });
               }
-            })
-            .catch(() => this.muatPengaturanToko())
+              if (res.toko) store.setToko(res.toko);
+              this.updateUserUI(res.user);
+              this.updateBrandUI();
+            }
+          })
+          .catch(() => this.muatPengaturanToko())
         : this.muatPengaturanToko();
 
       // Render ulang halaman aktif bersamaan dengan sinkronisasi sesi
@@ -371,9 +371,9 @@ class App {
       const isStaticMenuRoute = this.currentRoute && (this.currentRoute.id === 'lainnya' || this.currentRoute.id === 'sistem');
       const syncCloudMasterPromise = (isStaticMenuRoute && token)
         ? Promise.allSettled([
-            apiCall('kategori.list', {}, { skipCache: true }),
-            apiCall('produk.list', { aktif_saja: true, page: 1, limit: 30 }, { skipCache: true })
-          ])
+          apiCall('kategori.list', {}, { skipCache: true }),
+          apiCall('produk.list', { aktif_saja: true, page: 1, limit: 30 }, { skipCache: true })
+        ])
         : Promise.resolve();
 
       await Promise.all([renderPromise, syncSessionPromise, syncCloudMasterPromise]);
@@ -396,7 +396,7 @@ class App {
         window.swRegistration = registration;
 
         // Cek update segera saat registrasi berhasil
-        registration.update().catch(() => {});
+        registration.update().catch(() => { });
 
         // Cek jika sudah ada worker baru yang menunggu
         if (registration.waiting) {
@@ -425,7 +425,7 @@ class App {
           const now = Date.now();
           if (now - lastSwCheck < 60000) return;
           lastSwCheck = now;
-          registration.update().catch(() => {});
+          registration.update().catch(() => { });
         };
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') cekUpdateThrottled();
@@ -435,7 +435,7 @@ class App {
         // Cek pembaruan berkala otomatis setiap 5 menit
         setInterval(() => {
           lastSwCheck = Date.now();
-          registration.update().catch(() => {});
+          registration.update().catch(() => { });
         }, 5 * 60 * 1000);
       }).catch((err) => {
         console.warn('Registrasi Service Worker gagal:', err);
@@ -557,7 +557,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.142'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.143'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -610,7 +610,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.142'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.143'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -881,7 +881,7 @@ class App {
         const isCollapsed = appContainer?.classList.toggle('sidebar-collapsed');
         try {
           localStorage.setItem('pos_sidebar_collapsed', isCollapsed ? 'true' : 'false');
-        } catch (_) {}
+        } catch (_) { }
         // Trigger resize event segera dan setelah animasi selesai untuk render ulang tabel & grafik
         window.dispatchEvent(new Event('resize'));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 250);
@@ -1153,7 +1153,7 @@ class App {
       }
       this.updateNetStatusBar(online, false);
       if (online && jumlahAntreanOffline() > 0) {
-        sinkronkanAntreanOffline({ senyap: true }).catch(() => {});
+        sinkronkanAntreanOffline({ senyap: true }).catch(() => { });
       }
     });
 
@@ -1519,7 +1519,7 @@ class App {
         this._isPoppingNav = true;
         try {
           window.history.replaceState(window.history.state, '', prevPath);
-        } catch (_) {}
+        } catch (_) { }
         this.navigate(prevPath);
         this._isPoppingNav = false;
       },
@@ -1528,7 +1528,7 @@ class App {
         this._isPoppingNav = true;
         try {
           window.history.replaceState(window.history.state, '', '#/pos');
-        } catch (_) {}
+        } catch (_) { }
         this.navigate('#/pos');
         this._isPoppingNav = false;
       }
@@ -1540,7 +1540,7 @@ class App {
     if (!rute) return;
     try {
       window.history.replaceState(window.history.state, '', rute.path);
-    } catch (_) {}
+    } catch (_) { }
     this.navigate(rute.path);
   }
 
@@ -1670,7 +1670,7 @@ class App {
         if (renderToken === this._renderSeq) {
           this._activeCleanup = maybeCleanup;
         } else {
-          try { maybeCleanup(); } catch (_) {}
+          try { maybeCleanup(); } catch (_) { }
         }
       } else if (maybeCleanup && typeof maybeCleanup.then === 'function') {
         maybeCleanup.then((fn) => {
@@ -1678,9 +1678,9 @@ class App {
           if (renderToken === this._renderSeq) {
             this._activeCleanup = fn;
           } else {
-            try { fn(); } catch (_) {}
+            try { fn(); } catch (_) { }
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
 
@@ -1840,7 +1840,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.142'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.143'}</div>
         </div>
       `;
     };

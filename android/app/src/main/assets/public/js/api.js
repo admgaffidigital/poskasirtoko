@@ -81,6 +81,7 @@ const PERSISTABLE_ACTIONS = new Set([
   'pelanggan.list',
   'supplier.list',
   'hadiah.list',
+  'gudang.ringkasan',
   'penjualan.pending.list',
   'piutang.list',
   'hutang.list',
@@ -339,10 +340,11 @@ if (typeof document !== 'undefined') {
 }
 
 const READ_SUFFIXES = [
-  '.list', '.get', '.detail', '.me', '.status', '.ping', '.aktif',
+  '.list', '.transferList', '.get', '.detail', '.me', '.status', '.ping', '.aktif',
   '.kartu', '.shift', '.shiftKasir', '.riwayat', '.riwayatPoin',
   '.dashboard', '.ringkasan', '.penjualan', '.pembelian',
-  '.kas', '.arusKas', '.labaRugi', '.laba_rugi', '.stokValuasi'
+  '.kas', '.arusKas', '.labaRugi', '.laba_rugi', '.stokValuasi',
+  '.rekapHarian', '.evaluasiBulanan'
 ];
 
 function adalahAksiMutasi(action) {
@@ -405,9 +407,6 @@ export async function apiCall(action, payload = {}, options = {}) {
     }
 
     const timeoutMs = options.timeoutMs || CONFIG.API_TIMEOUT_MS || 30000;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
     const requestBody = JSON.stringify({
       action,
       token,
@@ -415,104 +414,115 @@ export async function apiCall(action, payload = {}, options = {}) {
     });
 
     const fetchPromise = (async () => {
-      try {
-        const res = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            // Penting: text/plain mencegah browser mengirim CORS preflight (OPTIONS)
-            'Content-Type': 'text/plain;charset=utf-8'
-          },
-          body: requestBody,
-          signal: controller.signal
-        });
+      const bolehRetry = !adalahAksiMutasi(action);
+      let percobaan = 0;
+      const maksPercobaan = bolehRetry ? 2 : 1;
 
-        clearTimeout(timer);
-
-        if (!res.ok) {
-          throw new ApiError(
-            `Server mengembalikan status HTTP ${res.status} (${res.statusText})`,
-            'HTTP_ERROR'
-          );
-        }
-
-        const text = await res.text();
-        let data;
+      while (percobaan < maksPercobaan) {
+        percobaan++;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-          data = JSON.parse(text);
-        } catch (parseErr) {
-          console.error('[API] Respon bukan JSON valid:', text);
-          throw new ApiError(
-            'Format respons dari server tidak dapat dibaca.',
-            'PARSE_ERROR'
-          );
-        }
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              // Penting: text/plain mencegah browser mengirim CORS preflight (OPTIONS)
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: requestBody,
+            signal: controller.signal
+          });
 
-        if (!data || typeof data !== 'object') {
-          throw new ApiError('Format respons server tidak sesuai standar.', 'INVALID_RESPONSE');
-        }
+          clearTimeout(timer);
 
-        if (data.ok === true) {
-          if (CACHE_CONFIG[action]) {
-            const ttl = CACHE_CONFIG[action];
-            const now = Date.now();
-            const targetKey = `${action}::${token}::${payloadStr}`;
-            memoryApiCache.set(targetKey, {
-              data: data.data,
-              expiry: now + ttl,
-              staleExpiry: now + Math.max(ttl * 6, 900000)
-            });
-            // Cross-seed varian cache kategori.list ({} <-> { aktif_saja: true }) agar tidak ada panggilan ganda
-            if (action === 'kategori.list' && data.data && Array.isArray(data.data.items)) {
-              if (Object.keys(payload).length === 0) {
-                seedApiCache('kategori.list', { aktif_saja: true }, data.data, token);
-              } else if (payload.aktif_saja === true && Object.keys(payload).length === 1) {
-                seedApiCache('kategori.list', {}, data.data, token);
-              }
-            }
-            // Cross-seed varian cache pelanggan.list agar POS Kasir, Modul Pelanggan, & Loyalti berbagi cache 0ms
-            if (action === 'pelanggan.list' && data.data && Array.isArray(data.data.items)) {
-              const isUnfilteredAll = (!payload.cari && !payload.q && !payload.tipe && !payload.level) &&
-                (payload.semua === true || payload.aktif_saja === false || Object.keys(payload).length === 0);
-              if (isUnfilteredAll) {
-                const allItems = data.data.items;
-                const activeItems = allItems.filter((it) => it.aktif !== false);
-                const activeMembers = activeItems.filter((it) => it.tipe === 'member');
-                seedApiCache('pelanggan.list', { semua: true }, { items: activeItems, total: activeItems.length, page: 1, limit: activeItems.length }, token);
-                seedApiCache('pelanggan.list', { tipe: 'member', aktif_saja: true, limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
-                seedApiCache('pelanggan.list', { tipe: 'member', limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
-              }
-            }
-            if (memoryApiCache.size > MAX_MEMORY_CACHE_ENTRIES) {
-              pangkasCacheMemori();
-            }
-            if (PERSISTABLE_ACTIONS.has(action)) {
-              jadwalkanSimpanCachePersisten();
-            }
+          if (!res.ok) {
+            throw new ApiError(
+              `Server mengembalikan status HTTP ${res.status} (${res.statusText})`,
+              'HTTP_ERROR'
+            );
           }
-          return data.data;
-        } else {
-          const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
-          const errCode = data.code || 'SERVER';
-          throw new ApiError(errMsg, errCode, data.data);
-        }
-      } catch (err) {
-        clearTimeout(timer);
-        if (err instanceof ApiError) throw err;
-        if (err.name === 'AbortError') {
+
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (parseErr) {
+            console.error('[API] Respon bukan JSON valid:', text);
+            throw new ApiError(
+              'Format respons dari server tidak dapat dibaca.',
+              'PARSE_ERROR'
+            );
+          }
+
+          if (!data || typeof data !== 'object') {
+            throw new ApiError('Format respons server tidak sesuai standar.', 'INVALID_RESPONSE');
+          }
+
+          if (data.ok === true) {
+            if (CACHE_CONFIG[action]) {
+              const ttl = CACHE_CONFIG[action];
+              const now = Date.now();
+              const targetKey = `${action}::${token}::${payloadStr}`;
+              memoryApiCache.set(targetKey, {
+                data: data.data,
+                expiry: now + ttl,
+                staleExpiry: now + Math.max(ttl * 6, 900000)
+              });
+              // Cross-seed varian cache kategori.list ({} <-> { aktif_saja: true }) agar tidak ada panggilan ganda
+              if (action === 'kategori.list' && data.data && Array.isArray(data.data.items)) {
+                if (Object.keys(payload).length === 0) {
+                  seedApiCache('kategori.list', { aktif_saja: true }, data.data, token);
+                } else if (payload.aktif_saja === true && Object.keys(payload).length === 1) {
+                  seedApiCache('kategori.list', {}, data.data, token);
+                }
+              }
+              // Cross-seed varian cache pelanggan.list agar POS Kasir, Modul Pelanggan, & Loyalti berbagi cache 0ms
+              if (action === 'pelanggan.list' && data.data && Array.isArray(data.data.items)) {
+                const isUnfilteredAll = (!payload.cari && !payload.q && !payload.tipe && !payload.level) &&
+                  (payload.semua === true || payload.aktif_saja === false || Object.keys(payload).length === 0);
+                if (isUnfilteredAll) {
+                  const allItems = data.data.items;
+                  const activeItems = allItems.filter((it) => it.aktif !== false);
+                  const activeMembers = activeItems.filter((it) => it.tipe === 'member');
+                  seedApiCache('pelanggan.list', { semua: true }, { items: activeItems, total: activeItems.length, page: 1, limit: activeItems.length }, token);
+                  seedApiCache('pelanggan.list', { tipe: 'member', aktif_saja: true, limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
+                  seedApiCache('pelanggan.list', { tipe: 'member', limit: 100 }, { items: activeMembers, total: activeMembers.length, page: 1, limit: 100 }, token);
+                }
+              }
+              if (memoryApiCache.size > MAX_MEMORY_CACHE_ENTRIES) {
+                pangkasCacheMemori();
+              }
+              if (PERSISTABLE_ACTIONS.has(action)) {
+                jadwalkanSimpanCachePersisten();
+              }
+            }
+            if (cacheKey) inFlightRequests.delete(cacheKey);
+            return data.data;
+          } else {
+            const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
+            const errCode = data.code || 'SERVER';
+            throw new ApiError(errMsg, errCode, data.data);
+          }
+        } catch (err) {
+          clearTimeout(timer);
+          const isTransientNet = !(err instanceof ApiError) && err.name !== 'AbortError';
+          if (isTransientNet && percobaan < maksPercobaan && navigator.onLine) {
+            await new Promise((r) => setTimeout(r, 650));
+            continue;
+          }
+          if (cacheKey) inFlightRequests.delete(cacheKey);
+          if (err instanceof ApiError) throw err;
+          if (err.name === 'AbortError') {
+            throw new ApiError(
+              'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',
+              'TIMEOUT'
+            );
+          }
+          console.error('[API Error]', err);
           throw new ApiError(
-            'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',
-            'TIMEOUT'
+            'Gagal menghubungi server. Periksa koneksi internet atau izin URL Web App.',
+            'NETWORK_ERROR'
           );
-        }
-        console.error('[API Error]', err);
-        throw new ApiError(
-          'Gagal menghubungi server. Periksa koneksi internet atau izin URL Web App.',
-          'NETWORK_ERROR'
-        );
-      } finally {
-        clearTimeout(timer);
-        if (cacheKey) {
-          inFlightRequests.delete(cacheKey);
         }
       }
     })();

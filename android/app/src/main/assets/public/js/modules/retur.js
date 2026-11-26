@@ -257,7 +257,10 @@ async function muatDataReturJual(container) {
       return `
                 <tr data-id="${escapeHtml(it.id)}">
                   <td data-label="No Retur & Tgl">
-                    <div class="fw-semibold">${escapeHtml(it.no_retur || '-')}</div>
+                    <div class="row items-center" style="gap: 6px; flex-wrap: wrap;">
+                      <span class="fw-semibold">${escapeHtml(it.no_retur || '-')}</span>
+                      <span class="badge ${it.lokasi === 'gudang' ? 'badge-primary' : 'badge-secondary'} badge-xs">${it.lokasi === 'gudang' ? 'Gudang' : 'Toko'}</span>
+                    </div>
                     <div class="text-xs text-muted">${formatTanggal(it.dibuat_at, true)}</div>
                   </td>
                   <td data-label="Nota Asal">
@@ -392,7 +395,10 @@ async function muatDataReturBeli(container) {
       return `
                 <tr data-id="${escapeHtml(it.id)}">
                   <td data-label="No Retur & Tgl">
-                    <div class="fw-semibold">${escapeHtml(it.no_retur || '-')}</div>
+                    <div class="row items-center" style="gap: 6px; flex-wrap: wrap;">
+                      <span class="fw-semibold">${escapeHtml(it.no_retur || '-')}</span>
+                      <span class="badge ${it.lokasi === 'gudang' ? 'badge-primary' : 'badge-secondary'} badge-xs">${it.lokasi === 'gudang' ? 'Gudang' : 'Toko'}</span>
+                    </div>
                     <div class="text-xs text-muted">${formatTanggal(it.dibuat_at, true)}</div>
                   </td>
                   <td data-label="Faktur Asal">
@@ -625,17 +631,27 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
         <span class="stat-value text-danger" id="total-nilai-retur-label">Rp 0</span>
       </div>
 
-      <div class="field">
-        <label class="field-label" for="rj-metode-refund">Metode Pengembalian Dana (Refund) *</label>
-        <select class="input" id="rj-metode-refund" required>
-          ${adaPiutangAktif ? `
-            <option value="potong_piutang">Potong Sisa Piutang Nota (Sisa Tagihan: ${formatRupiah(sisaPiutang)})</option>
-          ` : ''}
-          ${pj.pelanggan_id ? `
-            <option value="deposit">Kembalikan ke Saldo Titipan (Deposit Pelanggan)</option>
-          ` : ''}
-          <option value="kas">${adaPiutangAktif ? 'Kembalikan Uang Kas / Tunai ke Pelanggan' : 'Pengembalian Uang Tunai / Kas Toko'}</option>
-        </select>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-2);">
+        <div class="field">
+          <label class="field-label" for="rj-metode-refund">Metode Pengembalian Dana (Refund) *</label>
+          <select class="input" id="rj-metode-refund" required>
+            ${adaPiutangAktif ? `
+              <option value="potong_piutang">Potong Sisa Piutang Nota (Sisa Tagihan: ${formatRupiah(sisaPiutang)})</option>
+            ` : ''}
+            ${pj.pelanggan_id ? `
+              <option value="deposit">Kembalikan ke Saldo Titipan (Deposit Pelanggan)</option>
+            ` : ''}
+            <option value="kas">${adaPiutangAktif ? 'Kembalikan Uang Kas / Tunai ke Pelanggan' : 'Pengembalian Uang Tunai / Kas Toko'}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="rj-lokasi">Kembalikan Barang ke Lokasi *</label>
+          <select class="input" id="rj-lokasi" required>
+            <option value="toko" selected>Stok Toko / Etalase (Default)</option>
+            <option value="gudang">Stok Gudang</option>
+          </select>
+        </div>
       </div>
 
       <div class="field">
@@ -751,6 +767,7 @@ function renderFormPilihItemReturJual(container, modalInstance, modalBody, pj, i
       const resCreate = await apiCall('retur.create', {
         tipe: 'jual',
         ref_id: pj.id,
+        lokasi: $('#rj-lokasi', modalBody)?.value || 'toko',
         alasan,
         metode_refund,
         items: payloadItems
@@ -939,16 +956,26 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
         <span class="stat-value text-success" id="total-nilai-retur-beli-label">Rp 0</span>
       </div>
 
-      <div class="field">
-        <label class="field-label" for="rb-metode-refund">Metode Pengembalian Nilai (Refund) *</label>
-        <select class="input" id="rb-metode-refund" required>
-          ${adaHutangAktif ? `
-            <option value="potong_hutang">Potong Sisa Hutang Faktur (Sisa Hutang: ${formatRupiah(sisaHutang)})</option>
-            <option value="kas">Vendor Mengembalikan Kas / Transfer Dana</option>
-          ` : `
-            <option value="kas">Vendor Mengembalikan Kas / Transfer Dana</option>
-          `}
-        </select>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-2);">
+        <div class="field">
+          <label class="field-label" for="rb-metode-refund">Metode Pengembalian Nilai (Refund) *</label>
+          <select class="input" id="rb-metode-refund" required>
+            ${adaHutangAktif ? `
+              <option value="potong_hutang">Potong Sisa Hutang Faktur (Sisa Hutang: ${formatRupiah(sisaHutang)})</option>
+              <option value="kas">Vendor Mengembalikan Kas / Transfer Dana</option>
+            ` : `
+              <option value="kas">Vendor Mengembalikan Kas / Transfer Dana</option>
+            `}
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="rb-lokasi">Ambil Barang Retur dari Lokasi *</label>
+          <select class="input" id="rb-lokasi" required>
+            <option value="gudang">Stok Gudang (Disarankan)</option>
+            <option value="toko">Stok Toko / Etalase</option>
+          </select>
+        </div>
       </div>
 
       <div class="field">
@@ -1057,6 +1084,7 @@ function renderFormPilihItemReturBeli(container, modalInstance, modalBody, pb, i
       const resCreate = await apiCall('retur.create', {
         tipe: 'beli',
         ref_id: pb.id,
+        lokasi: $('#rb-lokasi', modalBody)?.value || 'gudang',
         alasan,
         metode_refund,
         items: payloadItems

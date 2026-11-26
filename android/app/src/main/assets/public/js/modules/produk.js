@@ -817,8 +817,9 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                     ${p.satuan_konversi && p.satuan_konversi.length ? `<span class="badge badge-sm">+${p.satuan_konversi.length} Satuan</span>` : ''}
                   </div>
                 </div>
-                <div class="d-none-desktop" style="flex-shrink: 0; margin-left: auto; align-self: flex-start; padding-top: 2px;">
+                <div class="d-none-desktop" style="flex-shrink: 0; margin-left: auto; align-self: flex-start; padding-top: 2px; text-align: right;">
                   <span class="badge ${stokBadge.kelas}" style="white-space: nowrap;">${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
+                  ${Number(p.stok_gudang || 0) > 0 ? `<div class="text-2xs text-muted font-mono" style="margin-top: 2px;">T:${formatQty(p.stok_toko || 0)} • G:${formatQty(p.stok_gudang || 0)}</div>` : ''}
                 </div>
               </div>
             </td>
@@ -831,7 +832,10 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             <td class="num fw-bold text-primary" data-label="Harga Ritel"><span class="table-cell-val">${formatRupiah(p.harga_ritel)}</span></td>
             <td class="num text-muted" data-label="Harga Grosir"><span class="table-cell-val">${p.harga_grosir ? formatRupiah(p.harga_grosir) : '-'}</span></td>
             <td style="text-align: center; white-space: nowrap;" data-label="Stok" class="d-none-mobile">
-              <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
+              <div class="cell-stack" style="align-items: center; gap: 2px;">
+                <span class="badge ${stokBadge.kelas}">${formatQty(p.stok)}</span>
+                ${Number(p.stok_gudang || 0) > 0 ? `<span class="text-2xs text-muted font-mono">T:${formatQty(p.stok_toko || 0)} • G:${formatQty(p.stok_gudang || 0)}</span>` : ''}
+              </div>
             </td>
             ${canEdit ? `
               <td style="text-align: right; width: 175px; min-width: 170px; white-space: nowrap;" data-label="Aksi">
@@ -897,7 +901,10 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               `}
             </div>
             <div class="row-between" style="align-items: center; gap: 6px;">
-              <span class="badge ${stokBadge.kelas}">Stok: ${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
+              <div class="row" style="gap: 4px; align-items: center; flex-wrap: wrap;">
+                <span class="badge ${stokBadge.kelas}">Stok: ${formatQty(p.stok)} ${escapeHtml(p.satuan_dasar)}</span>
+                ${Number(p.stok_gudang || 0) > 0 ? `<span class="badge badge-info badge-xs font-mono">T:${formatQty(p.stok_toko || 0)} • G:${formatQty(p.stok_gudang || 0)}</span>` : ''}
+              </div>
               ${p.sku ? `<span class="mono text-xs text-muted" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.sku)}</span>` : ''}
             </div>
 

@@ -2472,6 +2472,34 @@ async function runAudit() {
     assert(lrAfterKlaim.ringkasan.total_kerugian_rusak === 100000,
       `Barang rusak yang sudah diganti supplier tidak boleh dihitung rugi lagi (tetap 100000), aktual: ${lrAfterKlaim.ringkasan.total_kerugian_rusak}`);
 
+    // 29f2. Sinkronisasi 100% Dashboard vs Laba Rugi atas kerugian barang rusak
+    const dashRusak = envGd.aksiLaporanDashboard_({ user: ownerRow, payload: { periode: 'hari_ini' } });
+    assert(dashRusak.ringkasan.total_kerugian_rusak === lrAfterKlaim.ringkasan.total_kerugian_rusak &&
+      dashRusak.ringkasan.laba_bersih_riil === lrAfterKlaim.ringkasan.laba_bersih_riil,
+      `Dashboard (${dashRusak.ringkasan.laba_bersih_riil}) wajib 100% sinkron dengan Laba Rugi (${lrAfterKlaim.ringkasan.laba_bersih_riil}) termasuk kerugian barang rusak`);
+
+    // 29f3. produk.update produk bervarian wajib mempertahankan stok_toko & stok_gudang tanpa desync
+    const prVarUji = envGd.aksiProdukCreate_({
+      user: ownerRow,
+      payload: {
+        nama: 'Cat Multi Lokasi Uji', satuan_dasar: 'KLG', punya_varian: true, hpp: 40000, harga_ritel: 55000,
+        varian: [{ nama_varian: 'Merah', hpp: 40000, harga_ritel: 55000, stok_toko: 4, stok_gudang: 16 }]
+      }
+    });
+    const prVarId = (prVarUji.produk || prVarUji).id;
+    const varMerah = envGd.bacaSemua_('Varian').find((v) => v.produk_id === prVarId && !v.deleted);
+    envGd.aksiProdukUpdate_({
+      user: ownerRow,
+      payload: {
+        id: prVarId, nama: 'Cat Multi Lokasi Uji Rev', satuan_dasar: 'KLG', punya_varian: true, hpp: 40000, harga_ritel: 56000,
+        varian: [{ id: varMerah.id, nama_varian: 'Merah', hpp: 40000, harga_ritel: 56000, stok: 20 }]
+      }
+    });
+    const varMerahAfter = envGd.cariById_('Varian', varMerah.id);
+    const prVarAfter = envGd.cariById_('Produk', prVarId);
+    assert(varMerahAfter.stok_toko === 4 && varMerahAfter.stok_gudang === 16 && prVarAfter.stok_toko === 4 && prVarAfter.stok_gudang === 16,
+      `produk.update wajib mempertahankan stok_toko=4 & stok_gudang=16 varian & induk; aktual var=(${varMerahAfter.stok_toko},${varMerahAfter.stok_gudang})`);
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');
