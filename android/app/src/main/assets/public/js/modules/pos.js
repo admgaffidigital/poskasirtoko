@@ -511,7 +511,11 @@ export function renderPosModule(container) {
   });
 
   // ---------- Inisialisasi Data & Load More ----------
+  let katalogReqSeq = 0;
+  let initialPosMetaLoaded = false;
+
   async function muatDataKatalog(reset = true) {
+    const reqSeq = ++katalogReqSeq;
     if (reset) {
       state.page = 1;
       state.isLoading = true;
@@ -530,13 +534,17 @@ export function renderPosModule(container) {
       }
 
       if (reset) {
-        // Ambil kategori & produk aktif secara paralel tanpa diblokir oleh pending/pengaturan
-        const [resKat, resProd] = await Promise.all([
-          api.post('kategori.list', { aktif_saja: true }),
-          api.post('produk.list', payloadPrd)
-        ]);
+        const perluKategori = state.kategori.length === 0;
+        const [resKat, resProd] = perluKategori
+          ? await Promise.all([
+              api.post('kategori.list', { aktif_saja: true }),
+              api.post('produk.list', payloadPrd)
+            ])
+          : [null, await api.post('produk.list', payloadPrd)];
 
-        if (resKat.ok) state.kategori = resKat.data.items || [];
+        if (reqSeq !== katalogReqSeq) return; // Abaikan respons lama bila kasir sudah mengetik ulang / pindah kategori
+
+        if (resKat && resKat.ok) state.kategori = resKat.data.items || [];
         if (resProd.ok) {
           state.katalog = resProd.data.items || [];
           state.totalProduk = resProd.data.total ?? state.katalog.length;
@@ -546,41 +554,47 @@ export function renderPosModule(container) {
         renderKategoriBar();
         renderKatalog();
 
-        // Segarkan pengaturan & jumlah pending di latar belakang tanpa menahan katalog utama
-        api.post('pengaturan.get').then((resPeng) => {
-          if (resPeng.ok) {
-            state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
-            store.set('pengaturan', state.pengaturan);
-            store.setToko({
-              nama: state.pengaturan.toko_nama,
-              alamat: state.pengaturan.toko_alamat,
-              hp: state.pengaturan.toko_hp,
-              nota_footer: state.pengaturan.nota_footer
-            });
-          }
-        }).catch(() => { });
+        // Pemanasan metadata (pengaturan, pending, member) HANYA sekali saat buka POS, bukan setiap klik kategori/pencarian!
+        if (!initialPosMetaLoaded) {
+          initialPosMetaLoaded = true;
+          api.post('pengaturan.get').then((resPeng) => {
+            if (resPeng.ok) {
+              state.pengaturan = resPeng.data.pengaturan || resPeng.data || {};
+              store.set('pengaturan', state.pengaturan);
+              store.setToko({
+                nama: state.pengaturan.toko_nama,
+                alamat: state.pengaturan.toko_alamat,
+                hp: state.pengaturan.toko_hp,
+                logo: state.pengaturan.toko_logo_url || '',
+                nota_footer: state.pengaturan.nota_footer
+              });
+            }
+          }).catch(() => { });
 
-        api.post('penjualan.pending.list').then((resPending) => {
-          if (resPending.ok) {
-            state.pendingCount = (resPending.data.items || []).length;
-            perbaruiBadgePending();
-          }
-        }).catch(() => { });
+          api.post('penjualan.pending.list').then((resPending) => {
+            if (resPending.ok) {
+              state.pendingCount = (resPending.data.items || []).length;
+              perbaruiBadgePending();
+            }
+          }).catch(() => { });
 
-        // Pre-warm daftar pelanggan/member di latar belakang agar tombol "Pilih Member" terbuka instan (0ms)
-        api.post('pelanggan.list', { semua: true }).then((resPel) => {
-          if (resPel.ok && resPel.data) {
-            state.daftarPelanggan = resPel.data.items || [];
-          }
-        }).catch(() => { });
+          api.post('pelanggan.list', { semua: true }).then((resPel) => {
+            if (resPel.ok && resPel.data) {
+              state.daftarPelanggan = resPel.data.items || [];
+            }
+          }).catch(() => { });
+        }
       } else {
         // Ambil produk halaman berikutnya (Load More)
         const resProd = await api.post('produk.list', payloadPrd);
+        if (reqSeq !== katalogReqSeq) return;
         if (resProd.ok) {
           const itemsBaru = resProd.data.items || [];
+          const existingIds = new Set(state.katalog.map((x) => x.id));
           itemsBaru.forEach((p) => {
-            if (!state.katalog.some((x) => x.id === p.id)) {
+            if (!existingIds.has(p.id)) {
               state.katalog.push(p);
+              existingIds.add(p.id);
             }
           });
           state.totalProduk = resProd.data.total ?? state.katalog.length;

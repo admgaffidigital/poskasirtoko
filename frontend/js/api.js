@@ -29,13 +29,13 @@ const inFlightRequests = new Map();
 
 // Aksi yang dapat di-cache dengan aman (TTL segar dalam milidetik; SWR stale window = 6x TTL hingga 15 menit)
 const CACHE_CONFIG = {
-  'kategori.list': 180000,         // 3 menit
-  'pengaturan.get': 300000,        // 5 menit
-  'produk.list': 90000,            // 1.5 menit (katalog instan per filter & paginasi)
+  'kategori.list': 300000,         // 5 menit
+  'pengaturan.get': 600000,        // 10 menit
+  'produk.list': 120000,           // 2 menit (katalog instan per filter & paginasi)
   'pelanggan.list': 300000,        // 5 menit (instan 0ms di POS Kasir, Pelanggan, & Loyalti)
   'pelanggan.detail': 60000,       // 1 menit
-  'supplier.list': 90000,          // 1.5 menit
-  'hadiah.list': 90000,            // 1.5 menit
+  'supplier.list': 180000,         // 3 menit
+  'hadiah.list': 180000,           // 3 menit
   'user.list': 60000,              // 1 menit
   'auth.me': 45000,                // 45 detik
   'kartuStok.list': 60000,         // 1 menit
@@ -83,6 +83,10 @@ const PERSISTABLE_ACTIONS = new Set([
   'hadiah.list',
   'gudang.ringkasan',
   'penjualan.pending.list',
+  'shift.aktif',
+  'pengiriman.list',
+  'retur.list',
+  'pembelian.list',
   'piutang.list',
   'hutang.list',
   'biaya.list',
@@ -123,8 +127,8 @@ const MUTATION_PATTERNS = [
 ];
 
 let persistTimer = null;
-const MAX_MEMORY_CACHE_ENTRIES = 120;
-const MAX_PERSIST_BYTES = 450000; // Batas ~450 KB agar localStorage tidak pernah meluap (QuotaExceeded)
+const MAX_MEMORY_CACHE_ENTRIES = 180;
+const MAX_PERSIST_BYTES = 550000; // Batas ~550 KB agar localStorage tetap ringan & cepat saat reload
 
 function pangkasCacheMemori() {
   const now = Date.now();
@@ -159,7 +163,7 @@ function muatCachePersisten() {
       }
     }
     if (expiredFound) jadwalkanSimpanCachePersisten();
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function jadwalkanSimpanCachePersisten() {
@@ -183,7 +187,7 @@ function jadwalkanSimpanCachePersisten() {
         }
       }
       localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify(obj));
-    } catch (_) {}
+    } catch (_) { }
   }, 150);
 }
 
@@ -233,7 +237,7 @@ export function getApiCacheStats() {
         const key = localStorage.key(i);
         if (key) totalStorageBytes += key.length + (localStorage.getItem(key) || '').length;
       }
-    } catch (_) {}
+    } catch (_) { }
   }
   return {
     totalEntries: memoryApiCache.size,
@@ -300,7 +304,7 @@ export function invalidateApiCache(prefix = null) {
   if (!prefix) {
     memoryApiCache.clear();
     if (typeof localStorage !== 'undefined') {
-      try { localStorage.removeItem(PERSISTENT_CACHE_KEY); } catch (_) {}
+      try { localStorage.removeItem(PERSISTENT_CACHE_KEY); } catch (_) { }
     }
     return;
   }
@@ -504,7 +508,7 @@ export async function apiCall(action, payload = {}, options = {}) {
             if ((errCode === 'AUTH_INVALID' || errCode === 'AUTH_REQUIRED') && action !== 'auth.login' && action !== 'auth.logout' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
               try {
                 window.dispatchEvent(new CustomEvent('pos-auth-expired', { detail: { code: errCode, message: errMsg, action } }));
-              } catch (_) {}
+              } catch (_) { }
             }
             throw new ApiError(errMsg, errCode, data.data);
           }
@@ -547,7 +551,7 @@ export async function apiCall(action, payload = {}, options = {}) {
     }
     if (entry.staleExpiry && now < entry.staleExpiry) {
       // Stale-While-Revalidate: Kembalikan data instan (0ms) dan segarkan di latar belakang
-      eksekusiJaringan().catch(() => {});
+      eksekusiJaringan().catch(() => { });
       return entry.data;
     }
     memoryApiCache.delete(cacheKey);

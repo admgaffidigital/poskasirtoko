@@ -20,8 +20,10 @@ import android.print.PrintManager;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Base64;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.activity.OnBackPressedCallback;
@@ -43,6 +45,16 @@ public class MainActivity extends BridgeActivity {
 
         WebView webView = getBridge().getWebView();
         if (webView != null) {
+            // Tuning performa WebView Android: DOM Storage & Cache aktif + hilangkan overscroll jank
+            try {
+                WebSettings ws = webView.getSettings();
+                ws.setDomStorageEnabled(true);
+                ws.setDatabaseEnabled(true);
+                ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+                webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            } catch (Exception ignored) {
+            }
+
             // Daftarkan native bridge agar JS dapat berkomunikasi langsung dengan RawBT, Bluetooth & Lifecycle Android
             webView.addJavascriptInterface(new RawBTBridge(this), "AndroidRawBT");
             webView.addJavascriptInterface(new AppLifecycleBridge(this), "AndroidApp");

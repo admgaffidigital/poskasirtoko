@@ -100,6 +100,9 @@ const MASTER_CACHE_SHEETS = Object.freeze({
   Supplier: 180,
   Hadiah: 180,
   Users: 180,
+  Tutup_Buku: 300,
+  Counter: 300,
+  Opname: 90,
   Penjualan: 90,
   Penjualan_Item: 90,
   Penjualan_Bayar: 90,
@@ -192,12 +195,21 @@ function bacaSemua_(namaSheet, opsi) {
   return hasil;
 }
 
-/** Cari satu baris berdasarkan id (null bila tidak ada / terhapus). */
+/** Cari satu baris berdasarkan id dalam O(1) (null bila tidak ada / terhapus). */
 function cariById_(namaSheet, id, opsi) {
   if (!id) return null;
+  const cacheKey = namaSheet + (opsi && opsi.termasukTerhapus ? '_semua' : '_aktif');
+  const idxKey = '__idx_' + cacheKey;
+  if (_CACHE_BACA_REQ && _CACHE_BACA_REQ[idxKey]) {
+    return _CACHE_BACA_REQ[idxKey][id] || null;
+  }
   const semua = bacaSemua_(namaSheet, opsi);
-  for (let i = 0; i < semua.length; i++) if (semua[i].id === id) return semua[i];
-  return null;
+  const peta = {};
+  for (let i = 0; i < semua.length; i++) {
+    peta[semua[i].id] = semua[i];
+  }
+  if (_CACHE_BACA_REQ) _CACHE_BACA_REQ[idxKey] = peta;
+  return peta[id] || null;
 }
 
 /**
@@ -233,6 +245,8 @@ function tambahBaris_(namaSheet, daftar, userId) {
   if (_CACHE_BACA_REQ) {
     delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
     delete _CACHE_BACA_REQ[namaSheet + '_semua'];
+    delete _CACHE_BACA_REQ['__idx_' + namaSheet + '_aktif'];
+    delete _CACHE_BACA_REQ['__idx_' + namaSheet + '_semua'];
   }
   hapusCacheSheetMaster_(namaSheet);
   if (!daftar || !daftar.length) return [];
@@ -280,18 +294,31 @@ function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-un
   const header = pastikanKolomSkema_(sh, namaSheet);
   const lebar = Object.keys(header).reduce(function (m, k) { return Math.max(m, header[k] + 1); }, 0) || sh.getLastColumn();
   const tipe = tipeKolom_(namaSheet);
-  const semua = bacaSemua_(namaSheet, { termasukTerhapus: true });
+
+  // Optimasi RPC: cari dulu di baris aktif (hit L1/L2 CacheService ~1ms), baru fallback full-read bila ada ID soft-deleted
+  const aktif = bacaSemua_(namaSheet);
+  const indeks = {};
+  for (let i = 0; i < aktif.length; i++) indeks[aktif[i].id] = aktif[i];
+  const perluFullRead = perubahan.some(function (p) { return !indeks[p.id]; });
+  if (perluFullRead) {
+    const semua = bacaSemua_(namaSheet, { termasukTerhapus: true });
+    for (let i = 0; i < semua.length; i++) indeks[semua[i].id] = semua[i];
+  }
+
   if (_CACHE_BACA_REQ) {
     delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
     delete _CACHE_BACA_REQ[namaSheet + '_semua'];
+    delete _CACHE_BACA_REQ['__idx_' + namaSheet + '_aktif'];
+    delete _CACHE_BACA_REQ['__idx_' + namaSheet + '_semua'];
   }
   hapusCacheSheetMaster_(namaSheet);
-  const indeks = {};
-  semua.forEach(function (o) { indeks[o.id] = o; });
   const waktu = sekarang_();
   const terlarang = { id: 1, created_at: 1, created_by: 1 };
+  const headerKeys = Object.keys(header);
 
-  return perubahan.map(function (p) {
+  const hasil = [];
+  const rencanaTulis = [];
+  perubahan.forEach(function (p) {
     const lama = indeks[p.id];
     if (!lama) gagal_(KODE.NOT_FOUND, 'Data tidak ditemukan (' + namaSheet + ').');
     const baru = Object.assign({}, lama);
@@ -300,12 +327,30 @@ function ubahBaris_(namaSheet, perubahan, userId) { // eslint-disable-line no-un
     });
     baru.updated_at = waktu;
     const row = new Array(lebar).fill('');
-    Object.keys(header).forEach(function (kol) {
+    for (let c = 0; c < headerKeys.length; c++) {
+      const kol = headerKeys[c];
       if (tipe[kol]) row[header[kol]] = keSel_(baru[kol], tipe[kol], kol);
-    });
-    sh.getRange(lama._baris, 1, 1, lebar).setValues([row]);
-    return baru;
+    }
+    hasil.push(baru);
+    rencanaTulis.push({ baris: lama._baris, row: row });
   });
+
+  // Gabungkan baris bersebelahan (contiguous) menjadi 1 panggilan setValues agar memangkas RPC Google Sheets
+  rencanaTulis.sort(function (a, b) { return a.baris - b.baris; });
+  let idxTulis = 0;
+  while (idxTulis < rencanaTulis.length) {
+    const mulaiBaris = rencanaTulis[idxTulis].baris;
+    const blok = [rencanaTulis[idxTulis].row];
+    let akhirBaris = mulaiBaris;
+    idxTulis++;
+    while (idxTulis < rencanaTulis.length && rencanaTulis[idxTulis].baris === akhirBaris + 1) {
+      blok.push(rencanaTulis[idxTulis].row);
+      akhirBaris = rencanaTulis[idxTulis].baris;
+      idxTulis++;
+    }
+    sh.getRange(mulaiBaris, 1, blok.length, lebar).setValues(blok);
+  }
+  return hasil;
 }
 
 /** Soft delete (deleted = TRUE). */
@@ -412,8 +457,11 @@ function cacheAmbil_(key) {
   }
 }
 
-/** Hapus cache (termasuk potongan). */
+/** Hapus cache (termasuk potongan & cache L1 pengaturan dalam request). */
 function cacheHapus_(key) {
+  if (key === 'pengaturan' && _CACHE_BACA_REQ) {
+    delete _CACHE_BACA_REQ.__pengaturan;
+  }
   const cache = CacheService.getScriptCache();
   const n = Number(cache.get(key + '__n') || 0);
   const kunci = [key, key + '__n'];
@@ -538,13 +586,20 @@ function evaluasiLevelMember_(levelLama, totalBelanjaBaru, pengaturan) {
   return levelTerbaik;
 }
 
-/** Pengaturan aktif (default + nilai tersimpan), di-cache. */
+/** Pengaturan aktif (default + nilai tersimpan), di-cache L1 (in-request 0ms) & L2 (CacheService 1 jam). */
 function ambilPengaturan_() {
+  if (_CACHE_BACA_REQ && _CACHE_BACA_REQ.__pengaturan) {
+    return _CACHE_BACA_REQ.__pengaturan;
+  }
   const cache = cacheAmbil_('pengaturan');
-  if (cache) return cache;
+  if (cache) {
+    if (_CACHE_BACA_REQ) _CACHE_BACA_REQ.__pengaturan = cache;
+    return cache;
+  }
   const hasil = JSON.parse(JSON.stringify(PENGATURAN_DEFAULT));
   bacaSemua_('Pengaturan').forEach(function (p) { hasil[p.key] = p.value; });
   cacheSimpan_('pengaturan', hasil, 3600);
+  if (_CACHE_BACA_REQ) _CACHE_BACA_REQ.__pengaturan = hasil;
   return hasil;
 }
 

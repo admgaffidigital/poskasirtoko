@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.156] - 2026-11-27
+### Diubah — Optimasi Performa & Kecepatan Menyeluruh (Backend GAS, Web/PWA, POS Kasir, CSS 60fps, & Android WebView)
+- **[BACKEND] Pengurangan RPC Google Sheets 40–70% pada Transaksi & Baca Data (`01_database_utilitas.gs`)**:
+  - Menambahkan `Tutup_Buku`, `Counter`, dan `Opname` ke L2 `MASTER_CACHE_SHEETS` (memangkas full-sheet read `cekPeriodeTerkunci_` & `nomorBerikut_` pada setiap transaksi).
+  - Mengoptimalkan `ubahBaris_()` dengan *smart cache lookup* (cek baris aktif di L1/L2 ~1ms sebelum fallback full-read) dan penggabungan penulisan baris bersebelahan (*contiguous row batching*) menjadi 1 panggilan `setValues()`.
+  - Menambahkan indeks hash `O(1)` in-request pada `cariById_()` serta cache L1 0ms pada `ambilPengaturan_()`.
+- **[POS-JUAL] [PWA] [UI] [APK] Katalog Instan, SWR Lebih Luas, CSS `content-visibility`, & Tuning WebView Android (`pos.js`, `api.js`, `components.css`, `MainActivity.java`)**:
+  - Menghilangkan 4 pemanggilan API latar belakang berulang (`kategori.list`, `pengaturan.get`, `pending.list`, `pelanggan.list`) saat klik filter kategori atau mengetik pencarian di POS, plus pengaman urutan respons `katalogReqSeq` dan deduplikasi `O(1)` saat Load More.
+  - Memperluas cache SWR persisten `localStorage` ke `shift.aktif`, `pengiriman.list`, `retur.list`, dan `pembelian.list` serta kapasitas cache memori hingga 180 entri.
+  - Menambahkan CSS `content-visibility: auto` & `contain: layout style` untuk percepatan scroll tabel panjang & katalog di HP, serta tuning WebView (`OVER_SCROLL_NEVER`, DOM Storage/Cache) di `MainActivity.java`.
+
 ## [1.0.155] - 2026-11-27
 ### Ditambahkan — Upload Logo Toko Kustom (Login, Sidebar/Topbar, Faktur A5, Surat Jalan, RAB, Katalog PDF, & Evaluasi Bulanan)
 - **[SETTING] [UI] [CETAK] [BACKEND] Logo Toko Kustom Zero-Migration & Instan Offline (`02_auth_user_pengaturan.gs`, `04_pos_penjualan.gs`, `pengaturan.js`, `state.js`, `app.js`, `auth.js`, `printer.js`, `katalog-pdf.js`, `evaluasi-pdf.js`)**:

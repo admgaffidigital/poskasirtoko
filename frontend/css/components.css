@@ -6512,3 +6512,14 @@ tr.is-bulk-selected td {
 
 
 
+
+/* ---------- Optimasi Performa Render & Scroll 60fps (Web & Android WebView) ---------- */
+.table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+.pos-card,
+.stat-card-pro {
+  contain: layout style;
+}
