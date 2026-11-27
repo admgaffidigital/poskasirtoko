@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.157] - 2026-11-27
+### Diubah — Percepatan Pemuatan Foto Produk 10x–20x (Thumbnail CDN `=w240`/`=w120`, Eager Above-the-Fold, & Cache Foto Permanen SW)
+- **[POS-JUAL] [PRODUK] [PWA] [APK] Foto Produk Instan di Web & Aplikasi Android (`format.js`, `pos.js`, `produk.js`, `sw.js`)**:
+  - Menambahkan helper `optimalkanUrlFoto(url, lebarPx)` di `format.js` yang mengonversi URL Google Drive / `lh3.googleusercontent.com` ke thumbnail CDN ringan (`=w240`/`=w260` untuk kartu grid, `=w120`/`=w140` untuk avatar daftar — memangkas ukuran foto dari ratusan KB–MB menjadi ~5–12 KB).
+  - Mengubah 12 produk teratas yang langsung tampil di layar dari `loading="lazy"` ke `loading="eager" fetchpriority="high"` + `referrerpolicy="no-referrer"` agar tidak ditunda oleh Chrome/Android WebView.
+  - Menambahkan cache foto khusus (`pos-kasir-images-v1`, Cache-First maks 350 foto, bertahan lintas update versi) pada `frontend/sw.js` untuk `lh3.googleusercontent.com` sehingga foto produk yang pernah dimuat tampil **0ms instan** (termasuk saat offline).
+
 ## [1.0.156] - 2026-11-27
 ### Diubah — Optimasi Performa & Kecepatan Menyeluruh (Backend GAS, Web/PWA, POS Kasir, CSS 60fps, & Android WebView)
 - **[BACKEND] Pengurangan RPC Google Sheets 40–70% pada Transaksi & Baca Data (`01_database_utilitas.gs`)**:

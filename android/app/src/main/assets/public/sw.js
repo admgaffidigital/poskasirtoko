@@ -4,7 +4,9 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.156';
+const CACHE_NAME = 'pos-kasir-static-v1.0.157';
+const IMAGE_CACHE_NAME = 'pos-kasir-images-v1';
+const MAX_CACHED_IMAGES = 350;
 
 const ASSETS = [
   './',
@@ -103,7 +105,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== IMAGE_CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -122,10 +124,39 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // Jangan pernah cache request ke Google Script API, localhost/POS USB Bridge, atau domain luar non-statis
+  // Cache-First permanen untuk foto produk CDN Google Drive (lh3.googleusercontent.com) -> 0ms instan & tampil offline!
+  if (/^lh\d+\.googleusercontent\.com$/i.test(url.hostname)) {
+    event.respondWith(
+      (async () => {
+        const imgCache = await caches.open(IMAGE_CACHE_NAME);
+        const cached = await imgCache.match(req);
+        if (cached) return cached;
+        try {
+          const netRes = await fetch(req);
+          if (netRes && (netRes.status === 200 || netRes.type === 'opaque')) {
+            imgCache.put(req, netRes.clone()).then(async () => {
+              const keys = await imgCache.keys();
+              if (keys.length > MAX_CACHED_IMAGES) {
+                const excess = keys.length - MAX_CACHED_IMAGES;
+                for (let i = 0; i < excess; i++) {
+                  await imgCache.delete(keys[i]);
+                }
+              }
+            }).catch(() => {});
+          }
+          return netRes;
+        } catch (err) {
+          return Response.error();
+        }
+      })()
+    );
+    return;
+  }
+
+  // Jangan pernah cache request ke Google Script API, localhost/POS USB Bridge, atau redirect script.googleusercontent.com
   if (
     url.hostname.includes('script.google.com') ||
-    url.hostname.includes('googleusercontent.com') ||
+    url.hostname.includes('script.googleusercontent.com') ||
     url.hostname === '127.0.0.1' ||
     url.hostname === 'localhost'
   ) {

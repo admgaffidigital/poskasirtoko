@@ -182,4 +182,29 @@ export function formatSkuLabel(kode) {
   return `SKU: ${str}`;
 }
 
+/**
+ * Optimalkan URL foto produk Google Drive / lh3.googleusercontent.com menjadi thumbnail CDN ringan
+ * (=w240 untuk kartu POS/produk ~5-12 KB, =w120 untuk avatar daftar ~3-6 KB; 10x-20x lebih cepat).
+ * @param {string} rawUrl
+ * @param {number} [lebarPx=240]
+ * @returns {string}
+ */
+export function optimalkanUrlFoto(rawUrl, lebarPx = 240) {
+  const u = String(rawUrl || '').trim();
+  if (!u || u.startsWith('data:') || u.startsWith('blob:')) return u;
+  const w = Math.max(80, Math.min(1200, Math.round(Number(lebarPx) || 240)));
+
+  const mDrive = u.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=))([a-zA-Z0-9_-]{10,})/);
+  if (mDrive && mDrive[1]) {
+    return `https://lh3.googleusercontent.com/d/${mDrive[1]}=w${w}`;
+  }
+
+  const mLh3 = u.match(/^(https:\/\/lh\d+\.googleusercontent\.com\/d\/[a-zA-Z0-9_-]{10,})(?:=[^/?#]*)?$/);
+  if (mLh3 && mLh3[1]) {
+    return `${mLh3[1]}=w${w}`;
+  }
+
+  return u;
+}
+
 

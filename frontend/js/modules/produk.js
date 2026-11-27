@@ -7,7 +7,7 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
-import { formatRupiah, formatQty, parseRupiah, parseQty, escapeHtml } from '../utils/format.js';
+import { formatRupiah, formatQty, parseRupiah, parseQty, escapeHtml, optimalkanUrlFoto } from '../utils/format.js';
 import { renderKalkulatorHppToggle, renderKalkulatorHppPanel, ikatKalkulatorHpp } from '../utils/hpp-calculator.js';
 import { bukaModalKatalogPdf } from '../utils/katalog-pdf.js';
 import { bukaModalImportExportProduk } from '../utils/produk-import.js';
@@ -796,9 +796,11 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
               <tbody>
       `;
 
-      items.forEach((p) => {
+      items.forEach((p, idx) => {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
         const isChecked = produkSelectMode && produkSelectedMap.has(p.id);
+        const fotoThumb = p.foto_url ? optimalkanUrlFoto(p.foto_url, 140) : '';
+        const imgLoadAttr = idx < 12 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
         html += `
           <tr class="prd-selectable-item ${isChecked ? 'is-bulk-selected' : ''}" data-prd-id="${escapeHtml(p.id)}">
             ${produkSelectMode ? `
@@ -809,8 +811,8 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
             <td data-label="Produk">
               <div class="prd-table-head" style="display: flex; align-items: flex-start; gap: var(--sp-3); width: 100%; flex-wrap: nowrap;">
                 <div class="prd-table-avatar" style="flex-shrink: 0;">
-                  ${p.foto_url ? `
-                    <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
+                  ${fotoThumb ? `
+                    <img src="${escapeHtml(fotoThumb)}" alt="${escapeHtml(p.nama)}" ${imgLoadAttr} decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid';">
                     <div style="display: none; width: 100%; height: 100%; place-items: center;">${ICONS.package}</div>
                   ` : ICONS.package}
                 </div>
@@ -879,9 +881,11 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
     } else {
       // Grid View
       let html = '<div class="card-grid">';
-      items.forEach((p) => {
+      items.forEach((p, idx) => {
         const stokBadge = dapatkanBadgeStok(p.stok, p.stok_min);
         const isChecked = produkSelectMode && produkSelectedMap.has(p.id);
+        const fotoGrid = p.foto_url ? optimalkanUrlFoto(p.foto_url, 260) : '';
+        const imgLoadAttr = idx < 12 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
         html += `
           <div class="card stack-sm prd-selectable-item ${isChecked ? 'is-bulk-selected' : ''}" data-prd-id="${escapeHtml(p.id)}" style="padding: var(--sp-4); position: relative;">
             ${produkSelectMode ? `
@@ -892,9 +896,9 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
                 </label>
               </div>
             ` : ''}
-            <div class="prd-grid-thumb ${p.foto_url ? 'has-photo' : 'no-photo'}">
-              ${p.foto_url ? `
-                <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="prd-grid-thumb-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
+            <div class="prd-grid-thumb ${fotoGrid ? 'has-photo' : 'no-photo'}">
+              ${fotoGrid ? `
+                <img src="${escapeHtml(fotoGrid)}" alt="${escapeHtml(p.nama)}" class="prd-grid-thumb-img" ${imgLoadAttr} decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
                 <div class="prd-grid-thumb-empty" style="display: none;">
                   <div class="prd-grid-thumb-icon">${ICONS.package}</div>
                   <span>Belum ada foto</span>

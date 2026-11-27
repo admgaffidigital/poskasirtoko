@@ -21,7 +21,7 @@
 
 import { api, apiCall } from '../api.js';
 import { store } from '../state.js';
-import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel } from '../utils/format.js';
+import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel, optimalkanUrlFoto } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
@@ -773,7 +773,7 @@ export function renderPosModule(container) {
   function renderKatalogGrid(items) {
     let html = `<div class="pos-grid-container">`;
 
-    items.forEach((p) => {
+    items.forEach((p, idx) => {
       const punyaVarian = p.punya_varian && (p.varian || []).length > 0;
       const punyaSatuanKonversi = (p.satuan_konversi || []).length > 0;
 
@@ -810,13 +810,15 @@ export function renderPosModule(container) {
       const rawKode = p.sku || p.barcode || '';
       const skuLabel = formatSkuLabel(rawKode);
       const isMultiSelected = state.multiSelectMode && state.multiSelectedMap.has(p.id);
+      const fotoCard = p.foto_url ? optimalkanUrlFoto(p.foto_url, 240) : '';
+      const imgLoadAttr = idx < 12 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
 
       html += `
         <div class="pos-product-card ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
-          <div class="pos-card-visual ${p.foto_url ? 'has-photo' : 'no-photo'}">
+          <div class="pos-card-visual ${fotoCard ? 'has-photo' : 'no-photo'}">
             ${state.multiSelectMode ? `<div class="pos-multi-check-badge">${ICONS.check}</div>` : ''}
-            ${p.foto_url ? `
-              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
+            ${fotoCard ? `
+              <img src="${escapeHtml(fotoCard)}" alt="${escapeHtml(p.nama)}" class="pos-card-img" ${imgLoadAttr} decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='grid'; if (this.parentElement) { this.parentElement.classList.remove('has-photo'); this.parentElement.classList.add('no-photo'); }">
               <div class="pos-card-icon-wrap" style="display: none;">
                 ${ICONS.box}
               </div>
@@ -889,7 +891,7 @@ export function renderPosModule(container) {
   function renderKatalogList(items) {
     let html = `<div class="pos-list-container">`;
 
-    items.forEach((p) => {
+    items.forEach((p, idx) => {
       const punyaVarian = p.punya_varian && (p.varian || []).length > 0;
       const punyaSatuanKonversi = (p.satuan_konversi || []).length > 0;
       const stok = Number(p.stok || 0);
@@ -925,13 +927,15 @@ export function renderPosModule(container) {
       const rawKode = p.sku || p.barcode || '';
       const skuLabel = formatSkuLabel(rawKode);
       const isMultiSelected = state.multiSelectMode && state.multiSelectedMap.has(p.id);
+      const fotoList = p.foto_url ? optimalkanUrlFoto(p.foto_url, 120) : '';
+      const imgLoadAttr = idx < 12 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
 
       html += `
         <div class="pos-list-item ${isMultiSelected ? 'is-multi-selected' : ''}" data-id="${p.id}" tabindex="0">
           ${state.multiSelectMode ? `<div class="pos-list-multi-check">${ICONS.check}</div>` : ''}
           <div class="pos-list-avatar">
-            ${p.foto_url ? `
-              <img src="${escapeHtml(p.foto_url)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" loading="lazy" decoding="async" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
+            ${fotoList ? `
+              <img src="${escapeHtml(fotoList)}" alt="${escapeHtml(p.nama)}" class="pos-list-img" ${imgLoadAttr} decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='block';">
               <span class="icon-fit" style="width: 24px; height: 24px; display: none;">${ICONS.box}</span>
             ` : `
               <span class="icon-fit" style="width: 24px; height: 24px;">${ICONS.box}</span>
