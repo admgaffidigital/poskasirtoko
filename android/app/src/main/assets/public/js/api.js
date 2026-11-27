@@ -521,6 +521,15 @@ export async function apiCall(action, payload = {}, options = {}) {
           }
           if (cacheKey) inFlightRequests.delete(cacheKey);
           if (err instanceof ApiError) throw err;
+
+          // Fallback elegan ke cache lokal jika query baca gagal karena sinyal putus / timeout (WiFi tanpa internet)
+          if (cacheKey && bolehRetry && !options.skipCache && memoryApiCache.has(cacheKey)) {
+            const fallbackEntry = memoryApiCache.get(cacheKey);
+            if (fallbackEntry && fallbackEntry.data !== undefined) {
+              return fallbackEntry.data;
+            }
+          }
+
           if (err.name === 'AbortError') {
             throw new ApiError(
               'Waktu tunggu permintaan habis (timeout). Server membutuhkan waktu lebih lama dari biasanya.',

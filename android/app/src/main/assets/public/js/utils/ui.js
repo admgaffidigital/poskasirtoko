@@ -98,8 +98,28 @@ function pastikanToastContainer() {
  */
 export function showToast(pesan, tipe = 'info', durasiMs = 3500) {
   const container = pastikanToastContainer();
+  const keyPesan = `${tipe}::${String(pesan || '').trim()}`;
+
+  // Deduplikasi toast identik yang masih aktif agar layar tidak penuh saat klik berulang
+  const existing = Array.from(container.children).find(
+    (el) => el.dataset && el.dataset.toastKey === keyPesan && !el.classList.contains('keluar')
+  );
+  if (existing && typeof existing._resetTimer === 'function') {
+    existing._resetTimer(durasiMs);
+    return;
+  }
+
+  // Batasi maksimal 3 toast tampil bersamaan (tutup yang paling lama)
+  const activeToasts = Array.from(container.children).filter((el) => !el.classList.contains('keluar'));
+  if (activeToasts.length >= 3 && typeof activeToasts[0]._closeToast === 'function') {
+    activeToasts[0]._closeToast();
+  }
+
   const toast = document.createElement('div');
   toast.className = `toast toast-${tipe}`;
+  toast.dataset.toastKey = keyPesan;
+  toast.setAttribute('role', tipe === 'error' ? 'alert' : 'status');
+  toast.setAttribute('aria-live', tipe === 'error' ? 'assertive' : 'polite');
 
   let ikon = ICONS.info;
   if (tipe === 'success') ikon = ICONS.check;
@@ -114,21 +134,34 @@ export function showToast(pesan, tipe = 'info', durasiMs = 3500) {
     </button>
   `;
 
-  const btnClose = toast.querySelector('button');
+  let timerId = null;
   const tutup = () => {
+    if (timerId) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
+    if (toast.classList.contains('keluar')) return;
     toast.classList.add('keluar');
     setTimeout(() => {
       if (toast.parentElement) toast.remove();
     }, 200);
   };
 
+  const resetTimer = (ms) => {
+    if (timerId) clearTimeout(timerId);
+    if (ms > 0) {
+      timerId = setTimeout(tutup, ms);
+    }
+  };
+
+  toast._closeToast = tutup;
+  toast._resetTimer = resetTimer;
+
+  const btnClose = toast.querySelector('button');
   btnClose.addEventListener('click', tutup);
 
   container.appendChild(toast);
-
-  if (durasiMs > 0) {
-    setTimeout(tutup, durasiMs);
-  }
+  resetTimer(durasiMs);
 }
 
 /* ---------- Modal & Dialog System ---------- */

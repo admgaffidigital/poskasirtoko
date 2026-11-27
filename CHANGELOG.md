@@ -16,6 +16,20 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.159] - 2026-11-28
+### Ditambahkan & Disempurnakan — Peningkatan Kesempurnaan Aplikasi (Topbar OTA Pill, Crash-Guard, Smart Toast, Offline Resilience, App Shortcuts, & Branded Splash)
+- **[PWA] [APK] [UI] Pil Update Global di Topbar & Pelindung Error Chunk Pasca-Deploy (`app.js`)**:
+  - Menambahkan tombol pil **`#btn-topbar-update`** di Topbar yang muncul otomatis di halaman mana pun saat versi baru terdeteksi, lengkap dengan konfirmasi aman sebelum memuat ulang.
+  - Menambahkan `pasangPelindungErrorGlobal()` yang menangkap kegagalan impor ES module dinamis pasca-deploy baru dan memulihkan halaman secara otomatis tanpa macet.
+- **[UI] Smart Toast Deduplikasi & Anti-Flood (`ui.js`)**:
+  - Mencegah penumpukan notifikasi toast kembar (reset timer untuk pesan identik), membatasi maksimal 3 toast tampil bersamaan, serta menambahkan atribut aksesibilitas `role="status"` / `aria-live`.
+- **[API] [POS-JUAL] Ketahanan Jaringan & Auto-Sync Antrean Offline (`api.js`, `offline-queue.js`)**:
+  - Menambahkan fallback otomatis ke cache lokal saat query baca mengalami timeout/gangguan jaringan di tengah WiFi bermasalah.
+  - Memperluas Auto-Sync antrean transaksi offline agar juga berjalan otomatis saat aplikasi kembali ke foreground (`visibilitychange`) dan saat boot awal.
+- **[PWA] [UI] Android/Chrome Home Screen Shortcuts & Splash Screen Identitas Toko (`manifest.json`, `index.html`)**:
+  - Menambahkan 4 pintasan ikon tekan-lama (Kasir POS, Produk & Stok, Dashboard & Laporan, Hutang & Piutang) pada `manifest.json`.
+  - Menampilkan nama dan logo toko kustom tersimpan langsung pada layar Splash Screen (`Zero-FOUC`) saat aplikasi dibuka.
+
 ## [1.0.158] - 2026-11-27
 ### Ditambahkan — Sistem Auto-Update OTA Hybrid (APK Android & PWA Tanpa Hapus/Instal Ulang)
 - **[APK] [PWA] [DEPLOY] Pembaruan Otomatis Langsung di Dalam Aplikasi (`capacitor.config.json`, `MainActivity.java`, `version.json`, `vercel.json`, `sw.js`, `config.js`, `app.js`, `scripts/release.js`)**:

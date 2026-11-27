@@ -305,7 +305,7 @@
 
         <!-- Judul & Tagline Toko -->
         <div class="splash-text">
-          <h1 class="splash-title">POS Kasir Toko</h1>
+          <h1 class="splash-title" id="splash-store-title">POS Kasir Toko</h1>
           <p class="splash-subtitle">Sistem Kasir &amp; Stok Material Bangunan</p>
         </div>
 
@@ -323,10 +323,40 @@
 
       <!-- Versi di Bagian Bawah -->
       <div class="splash-footer">
-        <span>v1.0.158 • Terenkripsi &amp; Siap Offline</span>
+        <span>v1.0.159 • Terenkripsi &amp; Siap Offline</span>
       </div>
     </div>
   </div>
+
+  <!-- Personalisasi Splash Screen Instan dari Identitas Toko Tersimpan (Zero-FOUC) -->
+  <script>
+    (function () {
+      try {
+        var toko = JSON.parse(localStorage.getItem('pos_toko') || '{}');
+        var cfg = JSON.parse(localStorage.getItem('pos_pengaturan') || '{}');
+        var nama = (toko && toko.nama) || (cfg && cfg.toko_nama) || '';
+        var logo = (toko && toko.logo) || (cfg && cfg.toko_logo_url) || '';
+        if (nama && nama !== 'POS Toko') {
+          var tEl = document.getElementById('splash-store-title');
+          if (tEl) tEl.textContent = nama;
+        }
+        if (logo && (logo.indexOf('data:image/') === 0 || logo.indexOf('https://') === 0)) {
+          var lWrap = document.querySelector('.splash-logo');
+          if (lWrap) {
+            var img = document.createElement('img');
+            img.src = logo;
+            img.alt = nama || 'Logo Toko';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:12px;display:block;';
+            img.onerror = function () { img.remove(); };
+            lWrap.innerHTML = '';
+            lWrap.style.background = '#ffffff';
+            lWrap.style.overflow = 'hidden';
+            lWrap.appendChild(img);
+          }
+        }
+      } catch (_) { }
+    })();
+  </script>
 
   <!-- Vanilla JS ES Modules -->
   <script type="module" src="./js/app.js"></script>

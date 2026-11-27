@@ -247,17 +247,28 @@ export async function sinkronkanAntreanOffline({ senyap = false } = {}) {
   return { berhasil, gagal, sisa };
 }
 
-/** Pasang listener global agar transaksi offline otomatis terkirim saat perangkat kembali online */
+/** Pasang listener global agar transaksi offline otomatis terkirim saat perangkat kembali online atau aktif kembali */
 export function inisialisasiAutoSyncAntreanOffline() {
   if (autoSyncTerpasang || typeof window === 'undefined') return;
   autoSyncTerpasang = true;
-  window.addEventListener('online', () => {
-    if (jumlahAntreanOffline() > 0) {
-      setTimeout(() => {
+
+  const cobaSinkronSenyap = (delayMs = 2000) => {
+    if (jumlahAntreanOffline() <= 0 || navigator.onLine === false) return;
+    setTimeout(() => {
+      if (jumlahAntreanOffline() > 0 && navigator.onLine !== false) {
         sinkronkanAntreanOffline({ senyap: true }).catch(() => {});
-      }, 2200);
+      }
+    }, delayMs);
+  };
+
+  window.addEventListener('online', () => cobaSinkronSenyap(2000));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      cobaSinkronSenyap(1800);
     }
   });
+  // Cek sekali setelah boot jika masih ada antrean tertinggal dari sesi offline sebelumnya
+  cobaSinkronSenyap(4200);
 }
 
 /** Buka Modal Manajemen Antrean Transaksi Offline */

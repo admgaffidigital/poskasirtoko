@@ -11,6 +11,37 @@
   "orientation": "any",
   "prefer_related_applications": false,
   "lang": "id",
+  "categories": ["business", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Kasir POS",
+      "short_name": "Kasir",
+      "description": "Buka langsung layar transaksi kasir POS",
+      "url": "./#/pos",
+      "icons": [{ "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Produk & Stok",
+      "short_name": "Produk",
+      "description": "Kelola katalog barang, harga, dan stok",
+      "url": "./#/produk",
+      "icons": [{ "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Dashboard & Laporan",
+      "short_name": "Laporan",
+      "description": "Pantau omset, laba rugi, dan kas harian",
+      "url": "./#/dashboard",
+      "icons": [{ "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Hutang & Piutang",
+      "short_name": "Tempo",
+      "description": "Kelola tagihan piutang pelanggan dan hutang supplier",
+      "url": "./#/hutang-piutang",
+      "icons": [{ "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     {
       "src": "./assets/icon-192.png",
