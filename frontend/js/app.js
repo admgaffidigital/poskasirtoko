@@ -32,7 +32,7 @@ import { formatTanggal, escapeHtml, formatRupiah } from './utils/format.js';
 
 // Core Auth & Native Utilities (dibutuhkan segera saat boot)
 import { pastikanLogin, konfirmasiLogout, tampilkanModalLogin, tampilkanDialogWajibGantiPin, tutupModalAuth } from './modules/auth.js';
-import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton, tampilkanDialogKeluarAplikasi } from './utils/native.js';
+import { haptic, syncStatusBarWithTheme, hideNativeSplashScreen, setupHardwareBackButton, tampilkanDialogKeluarAplikasi, bukaTautanEksternal } from './utils/native.js';
 import { jumlahAntreanOffline, bukaModalAntreanOffline, inisialisasiAutoSyncAntreanOffline, sinkronkanAntreanOffline } from './utils/offline-queue.js';
 
 // Lazy-Loader per Rute (Code Splitting Native ES Modules — memangkas >600 KB JS saat boot awal)
@@ -441,9 +441,152 @@ class App {
     }
   }
 
+  bandingkanVersiSemver(a, b) {
+    const pa = String(a || '0.0.0').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+    const pb = String(b || '0.0.0').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+    const len = Math.max(pa.length, pb.length, 3);
+    for (let i = 0; i < len; i++) {
+      const va = pa[i] || 0;
+      const vb = pb[i] || 0;
+      if (va > vb) return 1;
+      if (va < vb) return -1;
+    }
+    return 0;
+  }
+
+  tungguServiceWorkerSiap(reg, timeoutMs = 15000) {
+    return new Promise((resolve) => {
+      if (!reg) return resolve(null);
+      if (reg.waiting) return resolve(reg.waiting);
+
+      let selesai = false;
+      const finish = (worker) => {
+        if (selesai) return;
+        selesai = true;
+        clearTimeout(timer);
+        resolve(worker || null);
+      };
+
+      const pantauWorker = (worker) => {
+        if (!worker) return;
+        if (worker.state === 'installed') {
+          finish(worker);
+          return;
+        }
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed') {
+            finish(worker);
+          } else if (worker.state === 'redundant') {
+            finish(null);
+          }
+        });
+      };
+
+      const timer = setTimeout(() => {
+        finish(reg.waiting || window.swWaitingWorker || null);
+      }, timeoutMs);
+
+      if (reg.installing) {
+        pantauWorker(reg.installing);
+      } else {
+        reg.addEventListener('updatefound', () => {
+          pantauWorker(reg.installing);
+        }, { once: true });
+      }
+    });
+  }
+
+  async periksaPembaruanAplikasi({ silent = false } = {}) {
+    if (!navigator.onLine) {
+      if (!silent) {
+        showToast('Perangkat sedang offline. Hubungkan ke internet untuk memeriksa pembaruan.', 'warning');
+      }
+      return { hasUpdate: false, offline: true };
+    }
+
+    const currentVer = CONFIG.VERSION || '0.0.0';
+    const isLocalhostOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isNativeApp = Boolean(
+      (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) ||
+      window.AndroidApp
+    );
+    const isLegacyLocalhostApk = isNativeApp && isLocalhostOrigin;
+    const baseLiveUrl = (CONFIG.LIVE_APP_URL || 'https://admgaffidigital-poskasirtoko.vercel.app').replace(/\/+$/, '');
+    const versionEndpoint = isLocalhostOrigin
+      ? `${baseLiveUrl}/version.json?t=${Date.now()}`
+      : `./version.json?t=${Date.now()}`;
+
+    let remoteInfo = null;
+    try {
+      const res = await fetch(versionEndpoint, { cache: 'no-store', mode: 'cors' });
+      if (res && res.ok) {
+        remoteInfo = await res.json();
+      }
+    } catch (_) {
+      // Abaikan jika gagal fetch version.json, tetap lanjut cek Service Worker lokal
+    }
+
+    const remoteVer = remoteInfo && remoteInfo.version ? String(remoteInfo.version).trim() : '';
+    const isNewerRemote = Boolean(remoteVer && this.bandingkanVersiSemver(remoteVer, currentVer) > 0);
+    const localNativeBuild = (window.AndroidApp && typeof window.AndroidApp.getNativeBuild === 'function')
+      ? Number(window.AndroidApp.getNativeBuild() || 0)
+      : (isNativeApp ? 1 : 0);
+    const remoteNativeBuild = Number(remoteInfo?.nativeBuild || 0);
+    const needsNativeApk = Boolean(
+      isLegacyLocalhostApk ||
+      (isNativeApp && remoteNativeBuild > 0 && localNativeBuild > 0 && remoteNativeBuild > localNativeBuild)
+    );
+
+    let readyWorker = window.swWaitingWorker || null;
+    if (!isLegacyLocalhostApk && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+      try {
+        const reg = (await navigator.serviceWorker.getRegistration()) || window.swRegistration;
+        if (reg) {
+          await reg.update();
+          if (reg.waiting) {
+            readyWorker = reg.waiting;
+          } else if (reg.installing || isNewerRemote) {
+            // Tunggu hingga SW selesai mengunduh aset baru sebelum menentukan status
+            const waited = await this.tungguServiceWorkerSiap(reg, isNewerRemote ? 15000 : 5000);
+            if (waited) readyWorker = waited;
+          }
+        }
+      } catch (err) {
+        if (!silent && !isNewerRemote) {
+          throw err;
+        }
+      }
+    }
+
+    if (readyWorker) {
+      window.swWaitingWorker = readyWorker;
+    }
+
+    const hasUpdate = Boolean(isNewerRemote || readyWorker || needsNativeApk);
+    window.appHasUpdate = hasUpdate;
+    if (remoteVer) window.appLatestVersion = remoteVer;
+    window.appNeedsNativeApk = needsNativeApk && (isNewerRemote || isLegacyLocalhostApk);
+    window.appApkUrl = (remoteInfo && remoteInfo.apkUrl) || CONFIG.APK_DOWNLOAD_URL;
+
+    this.segarkanBannerUpdate();
+
+    if (hasUpdate) {
+      const labelVer = remoteVer ? `v${remoteVer}` : 'versi terbaru';
+      if (window.appNeedsNativeApk) {
+        showToast(`Pembaruan APK Android (${labelVer}) tersedia! Ketuk "Unduh & Perbarui APK" untuk memperbarui langsung.`, 'warning', 4500);
+      } else {
+        showToast(`Pembaruan ${labelVer} siap diterapkan! Ketuk tombol "Perbarui & Restart Aplikasi".`, 'warning', 4500);
+      }
+    } else if (!silent) {
+      showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.158'})!`, 'success');
+    }
+
+    return { hasUpdate, remoteVer, needsNativeApk: window.appNeedsNativeApk };
+  }
+
   registerServiceWorker() {
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-      navigator.serviceWorker.register('./sw.js').then((registration) => {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((registration) => {
         window.swRegistration = registration;
 
         // Cek update segera saat registrasi berhasil
@@ -469,6 +612,13 @@ class App {
             }
           };
         };
+
+        // Cek version.json secara senyap 3.5 detik setelah boot (non-blocking) agar notifikasi update muncul otomatis
+        setTimeout(() => {
+          if (navigator.onLine) {
+            this.periksaPembaruanAplikasi({ silent: true }).catch(() => { });
+          }
+        }, 3500);
 
         // Cek pembaruan dengan jeda minimal 60 detik agar visibilitychange + focus tidak memicu spam
         let lastSwCheck = Date.now();
@@ -509,7 +659,10 @@ class App {
   }
 
   isAppInstalled() {
-    const isCapacitor = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    const isCapacitor = !!(
+      (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) ||
+      window.AndroidApp
+    );
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     return isCapacitor || isStandalone;
   }
@@ -574,6 +727,8 @@ class App {
     // KONDISI 2: Sudah Terpasang sebagai Aplikasi Native (Capacitor / PWA Standalone)
     if (hasUpdate) {
       // Kasus A: Ada Pembaruan Siap Diterapkan!
+      const latestVerText = window.appLatestVersion ? `v${escapeHtml(window.appLatestVersion)}` : 'Baru';
+      const needsNativeApk = !!window.appNeedsNativeApk;
       return `
         <div id="banner-app-install-update" data-detailed="${isDetailed}" class="card card-body stack" style="background: var(--primary-soft); border: 1px solid var(--primary); border-left: 4px solid var(--primary);">
           <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
@@ -583,17 +738,28 @@ class App {
               </div>
               <div>
                 <div class="row" style="gap: 6px; align-items: center;">
-                  <span class="fw-bold" style="font-size: var(--fs-md);">Pembaruan Sistem Siap Diterapkan!</span>
-                  <span class="badge badge-warning badge-sm">Update Siap</span>
+                  <span class="fw-bold" style="font-size: var(--fs-md);">Pembaruan Sistem ${latestVerText} Tersedia!</span>
+                  <span class="badge badge-warning badge-sm">${needsNativeApk ? 'Update APK' : 'Update Siap'}</span>
                 </div>
-                <div class="text-xs text-muted" style="margin-top: 2px;">Versi baru telah diunduh di latar belakang. Ketuk tombol untuk memperbarui tanpa perlu instal ulang APK.</div>
+                <div class="text-xs text-muted" style="margin-top: 2px;">${
+                  needsNativeApk
+                    ? 'Pembaruan inti Android tersedia (Auto-Update OTA aktif setelah pasang versi ini). Unduh & pasang langsung menimpa tanpa hapus data.'
+                    : 'Versi terbaru siap diterapkan langsung di dalam aplikasi tanpa perlu unduh atau instal ulang APK.'
+                }</div>
               </div>
             </div>
             <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
-              <button type="button" class="btn btn-primary btn-sm" id="btn-inapp-update-restart" style="border-radius: var(--radius-full); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.35);">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-                <span>Perbarui & Restart Aplikasi</span>
-              </button>
+              ${needsNativeApk ? `
+                <button type="button" class="btn btn-primary btn-sm" id="btn-inapp-download-apk" style="border-radius: var(--radius-full); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.35);">
+                  ${ICONS.download}
+                  <span>Unduh & Perbarui APK</span>
+                </button>
+              ` : `
+                <button type="button" class="btn btn-primary btn-sm" id="btn-inapp-update-restart" style="border-radius: var(--radius-full); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.35);">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                  <span>Perbarui & Restart Aplikasi</span>
+                </button>
+              `}
             </div>
           </div>
         </div>
@@ -613,7 +779,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.157'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.158'} • Auto-Update OTA & Mode Offline Aktif</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -645,59 +811,70 @@ class App {
       }
     });
 
-    // Periksa Pembaruan
+    // Periksa Pembaruan (Live version.json + Service Worker wait-for-install)
     bannerContainer.querySelector('#btn-inapp-check-update')?.addEventListener('click', async () => {
       const btn = bannerContainer.querySelector('#btn-inapp-check-update');
       if (btn) btn.disabled = true;
-      showToast('Memeriksa ketersediaan pembaruan...', 'info');
+      showToast('Memeriksa ketersediaan pembaruan terbaru...', 'info');
 
       try {
-        if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg) {
-            await reg.update();
-            if (reg.waiting || window.swWaitingWorker) {
-              window.appHasUpdate = true;
-              showToast('Pembaruan baru tersedia! Ketuk tombol "Perbarui & Restart".', 'warning');
-              const isDetailed = bannerContainer.getAttribute('data-detailed') === 'true';
-              bannerContainer.outerHTML = this.renderBannerAppHtml(isDetailed);
-              this.pasangEventBanner(document.getElementById('banner-app-install-update'));
-              return;
-            }
-          }
-        }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.157'})!`, 'success');
+        await this.periksaPembaruanAplikasi({ silent: false });
       } catch (err) {
-        showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
+        showToast('Gagal memeriksa pembaruan: ' + (err?.message || 'Koneksi terganggu'), 'error');
       } finally {
-        if (btn) btn.disabled = false;
+        const curBtn = document.getElementById('btn-inapp-check-update');
+        if (curBtn) curBtn.disabled = false;
       }
     });
 
-    // Perbarui & Restart
+    // Unduh & Perbarui APK Native (hanya bila pembaruan inti Android dibutuhkan)
+    bannerContainer.querySelector('#btn-inapp-download-apk')?.addEventListener('click', () => {
+      const targetUrl = `${window.appApkUrl || CONFIG.APK_DOWNLOAD_URL}?t=${Date.now()}`;
+      showToast('Membuka unduhan APK terbaru...', 'info');
+      bukaTautanEksternal(targetUrl);
+    });
+
+    // Perbarui & Restart (OTA langsung di dalam APK & PWA, tetap menjaga cache foto produk)
     bannerContainer.querySelector('#btn-inapp-update-restart')?.addEventListener('click', async () => {
+      const btn = bannerContainer.querySelector('#btn-inapp-update-restart');
+      if (btn) btn.disabled = true;
       window.__posUserRequestedUpdate = true;
       showToast('Menerapkan pembaruan aplikasi & memuat ulang...', 'info');
       try {
         if ('serviceWorker' in navigator) {
-          const reg = await navigator.serviceWorker.getRegistration();
-          if (reg && reg.waiting) {
-            reg.waiting.postMessage({ action: 'skipWaiting' });
+          const reg = (await navigator.serviceWorker.getRegistration()) || window.swRegistration;
+          if (reg) {
+            // Pastikan worker baru selesai terpasang jika masih installing
+            if (!reg.waiting && reg.installing) {
+              await this.tungguServiceWorkerSiap(reg, 10000);
+            }
+            if (reg.waiting) {
+              reg.waiting.postMessage({ action: 'skipWaiting' });
+            }
           }
           if (window.swWaitingWorker) {
             window.swWaitingWorker.postMessage({ action: 'skipWaiting' });
           }
         }
+        // Hapus hanya cache aset statis lama; PERTAHANKAN pos-kasir-images-v1 agar foto produk tetap 0ms!
         if ('caches' in window) {
           const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
+          await Promise.all(
+            keys
+              .filter((k) => k !== 'pos-kasir-images-v1')
+              .map((k) => caches.delete(k))
+          );
+        }
+        // Bersihkan disk HTTP cache Android WebView agar file JS/CSS baru 100% langsung dimuat
+        if (window.AndroidApp && typeof window.AndroidApp.clearWebCache === 'function') {
+          window.AndroidApp.clearWebCache();
         }
       } catch (e) {
         console.warn('Gagal bersihkan cache update:', e);
       }
       setTimeout(() => {
         window.location.reload();
-      }, 600);
+      }, 850);
     });
   }
 
@@ -1897,7 +2074,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.157'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.158'}</div>
         </div>
       `;
     };

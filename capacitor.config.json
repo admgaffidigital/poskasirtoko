@@ -3,6 +3,10 @@
   "appName": "POS Kasir Toko",
   "webDir": "frontend",
   "server": {
+    "url": "https://admgaffidigital-poskasirtoko.vercel.app",
+    "allowNavigation": [
+      "admgaffidigital-poskasirtoko.vercel.app"
+    ],
     "androidScheme": "https",
     "cleartext": true
   },

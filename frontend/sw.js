@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.157';
+const CACHE_NAME = 'pos-kasir-static-v1.0.158';
 const IMAGE_CACHE_NAME = 'pos-kasir-images-v1';
 const MAX_CACHED_IMAGES = 350;
 
@@ -86,7 +86,7 @@ self.addEventListener('install', (event) => {
       await Promise.all(
         ASSETS.map(async (assetUrl) => {
           try {
-            const res = await fetch(assetUrl, { cache: 'no-cache', redirect: 'follow' });
+            const res = await fetch(assetUrl, { cache: 'reload', redirect: 'follow' });
             if (res && res.status === 200) {
               const cleanRes = await bersihkanRedirect(res);
               await cache.put(assetUrl, cleanRes);
@@ -163,8 +163,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Jangan cache file biner instalasi APK atau paket unduhan Bridge Windows
-  if (url.pathname.endsWith('.apk') || url.pathname.endsWith('.bat')) {
+  // Jangan cache manifest versi live (version.json), file biner instalasi APK, atau paket unduhan Bridge Windows
+  if (url.pathname.endsWith('/version.json') || url.pathname.endsWith('.apk') || url.pathname.endsWith('.bat')) {
     return;
   }
 

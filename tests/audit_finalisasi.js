@@ -164,10 +164,14 @@ const cfg = fs.readFileSync('frontend/js/config.js', 'utf8');
 const idx = fs.readFileSync('frontend/index.html', 'utf8');
 const sw = fs.readFileSync('frontend/sw.js', 'utf8');
 const vercelCfg = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+const versionJson = JSON.parse(fs.readFileSync('frontend/version.json', 'utf8'));
 assert.ok(cfg.includes(pkg.version), 'config.js harus sinkron versi');
 assert.ok(idx.includes('v' + pkg.version), 'index.html harus sinkron versi');
 assert.ok(sw.includes(pkg.version), 'sw.js harus sinkron versi');
+assert.strictEqual(versionJson.version, pkg.version, 'frontend/version.json harus sinkron versi');
 assert.ok(sw.includes('bersihkanRedirect'), 'sw.js wajib memiliki proteksi bersihkanRedirect untuk mencegah error redirect FetchEvent');
+assert.ok(sw.includes('/version.json'), 'sw.js wajib mengecualikan /version.json dari cache agar cek pembaruan selalu live');
+assert.ok(appJs.includes('periksaPembaruanAplikasi'), 'app.js wajib memiliki fungsi periksaPembaruanAplikasi untuk Auto-Update OTA');
 assert.strictEqual(vercelCfg.cleanUrls, false, 'vercel.json wajib menetapkan cleanUrls: false agar index.html tidak di-redirect 308');
 
 // Audit Service Worker Assets mencakup seluruh modul

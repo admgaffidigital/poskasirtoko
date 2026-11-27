@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.158] - 2026-11-27
+### Ditambahkan — Sistem Auto-Update OTA Hybrid (APK Android & PWA Tanpa Hapus/Instal Ulang)
+- **[APK] [PWA] [DEPLOY] Pembaruan Otomatis Langsung di Dalam Aplikasi (`capacitor.config.json`, `MainActivity.java`, `version.json`, `vercel.json`, `sw.js`, `config.js`, `app.js`, `scripts/release.js`)**:
+  - Mengaktifkan arsitektur **Hybrid Live Auto-Update** pada APK Capacitor (`server.url: https://admgaffidigital-poskasirtoko.vercel.app` + `allowNavigation`), dipadukan dengan Service Worker offline sehingga setelah memasang `v1.0.158` sekali ini saja, seluruh pembaruan fitur/UI/perbaikan bug berikutnya langsung terpasang lewat tombol **"Perbarui & Restart Aplikasi"** tanpa perlu mengunduh atau menghapus APK lagi.
+  - Menambahkan manifest versi live `frontend/version.json` (`Cache-Control: no-store`, CORS `*`, otomatis tersinkron oleh `scripts/release.js` & dikecualikan dari cache Service Worker) serta mengubah cache `/js/*` & `/css/*` di `vercel.json` ke `max-age=0, must-revalidate` dan SW install `cache: 'reload'` agar tidak ada aset lama yang tertahan.
+  - Memperbaiki alur **"Periksa Pembaruan"** (`periksaPembaruanAplikasi` & `tungguServiceWorkerSiap`) agar membandingkan semver live `version.json`, menunggu `reg.installing` benar-benar selesai hingga `installed/waiting`, melakukan pengecekan senyap otomatis saat boot, serta mempertahankan cache foto produk (`pos-kasir-images-v1`) saat restart update.
+  - Menambahkan bridge native Android `getNativeBuild()`, `getAppVersionCode()`, `clearWebCache()`, intersep unduhan `.apk` ke pengunduh sistem, serta halaman fallback offline ramah di `MainActivity.java`.
+
 ## [1.0.157] - 2026-11-27
 ### Diubah — Percepatan Pemuatan Foto Produk 10x–20x (Thumbnail CDN `=w240`/`=w120`, Eager Above-the-Fold, & Cache Foto Permanen SW)
 - **[POS-JUAL] [PRODUK] [PWA] [APK] Foto Produk Instan di Web & Aplikasi Android (`format.js`, `pos.js`, `produk.js`, `sw.js`)**:

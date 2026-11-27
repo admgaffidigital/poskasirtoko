@@ -9,7 +9,9 @@ const LOCAL_OVERRIDE_URL = typeof localStorage !== 'undefined' ? localStorage.ge
 export const CONFIG = {
   APP_NAME: 'POS Kasir Toko Bangunan',
   APP_SHORT_NAME: 'POS Toko',
-  VERSION: '1.0.157',
+  VERSION: '1.0.158',
+  LIVE_APP_URL: 'https://admgaffidigital-poskasirtoko.vercel.app',
+  APK_DOWNLOAD_URL: 'https://admgaffidigital-poskasirtoko.vercel.app/download/poskasirtoko.apk',
   // URL deployment Web App live
   API_URL: LOCAL_OVERRIDE_URL || DEFAULT_API_URL,
   API_TIMEOUT_MS: 30000,

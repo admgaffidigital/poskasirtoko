@@ -9,6 +9,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -22,11 +23,13 @@ import android.provider.Settings;
 import android.util.Base64;
 import android.view.View;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.RequiresApi;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
@@ -35,6 +38,8 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 public class MainActivity extends BridgeActivity {
+    private static final int NATIVE_BUILD = 2;
+    private static final String LIVE_APP_URL = "https://admgaffidigital-poskasirtoko.vercel.app/";
     private static final String RAWBT_PACKAGE = "ru.a402d.rawbtprinter";
     private static final String RAWBT_PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=" + RAWBT_PACKAGE;
     private AlertDialog nativeExitDialog;
@@ -57,9 +62,9 @@ public class MainActivity extends BridgeActivity {
 
             // Daftarkan native bridge agar JS dapat berkomunikasi langsung dengan RawBT, Bluetooth & Lifecycle Android
             webView.addJavascriptInterface(new RawBTBridge(this), "AndroidRawBT");
-            webView.addJavascriptInterface(new AppLifecycleBridge(this), "AndroidApp");
+            webView.addJavascriptInterface(new AppLifecycleBridge(this, webView), "AndroidApp");
 
-            // Tangani URI intent:, rawbt:, market:, whatsapp:, tel:, mailto: secara native di WebView
+            // Tangani URI intent:, rawbt:, market:, whatsapp:, tel:, mailto:, .apk & fallback offline awal
             webView.setWebViewClient(new BridgeWebViewClient(getBridge()) {
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -79,6 +84,19 @@ public class MainActivity extends BridgeActivity {
                         return true;
                     }
                     return super.shouldOverrideUrlLoading(view, url);
+                }
+
+                @Override
+                @RequiresApi(api = Build.VERSION_CODES.M)
+                public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                    if (request != null && request.isForMainFrame()) {
+                        String failedUrl = request.getUrl() != null ? request.getUrl().toString() : "";
+                        if (failedUrl.startsWith("http://") || failedUrl.startsWith("https://")) {
+                            showOfflineFallbackPage(view);
+                            return;
+                        }
+                    }
+                    super.onReceivedError(view, request, error);
                 }
             });
         }
@@ -186,7 +204,8 @@ public class MainActivity extends BridgeActivity {
 
             if (url.startsWith("market:") || url.startsWith("whatsapp:") || url.startsWith("tel:") || url.startsWith("mailto:")
                 || url.startsWith("https://wa.me/") || url.startsWith("http://wa.me/")
-                || url.startsWith("https://api.whatsapp.com/") || url.startsWith("https://play.google.com/")) {
+                || url.startsWith("https://api.whatsapp.com/") || url.startsWith("https://play.google.com/")
+                || url.endsWith(".apk") || url.contains(".apk?")) {
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
@@ -197,6 +216,30 @@ public class MainActivity extends BridgeActivity {
         }
 
         return false;
+    }
+
+    /**
+     * Halaman fallback ramah jika perangkat benar-benar offline pada pembukaan pertama sebelum Service Worker terpasang.
+     */
+    private void showOfflineFallbackPage(WebView view) {
+        if (view == null) return;
+        String html = "<!DOCTYPE html><html lang=\"id\"><head><meta charset=\"UTF-8\">"
+            + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">"
+            + "<title>Koneksi Diperlukan</title>"
+            + "<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;padding:24px;box-sizing:border-box}"
+            + ".box{max-width:360px;width:100%;background:#1e293b;border:1px solid #334155;border-radius:16px;padding:24px;text-align:center}"
+            + "h1{font-size:18px;margin:0 0 8px}p{font-size:14px;color:#cbd5e1;line-height:1.5;margin:0 0 20px}"
+            + "button{width:100%;padding:12px 16px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer}</style>"
+            + "</head><body><div class=\"box\"><h1>Menunggu Koneksi Internet</h1>"
+            + "<p>Aktifkan internet sekali untuk memuat sistem POS Kasir Toko. Setelah termuat, aplikasi dapat berjalan offline.</p>"
+            + "<button onclick=\"window.location.replace('" + LIVE_APP_URL + "')\">Coba Muat Ulang</button>"
+            + "</div></body></html>";
+        runOnUiThread(() -> {
+            try {
+                view.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+            } catch (Exception ignored) {
+            }
+        });
     }
 
     private static boolean isPackageInstalled(Context ctx, String pkgName) {
@@ -352,10 +395,47 @@ public class MainActivity extends BridgeActivity {
      */
     private static class AppLifecycleBridge {
         private final Activity activity;
+        private final WebView mainWebView;
         private WebView activePrintWebView;
 
-        AppLifecycleBridge(Activity activity) {
+        AppLifecycleBridge(Activity activity, WebView mainWebView) {
             this.activity = activity;
+            this.mainWebView = mainWebView;
+        }
+
+        @JavascriptInterface
+        public int getNativeBuild() {
+            return NATIVE_BUILD;
+        }
+
+        @JavascriptInterface
+        public long getAppVersionCode() {
+            try {
+                PackageManager pm = activity.getPackageManager();
+                PackageInfo info = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    ? pm.getPackageInfo(activity.getPackageName(), PackageManager.PackageInfoFlags.of(0))
+                    : pm.getPackageInfo(activity.getPackageName(), 0);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    return info.getLongVersionCode();
+                }
+                @SuppressWarnings("deprecation")
+                int code = info.versionCode;
+                return code;
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean clearWebCache() {
+            if (mainWebView == null) return false;
+            activity.runOnUiThread(() -> {
+                try {
+                    mainWebView.clearCache(true);
+                } catch (Exception ignored) {
+                }
+            });
+            return true;
         }
 
         @JavascriptInterface

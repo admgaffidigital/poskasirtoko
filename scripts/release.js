@@ -111,24 +111,51 @@ function main() {
   logSuccess(`frontend/js/app.js -> fallback: 'v${targetVersion}'`);
 
   // 2.6 android/app/build.gradle
+  let syncedVersionCode = null;
   const gradlePath = path.join(ROOT_DIR, 'android', 'app', 'build.gradle');
   if (fs.existsSync(gradlePath)) {
     let gradle = fs.readFileSync(gradlePath, 'utf8');
     gradle = gradle.replace(/versionName\s+["'][^"']+["']/, `versionName "${targetVersion}"`);
-    
-    // Auto increment versionCode jika versi dinaikkan
-    if (targetVersion !== pkg.version || versionArg) {
-      const matchVc = gradle.match(/versionCode\s+(\d+)/);
-      if (matchVc) {
-        const nextVc = parseInt(matchVc[1], 10) + 1;
-        gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${nextVc}`);
-        logSuccess(`android/app/build.gradle -> versionCode: ${nextVc}, versionName: "${targetVersion}"`);
+    const matchVc = gradle.match(/versionCode\s+(\d+)/);
+    if (matchVc) {
+      const currentVc = parseInt(matchVc[1], 10);
+      // Auto increment versionCode jika versi dinaikkan
+      if (targetVersion !== pkg.version || versionArg) {
+        syncedVersionCode = currentVc + 1;
+        gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${syncedVersionCode}`);
+        logSuccess(`android/app/build.gradle -> versionCode: ${syncedVersionCode}, versionName: "${targetVersion}"`);
+      } else {
+        syncedVersionCode = currentVc;
+        logSuccess(`android/app/build.gradle -> versionCode: ${syncedVersionCode}, versionName: "${targetVersion}"`);
       }
     } else {
       logSuccess(`android/app/build.gradle -> versionName: "${targetVersion}"`);
     }
     fs.writeFileSync(gradlePath, gradle);
   }
+
+  // 2.7 frontend/version.json (Manifest Auto-Update OTA & APK)
+  const versionJsonPath = path.join(ROOT_DIR, 'frontend', 'version.json');
+  let versionManifest = {
+    version: targetVersion,
+    versionCode: syncedVersionCode || 1,
+    nativeBuild: 2,
+    apkUrl: 'https://admgaffidigital-poskasirtoko.vercel.app/download/poskasirtoko.apk',
+    updatedAt: new Date().toISOString().slice(0, 10)
+  };
+  if (fs.existsSync(versionJsonPath)) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+      versionManifest = {
+        ...existing,
+        version: targetVersion,
+        versionCode: syncedVersionCode || existing.versionCode || 1,
+        updatedAt: new Date().toISOString().slice(0, 10)
+      };
+    } catch (_) {}
+  }
+  fs.writeFileSync(versionJsonPath, JSON.stringify(versionManifest, null, 2) + '\n');
+  logSuccess(`frontend/version.json -> v${versionManifest.version} (versionCode: ${versionManifest.versionCode}, nativeBuild: ${versionManifest.nativeBuild})`);
 
   // 3. Validasi Modul Backend GAS & Jalankan Seluruh Uji Otomatis
   logStep(3, 'Validasi 10 Modul Backend GAS & Pengujian Otomatis (Syntax, Import, Audit)');
