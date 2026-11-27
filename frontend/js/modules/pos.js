@@ -25,7 +25,7 @@ import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHt
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
 import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
-import { haptic } from '../utils/native.js';
+import { haptic, bukaTautanEksternal } from '../utils/native.js';
 import { adalahErrorJaringanOffline, tambahKeAntreanOffline, jumlahAntreanOffline } from '../utils/offline-queue.js';
 
 export function renderPosModule(container) {
@@ -1153,15 +1153,15 @@ export function renderPosModule(container) {
               <label class="form-label fw-bold">Pilih Varian:</label>
               <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;" id="opt-varian-container">
                 ${varianList.map((v, i) => {
-                  const vt = v.stok_toko !== undefined ? Number(v.stok_toko) : Number(v.stok || 0);
-                  const vg = Number(v.stok_gudang || 0);
-                  const stokInfo = vg > 0 ? ` • T:${formatQty(vt)}/G:${formatQty(vg)}` : ` • Stok:${formatQty(v.stok || 0)}`;
-                  return `
+        const vt = v.stok_toko !== undefined ? Number(v.stok_toko) : Number(v.stok || 0);
+        const vg = Number(v.stok_gudang || 0);
+        const stokInfo = vg > 0 ? ` • T:${formatQty(vt)}/G:${formatQty(vg)}` : ` • Stok:${formatQty(v.stok || 0)}`;
+        return `
                     <button type="button" class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-secondary'} btn-opt-var" data-vid="${v.id}">
                       ${escapeHtml(v.nama_varian)} (${formatRupiah(v.harga_ritel)}${stokInfo})
                     </button>
                   `;
-                }).join('')}
+      }).join('')}
               </div>
             </div>
           ` : ''}
@@ -2285,22 +2285,22 @@ export function renderPosModule(container) {
                 <option value="gudang" ${state.lokasiStokDefault === 'gudang' ? 'selected' : ''}>Ambil Langsung dari Stok Gudang (Proyek / Armada)</option>
               </select>
               ${(() => {
-                const itemKurangTokoAdaGudang = state.keranjang.filter((it) => {
-                  const src = it._var || it._pr;
-                  if (!src) return false;
-                  const butuh = (Number(it.qty) || 0) * (Number(it.faktor) || 1);
-                  const stT = src.stok_toko !== undefined ? Number(src.stok_toko) : Number(src.stok || 0);
-                  const stG = Number(src.stok_gudang || 0);
-                  return stT < butuh && stG >= butuh;
-                });
-                if (!itemKurangTokoAdaGudang.length) return '';
-                return `
+          const itemKurangTokoAdaGudang = state.keranjang.filter((it) => {
+            const src = it._var || it._pr;
+            if (!src) return false;
+            const butuh = (Number(it.qty) || 0) * (Number(it.faktor) || 1);
+            const stT = src.stok_toko !== undefined ? Number(src.stok_toko) : Number(src.stok || 0);
+            const stG = Number(src.stok_gudang || 0);
+            return stT < butuh && stG >= butuh;
+          });
+          if (!itemKurangTokoAdaGudang.length) return '';
+          return `
                   <div class="alert alert-warning text-xs" style="margin-top: 6px; padding: 6px 10px;">
                     ${ICONS.alertTriangle}
                     <div>Stok etalase Toko kurang untuk <strong>${itemKurangTokoAdaGudang.length} barang</strong>, namun tersedia di <strong>Gudang</strong>. Anda bisa pilih <em>Ambil Langsung dari Stok Gudang</em> di atas.</div>
                   </div>
                 `;
-              })()}
+        })()}
             </div>
 
             <!-- Biaya Ongkir & Alamat Kirim (Muncul jika opsi 'dikirim') -->
@@ -3625,7 +3625,7 @@ export function renderPosModule(container) {
           const sVal = parseRupiah(elContainer.querySelector('#inp-eod-setoran')?.value || 0);
           const bVal = parseRupiah(elContainer.querySelector('#inp-eod-modal-besok')?.value || 0);
           const cVal = (elContainer.querySelector('#inp-eod-catatan')?.value || '').trim();
-          window.open(`https://wa.me/?text=${encodeURIComponent(buatPesanWaEod(sVal, bVal, cVal))}`, '_blank', 'noopener,noreferrer');
+          bukaTautanEksternal(`https://wa.me/?text=${encodeURIComponent(buatPesanWaEod(sVal, bVal, cVal))}`);
         });
 
         const btnSimpanEod = elFooterActions.querySelector('#btn-simpan-tutup-harian');
@@ -4541,7 +4541,7 @@ export function renderPosModule(container) {
       elRoot.querySelectorAll('.btn-rab-wa').forEach((btn) => {
         btn.addEventListener('click', () => {
           const q = rabItems.find((x) => x.id === btn.getAttribute('data-id'));
-          if (q) window.open(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''), '_blank', 'noopener,noreferrer');
+          if (q) bukaTautanEksternal(buatTautanWhatsAppPenawaran(q, q.pelanggan_hp || ''));
         });
       });
 

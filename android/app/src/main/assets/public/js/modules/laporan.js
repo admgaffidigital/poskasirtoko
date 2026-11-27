@@ -9,7 +9,7 @@ import { store } from '../state.js';
 import { $, $$, escapeHtml, renderSkeleton } from '../utils/dom.js';
 import { formatRupiah, parseRupiah, formatQty, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
-import { haptic } from '../utils/native.js';
+import { haptic, unduhFilePintar } from '../utils/native.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift, cetakFakturA5, bukaModalCetakSuratJalan } from '../utils/printer.js';
 import { cetakLaporanEvaluasiBulananPdf, eksporEvaluasiBulananExcel, formatLabelBulan } from '../utils/evaluasi-pdf.js';
 
@@ -3125,14 +3125,8 @@ function unduhCsv(namaFile, headers, rows) {
   });
 
   const isiCsv = '\uFEFF' + barisCsv.join('\r\n');
-  const blob = new Blob([isiCsv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', namaFile);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  showToast(`Berhasil mengunduh ${namaFile}`, 'success');
+  unduhFilePintar(namaFile, isiCsv, 'text/csv;charset=utf-8;');
+  if (!(typeof window !== 'undefined' && window.AndroidApp && typeof window.AndroidApp.saveAndShareFile === 'function')) {
+    showToast(`Berhasil mengunduh ${namaFile}`, 'success');
+  }
 }

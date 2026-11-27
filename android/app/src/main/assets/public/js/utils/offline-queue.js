@@ -97,11 +97,21 @@ export function tambahKeAntreanOffline(payload, info = {}) {
   const grandTotal = Number(info.grandTotal || 0);
   const ongkir = Number(payload.ongkir || 0);
   const pembayaran = Array.isArray(payload.pembayaran) ? payload.pembayaran : [];
-  const totalBayar = pembayaran.reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
-  const kembalian = Math.max(0, totalBayar - grandTotal);
+  const totalTempo = pembayaran
+    .filter((b) => String(b.metode || '').toLowerCase() === 'tempo')
+    .reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+  const bayarNonTempo = pembayaran
+    .filter((b) => String(b.metode || '').toLowerCase() !== 'tempo')
+    .reduce((s, b) => s + (Number(b.jumlah) || 0), 0);
+  const kembalian = totalTempo > 0 ? 0 : Math.max(0, bayarNonTempo - grandTotal);
+  const statusBayarOffline = totalTempo > 0
+    ? (bayarNonTempo > 0 ? 'sebagian' : 'belum_lunas')
+    : 'lunas';
+  const diskonNilai = Number(info.diskonTransaksi || 0);
 
   const dataStrukOffline = {
     is_offline_queue: true,
+    sisa_tagihan: totalTempo,
     toko: {
       nama: cfg.toko_nama || tokoStore.nama || 'Toko Bangunan',
       alamat: cfg.toko_alamat || tokoStore.alamat || '',
@@ -115,14 +125,15 @@ export function tambahKeAntreanOffline(payload, info = {}) {
       kasir_nama: user.nama || user.username || 'Kasir',
       pelanggan_nama: info.pelangganNama || 'Pelanggan Umum',
       subtotal: Number(info.subtotal || grandTotal - ongkir),
-      diskon_transaksi: Number(info.diskonTransaksi || 0),
+      diskon: diskonNilai,
+      diskon_transaksi: diskonNilai,
       pajak: Number(info.pajak || 0),
       pembulatan: Number(info.pembulatan || 0),
       ongkir: ongkir,
       total: grandTotal,
-      bayar: totalBayar,
+      bayar: bayarNonTempo,
       kembalian: kembalian,
-      status_bayar: pembayaran.some((b) => b.metode === 'tempo') ? 'tempo' : 'lunas',
+      status_bayar: statusBayarOffline,
       pengiriman: payload.pengiriman || 'ambil',
       alamat_kirim: payload.alamat_kirim || '',
       catatan: (payload.catatan ? payload.catatan + ' ' : '') + '[ANTREAN OFFLINE]'
@@ -167,21 +178,25 @@ export function hapusDariAntreanOffline(localId) {
 
 /** Kirim 1 transaksi antrean offline ke server */
 export async function kirimSatuAntreanOffline(localId) {
-  const queue = ambilAntreanOffline();
-  const idx = queue.findIndex((it) => it.localId === localId);
-  if (idx === -1) return { ok: false, error: 'Item antrean tidak ditemukan.' };
-  const target = queue[idx];
+  const awal = ambilAntreanOffline();
+  const target = awal.find((it) => it.localId === localId);
+  if (!target) return { ok: false, error: 'Item antrean tidak ditemukan.' };
 
   try {
     const res = await apiCall('penjualan.create', target.payload);
-    queue.splice(idx, 1);
-    simpanAntreanOffline(queue);
+    // Baca ulang antrean terbaru agar tidak menimpa transaksi baru yang masuk saat request berjalan
+    const terbaru = ambilAntreanOffline().filter((it) => it.localId !== localId);
+    simpanAntreanOffline(terbaru);
     return { ok: true, data: res, noNotaBaru: res?.penjualan?.no_nota || '' };
   } catch (err) {
-    queue[idx].percobaan = (Number(queue[idx].percobaan) || 0) + 1;
-    queue[idx].lastError = err?.message || 'Gagal sinkron ke server';
-    simpanAntreanOffline(queue);
-    return { ok: false, error: queue[idx].lastError, isNetwork: adalahErrorJaringanOffline(err) };
+    const errMsg = err?.message || 'Gagal sinkron ke server';
+    const terbaru = ambilAntreanOffline().map((it) => (
+      it.localId === localId
+        ? { ...it, percobaan: (Number(it.percobaan) || 0) + 1, lastError: errMsg }
+        : it
+    ));
+    simpanAntreanOffline(terbaru);
+    return { ok: false, error: errMsg, isNetwork: adalahErrorJaringanOffline(err) };
   }
 }
 

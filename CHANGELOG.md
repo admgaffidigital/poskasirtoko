@@ -16,6 +16,23 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.152] - 2026-11-27
+### Diperbaiki — Audit Bug Menyeluruh Aplikasi Android (APK) & Website (PWA)
+- **[APK] [CETAK] Cetak PDF / Faktur A5 / Surat Jalan / Katalog / Evaluasi / Price Tag Native di APK Android (`MainActivity.java`, `native.js`, `printer.js`, `katalog-pdf.js`, `evaluasi-pdf.js`, `pricetag.js`)**:
+  - Menambahkan bridge native `AndroidApp.printHtml()` berbasis Android `PrintManager` + helper universal `cetakHtmlPintar()`, sehingga seluruh tombol cetak/simpan PDF yang sebelumnya mati di Android WebView (`window.print()`/`iframe.print()`) kini membuka dialog Cetak & Simpan PDF native Android.
+- **[APK] [UI] Ekspor & Unduh CSV / Excel (.xls) / Backup JSON / Template Import Native di APK Android (`MainActivity.java`, `file_paths.xml`, `native.js`, `laporan.js`, `pengaturan.js`, `evaluasi-pdf.js`, `produk-import.js`)**:
+  - Menambahkan bridge `AndroidApp.saveAndShareFile()` (`MediaStore.Downloads` + `FileProvider` Share) dan helper `unduhFilePintar()`, mengatasi unduhan `blob:` yang sebelumnya gagal diam-diam di Android WebView.
+- **[APK] [UI] Tautan WhatsApp & Play Store Native Tanpa Menimpa WebView (`MainActivity.java`, `AndroidManifest.xml`, `native.js`, `printer.js`, `pelanggan.js`, `hutang-piutang.js`, `pos.js`, `katalog-pdf.js`)**:
+  - Mengintersep `https://wa.me/` & `https://api.whatsapp.com/` via Android `Intent.ACTION_VIEW` + helper `bukaTautanEksternal()`, serta memperbaiki fallback URL Play Store dinamis pada `openPlayStoreForPackage()`.
+- **[AUTH] [PWA] Anti Auto-Logout Saat Offline, Auto-Relogin Sesi Kedaluwarsa, & Fix Re-render Logout (`app.js`, `api.js`, `auth.js`, `ui.js`)**:
+  - Mempertahankan sesi login lokal saat `auth.me` gagal akibat offline/timeout/gangguan sinyal (hanya logout jika token benar-benar ditolak server `AUTH_INVALID`/`AUTH_REQUIRED`).
+  - Menambahkan event global `pos-auth-expired` agar sesi 6 jam yang kedaluwarsa otomatis memunculkan modal login tanpa kehilangan keranjang belanja.
+  - Memperbaiki *swipe-down* bottom sheet di `ui.js` agar tidak bisa menutup paksa modal wajib Login / Wajib Ganti PIN, serta memastikan login ulang setelah logout di `#/pos` merender ulang peran user baru.
+- **[POS-JUAL] [PWA] Perbaikan 3 Bug Mode Offline & Kamera Barcode (`offline-queue.js`, `barcode.js`)**:
+  - Memperbaiki *race condition* `kirimSatuAntreanOffline()` agar transaksi offline baru tidak tertimpa saat proses sinkronisasi berjalan.
+  - Menyinkronkan struk offline dengan aturan akuntansi `v1.0.147` (`bayar` tidak memasukkan porsi `tempo`, `diskon` terbaca penuh, `status_bayar` baku `lunas`/`sebagian`/`belum_lunas`).
+  - Menambahkan pengaman `try/catch` & fallback inisialisasi `BarcodeDetector` serta penanganan promise `videoEl.play()` di `barcode.js`.
+
 ## [1.0.151] - 2026-11-27
 ### Diperbaiki — Perbaikan ReferenceError `statusRetur is not defined` pada Modal Rincian Penjualan
 - **[DASHBOARD] [POS-JUAL] [RETUR] [UI] Perbaikan Crash Modal Rincian Nota (`laporan.js`)**:

@@ -11,6 +11,7 @@
 import { formatRupiah, formatQty, formatTanggal, escapeHtml } from './format.js';
 import { showToast, showModal, ICONS } from './ui.js';
 import { store } from '../state.js';
+import { cetakHtmlPintar, bukaTautanEksternal } from './native.js';
 
 /** Lebar kolom karakter printer thermal standar */
 export const LEBAR_KERTAS = {
@@ -827,6 +828,11 @@ function cetakHtmlThermalAutoHeight(judul, bodyHtml, ukuran = '58', kalibrasi = 
   const is80 = String(ukuran) === '80';
   const lebarKertasMm = is80 ? 80 : 58;
   const lebarCetakMm = is80 ? cal.lebar80Mm : cal.lebar58Mm;
+  const fullHtml = bungkusDokumenThermalHtml(judul, bodyHtml, ukuran, cal, null);
+
+  if (cetakHtmlPintar(fullHtml, judul || 'Struk Thermal POS')) {
+    return;
+  }
 
   const printFrame = document.createElement('iframe');
   printFrame.style.position = 'fixed';
@@ -840,7 +846,7 @@ function cetakHtmlThermalAutoHeight(judul, bodyHtml, ukuran = '58', kalibrasi = 
 
   const doc = printFrame.contentWindow.document;
   doc.open();
-  doc.write(bungkusDokumenThermalHtml(judul, bodyHtml, ukuran, cal, null));
+  doc.write(fullHtml);
   doc.close();
 
   setTimeout(() => {
@@ -1542,7 +1548,7 @@ export function pasangAplikasiRawBT() {
     return;
   }
   const url = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
-  window.open(url, '_blank', 'noopener,noreferrer');
+  bukaTautanEksternal(url);
 }
 
 /**
@@ -2163,7 +2169,7 @@ export function bukaModalPilihanCetakPenjualan(dataStruk, options = {}) {
   modal.el.querySelector('#btn-share-jual-wa')?.addEventListener('click', () => {
     const noHp = pel ? pel.hp : (dataStruk.pelanggan_hp || '');
     const urlWa = buatTautanWhatsApp(dataStruk, noHp);
-    window.open(urlWa, '_blank', 'noopener,noreferrer');
+    bukaTautanEksternal(urlWa);
   });
 
   modal.el.querySelector('#btn-print-jual-faktur-a5')?.addEventListener('click', () => {
@@ -2458,7 +2464,7 @@ export function bukaModalPilihanCetakPembelian(dataPembelian) {
   modal.el.querySelector('#btn-share-beli-wa')?.addEventListener('click', () => {
     const noHp = sup.hp || '';
     const urlWa = buatTautanWhatsAppPembelian(dataPembelian, noHp);
-    window.open(urlWa, '_blank', 'noopener,noreferrer');
+    bukaTautanEksternal(urlWa);
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-beli')?.addEventListener('click', () => {
@@ -2793,7 +2799,7 @@ export function bukaModalPilihanCetakShift(dataReport) {
   });
 
   modal.el.querySelector('#btn-share-shift-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppShift(dataReport), '_blank', 'noopener,noreferrer');
+    bukaTautanEksternal(buatTautanWhatsAppShift(dataReport));
   });
 
   modal.el.querySelector('#btn-tutup-modal-cetak-shift')?.addEventListener('click', () => {
@@ -2806,7 +2812,10 @@ export function bukaModalPilihanCetakShift(dataReport) {
 /* ========================================================================== */
 
 /** Helper cetak dokumen HTML via iframe tersembunyi (anti-popup blocker) */
-function cetakHtmlViaIframe(htmlDoc) {
+function cetakHtmlViaIframe(htmlDoc, jobName = 'Dokumen POS Kasir') {
+  if (cetakHtmlPintar(htmlDoc, jobName)) {
+    return;
+  }
   const printFrame = document.createElement('iframe');
   printFrame.style.position = 'fixed';
   printFrame.style.right = '0';
@@ -3267,7 +3276,7 @@ export function bukaModalCetakSuratJalan(dataStruk) {
     await kirimBytesKeBluetooth(teksKeEscPos(teks));
   });
   modal.el.querySelector('#btn-sj-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()), '_blank', 'noopener,noreferrer');
+    bukaTautanEksternal(buatTautanWhatsAppSuratJalan(dataStruk, ambilOpsi()));
   });
   modal.el.querySelector('#btn-tutup-modal-sj')?.addEventListener('click', () => modal.close());
 }
@@ -3762,7 +3771,7 @@ export function bukaModalHasilPenawaran(rab) {
 
   modal.el.querySelector('#btn-rab-hasil-a5')?.addEventListener('click', () => cetakPenawaranA5(rab));
   modal.el.querySelector('#btn-rab-hasil-wa')?.addEventListener('click', () => {
-    window.open(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''), '_blank', 'noopener,noreferrer');
+    bukaTautanEksternal(buatTautanWhatsAppPenawaran(rab, rab.pelanggan_hp || ''));
   });
   modal.el.querySelector('#btn-rab-hasil-tutup')?.addEventListener('click', () => modal.close());
 }

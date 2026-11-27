@@ -29,11 +29,11 @@ let modalGantiPinRef = null;
  */
 export function tutupModalAuth() {
   if (modalLoginRef) {
-    try { modalLoginRef.close(); } catch (e) {}
+    try { modalLoginRef.close(); } catch (e) { }
     modalLoginRef = null;
   }
   if (modalGantiPinRef) {
-    try { modalGantiPinRef.close(); } catch (e) {}
+    try { modalGantiPinRef.close(); } catch (e) { }
     modalGantiPinRef = null;
   }
 }
@@ -67,8 +67,8 @@ export function pastikanLogin(onSuccess) {
 export function tampilkanModalLogin(onSuccess) {
   if (modalLoginRef) return;
 
-    const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir';
-    const formHtml = `
+  const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir';
+  const formHtml = `
     <form id="form-login" class="stack" autocomplete="off">
       <div class="text-center" style="margin-bottom: var(--sp-2)">
         <div class="brand-logo" style="margin: 0 auto var(--sp-2); width: 48px; height: 48px;">
@@ -105,7 +105,10 @@ export function tampilkanModalLogin(onSuccess) {
     title: 'Login Pengguna',
     body: formHtml,
     closeOnOverlay: false,
-    closable: false
+    closable: false,
+    onClose: () => {
+      modalLoginRef = null;
+    }
   });
 
   const form = $('#form-login', modalLoginRef.el);
@@ -300,7 +303,7 @@ export async function konfirmasiLogout() {
   store.clearUserSession();
   showToast('Anda telah logout.', 'info');
   tampilkanModalLogin(() => {
-    window.location.hash = '#/pos';
+    navigasiAman('#/pos');
   });
 }
 

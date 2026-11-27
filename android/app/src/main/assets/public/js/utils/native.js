@@ -448,4 +448,99 @@ export function setupHardwareBackButton(navController = null) {
   }
 }
 
+/**
+ * Konversi string / Blob teks UTF-8 ke Base64 aman (termasuk karakter Unicode/Rupiah/BOM)
+ */
+function teksKeBase64(isi) {
+  const bytes = new TextEncoder().encode(String(isi ?? ''));
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+/**
+ * Buka tautan eksternal (WhatsApp, Play Store, Browser) secara aman di Android APK maupun Web/PWA.
+ * Di Android APK, memakai Intent native agar tidak menimpa WebView atau diblokir popup blocker.
+ * @param {string} url
+ */
+export function bukaTautanEksternal(url) {
+  if (!url) return false;
+  try {
+    if (typeof window !== 'undefined' && window.AndroidApp && typeof window.AndroidApp.openExternalUrl === 'function') {
+      return Boolean(window.AndroidApp.openExternalUrl(String(url)));
+    }
+  } catch (_) {}
+  try {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Cetak / Simpan PDF dokumen HTML secara universal:
+ * - Android APK: memanggil Android PrintManager native (`window.AndroidApp.printHtml`) -> langsung bisa Print / Save as PDF.
+ * - Web / PWA: mencetak via iframe tersembunyi (anti popup blocker).
+ * @param {string} htmlDoc Dokumen HTML lengkap (<!DOCTYPE html>...)
+ * @param {string} [jobName='POS Kasir Toko']
+ * @returns {boolean} true jika ditangani native Android PrintManager, false jika memakai iframe web
+ */
+export function cetakHtmlPintar(htmlDoc, jobName = 'POS Kasir Toko') {
+  try {
+    if (typeof window !== 'undefined' && window.AndroidApp && typeof window.AndroidApp.printHtml === 'function') {
+      const ok = window.AndroidApp.printHtml(String(htmlDoc || ''), String(jobName || 'POS Kasir Toko'));
+      if (ok) return true;
+    }
+  } catch (err) {
+    console.warn('Native Android printHtml gagal, fallback iframe:', err);
+  }
+  return false;
+}
+
+/**
+ * Unduh / Ekspor file teks (CSV, Excel XML .xls, Backup JSON) secara universal:
+ * - Android APK: simpan ke folder Downloads/POSKasirToko & buka dialog Bagikan/Buka native Android.
+ * - Web / PWA: Blob + anchor download + URL.revokeObjectURL bersih tanpa memory leak.
+ * @param {string} namaFile
+ * @param {string} konten
+ * @param {string} [mime='text/plain;charset=utf-8']
+ */
+export function unduhFilePintar(namaFile, konten, mime = 'text/plain;charset=utf-8') {
+  try {
+    if (typeof window !== 'undefined' && window.AndroidApp && typeof window.AndroidApp.saveAndShareFile === 'function') {
+      const b64 = teksKeBase64(konten);
+      const hasil = window.AndroidApp.saveAndShareFile(String(namaFile || 'export.txt'), String(mime || 'application/octet-stream'), b64);
+      if (typeof hasil === 'string' && hasil.startsWith('OK')) {
+        showToast(
+          hasil === 'OK_DOWNLOADS'
+            ? `File "${namaFile}" tersimpan di Downloads/POSKasirToko & siap dibagikan.`
+            : `File "${namaFile}" siap disimpan / dibagikan.`,
+          'success',
+          3500
+        );
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('Native Android saveAndShareFile gagal, fallback web blob:', err);
+  }
+
+  const blob = new Blob([konten], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = namaFile;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentElement) a.remove();
+    URL.revokeObjectURL(url);
+  }, 600);
+  return true;
+}
+
 

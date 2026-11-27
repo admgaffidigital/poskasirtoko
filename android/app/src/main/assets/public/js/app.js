@@ -136,6 +136,26 @@ class App {
     this.perbaruiBadgeAntreanOffline();
     window.addEventListener('pos-offline-queue-changed', () => this.perbaruiBadgeAntreanOffline());
 
+    // Tangani sesi kedaluwarsa (token 6 jam habis) secara elegan di tengah aktivitas tanpa menghapus keranjang
+    this._handlingAuthExpired = false;
+    window.addEventListener('pos-auth-expired', (ev) => {
+      if (this._handlingAuthExpired || !store.get('token')) return;
+      this._handlingAuthExpired = true;
+      store.clearUserSession();
+      this.updateUserUI(null);
+      tutupModalAuth();
+      showToast(ev?.detail?.message || 'Sesi login telah berakhir. Silakan masuk kembali.', 'warning', 4500);
+      const rutePublik = ['sistem', 'desainsistem'];
+      if (this.currentRoute && !rutePublik.includes(this.currentRoute.id)) {
+        pastikanLogin((u) => {
+          this._handlingAuthExpired = false;
+          this.cekIzinDanRender(this.currentRoute, u);
+        });
+      } else {
+        this._handlingAuthExpired = false;
+      }
+    });
+
     // Pantau perubahan identitas toko & pengaturan secara reaktif
     store.subscribe('toko', (toko) => this.updateBrandUI(toko));
     store.subscribe('pengaturan', () => this.updateBrandUI());
@@ -174,7 +194,18 @@ class App {
             });
           }
         })
-        .catch(() => {
+        .catch((err) => {
+          const code = String(err?.code || '').toUpperCase();
+          const isAuthErr = code === 'AUTH_INVALID' || code === 'AUTH_REQUIRED' || code === 'TOKEN_EXPIRED' || code === 'UNAUTHORIZED';
+          if (!isAuthErr) {
+            // Jangan logout kasir saat perangkat offline / sinyal lemah / timeout!
+            const cachedUser = store.get('user');
+            if (cachedUser) {
+              this.updateUserUI(cachedUser);
+              this.updateBrandUI();
+            }
+            return;
+          }
           store.clearUserSession();
           this.updateUserUI(null);
           tutupModalAuth();
@@ -557,7 +588,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.151'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.152'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -610,7 +641,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.151'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.152'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1840,7 +1871,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.151'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.152'}</div>
         </div>
       `;
     };

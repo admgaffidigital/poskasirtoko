@@ -6,7 +6,7 @@
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, bukaModalTemaWarna, THEME_MODES, ACCENT_PALETTES, FONT_FAMILIES } from '../utils/ui.js';
-import { syncStatusBarWithTheme } from '../utils/native.js';
+import { syncStatusBarWithTheme, unduhFilePintar } from '../utils/native.js';
 import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
 import { tampilkanModalKoneksiPrinter, bukaAplikasiRawBT, cetakUjiStruk } from '../utils/printer.js';
@@ -23,17 +23,7 @@ function escapeXmlExcel(val) {
 }
 
 function unduhBlobFile(namaFile, konten, mime) {
-  const blob = new Blob([konten], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = namaFile;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    a.remove();
-    URL.revokeObjectURL(url);
-  }, 600);
+  unduhFilePintar(namaFile, konten, mime);
 }
 
 /** Bangun Workbook Microsoft Excel Multi-Sheet (SpreadsheetML XML .xls) dari payload sistem.backup */

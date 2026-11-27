@@ -9,6 +9,7 @@ import { ICONS, showToast, showModal } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, parseRupiah, formatTanggal } from '../utils/format.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian } from '../utils/printer.js';
+import { bukaTautanEksternal } from '../utils/native.js';
 
 let tabAktifHp = 'piutang';
 
@@ -392,34 +393,34 @@ async function muatDataPiutang(container) {
           </thead>
           <tbody>
             ${items.map((it) => {
-              const isReturPenuh = it.status_retur === 'penuh';
-              const isReturSebagian = !isReturPenuh && it.status_retur === 'sebagian';
-              const noReturStr = Array.isArray(it.daftar_no_retur) && it.daftar_no_retur.length ? it.daftar_no_retur.join(', ') : '';
+      const isReturPenuh = it.status_retur === 'penuh';
+      const isReturSebagian = !isReturPenuh && it.status_retur === 'sebagian';
+      const noReturStr = Array.isArray(it.daftar_no_retur) && it.daftar_no_retur.length ? it.daftar_no_retur.join(', ') : '';
 
-              let badgeStatus = '<span class="badge badge-warning">Belum Lunas</span>';
-              if (isReturPenuh) {
-                badgeStatus = '<span class="badge badge-danger">Diretur Penuh</span>';
-              } else {
-                if (it.status === 'sebagian') badgeStatus = '<span class="badge badge-info">Sebagian</span>';
-                if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
-                if (isReturSebagian) badgeStatus += ' <span class="badge badge-warning badge-xs">Diretur Sebagian</span>';
-              }
+      let badgeStatus = '<span class="badge badge-warning">Belum Lunas</span>';
+      if (isReturPenuh) {
+        badgeStatus = '<span class="badge badge-danger">Diretur Penuh</span>';
+      } else {
+        if (it.status === 'sebagian') badgeStatus = '<span class="badge badge-info">Sebagian</span>';
+        if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
+        if (isReturSebagian) badgeStatus += ' <span class="badge badge-warning badge-xs">Diretur Sebagian</span>';
+      }
 
-              const isOverdue = !isReturPenuh && it.jatuh_tempo_lewat && it.status !== 'lunas';
-              const isSegera = !isReturPenuh && it.segera_tempo && it.status !== 'lunas';
-              const tglJatuhTempo = it.jatuh_tempo ? formatTanggal(it.jatuh_tempo) : '-';
+      const isOverdue = !isReturPenuh && it.jatuh_tempo_lewat && it.status !== 'lunas';
+      const isSegera = !isReturPenuh && it.segera_tempo && it.status !== 'lunas';
+      const tglJatuhTempo = it.jatuh_tempo ? formatTanggal(it.jatuh_tempo) : '-';
 
-              let badgeTempoHtml = '';
-              if (isOverdue) {
-                const hariLewat = it.selisih_hari !== null && it.selisih_hari < 0 ? Math.abs(it.selisih_hari) : 0;
-                badgeTempoHtml = `<span class="badge badge-danger text-xs">${hariLewat > 0 ? `Lewat ${hariLewat} Hari` : 'Lewat Tempo'}</span>`;
-              } else if (isSegera) {
-                badgeTempoHtml = it.selisih_hari === 0
-                  ? '<span class="badge badge-danger text-xs">Tempo Hari Ini</span>'
-                  : `<span class="badge badge-warning text-xs">H-${it.selisih_hari} (Segera)</span>`;
-              }
+      let badgeTempoHtml = '';
+      if (isOverdue) {
+        const hariLewat = it.selisih_hari !== null && it.selisih_hari < 0 ? Math.abs(it.selisih_hari) : 0;
+        badgeTempoHtml = `<span class="badge badge-danger text-xs">${hariLewat > 0 ? `Lewat ${hariLewat} Hari` : 'Lewat Tempo'}</span>`;
+      } else if (isSegera) {
+        badgeTempoHtml = it.selisih_hari === 0
+          ? '<span class="badge badge-danger text-xs">Tempo Hari Ini</span>'
+          : `<span class="badge badge-warning text-xs">H-${it.selisih_hari} (Segera)</span>`;
+      }
 
-              return `
+      return `
                 <tr data-id="${escapeHtml(it.id)}" style="${isReturPenuh ? 'opacity: 0.7; background: var(--bg-surface-variant);' : ''}">
                   <td data-label="No Nota & Tgl">
                     <div class="fw-semibold" style="${isReturPenuh ? 'text-decoration: line-through;' : ''}">${escapeHtml(it.no_nota || '-')}</div>
@@ -468,7 +469,7 @@ async function muatDataPiutang(container) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -590,14 +591,14 @@ async function muatDataHutang(container) {
           </thead>
           <tbody>
             ${items.map((it) => {
-              let badgeStatus = '<span class="badge badge-warning">Belum Lunas</span>';
-              if (it.status === 'sebagian') badgeStatus = '<span class="badge badge-info">Sebagian</span>';
-              if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
+      let badgeStatus = '<span class="badge badge-warning">Belum Lunas</span>';
+      if (it.status === 'sebagian') badgeStatus = '<span class="badge badge-info">Sebagian</span>';
+      if (it.status === 'lunas') badgeStatus = '<span class="badge badge-success">Lunas</span>';
 
-              const isOverdue = it.jatuh_tempo_lewat && it.status !== 'lunas';
-              const tglJatuhTempo = it.jatuh_tempo ? formatTanggal(it.jatuh_tempo) : '-';
+      const isOverdue = it.jatuh_tempo_lewat && it.status !== 'lunas';
+      const tglJatuhTempo = it.jatuh_tempo ? formatTanggal(it.jatuh_tempo) : '-';
 
-              return `
+      return `
                 <tr data-id="${escapeHtml(it.id)}">
                   <td data-label="No Faktur & Tgl">
                     <div class="fw-semibold">${escapeHtml(it.no_faktur || '-')}</div>
@@ -639,7 +640,7 @@ async function muatDataHutang(container) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -1199,7 +1200,7 @@ function kirimPesanWhatsAppTagihan(piutang, semuaPiutangPelanggan = []) {
   }
 
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
-  const bukaWa = (teks) => window.open(`https://wa.me/${hp}?text=${encodeURIComponent(teks)}`, '_blank', 'noopener,noreferrer');
+  const bukaWa = (teks) => bukaTautanEksternal(`https://wa.me/${hp}?text=${encodeURIComponent(teks)}`);
 
   const buatPesanSatuNota = () => {
     const tglJatuhTempo = piutang.jatuh_tempo ? formatTanggal(piutang.jatuh_tempo) : 'segera';

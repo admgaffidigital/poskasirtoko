@@ -9,6 +9,7 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, parseRupiah, formatTanggal } from '../utils/format.js';
 import { bukaModalPilihanCetakPenjualan } from '../utils/printer.js';
+import { bukaTautanEksternal } from '../utils/native.js';
 
 let pelangganCache = [];
 let pelangganSelectMode = false;
@@ -1183,7 +1184,7 @@ function bukaChatWhatsApp(hp, nama) {
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'Toko Kami';
   const pesan = `Halo Bpk/Ibu *${nama || ''}*, salam dari *${namaToko}*. Ada yang dapat kami bantu seputar kebutuhan belanja / pesanan Anda?`;
   const url = `https://wa.me/${cleanHp}?text=${encodeURIComponent(pesan)}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  bukaTautanEksternal(url);
 }
 
 /* ========================================================================== */
@@ -1210,7 +1211,7 @@ function bukaBuktiTitipanWA(pel, dataBukti, jenis) {
 
   const encoded = encodeURIComponent(pesan);
   const url = cleanHp ? `https://wa.me/${cleanHp}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  bukaTautanEksternal(url);
 }
 
 function bukaModalTerimaTitipan(pel, onSuccess) {

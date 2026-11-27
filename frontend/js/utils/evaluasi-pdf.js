@@ -4,6 +4,7 @@
  */
 
 import { formatRupiah, formatQty, formatTanggal, escapeHtml } from './format.js';
+import { cetakHtmlPintar, unduhFilePintar } from './native.js';
 
 const NAMA_BULAN_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -231,6 +232,9 @@ export function buatHtmlEvaluasiBulananA4(data) {
 /** Cetak / Simpan Laporan Evaluasi Bulanan sebagai PDF A4 melalui iframe cetak bersih */
 export function cetakLaporanEvaluasiBulananPdf(data) {
   const html = buatHtmlEvaluasiBulananA4(data);
+  if (cetakHtmlPintar(html, `Evaluasi Bulanan ${data?.periode || 'POS'}`)) {
+    return;
+  }
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -317,15 +321,5 @@ export function eksporEvaluasiBulananExcel(data) {
  ${s1}${s2}${s3}${s4}${s5}
 </Workbook>`;
 
-  const blob = new Blob(['\uFEFF' + xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `evaluasi-bulanan-${data?.periode || 'pos'}.xls`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    a.remove();
-    URL.revokeObjectURL(url);
-  }, 500);
+  unduhFilePintar(`evaluasi-bulanan-${data?.periode || 'pos'}.xls`, '\uFEFF' + xml, 'application/vnd.ms-excel;charset=utf-8');
 }

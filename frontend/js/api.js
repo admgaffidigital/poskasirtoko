@@ -501,6 +501,11 @@ export async function apiCall(action, payload = {}, options = {}) {
           } else {
             const errMsg = data.error || 'Terjadi kesalahan pada permintaan server.';
             const errCode = data.code || 'SERVER';
+            if ((errCode === 'AUTH_INVALID' || errCode === 'AUTH_REQUIRED') && action !== 'auth.login' && action !== 'auth.logout' && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              try {
+                window.dispatchEvent(new CustomEvent('pos-auth-expired', { detail: { code: errCode, message: errMsg, action } }));
+              } catch (_) {}
+            }
             throw new ApiError(errMsg, errCode, data.data);
           }
         } catch (err) {

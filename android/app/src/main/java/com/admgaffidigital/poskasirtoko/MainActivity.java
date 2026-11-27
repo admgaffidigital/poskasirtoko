@@ -5,19 +5,32 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
+import android.provider.MediaStore;
 import android.provider.Settings;
+import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.content.FileProvider;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 public class MainActivity extends BridgeActivity {
     private static final String RAWBT_PACKAGE = "ru.a402d.rawbtprinter";
@@ -159,7 +172,9 @@ public class MainActivity extends BridgeActivity {
                 return true;
             }
 
-            if (url.startsWith("market:") || url.startsWith("whatsapp:") || url.startsWith("tel:") || url.startsWith("mailto:")) {
+            if (url.startsWith("market:") || url.startsWith("whatsapp:") || url.startsWith("tel:") || url.startsWith("mailto:")
+                || url.startsWith("https://wa.me/") || url.startsWith("http://wa.me/")
+                || url.startsWith("https://api.whatsapp.com/") || url.startsWith("https://play.google.com/")) {
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
@@ -194,7 +209,7 @@ public class MainActivity extends BridgeActivity {
                 activity.startActivity(marketIntent);
             } catch (Exception e) {
                 try {
-                    Intent webIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(RAWBT_PLAY_STORE_URL));
+                    Intent webIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkgName));
                     webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     activity.startActivity(webIntent);
                 } catch (Exception ignored) {
@@ -320,10 +335,12 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Bridge native (`window.AndroidApp`) untuk penutupan aplikasi yang bersih setelah konfirmasi pengguna.
+     * Bridge native (`window.AndroidApp`) untuk penutupan aplikasi, cetak PDF/Android PrintManager,
+     * simpan & bagikan file ekspor (CSV/Excel/JSON), serta membuka tautan eksternal (WhatsApp/Browser).
      */
     private static class AppLifecycleBridge {
         private final Activity activity;
+        private WebView activePrintWebView;
 
         AppLifecycleBridge(Activity activity) {
             this.activity = activity;
@@ -345,6 +362,135 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
             });
+        }
+
+        @JavascriptInterface
+        public boolean openExternalUrl(String url) {
+            if (url == null || url.trim().isEmpty()) return false;
+            activity.runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url.trim()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    activity.startActivity(intent);
+                } catch (Exception ignored) {
+                }
+            });
+            return true;
+        }
+
+        @JavascriptInterface
+        public boolean printHtml(String htmlContent, String jobName) {
+            if (htmlContent == null || htmlContent.trim().isEmpty()) return false;
+            final String safeJobName = (jobName != null && !jobName.trim().isEmpty())
+                ? jobName.trim()
+                : "POS Kasir Toko";
+
+            activity.runOnUiThread(() -> {
+                try {
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    WebView printView = new WebView(activity);
+                    printView.getSettings().setJavaScriptEnabled(false);
+                    printView.getSettings().setAllowFileAccess(false);
+                    printView.getSettings().setLoadsImagesAutomatically(true);
+                    activePrintWebView = printView;
+
+                    printView.setWebViewClient(new WebViewClient() {
+                        @Override
+                        public void onPageFinished(WebView view, String url) {
+                            try {
+                                PrintManager pm = (PrintManager) activity.getSystemService(Context.PRINT_SERVICE);
+                                if (pm != null) {
+                                    PrintDocumentAdapter adapter = view.createPrintDocumentAdapter(safeJobName);
+                                    PrintAttributes attrs = new PrintAttributes.Builder()
+                                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                                        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                                        .build();
+                                    pm.print(safeJobName, adapter, attrs);
+                                }
+                            } catch (Exception ignored) {
+                            } finally {
+                                activePrintWebView = null;
+                            }
+                        }
+                    });
+                    printView.loadDataWithBaseURL("https://localhost/", htmlContent, "text/html", "UTF-8", null);
+                } catch (Exception ignored) {
+                    activePrintWebView = null;
+                }
+            });
+            return true;
+        }
+
+        @JavascriptInterface
+        public String saveAndShareFile(String filename, String mimeType, String base64Content) {
+            if (filename == null || filename.trim().isEmpty() || base64Content == null) {
+                return "ERROR:INVALID_ARGS";
+            }
+            final String safeName = filename.trim().replaceAll("[^a-zA-Z0-9._-]", "_");
+            final String safeMime = (mimeType != null && !mimeType.trim().isEmpty())
+                ? mimeType.split(";")[0].trim()
+                : "application/octet-stream";
+
+            try {
+                final byte[] bytes = Base64.decode(base64Content, Base64.DEFAULT);
+
+                // 1. Simpan salinan permanen ke folder Downloads (Android 10+ / API 29+ tanpa izin penyimpanan)
+                boolean savedToDownloads = false;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        ContentValues values = new ContentValues();
+                        values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                        values.put(MediaStore.Downloads.MIME_TYPE, safeMime);
+                        values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/POSKasirToko");
+                        ContentResolver resolver = activity.getContentResolver();
+                        Uri dlUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                        if (dlUri != null) {
+                            try (OutputStream os = resolver.openOutputStream(dlUri)) {
+                                if (os != null) {
+                                    os.write(bytes);
+                                    os.flush();
+                                    savedToDownloads = true;
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                // 2. Tulis ke cache FileProvider lalu buka dialog Bagikan / Buka File Android
+                File exportDir = new File(activity.getCacheDir(), "exports");
+                if (!exportDir.exists()) exportDir.mkdirs();
+                File outFile = new File(exportDir, safeName);
+                try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                    fos.write(bytes);
+                    fos.flush();
+                }
+
+                Uri contentUri = FileProvider.getUriForFile(
+                    activity,
+                    activity.getPackageName() + ".fileprovider",
+                    outFile
+                );
+
+                final Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                shareIntent.setType(safeMime);
+                shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                shareIntent.putExtra(Intent.EXTRA_SUBJECT, safeName);
+                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                activity.runOnUiThread(() -> {
+                    try {
+                        Intent chooser = Intent.createChooser(shareIntent, "Simpan / Bagikan " + safeName);
+                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(chooser);
+                    } catch (Exception ignored) {
+                    }
+                });
+
+                return savedToDownloads ? "OK_DOWNLOADS" : "OK_SHARE";
+            } catch (Exception e) {
+                return "ERROR:" + e.getMessage();
+            }
         }
     }
 }

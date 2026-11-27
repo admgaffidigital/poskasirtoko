@@ -9,6 +9,7 @@ import { ICONS, showToast } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatTanggal, formatQty } from '../utils/format.js';
 import { generateBarcodeSvg } from '../utils/barcode.js';
+import { cetakHtmlPintar } from '../utils/native.js';
 
 export async function renderPriceTagModule(container) {
   container.innerHTML = `
@@ -395,6 +396,16 @@ export async function renderPriceTagModule(container) {
       if (terpilihIds.size === 0) {
         showToast('Pilih minimal satu produk untuk dicetak label harganya', 'warning');
         return;
+      }
+      if (printArea && window.AndroidApp && typeof window.AndroidApp.printHtml === 'function') {
+        const htmlLabel = `<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Price Tag POS</title><style>
+          @page { size: A4; margin: 6mm; }
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, sans-serif; background: white; color: black; }
+          .ptag-sheet { display: flex; flex-wrap: wrap; gap: 4mm; padding: 2mm; }
+          .ptag-card-print { page-break-inside: avoid; break-inside: avoid; border: 1px dashed gray; background: white; color: black; }
+        </style></head><body><div class="ptag-sheet">${printArea.innerHTML}</div></body></html>`;
+        if (cetakHtmlPintar(htmlLabel, 'Price Tag POS Kasir')) return;
       }
       window.print();
     });

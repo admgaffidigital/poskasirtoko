@@ -11,6 +11,7 @@
 import { apiCall } from '../api.js';
 import { ICONS, showModal, showToast, showConfirm } from './ui.js';
 import { formatRupiah, formatQty, escapeHtml } from './format.js';
+import { unduhFilePintar } from './native.js';
 
 const KOLOM_EKSPOR = [
   'TIPE',
@@ -39,17 +40,7 @@ function escapeCsvCell(val) {
 }
 
 function unduhFileTeks(namaFile, isi, mime = 'text/csv;charset=utf-8') {
-  const blob = new Blob([isi], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = namaFile;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    a.remove();
-    URL.revokeObjectURL(url);
-  }, 500);
+  unduhFilePintar(namaFile, isi, mime);
 }
 
 /** Muat 100% seluruh produk (aktif & nonaktif) lintas halaman untuk ekspor & pencocokan import */

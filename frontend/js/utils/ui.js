@@ -248,7 +248,7 @@ export function showModal({
   let isDraggingSheet = false;
 
   const onTouchStart = (e) => {
-    if (isClosing) return;
+    if (isClosing || !closable) return;
     if (!isSheet && window.innerWidth >= 768) return;
     if (e.target.closest('button, a, input, select, textarea')) return;
     if (!e.touches || e.touches.length !== 1) return;

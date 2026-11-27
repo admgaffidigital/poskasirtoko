@@ -12,6 +12,7 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, formatQty, formatTanggal, escapeHtml } from './format.js';
 import { showToast, showModal, showConfirm, ICONS } from './ui.js';
+import { cetakHtmlPintar, bukaTautanEksternal } from './native.js';
 
 const KEY_KATALOG_PRESETS = 'pos_katalog_pdf_presets_v1';
 
@@ -776,6 +777,9 @@ async function muatSeluruhProdukLengkap() {
 
 /** Cetak / Simpan PDF A4 katalog via iframe tersembunyi (menunggu foto termuat dulu) */
 function cetakHtmlKatalogA4(htmlDoc) {
+  if (cetakHtmlPintar(htmlDoc, 'Katalog Produk POS')) {
+    return;
+  }
   const printFrame = document.createElement('iframe');
   printFrame.style.position = 'fixed';
   printFrame.style.right = '0';
@@ -1442,7 +1446,7 @@ export async function bukaModalKatalogPdf(params = {}) {
       '--------------------------------',
       stateKat.opsi.catatan
     ];
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`, '_blank', 'noopener,noreferrer');
+    bukaTautanEksternal(`https://wa.me/?text=${encodeURIComponent(lines.join('\n'))}`);
   });
 
   modal.el.querySelector('#btn-tutup-katalog-pdf')?.addEventListener('click', () => {

@@ -212,15 +212,29 @@ export function bukaKameraScanner(onScanCallback) {
     if (videoEl) {
       videoEl.srcObject = stream;
       videoEl.setAttribute('playsinline', 'true');
-      videoEl.play();
+      const playPromise = videoEl.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
     }
 
-    // Cek ketersediaan BarcodeDetector API asli di browser
+    // Cek ketersediaan BarcodeDetector API asli di browser (aman dari error format tak didukung)
+    let detector = null;
     if ('BarcodeDetector' in window) {
-      const detector = new window.BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e']
-      });
+      try {
+        detector = new window.BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e']
+        });
+      } catch (_) {
+        try {
+          detector = new window.BarcodeDetector();
+        } catch (__) {
+          detector = null;
+        }
+      }
+    }
 
+    if (detector) {
       scanInterval = setInterval(async () => {
         if (!isScanning || !videoEl || videoEl.readyState < 2) return;
         try {
@@ -233,7 +247,7 @@ export function bukaKameraScanner(onScanCallback) {
         }
       }, 250);
     } else {
-      console.warn('BarcodeDetector API native tidak tersedia, gunakan input manual barcode.');
+      showToast('Deteksi barcode kamera otomatis belum didukung browser ini. Ketik barcode/SKU secara manual di bawah.', 'info', 4000);
     }
   }).catch((err) => {
     console.warn('Gagal membuka kamera scanner:', err);
