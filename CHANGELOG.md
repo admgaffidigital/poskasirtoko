@@ -16,6 +16,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.153] - 2026-11-27
+### Diperbaiki — Audit Bug Putaran 2: Service Worker Anti-Force-Reload Mid-Transaksi, Print CSS Price Tag, Stempel Waktu Lokal, & WA Produk/Supplier
+- **[PWA] [UI] Service Worker Anti-Force-Reload di Tengah Transaksi (`sw.js`, `app.js`)**:
+  - Menghapus `self.skipWaiting()` otomatis pada fase `install` di `frontend/sw.js` agar rilis versi baru tidak lagi memaksa browser reload mendadak saat kasir sedang menyelesaikan checkout atau mengisi formulir. Pembaruan kini menunggu konfirmasi tombol **"Perbarui & Restart Aplikasi"** (dan menunda reload otomatis bila ada modal aktif).
+- **[PRICETAG] [UI] Perbaikan Selector CSS Print `.bottomnav` (`pricetag.js`)**:
+  - Memperbaiki typo `.bottom-nav` menjadi `.bottomnav` pada `@media print` agar navigasi bawah mobile ikut tersembunyi bersih saat mencetak label harga.
+- **[SETTING] [PRODUK] [UI] Stempel Tanggal Lokal WIB pada File Backup & Ekspor (`pengaturan.js`, `produk-import.js`)**:
+  - Mengganti `toISOString()` (UTC -7 jam) dengan tanggal/jam lokal perangkat sehingga nama file backup & ekspor CSV pada pukul 00:00–06:59 WIB tidak lagi meleset ke tanggal kemarin.
+- **[PRODUK] [SUPPLIER] [CETAK] [APK] Edit Teks WA Massal Produk, Sanitasi Nomor HP Supplier, & Probe USB Bridge Selektif (`produk.js`, `supplier.js`, `printer.js`)**:
+  - Tombol **Kirim WhatsApp** pada bagikan daftar produk kini membaca isi teks terbaru hasil edit pengguna dan memakai `bukaTautanEksternal()`.
+  - Sanitasi nomor HP Supplier kini membersihkan karakter non-angka sebelum mengganti awalan `0` → `62` serta membuka WhatsApp via `bukaTautanEksternal()`.
+  - Modal Koneksi Printer Desktop tidak lagi memicu probe `127.0.0.1:9199/status` secara otomatis bila pengguna memilih mode `webusb`/`webserial`.
+
 ## [1.0.152] - 2026-11-27
 ### Diperbaiki — Audit Bug Menyeluruh Aplikasi Android (APK) & Website (PWA)
 - **[APK] [CETAK] Cetak PDF / Faktur A5 / Surat Jalan / Katalog / Evaluasi / Price Tag Native di APK Android (`MainActivity.java`, `native.js`, `printer.js`, `katalog-pdf.js`, `evaluasi-pdf.js`, `pricetag.js`)**:

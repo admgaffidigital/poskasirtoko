@@ -1865,13 +1865,15 @@ export function tampilkanModalKoneksiPrinter() {
   };
 
   if (!isAndroid) {
-    segarkanBridgeStatus();
     const selMode = modal.el.querySelector('#sel-usb-mode');
     const wrapPrn = modal.el.querySelector('#wrap-usb-bridge-printer');
     const syncModeUi = () => {
       if (wrapPrn) wrapPrn.style.display = (selMode?.value || 'bridge') === 'bridge' ? '' : 'none';
     };
     syncModeUi();
+    if ((selMode?.value || cal.usbMode || 'bridge') === 'bridge') {
+      segarkanBridgeStatus();
+    }
     selMode?.addEventListener('change', () => {
       cal = simpanKalibrasiThermal({ usbMode: selMode.value });
       syncModeUi();

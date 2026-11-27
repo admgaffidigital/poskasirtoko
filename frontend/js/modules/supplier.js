@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah } from '../utils/format.js';
+import { bukaTautanEksternal } from '../utils/native.js';
 
 export async function renderSupplierModule(container) {
   const user = store.get('user');
@@ -102,7 +103,8 @@ async function muatSupplierList(container, canEdit, query = '') {
     `;
 
     items.forEach((s) => {
-      const waLink = s.hp ? `https://wa.me/${s.hp.replace(/^0/, '62').replace(/[^0-9]/g, '')}` : '';
+      const cleanHp = s.hp ? String(s.hp).replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+      const waLink = cleanHp ? `https://wa.me/${cleanHp}` : '';
       html += `
         <tr>
           <td data-label="Supplier">
@@ -119,8 +121,8 @@ async function muatSupplierList(container, canEdit, query = '') {
           <td data-label="Kontak PIC">
             <div class="pel-cell-val">
               <span class="text-xs fw-semibold">${escapeHtml(s.kontak || '-')}</span>
-              ${s.hp ? `
-                <a href="${waLink}" target="_blank" rel="noopener" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px;">
+              ${waLink ? `
+                <a href="${waLink}" target="_blank" rel="noopener" class="text-xs text-primary btn-wa-supplier" data-wa="${waLink}" style="display: inline-flex; align-items: center; gap: 4px;">
                   ${escapeHtml(s.hp)}
                 </a>
               ` : ''}
@@ -169,6 +171,17 @@ async function muatSupplierList(container, canEdit, query = '') {
     `;
 
     area.innerHTML = html;
+
+    // Event listener WhatsApp Supplier (aman di Android APK maupun Web)
+    area.querySelectorAll('.btn-wa-supplier').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        const waUrl = link.getAttribute('data-wa');
+        if (waUrl && window.AndroidApp && typeof window.AndroidApp.openExternalUrl === 'function') {
+          e.preventDefault();
+          bukaTautanEksternal(waUrl);
+        }
+      });
+    });
 
     // Event listener edit
     area.querySelectorAll('.btn-edit-supplier').forEach((btn) => {

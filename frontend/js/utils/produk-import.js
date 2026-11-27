@@ -110,7 +110,8 @@ export function eksporProdukCsvExcel(produkList = [], daftarKategori = []) {
     }
   });
 
-  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const nowExp = new Date();
+  const stamp = `${nowExp.getFullYear()}${String(nowExp.getMonth() + 1).padStart(2, '0')}${String(nowExp.getDate()).padStart(2, '0')}`;
   unduhFileTeks(`katalog-produk-pos-${stamp}.csv`, '\uFEFF' + baris.join('\r\n'));
   return baris.length - 1;
 }

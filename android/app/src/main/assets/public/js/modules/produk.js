@@ -11,6 +11,7 @@ import { formatRupiah, formatQty, parseRupiah, parseQty, escapeHtml } from '../u
 import { renderKalkulatorHppToggle, renderKalkulatorHppPanel, ikatKalkulatorHpp } from '../utils/hpp-calculator.js';
 import { bukaModalKatalogPdf } from '../utils/katalog-pdf.js';
 import { bukaModalImportExportProduk } from '../utils/produk-import.js';
+import { bukaTautanEksternal } from '../utils/native.js';
 
 /**
  * Kompres file gambar ke format JPEG Base64 (maks 800px, kualitas 0.8)
@@ -588,8 +589,13 @@ export async function renderProdukModule(container) {
       `,
       footer: `
         <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-bulk-wa">Salin Teks</button>
-        <a class="btn btn-primary btn-sm" id="btn-open-bulk-wa" href="https://wa.me/?text=${encodeURIComponent(teks)}" target="_blank" rel="noopener">Kirim WhatsApp</a>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-open-bulk-wa">Kirim WhatsApp</button>
       `
+    });
+
+    modalWa.el.querySelector('#btn-open-bulk-wa')?.addEventListener('click', () => {
+      const val = modalWa.el.querySelector('#txt-bulk-wa-prd')?.value || teks;
+      bukaTautanEksternal(`https://wa.me/?text=${encodeURIComponent(val)}`);
     });
 
     modalWa.el.querySelector('#btn-copy-bulk-wa')?.addEventListener('click', async () => {

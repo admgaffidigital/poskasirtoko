@@ -453,7 +453,8 @@ async function muatPengaturan(container) {
       try {
         const res = await apiCall('sistem.backup', {});
         const now = new Date();
-        const stamp = now.toISOString().slice(0, 16).replace(/[-:T]/g, '');
+        const pad2 = (n) => String(n).padStart(2, '0');
+        const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}`;
         if (mode === 'excel') {
           const xml = buatWorkbookExcelMultiSheet(res);
           unduhBlobFile(`backup-excel-pos-kasir-${stamp}.xls`, '\uFEFF' + xml, 'application/vnd.ms-excel;charset=utf-8');

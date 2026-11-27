@@ -121,7 +121,7 @@ export async function renderPriceTagModule(container) {
       }
       @media print {
         body * { visibility: hidden; }
-        .no-print, .sidebar, .topbar, .bottom-nav { display: none !important; }
+        .no-print, .sidebar, .topbar, .bottomnav, .bottom-nav { display: none !important; }
         #print-area-ptag, #print-area-ptag * { visibility: visible; }
         #print-area-ptag {
           position: absolute;
