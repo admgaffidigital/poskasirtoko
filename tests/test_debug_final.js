@@ -2705,6 +2705,21 @@ async function runAudit() {
     }
     assert(blokirRetBeliKasir, 'retur.detail wajib menolak akses Kasir terhadap dokumen retur pembelian');
 
+    // 29f9. Upload Logo Toko Kustom (toko_logo_url): validasi format aman, tolak XSS, & sinkron di auth.me / pengaturan.get
+    const sampleLogo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const resSetLogo = envGd.aksiPengaturanSet_({ user: ownerRow, payload: { toko_logo_url: sampleLogo } });
+    assert(resSetLogo.toko.logo === sampleLogo && resSetLogo.pengaturan.toko_logo_url === sampleLogo,
+      'pengaturan.set wajib menyimpan & mengembalikan toko.logo untuk logo base64 valid');
+    const resMeLogo = envGd.aksiAuthMe_({ user: ownerRow });
+    assert(resMeLogo.toko.logo === sampleLogo, 'auth.me wajib menyertakan toko.logo agar Sidebar/Login/PDF sinkron lintas perangkat');
+    let tolakLogoXss = false;
+    try {
+      envGd.aksiPengaturanSet_({ user: ownerRow, payload: { toko_logo_url: 'javascript:alert(1)' } });
+    } catch (e) {
+      tolakLogoXss = e.code === 'VALIDATION';
+    }
+    assert(tolakLogoXss, 'pengaturan.set wajib menolak URL logo tidak aman (XSS/non-image)');
+
     // 29g. Spreadsheet Beautifier & Schema Sync: mencakup seluruh 33 sheet, mode batch anti-timeout, RBAC menolak Kasir, Owner sukses
     const resPing33 = callApi('sistem.ping', '', {});
     assert(resPing33.ok === true && resPing33.data.total_sheet === 33, 'sistem.ping wajib mengembalikan total_sheet = 33');

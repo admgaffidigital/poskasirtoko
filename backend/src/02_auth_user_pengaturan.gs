@@ -96,6 +96,7 @@ function aksiAuthLogin_(ctx) {
       nama: peng.toko_nama || 'Toko',
       alamat: peng.toko_alamat || '',
       hp: peng.toko_hp || '',
+      logo: peng.toko_logo_url || '',
       nota_footer: peng.nota_footer || ''
     }
   };
@@ -128,6 +129,7 @@ function aksiAuthMe_(ctx) {
       nama: peng.toko_nama || 'Toko',
       alamat: peng.toko_alamat || '',
       hp: peng.toko_hp || '',
+      logo: peng.toko_logo_url || '',
       nota_footer: peng.nota_footer || ''
     }
   };
@@ -181,6 +183,7 @@ function aksiPengaturanGet_() {
       nama: p.toko_nama || 'Toko',
       alamat: p.toko_alamat || '',
       hp: p.toko_hp || '',
+      logo: p.toko_logo_url || '',
       nota_footer: p.nota_footer || ''
     }
   };
@@ -205,6 +208,20 @@ function aksiPengaturanSet_(ctx) {
       if (k === 'poin_per_rupiah') val = V_.angka(val, 'Aturan Poin (Rp per 1 Poin)', { min: 100 });
       if (k === 'printer_ukuran') val = val === '80' ? '80' : '58';
       if (k === 'printer_jalur') val = ['otomatis', 'usb_direct', 'rawbt', 'webbluetooth', 'browser'].indexOf(val) !== -1 ? val : 'otomatis';
+      if (k === 'toko_logo_url') {
+        const sLogo = String(val || '').trim();
+        if (sLogo) {
+          const isDataImg = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(sLogo);
+          const isHttpsImg = /^https:\/\/.+/i.test(sLogo) && sLogo.length <= 1000;
+          if (!isDataImg && !isHttpsImg) {
+            gagal_(KODE.VALIDATION, 'Format logo toko tidak valid. Gunakan file gambar PNG/JPG/WebP atau tautan HTTPS.');
+          }
+          if (isDataImg && sLogo.length > 45000) {
+            gagal_(KODE.VALIDATION, 'Ukuran gambar logo terlalu besar (maks 45 KB setelah kompresi). Pilih gambar lebih kecil.');
+          }
+        }
+        val = sLogo;
+      }
 
       if (petaId[k]) {
         diubah.push({ id: petaId[k], data: { value: val } });
@@ -218,7 +235,11 @@ function aksiPengaturanSet_(ctx) {
   if (ditambah.length) tambahBaris_('Pengaturan', ditambah, ctx.user.id);
 
   cacheHapus_('pengaturan');
-  catatAudit_(ctx.user.id, 'pengaturan_ubah', 'SETTING', '', { perubahan: p });
+  const logPerubahan = Object.assign({}, p);
+  if (logPerubahan.toko_logo_url !== undefined) {
+    logPerubahan.toko_logo_url = logPerubahan.toko_logo_url ? '[LOGO_TERPASANG]' : '';
+  }
+  catatAudit_(ctx.user.id, 'pengaturan_ubah', 'SETTING', '', { perubahan: logPerubahan });
 
   const hasilPengaturan = ambilPengaturan_();
   return {
@@ -227,6 +248,7 @@ function aksiPengaturanSet_(ctx) {
       nama: hasilPengaturan.toko_nama || 'Toko',
       alamat: hasilPengaturan.toko_alamat || '',
       hp: hasilPengaturan.toko_hp || '',
+      logo: hasilPengaturan.toko_logo_url || '',
       nota_footer: hasilPengaturan.nota_footer || ''
     }
   };

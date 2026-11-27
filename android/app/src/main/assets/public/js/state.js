@@ -26,6 +26,7 @@ class Store {
         nama: 'POS Toko',
         alamat: '',
         hp: '',
+        logo: '',
         nota_footer: ''
       })
     };
@@ -93,11 +94,19 @@ class Store {
     return this.state.toko?.nama || this.state.pengaturan?.toko_nama || 'POS Toko';
   }
 
+  getLogoToko() {
+    return String(this.state.toko?.logo || this.state.pengaturan?.toko_logo_url || '').trim();
+  }
+
   setToko(toko) {
+    const logoVal = (toko && toko.logo !== undefined)
+      ? String(toko.logo || '').trim()
+      : String(this.state.pengaturan?.toko_logo_url || this.state.toko?.logo || '').trim();
     const tokoBersih = {
       nama: (toko && toko.nama) ? String(toko.nama).trim() : (this.state.pengaturan?.toko_nama || 'POS Toko'),
       alamat: (toko && toko.alamat) ? String(toko.alamat).trim() : (this.state.pengaturan?.toko_alamat || ''),
       hp: (toko && toko.hp) ? String(toko.hp).trim() : (this.state.pengaturan?.toko_hp || ''),
+      logo: logoVal,
       nota_footer: (toko && toko.nota_footer) ? String(toko.nota_footer).trim() : (this.state.pengaturan?.nota_footer || '')
     };
     this.set('toko', tokoBersih);

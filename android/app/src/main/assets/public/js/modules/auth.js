@@ -68,12 +68,18 @@ export function tampilkanModalLogin(onSuccess) {
   if (modalLoginRef) return;
 
   const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir';
+  const logoToko = store.getLogoToko ? store.getLogoToko() : '';
+  const logoHtml = logoToko
+    ? `<div class="brand-logo" style="margin: 0 auto var(--sp-2); width: 56px; height: 56px; background: var(--surface); border: 1px solid var(--border); padding: 4px; overflow: hidden;">
+          <img src="${escapeHtml(logoToko)}" alt="${escapeHtml(namaToko)}" style="width: 100%; height: 100%; object-fit: contain; display: block;">
+        </div>`
+    : `<div class="brand-logo" style="margin: 0 auto var(--sp-2); width: 48px; height: 48px;">
+          ${ICONS.store}
+        </div>`;
   const formHtml = `
     <form id="form-login" class="stack" autocomplete="off">
       <div class="text-center" style="margin-bottom: var(--sp-2)">
-        <div class="brand-logo" style="margin: 0 auto var(--sp-2); width: 48px; height: 48px;">
-          ${ICONS.store}
-        </div>
+        ${logoHtml}
         <h3>Masuk ke ${escapeHtml(namaToko)}</h3>
         <p class="text-xs text-muted">Masukkan username dan PIN 6 digit Anda</p>
       </div>

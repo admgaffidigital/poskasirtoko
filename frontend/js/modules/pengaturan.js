@@ -26,6 +26,73 @@ function unduhBlobFile(namaFile, konten, mime) {
   unduhFilePintar(namaFile, konten, mime);
 }
 
+/**
+ * Kompres & ubah ukuran logo toko ke maks 220x220px agar tajam di Sidebar/Login/Faktur A5/PDF
+ * sekaligus ringan (< 35 KB Data URI) agar tersimpan instan di Google Sheets & tampil 0ms saat offline.
+ */
+function kompresLogoToko(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      reject(new Error('Pilih file gambar yang valid (PNG, JPG, atau WebP).'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Gagal membaca file gambar logo.'));
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('File gambar tidak dapat diproses.'));
+      img.onload = () => {
+        const maks = 220;
+        let w = img.naturalWidth || img.width || maks;
+        let h = img.naturalHeight || img.height || maks;
+        if (w > maks || h > maks) {
+          if (w >= h) {
+            h = Math.max(1, Math.round((h * maks) / w));
+            w = maks;
+          } else {
+            w = Math.max(1, Math.round((w * maks) / h));
+            h = maks;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+
+        // Prioritaskan PNG transparan bila ringan, fallback WebP -> JPEG agar selalu < 40 KB
+        let hasil = canvas.toDataURL('image/png');
+        if (hasil.length > 36000) {
+          const webp = canvas.toDataURL('image/webp', 0.85);
+          if (webp.startsWith('data:image/webp') && webp.length <= 38000) {
+            hasil = webp;
+          } else {
+            const cJpg = document.createElement('canvas');
+            cJpg.width = w;
+            cJpg.height = h;
+            const ctxJ = cJpg.getContext('2d');
+            ctxJ.fillStyle = 'white';
+            ctxJ.fillRect(0, 0, w, h);
+            ctxJ.drawImage(img, 0, 0, w, h);
+            hasil = cJpg.toDataURL('image/jpeg', 0.82);
+            if (hasil.length > 42000) {
+              hasil = cJpg.toDataURL('image/jpeg', 0.65);
+            }
+          }
+        }
+        if (hasil.length > 44500) {
+          reject(new Error('Logo terlalu kompleks/besar. Gunakan gambar dengan latar lebih sederhana.'));
+          return;
+        }
+        resolve(hasil);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 /** Bangun Workbook Microsoft Excel Multi-Sheet (SpreadsheetML XML .xls) dari payload sistem.backup */
 function buatWorkbookExcelMultiSheet(backupData) {
   const sheets = backupData?.sheets || {};
@@ -122,8 +189,11 @@ async function muatPengaturan(container) {
       nama: cfg.toko_nama,
       alamat: cfg.toko_alamat,
       hp: cfg.toko_hp,
+      logo: cfg.toko_logo_url || '',
       nota_footer: cfg.nota_footer
     });
+
+    let logoDraft = String(cfg.toko_logo_url || '').trim();
 
     const temaCloud = cfg.tampilan_tema && cfg.tampilan_tema.updatedAt ? cfg.tampilan_tema : null;
     const labelTemaCloud = temaCloud
@@ -135,7 +205,31 @@ async function muatPengaturan(container) {
         <!-- 1. Profil Toko -->
         <div>
           <div class="section-title">Profil & Identitas Toko</div>
-          <div class="form-grid cols-2" style="margin-top: var(--sp-2);">
+          <div class="card card-body" style="margin-top: var(--sp-2); background: var(--surface-2); border: 1px solid var(--border); padding: var(--sp-3);">
+            <div class="row" style="gap: var(--sp-3); align-items: center; flex-wrap: wrap;">
+              <div id="preview-cfg-logo" style="width: 64px; height: 64px; border-radius: var(--radius-lg); background: var(--surface); border: 1.5px solid var(--border); display: grid; place-items: center; overflow: hidden; padding: 6px; flex-shrink: 0; color: var(--primary);">
+                ${logoDraft
+                  ? `<img src="${escapeHtml(logoDraft)}" alt="Logo Toko" style="width: 100%; height: 100%; object-fit: contain; display: block;">`
+                  : ICONS.store}
+              </div>
+              <div class="grow" style="min-width: 190px;">
+                <div class="fw-bold text-sm">Logo Toko Kustom</div>
+                <div class="text-xs text-muted" style="margin-top: 2px;">Tampil otomatis di Layar Login, Sidebar/Header, Faktur Besar A5, Surat Jalan, Penawaran RAB, &amp; Katalog PDF.</div>
+                <div class="row" style="gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap;">
+                  <input type="file" id="input-cfg-logo-file" accept="image/png,image/jpeg,image/webp" hidden>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-cfg-pilih-logo" style="display: inline-flex; align-items: center; gap: 6px;">
+                    ${ICONS.upload}
+                    <span>Pilih Logo (PNG/JPG)</span>
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm text-danger" id="btn-cfg-hapus-logo" style="${logoDraft ? 'display: inline-flex;' : 'display: none;'} align-items: center; gap: 6px;">
+                    ${ICONS.trash}
+                    <span>Hapus Logo</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-grid cols-2" style="margin-top: var(--sp-3);">
             <div class="field">
               <label class="field-label" for="cfg-toko-nama">Nama Toko <span class="wajib">*</span></label>
               <input type="text" class="input" id="cfg-toko-nama" value="${escapeHtml(cfg.toko_nama || '')}" required>
@@ -369,6 +463,45 @@ async function muatPengaturan(container) {
 
     const form = $('#form-pengaturan', container);
     const btnSimpan = $('#btn-simpan-pengaturan', container);
+    const inputLogoFile = $('#input-cfg-logo-file', container);
+    const previewLogoEl = $('#preview-cfg-logo', container);
+    const btnPilihLogo = $('#btn-cfg-pilih-logo', container);
+    const btnHapusLogo = $('#btn-cfg-hapus-logo', container);
+
+    const segarkanPratinjauLogo = () => {
+      if (previewLogoEl) {
+        previewLogoEl.innerHTML = logoDraft
+          ? `<img src="${escapeHtml(logoDraft)}" alt="Logo Toko" style="width: 100%; height: 100%; object-fit: contain; display: block;">`
+          : ICONS.store;
+      }
+      if (btnHapusLogo) {
+        btnHapusLogo.style.display = logoDraft ? 'inline-flex' : 'none';
+      }
+    };
+
+    btnPilihLogo?.addEventListener('click', () => {
+      inputLogoFile?.click();
+    });
+
+    inputLogoFile?.addEventListener('change', async () => {
+      const file = inputLogoFile.files && inputLogoFile.files[0];
+      if (!file) return;
+      try {
+        logoDraft = await kompresLogoToko(file);
+        segarkanPratinjauLogo();
+        showToast('Logo berhasil dipilih! Klik "Simpan Perubahan" untuk menerapkan ke seluruh aplikasi & cetak.', 'info', 3500);
+      } catch (err) {
+        showToast(err.message || 'Gagal memproses gambar logo.', 'error', 4000);
+      } finally {
+        inputLogoFile.value = '';
+      }
+    });
+
+    btnHapusLogo?.addEventListener('click', () => {
+      logoDraft = '';
+      segarkanPratinjauLogo();
+      showToast('Logo dihapus dari pratinjau. Klik "Simpan Perubahan" untuk kembali ke ikon standar.', 'info', 3200);
+    });
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -381,6 +514,7 @@ async function muatPengaturan(container) {
         toko_nama: $('#cfg-toko-nama', form).value.trim(),
         toko_hp: $('#cfg-toko-hp', form).value.trim(),
         toko_alamat: $('#cfg-toko-alamat', form).value.trim(),
+        toko_logo_url: logoDraft,
         printer_ukuran: $('#cfg-printer-ukuran', form).value,
         printer_jalur: $('#cfg-printer-jalur', form).value,
         diskon_maks_kasir_persen: Number.isFinite(parsedDiskonKasir) ? parsedDiskonKasir : 10,
@@ -401,6 +535,7 @@ async function muatPengaturan(container) {
           nama: cfgBaru.toko_nama,
           alamat: cfgBaru.toko_alamat,
           hp: cfgBaru.toko_hp,
+          logo: cfgBaru.toko_logo_url || '',
           nota_footer: cfgBaru.nota_footer
         };
         store.setToko(tokoBaru);

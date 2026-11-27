@@ -722,6 +722,7 @@ function aksiPenjualanCreate_(ctx) {
       nama: pengaturan.toko_nama || 'Toko',
       alamat: pengaturan.toko_alamat || '',
       hp: pengaturan.toko_hp || '',
+      logo: pengaturan.toko_logo_url || '',
       nota_footer: pengaturan.nota_footer || ''
     }
   };

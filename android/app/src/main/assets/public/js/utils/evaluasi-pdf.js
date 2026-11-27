@@ -5,6 +5,7 @@
 
 import { formatRupiah, formatQty, formatTanggal, escapeHtml } from './format.js';
 import { cetakHtmlPintar, unduhFilePintar } from './native.js';
+import { store } from '../state.js';
 
 const NAMA_BULAN_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -28,6 +29,7 @@ function formatDeltaPersen(val) {
 /** Susun dokumen HTML A4 siap cetak / Save as PDF untuk Laporan Evaluasi Bulanan */
 export function buatHtmlEvaluasiBulananA4(data) {
   const toko = data?.toko || { nama: 'TOKO BANGUNAN', alamat: '', hp: '' };
+  const logoToko = toko.logo || (store.getLogoToko ? store.getLogoToko() : '');
   const r = data?.ringkasan || {};
   const mom = data?.perbandingan_mom || {};
   const lalu = mom.ringkasan_lalu || {};
@@ -77,10 +79,13 @@ export function buatHtmlEvaluasiBulananA4(data) {
 </head>
 <body>
   <div class="hdr">
-    <div>
-      <h1>${escapeHtml(toko.nama)}</h1>
-      ${toko.alamat ? `<div class="sub">${escapeHtml(toko.alamat)}</div>` : ''}
-      ${toko.hp ? `<div class="sub">Telp/WA: ${escapeHtml(toko.hp)}</div>` : ''}
+    <div style="display: flex; align-items: flex-start; gap: 10px;">
+      ${logoToko ? `<img src="${escapeHtml(logoToko)}" alt="Logo" style="width: 44px; height: 44px; object-fit: contain; border-radius: 6px; flex-shrink: 0;">` : ''}
+      <div>
+        <h1>${escapeHtml(toko.nama)}</h1>
+        ${toko.alamat ? `<div class="sub">${escapeHtml(toko.alamat)}</div>` : ''}
+        ${toko.hp ? `<div class="sub">Telp/WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      </div>
     </div>
     <div style="text-align: right;">
       <div style="font-size: 13px; font-weight: 700;">LAPORAN EVALUASI &amp; TUTUP BUKU BULANAN</div>

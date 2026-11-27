@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.155] - 2026-11-27
+### Ditambahkan — Upload Logo Toko Kustom (Login, Sidebar/Topbar, Faktur A5, Surat Jalan, RAB, Katalog PDF, & Evaluasi Bulanan)
+- **[SETTING] [UI] [CETAK] [BACKEND] Logo Toko Kustom Zero-Migration & Instan Offline (`02_auth_user_pengaturan.gs`, `04_pos_penjualan.gs`, `pengaturan.js`, `state.js`, `app.js`, `auth.js`, `printer.js`, `katalog-pdf.js`, `evaluasi-pdf.js`)**:
+  - Menambahkan fitur **Upload Logo Toko Kustom** (PNG/JPG/WebP) dengan kompresi otomatis canvas (maks `220x220px`, < 40 KB Data URI) dan tombol **Hapus Logo** di halaman **Pengaturan Umum > Profil & Identitas Toko** (`toko_logo_url`, tanpa migrasi sheet baru).
+  - Menambahkan validasi keamanan format & batas ukuran di `pengaturan.set` (menolak skema tidak aman/XSS) serta sinkronisasi field `toko.logo` di `auth.login`, `auth.me`, `pengaturan.get`, dan `penjualan.create`.
+  - Logo otomatis tampil 0ms di **Layar Login**, **Sidebar & Topbar**, **Faktur Besar A5**, **Surat Jalan**, **Penawaran Harga / RAB**, **Katalog Produk PDF A4**, dan **Laporan Evaluasi Bulanan PDF A4** (tetap tampil offline & di Android PrintManager).
+
 ## [1.0.154] - 2026-11-27
 ### Diperbaiki — Audit Modul Sistem: Presisi Timezone WIB (+07:00) Sesi/Kunci Akun, Validasi URL Backend `#/sistem`, & Badge Beautifier
 - **[BACKEND] [AUTH] Presisi Timezone WIB (`+07:00`) untuk Sesi & Kunci Login (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `02_auth_user_pengaturan.gs`)**:

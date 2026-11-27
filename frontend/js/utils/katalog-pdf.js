@@ -248,6 +248,7 @@ function formatHargaVarian(v, modeHarga) {
  */
 export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map()) {
   const toko = ambilInfoTokoKatalog();
+  const logoToko = toko.logo || (store.getLogoToko ? store.getLogoToko() : '');
   const tema = TEMA_KATALOG[opsi.tema] || TEMA_KATALOG.teal;
   const layout = ['grid2', 'grid3', 'table'].includes(opsi.layout) ? opsi.layout : 'grid2';
   const modeHarga = ['ritel', 'grosir', 'keduanya', 'tanpa_harga'].includes(opsi.modeHarga) ? opsi.modeHarga : 'ritel';
@@ -729,10 +730,13 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
 <body>
   <div class="doc">
     <header class="hero">
-      <div class="hero-left">
-        <div class="toko-name">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
-        ${toko.alamat ? `<div class="toko-meta">${escapeHtml(toko.alamat)}</div>` : ''}
-        ${toko.hp ? `<div class="toko-meta"><strong>Telp / WhatsApp:</strong> ${escapeHtml(toko.hp)}</div>` : ''}
+      <div class="hero-left" style="display: flex; align-items: center; gap: 10px;">
+        ${logoToko ? `<img src="${escapeHtml(logoToko)}" alt="Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 6px; background: #ffffff; padding: 3px; border: 1px solid ${tema.border}; flex-shrink: 0;">` : ''}
+        <div style="min-width: 0;">
+          <div class="toko-name">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+          ${toko.alamat ? `<div class="toko-meta">${escapeHtml(toko.alamat)}</div>` : ''}
+          ${toko.hp ? `<div class="toko-meta"><strong>Telp / WhatsApp:</strong> ${escapeHtml(toko.hp)}</div>` : ''}
+        </div>
       </div>
       <div class="hero-right">
         <div class="cat-title">${escapeHtml(judul)}</div>
@@ -887,6 +891,7 @@ export async function bukaModalKatalogPdf(params = {}) {
   };
 
   const toko = ambilInfoTokoKatalog();
+  const logoToko = toko.logo || (store.getLogoToko ? store.getLogoToko() : '');
   const bulanTahun = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
   const stateKat = {

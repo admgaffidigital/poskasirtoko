@@ -235,6 +235,7 @@ class App {
           nama: res.pengaturan.toko_nama,
           alamat: res.pengaturan.toko_alamat,
           hp: res.pengaturan.toko_hp,
+          logo: res.pengaturan.toko_logo_url || '',
           nota_footer: res.pengaturan.nota_footer
         });
         this.updateBrandUI();
@@ -312,6 +313,7 @@ class App {
     const t = toko || store.get('toko') || {};
     const peng = store.get('pengaturan') || {};
     const nama = (t.nama || peng.toko_nama || 'POS Toko').trim();
+    const logoUrl = String(t.logo || peng.toko_logo_url || '').trim();
     // Subtitle ringkas & proporsional untuk header brand navigasi aplikasi (bukan alamat jalan yang panjang)
     const sub = (nama && nama !== 'POS Toko') ? 'POS Kasir Toko' : 'Sistem Kasir & Stok';
 
@@ -326,6 +328,24 @@ class App {
       elSub.textContent = sub;
       elSub.title = sub;
     }
+
+    // Sinkronkan Logo Toko Kustom pada Sidebar & Topbar
+    const renderLogoInto = (el) => {
+      if (!el) return;
+      if (logoUrl) {
+        el.innerHTML = `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(nama)}" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;">`;
+        el.style.background = 'var(--surface)';
+        el.style.padding = '3px';
+        el.style.border = '1px solid var(--border)';
+      } else {
+        el.innerHTML = ICONS.store;
+        el.style.background = '';
+        el.style.padding = '';
+        el.style.border = '';
+      }
+    };
+    renderLogoInto($('#brand-logo-sidebar'));
+    renderLogoInto($('.topbar-logo .brand-logo'));
 
     // Perbarui judul tab/browser secara dinamis
     if (this.currentRoute && this.currentRoute.title) {
@@ -593,7 +613,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.154'} • Berjalan offline dengan performa native</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.155'} • Berjalan offline dengan performa native</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -646,7 +666,7 @@ class App {
             }
           }
         }
-        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.154'})!`, 'success');
+        showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.155'})!`, 'success');
       } catch (err) {
         showToast('Gagal memeriksa pembaruan: ' + err.message, 'error');
       } finally {
@@ -1877,7 +1897,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.154'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.155'}</div>
         </div>
       `;
     };

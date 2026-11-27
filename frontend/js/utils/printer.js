@@ -2846,11 +2846,13 @@ function ambilInfoTokoDokumen(data) {
   const cfg = store.get('pengaturan') || {};
   const tokoStore = store.get('toko') || {};
   const namaFallback = store.getNamaToko ? store.getNamaToko() : 'TOKO BANGUNAN';
-  return (data && data.toko) || {
-    nama: cfg.toko_nama || tokoStore.nama || namaFallback,
-    alamat: cfg.toko_alamat || tokoStore.alamat || '',
-    hp: cfg.toko_hp || tokoStore.hp || '',
-    nota_footer: cfg.nota_footer || tokoStore.nota_footer || ''
+  const base = (data && data.toko) || {};
+  return {
+    nama: base.nama || cfg.toko_nama || tokoStore.nama || namaFallback,
+    alamat: base.alamat || cfg.toko_alamat || tokoStore.alamat || '',
+    hp: base.hp || cfg.toko_hp || tokoStore.hp || '',
+    logo: base.logo || cfg.toko_logo_url || tokoStore.logo || '',
+    nota_footer: base.nota_footer || cfg.nota_footer || tokoStore.nota_footer || ''
   };
 }
 
@@ -3020,6 +3022,8 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
     body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 11px; line-height: 1.4; }
     .doc { width: 100%; max-width: 194mm; margin: 0 auto; }
     .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 8px; margin-bottom: 10px; }
+    .toko-brand-row { display: flex; align-items: flex-start; gap: 8px; }
+    .toko-logo-doc { width: 42px; height: 42px; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
     .toko-nama { font-size: 16px; font-weight: 800; letter-spacing: 0.3px; }
     .toko-sub { font-size: 10px; color: #374151; max-width: 95mm; white-space: pre-line; }
     .doc-badge { text-align: right; }
@@ -3046,10 +3050,13 @@ function buatHtmlSuratJalanA5(data, opsi = {}) {
 <body>
   <div class="doc">
     <div class="hdr">
-      <div>
-        <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
-        ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
-        ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      <div class="toko-brand-row">
+        ${toko.logo ? `<img class="toko-logo-doc" src="${escapeHtml(toko.logo)}" alt="Logo">` : ''}
+        <div>
+          <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+          ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+          ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+        </div>
       </div>
       <div class="doc-badge">
         <div class="doc-title">SURAT JALAN</div>
@@ -3332,6 +3339,8 @@ function buatHtmlFakturA5(data) {
     body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 10.5px; line-height: 1.38; }
     .doc { width: 100%; max-width: 194mm; margin: 0 auto; }
     .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 7px; margin-bottom: 8px; }
+    .toko-brand-row { display: flex; align-items: flex-start; gap: 8px; }
+    .toko-logo-doc { width: 42px; height: 42px; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
     .toko-nama { font-size: 16px; font-weight: 800; }
     .toko-sub { font-size: 9.5px; color: #374151; max-width: 95mm; white-space: pre-line; }
     .faktur-hdr { text-align: right; }
@@ -3363,10 +3372,13 @@ function buatHtmlFakturA5(data) {
 <body>
   <div class="doc">
     <div class="hdr">
-      <div>
-        <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
-        ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
-        ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      <div class="toko-brand-row">
+        ${toko.logo ? `<img class="toko-logo-doc" src="${escapeHtml(toko.logo)}" alt="Logo">` : ''}
+        <div>
+          <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+          ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+          ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+        </div>
       </div>
       <div class="faktur-hdr">
         <div class="faktur-title">FAKTUR PENJUALAN</div>
@@ -3587,6 +3599,8 @@ function buatHtmlPenawaranA5(rab) {
     body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 0; padding: 0; font-size: 10.5px; line-height: 1.38; }
     .doc { width: 100%; max-width: 194mm; margin: 0 auto; }
     .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 7px; margin-bottom: 8px; }
+    .toko-brand-row { display: flex; align-items: flex-start; gap: 8px; }
+    .toko-logo-doc { width: 42px; height: 42px; object-fit: contain; border-radius: 4px; flex-shrink: 0; }
     .toko-nama { font-size: 16px; font-weight: 800; }
     .toko-sub { font-size: 9.5px; color: #374151; max-width: 95mm; white-space: pre-line; }
     .rab-hdr { text-align: right; }
@@ -3618,10 +3632,13 @@ function buatHtmlPenawaranA5(rab) {
 <body>
   <div class="doc">
     <div class="hdr">
-      <div>
-        <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
-        ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
-        ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+      <div style="display: flex; align-items: flex-start; gap: 8px;">
+        ${toko.logo ? `<img src="${escapeHtml(toko.logo)}" alt="Logo" style="width: 42px; height: 42px; object-fit: contain; border-radius: 4px; flex-shrink: 0;">` : ''}
+        <div>
+          <div class="toko-nama">${escapeHtml((toko.nama || 'TOKO BANGUNAN').toUpperCase())}</div>
+          ${toko.alamat ? `<div class="toko-sub">${escapeHtml(toko.alamat)}</div>` : ''}
+          ${toko.hp ? `<div class="toko-sub">Telp / WA: ${escapeHtml(toko.hp)}</div>` : ''}
+        </div>
       </div>
       <div class="rab-hdr">
         <div class="rab-title">PENAWARAN HARGA / RAB</div>
