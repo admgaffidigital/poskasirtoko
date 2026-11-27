@@ -613,13 +613,13 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
           </thead>
           <tbody>
             ${sliceTampil.map((it) => {
-              const badgeCls = it.status === 'error'
-                ? 'badge-danger'
-                : (it.status === 'baru' ? 'badge-success' : (it.status === 'update_var' ? 'badge-info' : 'badge-primary'));
-              const hargaTeks = it.hargaLama !== null && it.hargaLama !== it.hargaBaru
-                ? `<span class="text-muted" style="text-decoration: line-through;">${formatRupiah(it.hargaLama)}</span> &rarr; <strong class="text-primary">${formatRupiah(it.hargaBaru)}</strong>`
-                : formatRupiah(it.hargaBaru || 0);
-              return `
+      const badgeCls = it.status === 'error'
+        ? 'badge-danger'
+        : (it.status === 'baru' ? 'badge-success' : (it.status === 'update_var' ? 'badge-info' : 'badge-primary'));
+      const hargaTeks = it.hargaLama !== null && it.hargaLama !== it.hargaBaru
+        ? `<span class="text-muted" style="text-decoration: line-through;">${formatRupiah(it.hargaLama)}</span> &rarr; <strong class="text-primary">${formatRupiah(it.hargaBaru)}</strong>`
+        : formatRupiah(it.hargaBaru || 0);
+      return `
                 <tr>
                   <td class="mono text-xs">${it.row._baris}</td>
                   <td><span class="badge ${badgeCls}">${escapeHtml(it.label)}</span></td>
@@ -629,7 +629,7 @@ export async function bukaModalImportExportProduk({ daftarKategori = [], onSeles
                   <td class="text-right mono text-xs">${it.row.stok !== undefined ? formatQty(it.row.stok) : '-'}</td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>

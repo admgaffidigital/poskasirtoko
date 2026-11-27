@@ -19,9 +19,9 @@ function aksiAuthLogin_(ctx) {
     gagal_(KODE.FORBIDDEN, 'Akun pengguna ini telah dinonaktifkan.');
   }
 
-  // Cek apakah akun sedang terkunci karena gagal 5x
+  // Cek apakah akun sedang terkunci karena gagal 5x (WIB +07:00 independen dari timezone server)
   if (user.kunci_sampai) {
-    const tKunci = new Date(String(user.kunci_sampai).replace(' ', 'T')).getTime();
+    const tKunci = parseWaktuWibMs_(user.kunci_sampai);
     if (isFinite(tKunci) && tKunci > Date.now()) {
       gagal_(KODE.AUTH_LOCKED, 'Akun Anda terkunci sementara hingga ' + user.kunci_sampai + ' karena salah PIN 5 kali.');
     }

@@ -462,7 +462,7 @@ async function muatPengaturan(container) {
         } else {
           const jsonStr = JSON.stringify(res, null, 2);
           unduhBlobFile(`backup-lengkap-pos-kasir-${stamp}.json`, jsonStr, 'application/json;charset=utf-8');
-          showToast(`Backup JSON Lengkap (${res.total_sheet || 30} sheet, ${res.total_baris || 0} baris) berhasil diunduh!`, 'success', 4000);
+          showToast(`Backup JSON Lengkap (${res.total_sheet || 33} sheet, ${res.total_baris || 0} baris) berhasil diunduh!`, 'success', 4000);
         }
       } catch (err) {
         showToast('Gagal mengunduh backup: ' + err.message, 'error', 4500);

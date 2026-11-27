@@ -525,8 +525,8 @@ function jalankanPercantikSpreadsheet_(ss, opsi) {
           const colRange = sh.getRange(2, colIdx, jumlahData, 1);
           if (isStatusCol) {
             addRule('(?i)^(aktif|lunas|selesai|setuju|disetujui|diganti_barang|diambil)$', '#DCFCE7', '#166534', true, false, colRange);
-            addRule('(?i)^(terkunci|dikirim|dibuka_kembali)$', '#DBEAFE', '#1E40AF', true, false, colRange);
-            addRule('(?i)^(tempo|sebagian|draft|pending|diajukan|menunggu|belum_lunas|diproses)$', '#FEF3C7', '#92400E', true, false, colRange);
+            addRule('(?i)^(terkunci|dikirim|diantar|dibuka_kembali)$', '#DBEAFE', '#1E40AF', true, false, colRange);
+            addRule('(?i)^(tempo|sebagian|kirim_sebagian|draft|pending|diajukan|menunggu|belum_dikirim|belum_lunas|diproses|diretur)$', '#FEF3C7', '#92400E', true, false, colRange);
             addRule('(?i)^(batal|belum|kritis|habis|tolak|ditolak|ditolak_supplier|hutang)$', '#FEE2E2', '#991B1B', true, false, colRange);
             addRule('(?i)^(void|nonaktif|ditutup)$', '#F1F5F9', '#64748B', false, true, colRange);
           } else if (isLokasiCol) {

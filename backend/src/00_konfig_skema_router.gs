@@ -536,9 +536,9 @@ function validasiSesi_(token) {
     gagal_(KODE.AUTH_INVALID, 'Sesi tidak valid atau telah berakhir. Silakan login kembali.');
   }
 
-  // Cek kedaluwarsa waktu
+  // Cek kedaluwarsa waktu (WIB +07:00 independen dari timezone server)
   if (sesi.kedaluwarsa) {
-    const tExp = new Date(String(sesi.kedaluwarsa).replace(' ', 'T')).getTime();
+    const tExp = parseWaktuWibMs_(sesi.kedaluwarsa);
     if (isFinite(tExp) && tExp < Date.now()) {
       hapusLunak_('Sesi', sesi.id, 'sistem');
       gagal_(KODE.AUTH_INVALID, 'Sesi Anda telah kedaluwarsa. Silakan login kembali.');

@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.154] - 2026-11-27
+### Diperbaiki — Audit Modul Sistem: Presisi Timezone WIB (+07:00) Sesi/Kunci Akun, Validasi URL Backend `#/sistem`, & Badge Beautifier
+- **[BACKEND] [AUTH] Presisi Timezone WIB (`+07:00`) untuk Sesi & Kunci Login (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `02_auth_user_pengaturan.gs`)**:
+  - Menambahkan helper `parseWaktuWibMs_()` agar pengecekan kedaluwarsa sesi (`validasiSesi_`), pembersihan sesi lama (`bersihkanSesiKedaluwarsa_`), dan kunci akun 5x salah PIN (`kunci_sampai`) akurat 100% tanpa bergantung pada timezone server GAS (mencegah selisih 7–15 jam pada server UTC/US).
+- **[UI] [BACKEND] Peningkatan Halaman Status & Diagnostik Sistem `#/sistem` & Beautifier 33 Sheet (`app.js`, `09_setup_trigger_beautifier.gs`, `pengaturan.js`)**:
+  - Menambahkan validasi URL `https://` + pengosongan cache API otomatis saat mengganti URL Backend di `#/sistem`, serta menampilkan baris **Nota Historis Disinkronkan** pada hasil `sistem.maintenance`.
+  - Melengkapi badge warna kondisional Spreadsheet Beautifier untuk status pengiriman & retur (`diretur`, `belum_dikirim`, `diantar`, `kirim_sebagian`) dan menyelaraskan fallback teks `33 sheet` pada Backup JSON.
+
 ## [1.0.153] - 2026-11-27
 ### Diperbaiki — Audit Bug Putaran 2: Service Worker Anti-Force-Reload Mid-Transaksi, Print CSS Price Tag, Stempel Waktu Lokal, & WA Produk/Supplier
 - **[PWA] [UI] Service Worker Anti-Force-Reload di Tengah Transaksi (`sw.js`, `app.js`)**:

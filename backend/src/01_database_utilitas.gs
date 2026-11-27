@@ -747,6 +747,15 @@ function aksiSistemPing_() {
   };
 }
 
+/** Parse string waktu WIB ("yyyy-MM-dd HH:mm:ss" atau ISO) ke epoch ms secara independen dari timezone server. */
+function parseWaktuWibMs_(str) {
+  if (!str) return NaN;
+  const s = String(str).trim();
+  if (!s) return NaN;
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)) return new Date(s).getTime();
+  return new Date(s.replace(' ', 'T') + '+07:00').getTime();
+}
+
 /** Bersihkan sesi kedaluwarsa di sheet Sesi agar verifikasi login tetap ringan. */
 function bersihkanSesiKedaluwarsa_() {
   const sekarangMs = Date.now();
@@ -754,7 +763,7 @@ function bersihkanSesiKedaluwarsa_() {
   const perubahan = [];
   semuaSesi.forEach(function (s) {
     if (!s.kedaluwarsa) return;
-    const tExp = new Date(String(s.kedaluwarsa).replace(' ', 'T')).getTime();
+    const tExp = parseWaktuWibMs_(s.kedaluwarsa);
     if (isFinite(tExp) && tExp < sekarangMs) {
       perubahan.push({ id: s.id, data: { deleted: true } });
     }
