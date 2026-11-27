@@ -10,7 +10,7 @@ import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
-import { escapeHtml, formatRupiah, formatQty, parseQty, formatTanggal } from '../utils/format.js';
+import { escapeHtml, formatRupiah, formatQty, parseQty, formatTanggal, optimalkanUrlFoto } from '../utils/format.js';
 import { bukaModalPilihProduk } from '../utils/produk-picker.js';
 import { cetakBonMutasiGudang } from '../utils/printer.js';
 
@@ -1234,12 +1234,14 @@ export async function renderGudangModule(container) {
         btn.addEventListener('click', () => {
           const it = items[Number(btn.getAttribute('data-idx'))];
           if (!it || !it.foto_url) return;
+          const fotoOpt = optimalkanUrlFoto(it.foto_url, 800);
           showModal({
             title: `Foto Bukti — ${it.no_rusak}`,
             size: 'md',
             body: `
               <div class="stack" style="gap: var(--sp-2); text-align: center;">
-                <img src="${escapeHtml(it.foto_url)}" alt="Bukti kerusakan" style="max-width: 100%; max-height: 60vh; border-radius: var(--radius-md); object-fit: contain; margin: 0 auto;">
+                <img src="${escapeHtml(fotoOpt)}" alt="Bukti kerusakan" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" style="max-width: 100%; max-height: 60vh; border-radius: var(--radius-md); object-fit: contain; margin: 0 auto;">
+                <div class="text-xs text-muted" style="display: none; padding: var(--sp-4);">Foto bukti tidak dapat dimuat. Pastikan koneksi internet aktif.</div>
                 <div class="text-xs text-muted">${escapeHtml(it.nama)} — ${escapeHtml(it.keterangan || '')}</div>
               </div>
             `
@@ -1249,6 +1251,7 @@ export async function renderGudangModule(container) {
 
       tblArea.querySelectorAll('.btn-approve-rusak').forEach((btn) => {
         btn.addEventListener('click', async () => {
+          if (btn.disabled) return;
           const it = items[Number(btn.getAttribute('data-idx'))];
           if (!it) return;
           const ok = await showConfirm({
@@ -1257,12 +1260,14 @@ export async function renderGudangModule(container) {
             confirmText: 'Ya, Setujui & Potong Stok'
           });
           if (!ok) return;
+          btn.disabled = true;
           try {
             const resApr = await apiCall('rusak.approve', { id: it.id });
             showToast(resApr.pesan || 'Laporan disetujui.', 'success');
             await muatDataRusak();
           } catch (err) {
             showToast(err.message || 'Gagal menyetujui laporan.', 'error', 4500);
+            btn.disabled = false;
           }
         });
       });

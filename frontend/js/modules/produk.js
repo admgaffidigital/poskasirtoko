@@ -1875,7 +1875,7 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
           <div class="row items-center" style="gap: var(--sp-3); flex-wrap: wrap;">
             <!-- Box Preview Foto (1:1 Square) -->
             <div id="prd-foto-preview-box" style="width: 90px; height: 90px; border-radius: var(--radius-lg); border: 2px dashed var(--border); display: grid; place-items: center; overflow: hidden; background: var(--surface-2); position: relative; flex-shrink: 0;">
-              <img src="${hasData && pData.foto_url ? escapeHtml(pData.foto_url) : ''}" alt="Foto" id="prd-foto-img-preview" style="width: 100%; height: 100%; object-fit: cover; ${hasData && pData.foto_url ? '' : 'display: none;'}">
+              <img src="${hasData && pData.foto_url ? escapeHtml(optimalkanUrlFoto(pData.foto_url, 360)) : ''}" alt="Foto" id="prd-foto-img-preview" decoding="async" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover; ${hasData && pData.foto_url ? '' : 'display: none;'}">
               <div id="prd-foto-placeholder" style="text-align: center; color: var(--text-muted); ${hasData && pData.foto_url ? 'display: none;' : ''}">
                 <span class="icon-fit" style="width: 26px; height: 26px;">${ICONS.image}</span>
                 <div style="font-size: var(--fs-2xs); margin-top: 2px;">Belum Ada</div>

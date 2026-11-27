@@ -4169,7 +4169,7 @@ export function renderPosModule(container) {
           onSuccess();
         }
       } catch (err) {
-        showToast(err.message || 'Gagal mencatat kas keluar kasir', 'danger');
+        showToast(err.message || 'Gagal mencatat kas keluar kasir', 'error');
         btnSimpan.disabled = false;
         btnSimpan.textContent = 'Simpan Kas Keluar';
       }

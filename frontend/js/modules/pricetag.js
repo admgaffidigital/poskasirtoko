@@ -353,34 +353,32 @@ export async function renderPriceTagModule(container) {
       updatePreview();
     }
 
-    // Filter Pencarian
+    // Filter Pencarian (debounce 120ms agar mulus untuk ratusan produk)
     const inputSearch = $('#search-ptag-produk', container);
+    let searchTimerPtag = null;
     inputSearch?.addEventListener('input', () => {
-      const q = inputSearch.value.trim().toLowerCase();
-      const filtered = semuaProduk.filter((p) => {
-        return p.nama.toLowerCase().includes(q) ||
-          (p.sku && p.sku.toLowerCase().includes(q)) ||
-          (p.barcode && p.barcode.toLowerCase().includes(q));
-      });
-      renderDaftarChecklist(filtered);
+      if (searchTimerPtag) clearTimeout(searchTimerPtag);
+      searchTimerPtag = setTimeout(() => {
+        const q = inputSearch.value.trim().toLowerCase();
+        const filtered = semuaProduk.filter((p) => {
+          return p.nama.toLowerCase().includes(q) ||
+            (p.sku && p.sku.toLowerCase().includes(q)) ||
+            (p.barcode && p.barcode.toLowerCase().includes(q));
+        });
+        renderDaftarChecklist(filtered);
+      }, 120);
     });
 
     // Tombol Pilih Semua / Kosongkan
     $('#btn-pilih-semua-ptag', container)?.addEventListener('click', () => {
       semuaProduk.forEach((p) => terpilihIds.add(p.id));
       renderDaftarChecklist(semuaProduk);
-      if (terpilihIds.size > 0) {
-        updatePreview();
-      }
       updatePreview();
     });
 
     $('#btn-batal-semua-ptag', container)?.addEventListener('click', () => {
       terpilihIds.clear();
       renderDaftarChecklist(semuaProduk);
-      if (terpilihIds.size > 0) {
-        updatePreview();
-      }
       updatePreview();
     });
 

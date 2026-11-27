@@ -10,7 +10,7 @@
 
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
-import { formatRupiah, formatQty, formatTanggal, escapeHtml } from './format.js';
+import { formatRupiah, formatQty, formatTanggal, escapeHtml, optimalkanUrlFoto } from './format.js';
 import { showToast, showModal, showConfirm, ICONS } from './ui.js';
 import { cetakHtmlPintar, bukaTautanEksternal } from './native.js';
 
@@ -290,7 +290,8 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
 
   const renderFotoKotak = (foto, nama, extraClass = '') => {
     if (!foto) return `<div class="ph-img ${extraClass}">${svgBoxPh}</div>`;
-    return `<img src="${escapeHtml(foto)}" alt="${escapeHtml(nama || '')}" crossorigin="anonymous" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="ph-img ${extraClass}" style="display:none;">${svgBoxPh}</div>`;
+    const fotoOpt = optimalkanUrlFoto(foto, 360);
+    return `<img src="${escapeHtml(fotoOpt)}" alt="${escapeHtml(nama || '')}" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="ph-img ${extraClass}" style="display:none;">${svgBoxPh}</div>`;
   };
 
   const renderVarianDanKemasan = (p) => {
@@ -420,7 +421,7 @@ export function buatHtmlKatalogPdf(produkList, opsi = {}, petaKategori = new Map
         return `
           <tr>
             <td class="c">${no}</td>
-            ${showPhoto ? `<td class="c">${foto ? `<img class="tbl-thumb" src="${escapeHtml(foto)}" alt="" crossorigin="anonymous" onerror="this.style.display='none'">` : '<div class="tbl-thumb-ph">-</div>'}</td>` : ''}
+            ${showPhoto ? `<td class="c">${foto ? `<img class="tbl-thumb" src="${escapeHtml(optimalkanUrlFoto(foto, 160))}" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : '<div class="tbl-thumb-ph">-</div>'}</td>` : ''}
             <td>
               <div class="tbl-nm">${escapeHtml(p.nama || 'Produk')}</div>
               <div class="tbl-meta">${!groupByCategory ? `${escapeHtml(p._katNama)}` : ''}${showSku && p.sku ? `${!groupByCategory ? ' &bull; ' : ''}SKU: ${escapeHtml(p.sku)}` : ''}</div>
@@ -1160,7 +1161,7 @@ export async function bukaModalKatalogPdf(params = {}) {
         <label class="katalog-picker-item ${checked ? 'is-selected' : ''}" data-kp-id="${escapeHtml(p.id)}">
           <input type="checkbox" class="chk-kp-item" value="${escapeHtml(p.id)}" ${checked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--primary); flex-shrink: 0;">
           <div class="katalog-picker-thumb">
-            ${foto ? `<img src="${escapeHtml(foto)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ICONS.box}
+            ${foto ? `<img src="${escapeHtml(optimalkanUrlFoto(foto, 120))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ICONS.box}
           </div>
           <div style="flex: 1; min-width: 0;">
             <div class="text-sm fw-semibold" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(p.nama || 'Produk')}</div>

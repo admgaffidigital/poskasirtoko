@@ -8,6 +8,7 @@ import { store } from '../state.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatTanggal, parseRupiah } from '../utils/format.js';
+import { bukaTautanEksternal } from '../utils/native.js';
 
 let filterPeriode = '30d';
 let filterKategori = '';
@@ -368,7 +369,7 @@ export async function renderBiayaModule(container) {
                   <td data-label="Kategori"><span class="badge badge-secondary">${escapeHtml(item.kategori)}</span></td>
                   <td data-label="Keterangan" style="max-width: 280px; word-break: break-word;">
                     <div>${escapeHtml(item.keterangan || '-')}</div>
-                    ${item.bukti_url ? `<a href="${escapeHtml(item.bukti_url)}" target="_blank" class="text-xs text-primary" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">Lihat Bukti Foto</a>` : ''}
+                    ${item.bukti_url && /^https?:\/\//i.test(String(item.bukti_url).trim()) ? `<a href="${escapeHtml(item.bukti_url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-primary btn-bukti-biaya" data-url="${escapeHtml(item.bukti_url)}" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">Lihat Bukti Foto</a>` : ''}
                   </td>
                   <td data-label="Sumber Dana">${badgeSumber}</td>
                   <td data-label="Nominal" class="num text-right mono fw-bold text-danger">${formatRupiah(item.nominal)}</td>
@@ -388,12 +389,28 @@ export async function renderBiayaModule(container) {
       </div>
     `;
 
+    // Bind tautan bukti foto agar terbuka mulus di Android APK maupun Browser
+    areaTabel.querySelectorAll('.btn-bukti-biaya').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const url = link.getAttribute('data-url');
+        if (url && window.AndroidApp && typeof window.AndroidApp.openExternalUrl === 'function') {
+          e.preventDefault();
+          bukaTautanEksternal(url);
+        }
+      });
+    });
+
     // Bind tombol hapus
     areaTabel.querySelectorAll('.btn-hapus-biaya').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = btn.getAttribute('data-id');
         const no = btn.getAttribute('data-no');
-        const konfirmasi = await showConfirm(`Batalkan pengeluaran ${no}? Data yang dibatalkan tidak akan diperhitungkan lagi pada kasir maupun laporan laba rugi.`, 'Batalkan Pengeluaran');
+        const konfirmasi = await showConfirm({
+          title: 'Batalkan Pengeluaran',
+          message: `Batalkan pengeluaran ${no}? Data yang dibatalkan tidak akan diperhitungkan lagi pada kasir maupun laporan laba rugi.`,
+          confirmText: 'Ya, Batalkan',
+          danger: true
+        });
         if (!konfirmasi) return;
 
         try {
@@ -402,7 +419,7 @@ export async function renderBiayaModule(container) {
           showToast(res.pesan || 'Biaya berhasil dibatalkan.', 'success');
           muatDataBiaya();
         } catch (err) {
-          showToast(err.message || 'Gagal membatalkan biaya', 'danger');
+          showToast(err.message || 'Gagal membatalkan biaya', 'error');
           btn.disabled = false;
         }
       });
@@ -510,7 +527,7 @@ export function bukaModalTambahBiaya(onSuccess) {
       modal.close();
       if (typeof onSuccess === 'function') onSuccess();
     } catch (err) {
-      showToast(err.message || 'Gagal menyimpan pengeluaran', 'danger');
+      showToast(err.message || 'Gagal menyimpan pengeluaran', 'error');
       btnSimpan.disabled = false;
       btnSimpan.innerHTML = `${ICONS.plus} <span>Simpan Pengeluaran</span>`;
     }

@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.160] - 2026-11-28
+### Diperbaiki & Disempurnakan — Perbaikan Bug Tersembunyi & Poles Modul Eksisting (Tanpa Fitur Baru)
+- **[UI] [POS-JUAL] Perbaikan Toast Error & Dialog Konfirmasi (`ui.js`, `biaya.js`, `pos.js`)**:
+  - Memperbaiki pemanggilan `showToast(..., 'danger')` yang tidak ter-styling di `biaya.js` & `pos.js` menjadi `'error'` serta menambahkan normalisasi otomatis `'danger' -> 'error'` di `ui.js`.
+  - Memperbaiki urutan argumen judul & pesan terbalik pada dialog konfirmasi batalkan biaya (`biaya.js`), serta mengamankan tautan bukti foto (`https://`, `rel="noopener noreferrer"`, & buka via `bukaTautanEksternal` di APK Android).
+- **[PRODUK] [PRICETAG] [CETAK] Optimalisasi Foto Katalog PDF / Edit Produk / Bukti Gudang & Performa Price Tag (`katalog-pdf.js`, `produk.js`, `gudang.js`, `pricetag.js`)**:
+  - Menggunakan `optimalkanUrlFoto()` + `referrerpolicy="no-referrer"` pada pratinjau Katalog PDF (`=w360`/`=w160`/`=w120`), form Edit Produk (`=w360`), dan modal Bukti Barang Rusak (`=w800` + fallback `onerror`).
+  - Menghapus pemanggilan ganda `updatePreview()` pada tombol Pilih Semua/Kosongkan di `pricetag.js` serta menambahkan debounce 120ms pada pencarian produk Price Tag.
+  - Menambahkan pengaman double-tap (`btn.disabled`) pada persetujuan laporan barang rusak di `gudang.js`, serta `overscroll-behavior-y: contain` pada `base.css` agar gestur swipe/scroll mobile lebih mulus.
+
 ## [1.0.159] - 2026-11-28
 ### Ditambahkan & Disempurnakan — Peningkatan Kesempurnaan Aplikasi (Topbar OTA Pill, Crash-Guard, Smart Toast, Offline Resilience, App Shortcuts, & Branded Splash)
 - **[PWA] [APK] [UI] Pil Update Global di Topbar & Pelindung Error Chunk Pasca-Deploy (`app.js`)**:

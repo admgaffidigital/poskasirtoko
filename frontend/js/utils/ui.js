@@ -97,8 +97,9 @@ function pastikanToastContainer() {
  * @param {number} [durasiMs=3500]
  */
 export function showToast(pesan, tipe = 'info', durasiMs = 3500) {
+  const tipeNormal = tipe === 'danger' ? 'error' : (tipe || 'info');
   const container = pastikanToastContainer();
-  const keyPesan = `${tipe}::${String(pesan || '').trim()}`;
+  const keyPesan = `${tipeNormal}::${String(pesan || '').trim()}`;
 
   // Deduplikasi toast identik yang masih aktif agar layar tidak penuh saat klik berulang
   const existing = Array.from(container.children).find(
@@ -116,15 +117,15 @@ export function showToast(pesan, tipe = 'info', durasiMs = 3500) {
   }
 
   const toast = document.createElement('div');
-  toast.className = `toast toast-${tipe}`;
+  toast.className = `toast toast-${tipeNormal}`;
   toast.dataset.toastKey = keyPesan;
-  toast.setAttribute('role', tipe === 'error' ? 'alert' : 'status');
-  toast.setAttribute('aria-live', tipe === 'error' ? 'assertive' : 'polite');
+  toast.setAttribute('role', tipeNormal === 'error' ? 'alert' : 'status');
+  toast.setAttribute('aria-live', tipeNormal === 'error' ? 'assertive' : 'polite');
 
   let ikon = ICONS.info;
-  if (tipe === 'success') ikon = ICONS.check;
-  if (tipe === 'error') ikon = ICONS.alertTriangle;
-  if (tipe === 'warning') ikon = ICONS.alertTriangle;
+  if (tipeNormal === 'success') ikon = ICONS.check;
+  if (tipeNormal === 'error') ikon = ICONS.alertTriangle;
+  if (tipeNormal === 'warning') ikon = ICONS.alertTriangle;
 
   toast.innerHTML = `
     ${ikon}
