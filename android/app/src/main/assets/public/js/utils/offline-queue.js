@@ -116,6 +116,7 @@ export function tambahKeAntreanOffline(payload, info = {}) {
       nama: cfg.toko_nama || tokoStore.nama || 'Toko Bangunan',
       alamat: cfg.toko_alamat || tokoStore.alamat || '',
       hp: cfg.toko_hp || tokoStore.hp || '',
+      logo: cfg.toko_logo_url || tokoStore.logo || '',
       nota_footer: cfg.nota_footer || tokoStore.nota_footer || ''
     },
     penjualan: {

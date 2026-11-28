@@ -16,6 +16,14 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.166] - 2026-11-29
+### Diperbaiki — Audit Debugging Finalisasi Menyeluruh (Cache Tutup Bulanan, Struk Offline, & Pembersihan Kode Mati)
+- **[UI] [DASHBOARD] [PWA] Perbaikan Cache Invalidation & Kebersihan Modul (`api.js`, `offline-queue.js`, `app.js`, `laporan.js`, `pos.js`, `pembelian.js`, `pricetag.js`, `users.js`, `barcode.js`)**:
+  - Menambahkan invalidasi otomatis cache `tutupBuku.` pada seluruh mutasi transaksi (`penjualan.`, `pembelian.`, `opname.`, `gudang.`, `retur.`, `piutang.`, `hutang.`, `deposit.`, `biaya.`) sehingga tab **Tutup Bulanan** dan **Rekap Harian** selalu menampilkan angka segar secara instan tanpa menunggu masa kedaluwarsa cache.
+  - Menambahkan `.backup` ke `READ_SUFFIXES` di `api.js` agar proses unduh arsip cadangan JSON/Excel tidak perlu mengosongkan seluruh cache aplikasi dan mendukung auto-retry bila sinyal goyang.
+  - Menyertakan `logo` toko pada objek struk transaksi antrean offline (`offline-queue.js`) agar cetak nota offline tetap menampilkan identitas toko lengkap.
+  - Membersihkan 1 event listener mati (`#btn-theme-top`) di `app.js` serta 12 import ES Module tak terpakai di 7 file frontend (`app.js`, `laporan.js`, `pembelian.js`, `pos.js`, `pricetag.js`, `users.js`, `barcode.js`).
+
 ## [1.0.165] - 2026-11-29
 ### Diubah — Perapian Navigasi & Eliminasi Duplikasi Tampilan UI (Lebih Bersih & Fokus Operasional)
 - **[UI] [SETTING] Pembersihan Menu & Tombol Duplikat (`routes.js`, `app.js`, `pengaturan.js`)**:

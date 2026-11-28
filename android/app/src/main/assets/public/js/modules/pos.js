@@ -23,7 +23,7 @@ import { api, apiCall } from '../api.js';
 import { store } from '../state.js';
 import { formatRupiah, parseRupiah, formatQty, parseQty, formatTanggal, escapeHtml, formatSkuLabel, optimalkanUrlFoto } from '../utils/format.js';
 import { showToast, showModal, showConfirm, ICONS } from '../utils/ui.js';
-import { cetakBluetooth, cetakRawBT, cetakBrowser, buatTautanWhatsApp, tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
+import { tampilkanModalKoneksiPrinter, bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakShift, cetakPenawaranA5, buatTautanWhatsAppPenawaran, bukaModalHasilPenawaran } from '../utils/printer.js';
 import { bunyikanBeep, bukaKameraScanner, pasangScannerFisik } from '../utils/barcode.js';
 import { haptic, bukaTautanEksternal } from '../utils/native.js';
 import { adalahErrorJaringanOffline, tambahKeAntreanOffline, jumlahAntreanOffline } from '../utils/offline-queue.js';

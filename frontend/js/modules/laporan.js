@@ -7,7 +7,7 @@
 import { kirimRequest, hasUsableApiCache } from '../api.js';
 import { store } from '../state.js';
 import { $, $$, escapeHtml, renderSkeleton } from '../utils/dom.js';
-import { formatRupiah, parseRupiah, formatQty, formatTanggal, formatAngka } from '../utils/format.js';
+import { formatRupiah, formatQty, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { haptic, unduhFilePintar } from '../utils/native.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift, cetakFakturA5, bukaModalCetakSuratJalan } from '../utils/printer.js';
@@ -663,8 +663,8 @@ function renderTabDashboard(container, data) {
             ${produkTerlaris.length === 0 ? `
               <div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan di periode ini</div>
             ` : produkTerlaris.map((p, idx) => {
-              const barPct = Math.max(6, Math.round((Number(p.total_omset || 0) / maxOmsetTerlaris) * 100));
-              return `
+    const barPct = Math.max(6, Math.round((Number(p.total_omset || 0) / maxOmsetTerlaris) * 100));
+    return `
               <div class="dash-row ${idx >= MAX_RINGKAS ? 'is-hidden-extra' : ''}">
                 <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
                 <div class="dash-row-main">
@@ -677,7 +677,7 @@ function renderTabDashboard(container, data) {
                 </div>
               </div>
             `;
-            }).join('')}
+  }).join('')}
           </div>
           ${produkTerlaris.length > MAX_RINGKAS ? `
             <div class="dash-list-footer">
@@ -3550,8 +3550,8 @@ function renderTabTutupBuku(target, data, rootContainer) {
           </div>
           <div class="dash-list" style="max-height: 440px; overflow-y: auto;">
             ${tbTopList.length ? tbTopList.map((p, idx) => {
-              const barPct = Math.max(6, Math.round((Number(p.omset || 0) / tbMaxTopOmset) * 100));
-              return `
+    const barPct = Math.max(6, Math.round((Number(p.omset || 0) / tbMaxTopOmset) * 100));
+    return `
               <div class="dash-row">
                 <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
                 <div class="dash-row-main">
@@ -3569,7 +3569,7 @@ function renderTabTutupBuku(target, data, rootContainer) {
                 </div>
               </div>
             `;
-            }).join('') : '<div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan pada bulan ini.</div>'}
+  }).join('') : '<div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan pada bulan ini.</div>'}
           </div>
         </div>
 

@@ -9,7 +9,7 @@
 
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
-import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
+import { ICONS, showToast, showModal } from '../utils/ui.js';
 import { $, $$, renderSkeleton, renderEmpty } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatQty, parseRupiah, parseQty, formatTanggal, formatSkuLabel } from '../utils/format.js';
 import { bukaKameraScanner } from '../utils/barcode.js';

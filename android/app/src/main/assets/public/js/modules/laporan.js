@@ -7,7 +7,7 @@
 import { kirimRequest, hasUsableApiCache } from '../api.js';
 import { store } from '../state.js';
 import { $, $$, escapeHtml, renderSkeleton } from '../utils/dom.js';
-import { formatRupiah, parseRupiah, formatQty, formatTanggal, formatAngka } from '../utils/format.js';
+import { formatRupiah, formatQty, formatTanggal, formatAngka } from '../utils/format.js';
 import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { haptic, unduhFilePintar } from '../utils/native.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift, cetakFakturA5, bukaModalCetakSuratJalan } from '../utils/printer.js';

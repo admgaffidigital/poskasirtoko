@@ -6,7 +6,7 @@
 import { apiCall } from '../api.js';
 import { store } from '../state.js';
 import { ICONS, showToast } from '../utils/ui.js';
-import { $, renderSkeleton, renderEmpty } from '../utils/dom.js';
+import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml, formatRupiah, formatTanggal, formatQty } from '../utils/format.js';
 import { generateBarcodeSvg } from '../utils/barcode.js';
 import { cetakHtmlPintar } from '../utils/native.js';

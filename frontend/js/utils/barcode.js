@@ -6,7 +6,7 @@
  * + Audio synthesized beep feedback via Web Audio API
  */
 
-import { showToast, showModal, ICONS } from './ui.js';
+import { showToast, showModal } from './ui.js';
 
 let audioCtx = null;
 
