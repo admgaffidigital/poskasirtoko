@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.164] - 2026-11-28
+### Ditambahkan — Fitur Persiapan Go-Live Bisnis Nyata (Reset Data Simulasi Owner-Only dengan 3 Lapis Pengaman)
+- **[BACKEND] [SETTING] Endpoint `sistem.resetGoLive` & Wizard Go-Live (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `pengaturan.js`, `test_debug_final.js`)**:
+  - Menambahkan endpoint Owner-only `sistem.resetGoLive` dalam `LockService` dengan 3 lapis pengaman: RBAC Owner + verifikasi **PIN Owner**, ketik kata konfirmasi **`RESET`**, dan **Auto-Backup otomatis Spreadsheet ke folder Google Drive `Backup POS`** sebelum menghapus data.
+  - Mendukung 2 mode: **`transaksi_saja`** *(Disarankan)* yang menghapus 22 sheet transaksi/log & mereset counter nota sambil menjaga 100% utuh Master Produk, Varian, Satuan, Kategori, Supplier, Pelanggan, Akun, & Logo Toko (dengan pilihan stok `nolkan` ke 0 atau `pertahankan` + catat `STOK-AWAL-GOLIVE` di Kartu Stok), serta **`reset_total`** (pabrik bersih, hanya menyisakan Akun User & Pengaturan/Logo Toko).
+  - Menambahkan kartu & modal wizard **Persiapan Go-Live (Reset Data Simulasi)** di halaman **Pengaturan Umum** dan pengujian otomatis lengkap (`29h`) di `tests/test_debug_final.js`.
+
 ## [1.0.163] - 2026-11-28
 ### Ditambahkan — Lengkapi Visualisasi Grafik & Analisa Cerdas ke 100% Seluruh 9 Tab Laporan (Tutup Bulanan, Shift Kasir, & Pengiriman)
 - **[DASHBOARD] [UI] Visualisasi Lengkap 3 Tab Sisa (`laporan.js`)**:

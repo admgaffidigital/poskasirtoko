@@ -90,6 +90,16 @@ class MockSheet {
       });
       return o;
     };
+    o.clearContent = () => {
+      for (let i = 0; i < nr; i++) {
+        const idx = r - 1 + i;
+        if (!sh.data[idx]) continue;
+        for (let j = 0; j < nc; j++) {
+          sh.data[idx][c - 1 + j] = '';
+        }
+      }
+      return o;
+    };
     return o;
   }
 }
@@ -2731,6 +2741,49 @@ async function runAudit() {
     const resCantikOwner = callApi('sistem.percantikSheet', tokenOwner, {});
     assert(resCantikOwner.ok === true && resCantikOwner.data.selesai === true && resCantikOwner.data.total_sheet === 33 && resCantikOwner.data.semua_terdaftar === true,
       `Owner wajib sukses menjalankan sistem.percantikSheet pada seluruh 33 sheet & terdaftar lengkap, aktual: ${JSON.stringify(resCantikOwner)}`);
+
+    // 29h. Persiapan Go-Live (sistem.resetGoLive): RBAC, validasi PIN & kata RESET, pertahankan master + stok awal, & nolkan stok
+    const ownerPin = '654321';
+    envGd.ubahBaris_('Users', [{ id: ownerRow.id, data: { salt: 'golive_salt', pin_hash: envGd.hashPin_(ownerPin, 'golive_salt') } }], ownerRow.id);
+    const resResetKasir = callApi('sistem.resetGoLive', tokenKasir, { mode: 'transaksi_saja', opsi_stok: 'nolkan', pin_owner: ownerPin, konfirmasi_teks: 'RESET' });
+    assert(resResetKasir.ok === false && resResetKasir.code === 'FORBIDDEN', 'Kasir wajib ditolak menjalankan sistem.resetGoLive');
+    const resResetAdmin = callApi('sistem.resetGoLive', tokenAdmin, { mode: 'transaksi_saja', opsi_stok: 'nolkan', pin_owner: ownerPin, konfirmasi_teks: 'RESET' });
+    assert(resResetAdmin.ok === false && resResetAdmin.code === 'FORBIDDEN', 'Admin wajib ditolak menjalankan sistem.resetGoLive');
+
+    let tolakPinSalah = false;
+    try {
+      envGd.aksiSistemResetGoLive_({ user: ownerRow, payload: { mode: 'transaksi_saja', opsi_stok: 'nolkan', pin_owner: '000000', konfirmasi_teks: 'RESET' } });
+    } catch (e) { tolakPinSalah = e.code === 'VALIDATION'; }
+    assert(tolakPinSalah, 'PIN Owner salah wajib ditolak pada sistem.resetGoLive');
+
+    let tolakKataSalah = false;
+    try {
+      envGd.aksiSistemResetGoLive_({ user: ownerRow, payload: { mode: 'transaksi_saja', opsi_stok: 'nolkan', pin_owner: ownerPin, konfirmasi_teks: 'HAPUS' } });
+    } catch (e) { tolakKataSalah = e.code === 'VALIDATION'; }
+    assert(tolakKataSalah, 'Kata konfirmasi selain RESET wajib ditolak pada sistem.resetGoLive');
+
+    // Mode transaksi_saja + pertahankan stok: transaksi bersih, produk & logo utuh, STOK-AWAL-GOLIVE tercatat di Kartu_Stok
+    const resGoLiveKeep = envGd.aksiSistemResetGoLive_({ user: ownerRow, payload: { mode: 'transaksi_saja', opsi_stok: 'pertahankan', pin_owner: ownerPin, konfirmasi_teks: 'RESET' } });
+    assert(resGoLiveKeep.produk_dipertahankan >= 1 && resGoLiveKeep.stok_awal_dicatat >= 1,
+      `Go-Live transaksi_saja + pertahankan wajib menjaga master produk & mencatat STOK-AWAL-GOLIVE, aktual: ${JSON.stringify(resGoLiveKeep)}`);
+    assert(envGd.bacaSemua_('Penjualan', { lewatCache: true }).length === 0, 'Penjualan wajib kosong (0) setelah Go-Live reset');
+    assert(envGd.bacaSemua_('Pembelian', { lewatCache: true }).length === 0, 'Pembelian wajib kosong (0) setelah Go-Live reset');
+    assert(envGd.bacaSemua_('Kartu_Stok', { lewatCache: true }).every((k) => k.ref_id === 'STOK-AWAL-GOLIVE'), 'Kartu_Stok wajib hanya berisi STOK-AWAL-GOLIVE');
+    assert(envGd.aksiAuthMe_({ user: ownerRow }).toko.logo === sampleLogo, 'Logo & Pengaturan Toko wajib tetap utuh setelah Go-Live reset');
+
+    // Mode transaksi_saja + nolkan stok: semua stok produk = 0, master produk & HPP tetap utuh
+    const resGoLiveZero = envGd.aksiSistemResetGoLive_({ user: ownerRow, payload: { mode: 'transaksi_saja', opsi_stok: 'nolkan', pin_owner: ownerPin, konfirmasi_teks: 'RESET' } });
+    assert(resGoLiveZero.produk_dipertahankan >= 1, 'Go-Live transaksi_saja + nolkan wajib sukses');
+    assert(envGd.bacaSemua_('Produk', { lewatCache: true }).every((pr) => Number(pr.stok || 0) === 0 && Number(pr.stok_toko || 0) === 0 && Number(pr.stok_gudang || 0) === 0),
+      'Semua stok Produk wajib menjadi 0 pada opsi_stok=nolkan');
+    assert(envGd.bacaSemua_('Kartu_Stok', { lewatCache: true }).length === 0, 'Kartu_Stok wajib kosong pada opsi_stok=nolkan');
+
+    // Mode reset_total: master juga kosong, namun Users & Pengaturan tetap utuh
+    const resGoLiveTotal = envGd.aksiSistemResetGoLive_({ user: ownerRow, payload: { mode: 'reset_total', opsi_stok: 'nolkan', pin_owner: ownerPin, konfirmasi_teks: 'RESET' } });
+    assert(resGoLiveTotal.mode === 'reset_total', 'Go-Live reset_total wajib sukses');
+    assert(envGd.bacaSemua_('Produk', { lewatCache: true }).length === 0 && envGd.bacaSemua_('Kategori', { lewatCache: true }).length === 0, 'Reset total wajib mengosongkan master Produk & Kategori');
+    assert(envGd.bacaSemua_('Users', { lewatCache: true }).length >= 1 && envGd.aksiAuthMe_({ user: ownerRow }).toko.logo === sampleLogo,
+      'Reset total wajib tetap mempertahankan akun Users & Pengaturan/Logo Toko');
   });
 
   console.log('\n=============================================');

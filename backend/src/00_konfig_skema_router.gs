@@ -260,6 +260,7 @@ const RUTE = {
   'sistem.maintenance': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiSistemMaintenance_ },
   'sistem.backup': { publik: false, roles: [ROLE.OWNER], handler: aksiSistemBackup_ },
   'sistem.percantikSheet': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiSistemPercantikSheet_ },
+  'sistem.resetGoLive': { publik: false, roles: [ROLE.OWNER], tulis: true, handler: aksiSistemResetGoLive_ },
 
   // Auth (Fase 1)
   'auth.login': { publik: true, tulis: true, handler: aksiAuthLogin_ },

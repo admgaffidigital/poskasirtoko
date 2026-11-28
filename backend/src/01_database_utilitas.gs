@@ -970,6 +970,269 @@ function aksiSistemBackup_(ctx) {
 }
 
 /**
+ * Kosongkan seluruh baris data (baris 2..akhir) pada satu sheet dengan aman
+ * tanpa menghapus header baris 1 dan tanpa error frozen-row.
+ */
+function kosongkanIsiSheet_(namaSheet) {
+  if (_CACHE_BACA_REQ) {
+    delete _CACHE_BACA_REQ[namaSheet + '_aktif'];
+    delete _CACHE_BACA_REQ[namaSheet + '_semua'];
+    delete _CACHE_BACA_REQ['__idx_' + namaSheet + '_aktif'];
+    delete _CACHE_BACA_REQ['__idx_' + namaSheet + '_semua'];
+  }
+  hapusCacheSheetMaster_(namaSheet);
+  const sh = ss_().getSheetByName(namaSheet);
+  if (!sh) return 0;
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return 0;
+  const jmlBaris = lastRow - 1;
+  const rng = sh.getRange(2, 1, jmlBaris, lastCol);
+  if (typeof rng.clearContent === 'function') {
+    rng.clearContent();
+  } else {
+    const kosong = [];
+    for (let r = 0; r < jmlBaris; r++) {
+      const baris = [];
+      for (let c = 0; c < lastCol; c++) baris.push('');
+      kosong.push(baris);
+    }
+    rng.setValues(kosong);
+  }
+  return jmlBaris;
+}
+
+/**
+ * sistem.resetGoLive — Bersihkan data simulasi/demo untuk memulai operasional nyata (Khusus Owner).
+ * Pengaman 3 lapis:
+ *  1. RBAC Owner-only + LockService (`tulis: true`)
+ *  2. Wajib verifikasi PIN Owner aktif + kata konfirmasi 'RESET'
+ *  3. Otomatis membuat cadangan penuh ke Google Drive sebelum menghapus 1 baris pun
+ *
+ * Mode:
+ *  - 'transaksi_saja' (default): Hapus 22 sheet transaksi & log, reset counter nota, nolkan poin/belanja/deposit pelanggan,
+ *    pertahankan 100% Users, Sesi, Pengaturan/Logo, Kategori, Produk, Varian, Satuan_Konversi, Supplier, Pelanggan, Hadiah.
+ *    Opsi stok: 'nolkan' (stok=0, HPP/harga utuh) | 'pertahankan' (stok tetap + tulis ulang STOK-AWAL di Kartu_Stok).
+ *  - 'reset_total': Hapus transaksi + seluruh master data; sisakan hanya Users, Sesi, dan Pengaturan/Logo Toko.
+ */
+function aksiSistemResetGoLive_(ctx) {
+  const p = ctx.payload || {};
+  const mode = String(p.mode || 'transaksi_saja').trim().toLowerCase();
+  const opsiStok = String(p.opsi_stok || 'nolkan').trim().toLowerCase();
+  const konfirmasi = String(p.konfirmasi_teks || '').trim().toUpperCase();
+  const pinOwner = V_.pin(p.pin_owner);
+
+  if (mode !== 'transaksi_saja' && mode !== 'reset_total') {
+    gagal_(KODE.VALIDATION, 'Mode reset tidak valid. Pilih "transaksi_saja" atau "reset_total".');
+  }
+  if (opsiStok !== 'nolkan' && opsiStok !== 'pertahankan') {
+    gagal_(KODE.VALIDATION, 'Opsi stok tidak valid. Pilih "nolkan" atau "pertahankan".');
+  }
+  if (konfirmasi !== 'RESET') {
+    gagal_(KODE.VALIDATION, 'Ketik kata konfirmasi "RESET" dengan tepat untuk melanjutkan.');
+  }
+
+  // Verifikasi PIN Owner langsung dari sheet Users
+  const ownerRow = cariById_('Users', ctx.user.id);
+  if (!ownerRow || ownerRow.deleted || ownerRow.role !== ROLE.OWNER) {
+    gagal_(KODE.FORBIDDEN, 'Hanya akun Owner aktif yang diizinkan menjalankan Reset Go-Live.');
+  }
+  if (hashPin_(pinOwner, ownerRow.salt) !== ownerRow.pin_hash) {
+    gagal_(KODE.VALIDATION, 'PIN Owner salah. Reset dibatalkan demi keamanan data.');
+  }
+
+  // Lapisan Pengaman #3: Auto-Backup otomatis ke Google Drive sebelum menghapus data
+  let backupInfo = { nama: '', file_id: '', dilewati: false };
+  if (typeof DriveApp !== 'undefined' && typeof DriveApp.getFileById === 'function' && typeof DriveApp.getFoldersByName === 'function' && typeof backupSekarang === 'function') {
+    try {
+      const b = backupSekarang({ diam: true });
+      backupInfo = { nama: b.nama || '', file_id: b.file_id || '', dilewati: false };
+    } catch (errBackup) {
+      gagal_(KODE.SERVER, 'Auto-backup Google Drive sebelum reset gagal: ' + (errBackup && errBackup.message ? errBackup.message : errBackup) + '. Data tidak diubah.');
+    }
+  } else {
+    backupInfo = { nama: 'Auto-backup (lingkungan uji lokal)', file_id: '', dilewati: true };
+  }
+
+  const SHEET_TRANSAKSI = [
+    'Penjualan', 'Penjualan_Item', 'Penjualan_Bayar',
+    'Pembelian', 'Pembelian_Item',
+    'Piutang', 'Hutang', 'Pembayaran',
+    'Poin_Log', 'Deposit_Log', 'Penukaran_Hadiah',
+    'Kartu_Stok', 'Opname', 'Retur', 'Retur_Item',
+    'Biaya', 'Shift_Kasir', 'Penawaran', 'Tutup_Buku',
+    'Mutasi_Lokasi', 'Barang_Rusak', 'Log_Audit'
+  ];
+
+  const SHEET_MASTER = [
+    'Kategori', 'Produk', 'Varian', 'Satuan_Konversi',
+    'Pelanggan', 'Supplier', 'Hadiah'
+  ];
+
+  let totalBarisDihapus = 0;
+  let sheetDibersihkan = 0;
+
+  SHEET_TRANSAKSI.forEach(function (nama) {
+    const n = kosongkanIsiSheet_(nama);
+    totalBarisDihapus += n;
+    sheetDibersihkan++;
+  });
+
+  // Tangani Counter: pada transaksi_saja pertahankan counter master (SKU, BARCODE, PLG) agar tidak bentrok
+  if (mode === 'reset_total') {
+    totalBarisDihapus += kosongkanIsiSheet_('Counter');
+    sheetDibersihkan++;
+    SHEET_MASTER.forEach(function (nama) {
+      totalBarisDihapus += kosongkanIsiSheet_(nama);
+      sheetDibersihkan++;
+    });
+  } else {
+    const semuaCounter = bacaSemua_('Counter', { lewatCache: true });
+    const counterMaster = semuaCounter.filter(function (c) {
+      const k = String(c.key || '').toUpperCase();
+      return k.indexOf('SKU') === 0 || k.indexOf('BARCODE') === 0 || k.indexOf('PLG') === 0;
+    });
+    kosongkanIsiSheet_('Counter');
+    if (counterMaster.length > 0) {
+      tambahBaris_('Counter', counterMaster.map(function (c) {
+        return { key: c.key, nilai: Number(c.nilai || 0) };
+      }), ctx.user.id);
+    }
+    sheetDibersihkan++;
+  }
+
+  let produkDipertahankan = 0;
+  let stokAwalDicatat = 0;
+
+  if (mode === 'transaksi_saja') {
+    // Reset saldo transaksional Pelanggan (poin, total_belanja, saldo_deposit, level) — profil/HP/limit tetap utuh!
+    const semuaPel = bacaSemua_('Pelanggan', { lewatCache: true });
+    const patchPel = [];
+    semuaPel.forEach(function (pl) {
+      if (Number(pl.poin || 0) !== 0 || Number(pl.total_belanja || 0) !== 0 || Number(pl.saldo_deposit || 0) !== 0 || (pl.level && pl.level !== 'Reguler')) {
+        patchPel.push({
+          id: pl.id,
+          data: {
+            poin: 0,
+            total_belanja: 0,
+            saldo_deposit: 0,
+            level: pl.tipe === 'member' ? 'Reguler' : (pl.level || 'Reguler')
+          }
+        });
+      }
+    });
+    if (patchPel.length > 0) ubahBaris_('Pelanggan', patchPel, ctx.user.id);
+
+    const semuaPrd = bacaSemua_('Produk', { lewatCache: true });
+    const semuaVar = bacaSemua_('Varian', { lewatCache: true });
+    produkDipertahankan = semuaPrd.length;
+
+    if (opsiStok === 'nolkan') {
+      const patchPrd = semuaPrd
+        .filter(function (pr) { return Number(pr.stok || 0) !== 0 || Number(pr.stok_toko || 0) !== 0 || Number(pr.stok_gudang || 0) !== 0; })
+        .map(function (pr) { return { id: pr.id, data: { stok: 0, stok_toko: 0, stok_gudang: 0 } }; });
+      if (patchPrd.length > 0) ubahBaris_('Produk', patchPrd, ctx.user.id);
+
+      const patchVar = semuaVar
+        .filter(function (vr) { return Number(vr.stok || 0) !== 0 || Number(vr.stok_toko || 0) !== 0 || Number(vr.stok_gudang || 0) !== 0; })
+        .map(function (vr) { return { id: vr.id, data: { stok: 0, stok_toko: 0, stok_gudang: 0 } }; });
+      if (patchVar.length > 0) ubahBaris_('Varian', patchVar, ctx.user.id);
+    } else {
+      // Opsi 'pertahankan': catat ulang saldo stok saat ini sebagai STOK-AWAL Go-Live bersih di Kartu_Stok
+      const rowsKartuAwal = [];
+      const varByPrd = {};
+      semuaVar.forEach(function (vr) {
+        if (!varByPrd[vr.produk_id]) varByPrd[vr.produk_id] = [];
+        varByPrd[vr.produk_id].push(vr);
+      });
+
+      semuaPrd.forEach(function (pr) {
+        if (pr.punya_varian && varByPrd[pr.id] && varByPrd[pr.id].length > 0) {
+          varByPrd[pr.id].forEach(function (vr) {
+            const sTotal = bulatQty_(Number(vr.stok || 0));
+            const sGudang = bulatQty_(Number(vr.stok_gudang || 0));
+            const sToko = bulatQty_(vr.stok_toko !== undefined && vr.stok_toko !== '' ? Number(vr.stok_toko || 0) : Math.max(0, sTotal - sGudang));
+            if (sTotal > 0) {
+              rowsKartuAwal.push({
+                produk_id: pr.id,
+                varian_id: vr.id,
+                tipe: 'koreksi',
+                lokasi: sGudang > 0 && sToko <= 0 ? 'gudang' : 'toko',
+                qty: sTotal,
+                saldo: sTotal,
+                saldo_toko: sToko,
+                saldo_gudang: sGudang,
+                hpp: Number(vr.hpp || pr.hpp || 0),
+                ref_id: 'STOK-AWAL-GOLIVE',
+                user_id: ctx.user.id,
+                keterangan: 'Saldo stok awal Go-Live (dipertahankan dari master)'
+              });
+            }
+          });
+        } else {
+          const sTotal = bulatQty_(Number(pr.stok || 0));
+          const sGudang = bulatQty_(Number(pr.stok_gudang || 0));
+          const sToko = bulatQty_(pr.stok_toko !== undefined && pr.stok_toko !== '' ? Number(pr.stok_toko || 0) : Math.max(0, sTotal - sGudang));
+          if (sTotal > 0) {
+            rowsKartuAwal.push({
+              produk_id: pr.id,
+              varian_id: '',
+              tipe: 'koreksi',
+              lokasi: sGudang > 0 && sToko <= 0 ? 'gudang' : 'toko',
+              qty: sTotal,
+              saldo: sTotal,
+              saldo_toko: sToko,
+              saldo_gudang: sGudang,
+              hpp: Number(pr.hpp || 0),
+              ref_id: 'STOK-AWAL-GOLIVE',
+              user_id: ctx.user.id,
+              keterangan: 'Saldo stok awal Go-Live (dipertahankan dari master)'
+            });
+          }
+        }
+      });
+
+      if (rowsKartuAwal.length > 0) {
+        tambahBaris_('Kartu_Stok', rowsKartuAwal, ctx.user.id);
+        stokAwalDicatat = rowsKartuAwal.length;
+      }
+    }
+  }
+
+  // Bersihkan seluruh cache L1 & L2 agar seluruh klien menerima kondisi bersih 100%
+  _CACHE_BACA_REQ = {};
+  Object.keys(MASTER_CACHE_SHEETS).forEach(function (n) { cacheHapus_('sh_v1_' + n); });
+  cacheHapus_('pengaturan');
+
+  catatAudit_(ctx.user.id, 'sistem_reset_golive', 'SISTEM', '', {
+    mode: mode,
+    opsi_stok: mode === 'transaksi_saja' ? opsiStok : 'n/a',
+    sheet_dibersihkan: sheetDibersihkan,
+    baris_dihapus: totalBarisDihapus,
+    produk_dipertahankan: produkDipertahankan,
+    stok_awal_dicatat: stokAwalDicatat,
+    backup_nama: backupInfo.nama
+  });
+
+  const pesanUtama = mode === 'reset_total'
+    ? 'Reset Total Pabrik selesai! Database kini bersih dari nol (Akun & Identitas/Logo Toko tetap utuh).'
+    : ('Persiapan Go-Live selesai! Seluruh transaksi simulasi dibersihkan, ' + produkDipertahankan + ' produk master tetap utuh (' + (opsiStok === 'nolkan' ? 'stok di-nol-kan ke 0' : ('stok dipertahankan & ' + stokAwalDicatat + ' saldo awal dicatat ke Kartu Stok')) + ').');
+
+  return {
+    pesan: pesanUtama,
+    mode: mode,
+    opsi_stok: opsiStok,
+    sheet_dibersihkan: sheetDibersihkan,
+    baris_dihapus: totalBarisDihapus,
+    produk_dipertahankan: produkDipertahankan,
+    stok_awal_dicatat: stokAwalDicatat,
+    backup_nama: backupInfo.nama,
+    backup_file_id: backupInfo.file_id,
+    waktu_server: sekarang_()
+  };
+}
+
+/**
  * cekPeriodeTerkunci_ — Pastikan tanggal transaksi tidak berada pada bulan yang sudah ditutup buku (terkunci).
  * Jika terkunci, melempar error FORBIDDEN agar angka laporan bulan lalu tetap utuh & tidak berubah.
  */

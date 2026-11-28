@@ -3,9 +3,9 @@
  * Profil toko, ukuran printer thermal 58/80mm, pajak PPN, pembulatan, dan aturan poin
  */
 
-import { apiCall } from '../api.js';
+import { apiCall, invalidateApiCache } from '../api.js';
 import { store } from '../state.js';
-import { ICONS, showToast, bukaModalTemaWarna, THEME_MODES, ACCENT_PALETTES, FONT_FAMILIES } from '../utils/ui.js';
+import { ICONS, showToast, showModal, bukaModalTemaWarna, THEME_MODES, ACCENT_PALETTES, FONT_FAMILIES } from '../utils/ui.js';
 import { syncStatusBarWithTheme, unduhFilePintar } from '../utils/native.js';
 import { $, renderSkeleton } from '../utils/dom.js';
 import { escapeHtml } from '../utils/format.js';
@@ -458,6 +458,30 @@ async function muatPengaturan(container) {
             </div>
           </div>
         </div>
+
+        <div class="divider"></div>
+
+        <!-- 7. Persiapan Go-Live Bisnis Nyata (Reset Data Simulasi / Demo — Khusus Owner) -->
+        <div>
+          <div class="section-title" style="color: var(--danger);">Persiapan Go-Live Bisnis Nyata (Reset Data Simulasi)</div>
+          <div class="card card-body stack-sm" style="margin-top: var(--sp-2); background: var(--surface-2); border: 1.5px solid var(--danger); border-left: 4px solid var(--danger);">
+            <div class="row-between" style="flex-wrap: wrap; gap: var(--sp-3); align-items: center;">
+              <div style="flex: 1; min-width: 220px;">
+                <div class="fw-bold text-sm" style="display: flex; align-items: center; gap: 6px; color: var(--danger);">
+                  <span>${ICONS.alertTriangle}</span>
+                  <span>Bersihkan Data Simulasi / Mulai Pembukuan Asli dari Nol</span>
+                </div>
+                <div class="text-xs text-muted" style="margin-top: 4px; line-height: 1.5;">
+                  Hapus seluruh transaksi uji coba (penjualan, pembelian, hutang, piutang, retur, shift, tutup buku, &amp; kartu stok) sambil tetap mempertahankan <strong>Master Produk, Kategori, Supplier, Akun, &amp; Logo Toko</strong>. Server otomatis membuat <strong>Backup Google Drive</strong> sebelum reset dijalankan.
+                </div>
+              </div>
+              <button type="button" class="btn btn-danger btn-sm" id="btn-cfg-reset-golive" style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                ${ICONS.rotateCcw}
+                <span>Mulai Go-Live / Reset Demo</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
     `;
 
@@ -620,6 +644,11 @@ async function muatPengaturan(container) {
         }
       });
     });
+
+    // Wizard Persiapan Go-Live (Reset Data Simulasi — 3 Lapis Pengaman)
+    $('#btn-cfg-reset-golive', container)?.addEventListener('click', () => {
+      bukaModalResetGoLive();
+    });
   } catch (err) {
     area.innerHTML = `
       <div class="alert alert-danger">
@@ -628,5 +657,147 @@ async function muatPengaturan(container) {
       </div>
     `;
   }
+}
+
+function bukaModalResetGoLive() {
+  const modal = showModal({
+    title: 'Persiapan Go-Live — Reset Data Simulasi',
+    size: 'md',
+    body: `
+      <form id="form-reset-golive" class="stack" style="gap: var(--sp-3);" novalidate>
+        <div class="alert alert-warning text-xs" style="margin: 0;">
+          ${ICONS.alertTriangle}
+          <div>
+            <strong>Keamanan 3 Lapis Aktif:</strong> Sebelum menghapus data, server otomatis membuat <strong>Backup Spreadsheet ke folder Google Drive "Backup POS"</strong>. Tindakan ini memerlukan <strong>PIN Owner</strong> dan konfirmasi kata <strong>RESET</strong>.
+          </div>
+        </div>
+
+        <div class="stack-sm">
+          <div class="fw-bold text-xs" style="text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">1. Pilih Mode Pembersihan</div>
+          <label class="card card-body" style="padding: var(--sp-3); cursor: pointer; background: var(--surface-2); border: 1.5px solid var(--primary);">
+            <div class="row" style="gap: var(--sp-2); align-items: flex-start;">
+              <input type="radio" name="golive-mode" value="transaksi_saja" checked style="margin-top: 3px; accent-color: var(--primary);">
+              <div class="stack-sm" style="gap: 2px;">
+                <div class="fw-bold text-sm">Bersihkan Transaksi Simulasi Saja <span class="badge badge-success badge-sm">Disarankan</span></div>
+                <div class="text-xs text-muted">Menghapus nota penjualan, pembelian, hutang, piutang, retur, biaya, shift, opname, tutup buku, &amp; kartu stok; mereset nomor nota ke <code>0001</code>. <strong>Master Produk, Kategori, Supplier, Pelanggan, Akun, &amp; Logo Toko tetap 100% utuh!</strong></div>
+              </div>
+            </div>
+          </label>
+          <label class="card card-body" style="padding: var(--sp-3); cursor: pointer; background: var(--surface-2); border: 1px solid var(--border);">
+            <div class="row" style="gap: var(--sp-2); align-items: flex-start;">
+              <input type="radio" name="golive-mode" value="reset_total" style="margin-top: 3px; accent-color: var(--danger);">
+              <div class="stack-sm" style="gap: 2px;">
+                <div class="fw-bold text-sm text-danger">Reset Total Pabrik (Hapus Transaksi + Semua Master)</div>
+                <div class="text-xs text-muted">Mengosongkan semua transaksi DAN seluruh Produk, Kategori, Supplier, Pelanggan, &amp; Hadiah. Hanya menyisakan Akun User &amp; Identitas/Logo Toko.</div>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div id="wrap-golive-opsi-stok" class="stack-sm">
+          <div class="fw-bold text-xs" style="text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">2. Nasib Saldo Stok Produk Saat Go-Live</div>
+          <label class="card card-body" style="padding: var(--sp-2) var(--sp-3); cursor: pointer; background: var(--surface-2); border: 1px solid var(--border);">
+            <div class="row" style="gap: var(--sp-2); align-items: flex-start;">
+              <input type="radio" name="golive-stok" value="nolkan" checked style="margin-top: 3px; accent-color: var(--primary);">
+              <div>
+                <div class="fw-semibold text-xs">Nol-kan semua stok menjadi 0 <span class="badge badge-info badge-sm">Rapi Akuntansi</span></div>
+                <div class="text-2xs text-muted">Harga jual &amp; HPP tetap utuh; stok fisik diisi ulang bersih lewat Pembelian atau Stok Opname Awal.</div>
+              </div>
+            </div>
+          </label>
+          <label class="card card-body" style="padding: var(--sp-2) var(--sp-3); cursor: pointer; background: var(--surface-2); border: 1px solid var(--border);">
+            <div class="row" style="gap: var(--sp-2); align-items: flex-start;">
+              <input type="radio" name="golive-stok" value="pertahankan" style="margin-top: 3px; accent-color: var(--primary);">
+              <div>
+                <div class="fw-semibold text-xs">Pertahankan angka stok produk sekarang</div>
+                <div class="text-2xs text-muted">Saldo stok Toko &amp; Gudang saat ini langsung dicatat ulang sebagai <code>STOK-AWAL-GOLIVE</code> di Kartu Stok.</div>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="divider" style="margin: var(--sp-1) 0;"></div>
+
+        <div class="form-grid cols-2">
+          <div class="field">
+            <label class="field-label" for="inp-golive-pin">PIN Owner (6 Angka) <span class="wajib">*</span></label>
+            <input type="password" inputmode="numeric" maxlength="6" autocomplete="off" class="input mono" id="inp-golive-pin" placeholder="••••••" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="inp-golive-confirm">Ketik <code>RESET</code> untuk Konfirmasi <span class="wajib">*</span></label>
+            <input type="text" autocomplete="off" class="input mono" id="inp-golive-confirm" placeholder="Ketik RESET" required>
+          </div>
+        </div>
+      </form>
+    `,
+    footer: `
+      <div class="row-between" style="width: 100%; gap: var(--sp-2);">
+        <button type="button" class="btn btn-secondary btn-sm btn-cancel">Batal</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-eksekusi-golive" disabled style="display: inline-flex; align-items: center; gap: 6px;">
+          ${ICONS.rotateCcw}
+          <span>Backup &amp; Jalankan Reset Go-Live</span>
+        </button>
+      </div>
+    `
+  });
+
+  const wrapStok = modal.el.querySelector('#wrap-golive-opsi-stok');
+  const inpPin = modal.el.querySelector('#inp-golive-pin');
+  const inpConfirm = modal.el.querySelector('#inp-golive-confirm');
+  const btnEksekusi = modal.el.querySelector('#btn-eksekusi-golive');
+
+  const cekValidTombol = () => {
+    const pinOk = /^\d{6}$/.test((inpPin?.value || '').trim());
+    const teksOk = (inpConfirm?.value || '').trim().toUpperCase() === 'RESET';
+    if (btnEksekusi) btnEksekusi.disabled = !(pinOk && teksOk);
+  };
+
+  modal.el.querySelectorAll('input[name="golive-mode"]').forEach((rad) => {
+    rad.addEventListener('change', () => {
+      if (wrapStok) wrapStok.style.display = rad.value === 'transaksi_saja' ? '' : 'none';
+    });
+  });
+
+  inpPin?.addEventListener('input', cekValidTombol);
+  inpConfirm?.addEventListener('input', cekValidTombol);
+
+  btnEksekusi?.addEventListener('click', async () => {
+    if (btnEksekusi.disabled) return;
+    const mode = modal.el.querySelector('input[name="golive-mode"]:checked')?.value || 'transaksi_saja';
+    const opsiStok = modal.el.querySelector('input[name="golive-stok"]:checked')?.value || 'nolkan';
+    const pinOwner = (inpPin?.value || '').trim();
+    const konfirmasiTeks = (inpConfirm?.value || '').trim().toUpperCase();
+
+    btnEksekusi.disabled = true;
+    const htmlAsli = btnEksekusi.innerHTML;
+    btnEksekusi.innerHTML = '<span>Membuat Backup &amp; Membersihkan...</span>';
+
+    try {
+      const res = await apiCall('sistem.resetGoLive', {
+        mode,
+        opsi_stok: opsiStok,
+        pin_owner: pinOwner,
+        konfirmasi_teks: konfirmasiTeks
+      }, { timeoutMs: 60000 });
+
+      invalidateApiCache();
+      try {
+        localStorage.removeItem('pos_active_cart');
+        localStorage.removeItem('pos_terakhir');
+        localStorage.removeItem('pos_offline_tx_queue_v1');
+      } catch (_) {}
+
+      modal.close();
+      showToast(res.pesan || 'Reset Go-Live berhasil! Sistem siap untuk operasional nyata.', 'success', 6000);
+      setTimeout(() => {
+        window.location.hash = '#/pos';
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      showToast(err.message || 'Reset Go-Live gagal dijalankan.', 'error', 5000);
+      btnEksekusi.innerHTML = htmlAsli;
+      cekValidTombol();
+    }
+  });
 }
 
