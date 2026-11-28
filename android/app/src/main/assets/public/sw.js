@@ -4,19 +4,22 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.167';
+const CACHE_NAME = 'pos-kasir-static-v1.0.168';
 const IMAGE_CACHE_NAME = 'pos-kasir-images-v1';
 const MAX_CACHED_IMAGES = 350;
 
 const ASSETS = [
   './',
   './index.html',
+  './katalog.html',
   './manifest.json',
   './css/tokens.css',
   './css/base.css',
   './css/components.css',
   './css/layout.css',
+  './css/katalog-publik.css',
   './js/config.js',
+  './js/katalog-publik.js',
   './js/routes.js',
   './js/api.js',
   './js/state.js',
@@ -169,8 +172,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Penanganan khusus request navigasi halaman (SPA / index.html) agar bebas error redirect
+  // Penanganan khusus request navigasi halaman (SPA / index.html & Etalase Publik /katalog) agar bebas error redirect
   if (req.mode === 'navigate') {
+    const isKatalogPublik = url.pathname === '/katalog' || url.pathname === '/katalog/' || url.pathname.endsWith('/katalog.html');
+    if (isKatalogPublik) {
+      event.respondWith(
+        (async () => {
+          try {
+            const netRes = await fetch(req.url, { credentials: 'same-origin', redirect: 'follow' });
+            const cleanRes = await bersihkanRedirect(netRes);
+            if (cleanRes && cleanRes.status === 200) {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put('./katalog.html', cleanRes.clone());
+            }
+            return cleanRes;
+          } catch (err) {
+            const fallback = await caches.match('./katalog.html');
+            return fallback ? await bersihkanRedirect(fallback) : Response.error();
+          }
+        })()
+      );
+      return;
+    }
+
     event.respondWith(
       (async () => {
         try {

@@ -114,7 +114,13 @@ function renderFormInputBeli() {
         <div class="card card-body stack">
           <div class="pembelian-header-grid">
             <div class="field">
-              <label class="field-label" for="beli-supplier">Supplier <span class="wajib">*</span></label>
+              <div class="row-between" style="align-items: center; gap: 6px; margin-bottom: 4px;">
+                <label class="field-label" for="beli-supplier" style="margin-bottom: 0;">Supplier <span class="wajib">*</span></label>
+                <button type="button" class="btn btn-ghost btn-xs" id="btn-beli-tambah-supplier" title="Tambah Supplier Baru Langsung" style="padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px; color: var(--primary);">
+                  ${ICONS.plus}
+                  <span>Supplier Baru</span>
+                </button>
+              </div>
               <select class="input" id="beli-supplier" required>
                 <option value="">-- Pilih Supplier --</option>
               </select>
@@ -325,7 +331,7 @@ async function initFormInputBeli(container) {
   keranjangBeli = [];
   itemPilihan = null;
 
-  // 1. Muat Dropdown Supplier
+  // 1. Muat Dropdown Supplier & Quick-Add Supplier Instan
   const selectSup = $('#beli-supplier', container);
   try {
     const res = await apiCall('supplier.list', { aktif_saja: true, limit: 200 });
@@ -338,6 +344,89 @@ async function initFormInputBeli(container) {
   } catch (err) {
     console.warn('Gagal memuat supplier:', err);
   }
+
+  $('#btn-beli-tambah-supplier', container)?.addEventListener('click', () => {
+    const mSup = showModal({
+      title: 'Tambah Supplier Baru',
+      size: 'sm',
+      body: `
+        <form id="form-beli-quick-sup" class="stack" style="gap: var(--sp-3);" novalidate>
+          <div class="field" style="margin-bottom: 0;">
+            <label class="field-label" for="qsup-nama">Nama Supplier / Distributor <span class="wajib">*</span></label>
+            <input type="text" class="input" id="qsup-nama" maxlength="150" placeholder="Cth: PT. Bangunan Jaya Abadi" required autocomplete="off" data-autofocus>
+          </div>
+          <div class="form-grid cols-2">
+            <div class="field" style="margin-bottom: 0;">
+              <label class="field-label" for="qsup-kontak">Kontak / Sales (PIC)</label>
+              <input type="text" class="input" id="qsup-kontak" maxlength="100" placeholder="Cth: Pak Hendra" autocomplete="off">
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label class="field-label" for="qsup-hp">No. HP / WhatsApp</label>
+              <input type="tel" class="input mono" id="qsup-hp" maxlength="30" placeholder="Cth: 08123456789" autocomplete="off">
+            </div>
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label class="field-label" for="qsup-alamat">Alamat Supplier</label>
+            <input type="text" class="input" id="qsup-alamat" maxlength="300" placeholder="Opsional" autocomplete="off">
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label class="field-label" for="qsup-catatan">Catatan</label>
+            <input type="text" class="input" id="qsup-catatan" maxlength="500" placeholder="Opsional (mis. jadwal kirim, rekening)" autocomplete="off">
+          </div>
+        </form>
+      `,
+      footer: `
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-qsup-batal">Batal</button>
+        <button type="submit" form="form-beli-quick-sup" class="btn btn-primary btn-sm" id="btn-qsup-simpan" style="display: inline-flex; align-items: center; gap: 6px;">
+          ${ICONS.check}
+          <span>Simpan &amp; Pilih</span>
+        </button>
+      `
+    });
+
+    mSup.el.querySelector('#btn-qsup-batal')?.addEventListener('click', () => mSup.close());
+    const formQuickSup = mSup.el.querySelector('#form-beli-quick-sup');
+    const btnSimpanSup = mSup.el.querySelector('#btn-qsup-simpan');
+
+    formQuickSup?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!btnSimpanSup || btnSimpanSup.disabled) return;
+      const nama = String(mSup.el.querySelector('#qsup-nama')?.value || '').trim();
+      if (!nama) {
+        showToast('Nama supplier wajib diisi.', 'warning');
+        mSup.el.querySelector('#qsup-nama')?.focus();
+        return;
+      }
+      const labelAsli = btnSimpanSup.innerHTML;
+      btnSimpanSup.disabled = true;
+      btnSimpanSup.textContent = 'Menyimpan...';
+      try {
+        const resSup = await apiCall('supplier.create', {
+          nama,
+          kontak: String(mSup.el.querySelector('#qsup-kontak')?.value || '').trim(),
+          hp: String(mSup.el.querySelector('#qsup-hp')?.value || '').trim(),
+          alamat: String(mSup.el.querySelector('#qsup-alamat')?.value || '').trim(),
+          catatan: String(mSup.el.querySelector('#qsup-catatan')?.value || '').trim(),
+          aktif: true
+        });
+        const supBaru = resSup && resSup.supplier ? resSup.supplier : null;
+        if (!supBaru || !supBaru.id) throw new Error('Data supplier baru tidak diterima dari server.');
+        if (selectSup) {
+          const opt = document.createElement('option');
+          opt.value = supBaru.id;
+          opt.textContent = supBaru.nama;
+          selectSup.appendChild(opt);
+          selectSup.value = supBaru.id;
+        }
+        mSup.close();
+        showToast(`Supplier "${supBaru.nama}" berhasil ditambahkan & dipilih!`, 'success');
+      } catch (err) {
+        showToast(err?.message || 'Gagal menambah supplier baru.', 'error');
+        btnSimpanSup.disabled = false;
+        btnSimpanSup.innerHTML = labelAsli;
+      }
+    });
+  });
 
   // 2. Pencarian Produk Autocomplete & Barcode
   const inputCari = $('#beli-cari-produk', container);

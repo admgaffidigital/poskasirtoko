@@ -2,6 +2,8 @@
   "outputDirectory": "frontend",
   "cleanUrls": false,
   "rewrites": [
+    { "source": "/katalog", "destination": "/katalog.html" },
+    { "source": "/katalog/(.*)", "destination": "/katalog.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -20,7 +22,7 @@
       ]
     },
     {
-      "source": "/(index.html|manifest.json)?",
+      "source": "/(index.html|katalog.html|manifest.json)?",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]

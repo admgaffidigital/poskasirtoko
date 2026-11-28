@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="warm" data-accent="orange" data-font="normal">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#e8590c">
+  <meta name="description" content="Etalase Katalog Harga & Pemesanan Online via WhatsApp — Cek produk material bangunan, harga ritel & grosir, lalu pesan langsung ke toko.">
+  <meta property="og:title" content="Katalog Produk Online — Pesan via WhatsApp">
+  <meta property="og:description" content="Lihat daftar barang, harga terbaru, dan kirim pesanan langsung ke WhatsApp toko.">
+  <meta property="og:type" content="website">
+
+  <title>Katalog Produk Online</title>
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('katalog_publik_theme') || localStorage.getItem('pos_theme') || 'warm';
+        var a = localStorage.getItem('pos_accent') || 'orange';
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.setAttribute('data-accent', a);
+      } catch (_) {}
+    })();
+  </script>
+
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="stylesheet" href="./css/tokens.css">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/katalog-publik.css">
+</head>
+
+<body class="katalog-body">
+  <div id="katalog-app">
+    <div class="kp-boot">
+      <div class="kp-boot-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="fw-bold text-sm" style="margin-top: 12px;">Memuat Etalase Katalog Toko...</div>
+        <div class="text-xs text-muted" style="margin-top: 4px;">Menyiapkan daftar barang &amp; harga terbaru</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <div id="modal-root"></div>
+
+  <script type="module" src="./js/katalog-publik.js"></script>
+</body>
+
+</html>

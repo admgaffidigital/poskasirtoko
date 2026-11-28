@@ -276,6 +276,7 @@ const RUTE = {
 
   // Produk (Fase 1)
   'produk.list': { publik: false, roles: SEMUA_ROLE, handler: aksiProdukList_ },
+  'katalog.publik': { publik: true, handler: aksiKatalogPublik_ },
   'produk.create': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukCreate_ },
   'produk.update': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukUpdate_ },
   'produk.delete': { publik: false, roles: [ROLE.OWNER, ROLE.ADMIN], tulis: true, handler: aksiProdukDelete_ },

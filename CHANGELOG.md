@@ -16,6 +16,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.168] - 2026-11-29
+### Ditambahkan — Quick-Add Pelanggan & Supplier di Transaksi + Etalase Katalog Online Publik & Keranjang Order WhatsApp
+- **[POS-JUAL] [POS-BELI] Tambah Pelanggan & Supplier Instan Langsung di Transaksi (`pos.js`, `pembelian.js`)**:
+  - **POS Kasir**: menambahkan tombol **`+ Pelanggan Baru`** di modal pemilih pelanggan (plus tombol cepat **`+ Daftarkan "[kata pencarian]"`** saat pencarian kosong) untuk mendaftarkan pelanggan Umum atau Member baru langsung tanpa keluar dari keranjang transaksi; otomatis langsung dipilih di nota aktif.
+  - **POS Pembelian**: menambahkan tombol **`+ Supplier Baru`** tepat di sebelah dropdown Supplier agar distributor baru dapat langsung ditambahkan dan dipilih tanpa kehilangan daftar barang faktur yang sedang diketik.
+- **[BACKEND] [PRODUK] [PWA] Etalase Katalog Online Publik `/katalog` + Keranjang Order WhatsApp (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `03_kategori_produk.gs`, `katalog.html`, `katalog-publik.css`, `katalog-publik.js`, `produk.js`, `vercel.json`, `sw.js`, `test_debug_final.js`)**:
+  - Menambahkan endpoint publik aman `katalog.publik` (read-only, tanpa login, cache server 120 detik + auto-invalidasi saat Produk/Varian/Kategori/Pengaturan berubah) dengan proyeksi whitelist ketat: **HPP, jumlah stok internal, stok gudang/toko, dan pengaturan rahasia TIDAK PERNAH dikirim ke publik**.
+  - Membangun halaman etalase publik responsif di **`/katalog`** (pencarian cepat, filter kategori & sub-kategori, filter tersedia/grosir, pilihan varian & satuan, harga grosir otomatis, ganti tema Terang/Hangat/Gelap, serta **Keranjang Belanja & Checkout 1-Klik ke WhatsApp Toko**).
+  - Menambahkan tombol **`Katalog Online`** di halaman **Manajemen Produk** (salin link, buka pratinjau, & bagikan ke WhatsApp) serta isolasi navigasi `/katalog` di Service Worker (`sw.js`) & `vercel.json`.
+
 ## [1.0.167] - 2026-11-29
 ### Ditambahkan — Pembuatan Kategori & Sub-Kategori Langsung di Dalam Form Tambah / Ubah Produk
 - **[PRODUK] [UI] Quick-Add Kategori & Sub-Kategori Inline (`produk.js`, `components.css`)**:

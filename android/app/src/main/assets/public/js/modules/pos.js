@@ -2042,23 +2042,29 @@ export function renderPosModule(container) {
 
   async function bukaModalPilihPelanggan() {
     let daftarPelanggan = Array.isArray(state.daftarPelanggan) ? state.daftarPelanggan : [];
+    const userAktif = store.get('user');
+    const isOwnerAdmin = !!(userAktif && (userAktif.role === 'owner' || userAktif.role === 'admin'));
 
     const modal = showModal({
       title: 'Pilih Pelanggan / Member',
       size: 'md',
       body: `
-        <div class="stack" style="gap: var(--sp-3);">
-          <div class="row" style="gap: var(--sp-2);">
-            <button type="button" class="btn btn-sm ${!state.pelanggan ? 'btn-primary' : 'btn-secondary'}" id="btn-pilih-umum" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+        <div class="stack" id="pos-pel-select-view" style="gap: var(--sp-3);">
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-sm ${!state.pelanggan ? 'btn-primary' : 'btn-secondary'}" id="btn-pilih-umum" style="flex: 1; min-width: 170px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
               ${ICONS.user}
-              <span>Pelanggan Umum (Tanpa Member)</span>
+              <span>Pelanggan Umum</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-primary" id="btn-pos-buka-tambah-pel" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              ${ICONS.plus}
+              <span>Pelanggan Baru</span>
             </button>
           </div>
 
           <div class="divider" style="margin: var(--sp-1) 0;"></div>
 
           <div>
-            <label class="form-label fw-bold" for="input-cari-member">Cari Member Terdaftar:</label>
+            <label class="form-label fw-bold" for="input-cari-member">Cari Pelanggan / Member Terdaftar:</label>
             <div class="row" style="gap: var(--sp-2); flex-wrap: nowrap;">
               <div class="input-group grow">
                 <span class="input-icon">${ICONS.search}</span>
@@ -2071,6 +2077,65 @@ export function renderPosModule(container) {
             <!-- Diisi JavaScript -->
           </div>
         </div>
+
+        <form class="stack" id="pos-pel-create-form" style="display: none; gap: var(--sp-3);" novalidate>
+          <div class="row-between" style="align-items: center; gap: var(--sp-2);">
+            <div class="fw-bold text-sm" style="display: inline-flex; align-items: center; gap: 6px; color: var(--primary);">
+              ${ICONS.user}
+              <span>Tambah Pelanggan Baru (Langsung Dipilih)</span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-xs" id="btn-pos-kembali-list-pel" style="display: inline-flex; align-items: center; gap: 4px;">
+              ${ICONS.chevronLeft}
+              <span>Kembali ke Daftar</span>
+            </button>
+          </div>
+
+          <div class="form-grid cols-2">
+            <div class="field" style="margin-bottom: 0;">
+              <label class="field-label" for="pos-pel-nama">Nama Pelanggan / Proyek <span class="wajib">*</span></label>
+              <input type="text" class="input" id="pos-pel-nama" maxlength="100" placeholder="Cth: Pak Budi / Proyek Perum" required autocomplete="off">
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label class="field-label" for="pos-pel-tipe">Status Pelanggan</label>
+              <select class="select" id="pos-pel-tipe">
+                <option value="umum">Pelanggan Terdaftar (Umum)</option>
+                <option value="member">Member (Dapat Poin &amp; Tempo)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid cols-2">
+            <div class="field" style="margin-bottom: 0;">
+              <label class="field-label" for="pos-pel-hp">Nomor HP / WhatsApp <span id="pos-pel-hp-wajib" class="wajib" style="display: none;">*</span></label>
+              <input type="tel" class="input mono" id="pos-pel-hp" maxlength="30" placeholder="Cth: 081234567890" autocomplete="off">
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label class="field-label" for="pos-pel-alamat">Alamat / Lokasi Proyek</label>
+              <input type="text" class="input" id="pos-pel-alamat" maxlength="250" placeholder="Opsional — otomatis dipakai saat kirim" autocomplete="off">
+            </div>
+          </div>
+
+          ${isOwnerAdmin ? `
+            <div class="form-grid cols-2" id="pos-pel-member-extra" style="display: none;">
+              <div class="field" style="margin-bottom: 0;">
+                <label class="field-label" for="pos-pel-limit">Limit Kredit Tempo (Rp)</label>
+                <input type="text" class="input mono" id="pos-pel-limit" value="0" inputmode="numeric" placeholder="0">
+              </div>
+              <div class="field" style="margin-bottom: 0;">
+                <label class="field-label" for="pos-pel-tempo">Jatuh Tempo (Hari)</label>
+                <input type="number" class="input mono" id="pos-pel-tempo" value="30" min="1" max="365">
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="row" style="justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-1);">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-batal-tambah-pel">Batal</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="btn-pos-simpan-pel" style="display: inline-flex; align-items: center; gap: 6px;">
+              ${ICONS.check}
+              <span>Simpan &amp; Pilih Pelanggan</span>
+            </button>
+          </div>
+        </form>
       `,
       footer: `
         <div class="row" style="width: 100%; justify-content: flex-end;">
@@ -2079,13 +2144,54 @@ export function renderPosModule(container) {
       `
     });
 
+    const elSelectView = modal.el.querySelector('#pos-pel-select-view');
+    const elCreateForm = modal.el.querySelector('#pos-pel-create-form');
     const elInputCari = modal.el.querySelector('#input-cari-member');
     const elListContainer = modal.el.querySelector('#member-list-container');
+    const elPelNama = modal.el.querySelector('#pos-pel-nama');
+    const elPelTipe = modal.el.querySelector('#pos-pel-tipe');
+    const elPelHp = modal.el.querySelector('#pos-pel-hp');
+    const elPelHpWajib = modal.el.querySelector('#pos-pel-hp-wajib');
+    const elPelAlamat = modal.el.querySelector('#pos-pel-alamat');
+    const elPelMemberExtra = modal.el.querySelector('#pos-pel-member-extra');
+    const elPelLimit = modal.el.querySelector('#pos-pel-limit');
+    const elPelTempo = modal.el.querySelector('#pos-pel-tempo');
+    const elBtnSimpanPel = modal.el.querySelector('#btn-pos-simpan-pel');
+
+    const syncTipePelangganUI = () => {
+      const isMem = elPelTipe?.value === 'member';
+      if (elPelHpWajib) elPelHpWajib.style.display = isMem ? 'inline' : 'none';
+      if (elPelMemberExtra) elPelMemberExtra.style.display = isMem ? '' : 'none';
+    };
+
+    const bukaFormTambahPelanggan = (prefillNama = '') => {
+      if (elSelectView) elSelectView.style.display = 'none';
+      if (elCreateForm) elCreateForm.style.display = 'flex';
+      if (elPelNama) {
+        const cleanPrefill = String(prefillNama || '').trim();
+        elPelNama.value = /^\d+$/.test(cleanPrefill) ? '' : cleanPrefill;
+        if (/^\d{4,}$/.test(cleanPrefill) && elPelHp) elPelHp.value = cleanPrefill;
+      }
+      syncTipePelangganUI();
+      setTimeout(() => elPelNama?.focus(), 30);
+    };
+
+    const tutupFormTambahPelanggan = () => {
+      if (elCreateForm) elCreateForm.style.display = 'none';
+      if (elSelectView) elSelectView.style.display = 'flex';
+      setTimeout(() => elInputCari?.focus(), 30);
+    };
+
+    elPelTipe?.addEventListener('change', syncTipePelangganUI);
+    elPelLimit?.addEventListener('input', () => {
+      elPelLimit.value = formatRupiah(parseRupiah(elPelLimit.value), false);
+    });
 
     const renderMemberList = (q = '') => {
       if (!elListContainer) return;
       let filtered = daftarPelanggan.filter((pel) => pel.aktif !== false);
-      const qLow = q.trim().toLowerCase();
+      const qTrim = q.trim();
+      const qLow = qTrim.toLowerCase();
       if (qLow) {
         filtered = filtered.filter((pel) =>
           (pel.nama || '').toLowerCase().includes(qLow) ||
@@ -2106,7 +2212,18 @@ export function renderPosModule(container) {
       });
 
       if (filtered.length === 0) {
-        elListContainer.innerHTML = `<div class="text-xs text-muted text-center p-3">Pelanggan tidak ditemukan</div>`;
+        elListContainer.innerHTML = `
+          <div class="text-xs text-muted text-center" style="padding: var(--sp-4);">
+            <div>Pelanggan tidak ditemukan${qTrim ? ` untuk "<strong>${escapeHtml(qTrim)}</strong>"` : ''}.</div>
+            <button type="button" class="btn btn-primary btn-xs" id="btn-pos-daftar-dari-cari" style="margin-top: var(--sp-2); display: inline-flex; align-items: center; gap: 6px;">
+              ${ICONS.plus}
+              <span>${qTrim ? `Daftarkan "${escapeHtml(qTrim)}"` : 'Tambah Pelanggan Baru'}</span>
+            </button>
+          </div>
+        `;
+        elListContainer.querySelector('#btn-pos-daftar-dari-cari')?.addEventListener('click', () => {
+          bukaFormTambahPelanggan(qTrim);
+        });
         return;
       }
 
@@ -2189,6 +2306,69 @@ export function renderPosModule(container) {
 
     elInputCari?.addEventListener('input', (e) => {
       renderMemberList(e.target.value);
+    });
+
+    modal.el.querySelector('#btn-pos-buka-tambah-pel')?.addEventListener('click', () => {
+      bukaFormTambahPelanggan(elInputCari?.value || '');
+    });
+    modal.el.querySelector('#btn-pos-kembali-list-pel')?.addEventListener('click', tutupFormTambahPelanggan);
+    modal.el.querySelector('#btn-pos-batal-tambah-pel')?.addEventListener('click', tutupFormTambahPelanggan);
+
+    elCreateForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!elBtnSimpanPel || elBtnSimpanPel.disabled) return;
+
+      const nama = String(elPelNama?.value || '').trim();
+      const tipe = elPelTipe?.value === 'member' ? 'member' : 'umum';
+      const hp = String(elPelHp?.value || '').trim();
+      const alamat = String(elPelAlamat?.value || '').trim();
+      const hpDigits = hp.replace(/\D/g, '');
+
+      if (nama.length < 2) {
+        showToast('Nama pelanggan minimal 2 karakter.', 'warning');
+        elPelNama?.focus();
+        return;
+      }
+      if (tipe === 'member' && hpDigits.length < 7) {
+        showToast('Nomor HP/WA minimal 7 digit wajib diisi untuk Member.', 'warning');
+        elPelHp?.focus();
+        return;
+      }
+
+      const payload = {
+        nama,
+        tipe,
+        hp,
+        alamat,
+        limit_kredit: (tipe === 'member' && isOwnerAdmin && elPelLimit) ? parseRupiah(elPelLimit.value) : 0,
+        tempo_hari: (tipe === 'member' && isOwnerAdmin && elPelTempo) ? (parseInt(elPelTempo.value, 10) || 30) : 30
+      };
+
+      const labelAsli = elBtnSimpanPel.innerHTML;
+      elBtnSimpanPel.disabled = true;
+      elBtnSimpanPel.textContent = 'Menyimpan...';
+
+      try {
+        const res = await apiCall('pelanggan.create', payload);
+        const pelBaru = res && res.pelanggan ? res.pelanggan : null;
+        if (!pelBaru || !pelBaru.id) throw new Error('Data pelanggan baru tidak diterima dari server.');
+
+        if (!daftarPelanggan.some((p) => p && p.id === pelBaru.id)) {
+          daftarPelanggan = [pelBaru, ...daftarPelanggan];
+        }
+        state.daftarPelanggan = daftarPelanggan;
+        state.pelanggan = pelBaru;
+        if (pelBaru.alamat && !state.alamatKirim) {
+          state.alamatKirim = pelBaru.alamat;
+        }
+        perbaruiTampilanPelanggan();
+        modal.close();
+        showToast(`Pelanggan "${pelBaru.nama}" berhasil ditambahkan & dipilih!`, 'success');
+      } catch (err) {
+        showToast(err?.message || 'Gagal menambah pelanggan baru.', 'error');
+        elBtnSimpanPel.disabled = false;
+        elBtnSimpanPel.innerHTML = labelAsli;
+      }
     });
 
     modal.el.querySelector('#btn-pilih-umum')?.addEventListener('click', () => {

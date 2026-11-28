@@ -114,6 +114,10 @@ export async function renderProdukModule(container) {
           <p>Kelola daftar barang, varian, satuan konversi, harga eceran & grosir</p>
         </div>
         <div class="row" style="gap: var(--sp-2); align-items: center; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" id="btn-link-katalog-online" title="Bagikan Link Etalase Katalog Online Publik + Order WhatsApp">
+            ${ICONS.store}
+            <span>Katalog Online</span>
+          </button>
           <button type="button" class="btn btn-secondary" id="btn-buat-katalog-pdf" title="Buat & Simpan Katalog Produk PDF A4 untuk Pelanggan / Proyek">
             ${ICONS.clipboard}
             <span>Katalog PDF</span>
@@ -403,6 +407,58 @@ export async function renderProdukModule(container) {
     }
     syncProdukBulkBar(container, canEdit);
     muatProduk(container, canEdit, isKasir, false);
+  });
+
+  // 0a. Bagikan Link Etalase Katalog Online Publik + Keranjang WhatsApp
+  $('#btn-link-katalog-online', container)?.addEventListener('click', () => {
+    const origin = (typeof window !== 'undefined' && window.location && window.location.origin && !window.location.origin.startsWith('file'))
+      ? window.location.origin
+      : 'https://admgaffidigital-poskasirtoko.vercel.app';
+    const katalogUrl = `${origin}/katalog`;
+    const namaToko = (store.getNamaToko ? store.getNamaToko() : 'Toko Bangunan');
+    const pesanShare = `Cek katalog produk & harga terbaru *${namaToko}* di sini:\n${katalogUrl}\n\nBisa langsung pilih barang dan kirim pesanan lewat WhatsApp!`;
+
+    const mLink = showModal({
+      title: 'Etalase Katalog Online Publik',
+      size: 'sm',
+      body: `
+        <div class="stack" style="gap: var(--sp-3);">
+          <div class="text-xs text-muted" style="line-height: 1.5;">
+            Bagikan tautan ini ke <strong>WhatsApp, Bio Instagram, atau Google Maps</strong> toko Anda. Pembeli dapat melihat foto, harga ritel &amp; grosir, lalu mengirim pesanan langsung ke WhatsApp toko tanpa login (HPP &amp; jumlah stok internal tetap tersembunyi 100%).
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label class="field-label" for="input-katalog-online-url">Link Etalase Publik</label>
+            <div class="row" style="gap: var(--sp-2);">
+              <input type="text" class="input input-sm mono grow" id="input-katalog-online-url" value="${escapeHtml(katalogUrl)}" readonly>
+              <button type="button" class="btn btn-primary btn-sm" id="btn-salin-link-katalog">Salin</button>
+            </div>
+          </div>
+          <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
+            <a href="${escapeHtml(katalogUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm grow" style="justify-content: center; gap: 6px;">
+              ${ICONS.store}
+              <span>Buka Pratinjau</span>
+            </a>
+            <a href="https://wa.me/?text=${encodeURIComponent(pesanShare)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm grow" style="justify-content: center; gap: 6px;">
+              ${ICONS.messageCircle}
+              <span>Bagikan ke WA</span>
+            </a>
+          </div>
+        </div>
+      `,
+      footer: `<button type="button" class="btn btn-secondary btn-sm" id="btn-tutup-link-katalog">Tutup</button>`
+    });
+
+    mLink.el.querySelector('#btn-tutup-link-katalog')?.addEventListener('click', () => mLink.close());
+    mLink.el.querySelector('#btn-salin-link-katalog')?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(katalogUrl);
+        showToast('Link Katalog Online berhasil disalin!', 'success');
+      } catch (_) {
+        const inp = mLink.el.querySelector('#input-katalog-online-url');
+        inp?.select();
+        showToast('Silakan salin link dari kotak teks.', 'info');
+      }
+    });
   });
 
   // 0. Buat Katalog Produk PDF (Header & Bulk Action Bar)

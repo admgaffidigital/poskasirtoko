@@ -2742,6 +2742,19 @@ async function runAudit() {
     assert(resCantikOwner.ok === true && resCantikOwner.data.selesai === true && resCantikOwner.data.total_sheet === 33 && resCantikOwner.data.semua_terdaftar === true,
       `Owner wajib sukses menjalankan sistem.percantikSheet pada seluruh 33 sheet & terdaftar lengkap, aktual: ${JSON.stringify(resCantikOwner)}`);
 
+    // 29g2. Katalog Publik Online (katalog.publik): publik tanpa token, HPP & stok internal wajib tersembunyi 100%
+    const resKatPubRouter = callApi('katalog.publik', '', {});
+    assert(resKatPubRouter.ok === true && resKatPubRouter.data && resKatPubRouter.data.toko && Array.isArray(resKatPubRouter.data.produk),
+      `katalog.publik wajib dapat diakses publik tanpa token, aktual: ${JSON.stringify(resKatPubRouter)}`);
+    const resKatPub = envGd.aksiKatalogPublik_();
+    assert(resKatPub.produk.length >= 1, 'katalog.publik wajib memuat minimal 1 produk aktif');
+    assert(resKatPub.toko.logo === sampleLogo, 'katalog.publik wajib menyertakan logo toko kustom');
+    const sampelPub = resKatPub.produk[0];
+    assert(sampelPub.hpp === undefined && sampelPub.stok === undefined && sampelPub.stok_toko === undefined && sampelPub.stok_gudang === undefined,
+      `katalog.publik DILARANG membocorkan hpp/stok internal: ${JSON.stringify(sampelPub)}`);
+    assert(typeof sampelPub.tersedia === 'boolean' && ['tersedia', 'terbatas', 'habis'].includes(sampelPub.stok_status),
+      'katalog.publik wajib menyediakan status ketersediaan publik (tersedia/stok_status)');
+
     // 29h. Persiapan Go-Live (sistem.resetGoLive): RBAC, validasi PIN & kata RESET, pertahankan master + stok awal, & nolkan stok
     const ownerPin = '654321';
     envGd.ubahBaris_('Users', [{ id: ownerRow.id, data: { salt: 'golive_salt', pin_hash: envGd.hashPin_(ownerPin, 'golive_salt') } }], ownerRow.id);

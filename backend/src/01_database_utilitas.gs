@@ -126,6 +126,9 @@ function hapusCacheSheetMaster_(namaSheet) {
   if (MASTER_CACHE_SHEETS[namaSheet]) {
     cacheHapus_('sh_v1_' + namaSheet);
   }
+  if (namaSheet === 'Produk' || namaSheet === 'Varian' || namaSheet === 'Satuan_Konversi' || namaSheet === 'Kategori' || namaSheet === 'Pengaturan') {
+    cacheHapus_('katalog_publik_v1');
+  }
 }
 
 /**

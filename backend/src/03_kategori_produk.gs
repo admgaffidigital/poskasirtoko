@@ -1,5 +1,126 @@
 /* ---------- 9.2 KATEGORI PRODUK ---------- */
 
+/**
+ * katalog.publik — Etalase katalog produk publik (tanpa login, read-only, whitelist ketat).
+ * HPP, jumlah stok pasti, stok gudang/toko, & pengaturan internal TIDAK PERNAH dikirim ke publik.
+ */
+function aksiKatalogPublik_() {
+  const cached = cacheAmbil_('katalog_publik_v1');
+  if (cached && cached.toko && Array.isArray(cached.produk)) {
+    return cached;
+  }
+
+  const cfg = ambilPengaturan_();
+  const toko = {
+    nama: String(cfg.toko_nama || 'Toko Bangunan').trim(),
+    alamat: String(cfg.toko_alamat || '').trim(),
+    hp: String(cfg.toko_hp || '').trim(),
+    logo: String(cfg.toko_logo_url || '').trim(),
+    nota_footer: String(cfg.nota_footer || '').trim()
+  };
+
+  const kategori = bacaSemua_('Kategori', { lewatCache: true })
+    .filter(function (k) { return !k.deleted; })
+    .sort(function (a, b) {
+      const ua = Number(a.urutan) || 0;
+      const ub = Number(b.urutan) || 0;
+      if (ua !== ub) return ua - ub;
+      return String(a.nama || '').localeCompare(String(b.nama || ''));
+    })
+    .map(function (k) {
+      return {
+        id: k.id,
+        nama: k.nama || '',
+        parent_id: k.parent_id || '',
+        urutan: Number(k.urutan) || 0
+      };
+    });
+
+  const semuaVarian = bacaSemua_('Varian', { lewatCache: true }).filter(function (v) {
+    return !v.deleted && (v.aktif === true || String(v.aktif).toUpperCase() === 'TRUE' || v.aktif === undefined);
+  });
+  const varianByPrd = {};
+  semuaVarian.forEach(function (v) {
+    if (!varianByPrd[v.produk_id]) varianByPrd[v.produk_id] = [];
+    const st = Number(v.stok || 0);
+    const mn = Number(v.stok_min || 0);
+    varianByPrd[v.produk_id].push({
+      id: v.id,
+      nama_varian: v.nama_varian || '',
+      sku: v.sku || '',
+      harga_ritel: Number(v.harga_ritel || 0),
+      harga_grosir: Number(v.harga_grosir || 0),
+      tersedia: st > 0,
+      stok_status: st <= 0 ? 'habis' : (mn > 0 && st <= mn ? 'terbatas' : 'tersedia')
+    });
+  });
+
+  const semuaSatuan = bacaSemua_('Satuan_Konversi', { lewatCache: true }).filter(function (s) { return !s.deleted; });
+  const satuanByPrd = {};
+  semuaSatuan.forEach(function (s) {
+    if (!satuanByPrd[s.produk_id]) satuanByPrd[s.produk_id] = [];
+    satuanByPrd[s.produk_id].push({
+      satuan: s.satuan || '',
+      faktor: Number(s.faktor || 1),
+      harga_ritel: Number(s.harga_ritel || 0),
+      harga_grosir: Number(s.harga_grosir || 0)
+    });
+  });
+
+  const semuaProduk = bacaSemua_('Produk', { lewatCache: true });
+  const produk = [];
+  for (let i = 0; i < semuaProduk.length; i++) {
+    const pr = semuaProduk[i];
+    if (pr.deleted) continue;
+    const isAktif = pr.aktif === true || String(pr.aktif).toUpperCase() === 'TRUE';
+    if (!isAktif) continue;
+
+    const vars = varianByPrd[pr.id] || [];
+    const sats = satuanByPrd[pr.id] || [];
+    const st = Number(pr.stok || 0);
+    const mn = Number(pr.stok_min || 0);
+    const punyaVar = (pr.punya_varian === true || String(pr.punya_varian).toUpperCase() === 'TRUE') && vars.length > 0;
+    const adaStok = punyaVar ? vars.some(function (v) { return v.tersedia; }) : (st > 0);
+    const statusStok = !adaStok
+      ? 'habis'
+      : (!punyaVar && mn > 0 && st <= mn ? 'terbatas' : 'tersedia');
+
+    produk.push({
+      id: pr.id,
+      sku: pr.sku || '',
+      nama: pr.nama || '',
+      kategori_id: pr.kategori_id || '',
+      satuan_dasar: pr.satuan_dasar || 'PCS',
+      harga_ritel: Number(pr.harga_ritel || 0),
+      harga_grosir: Number(pr.harga_grosir || 0),
+      min_grosir_qty: Number(pr.min_grosir_qty || 0),
+      punya_varian: punyaVar,
+      foto_url: pr.foto_url || '',
+      tersedia: adaStok,
+      stok_status: statusStok,
+      varian: vars,
+      satuan_konversi: sats,
+      created_at: pr.created_at || ''
+    });
+  }
+
+  // Urutkan terbaru lebih dulu
+  produk.sort(function (a, b) {
+    return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+  });
+
+  const hasil = {
+    toko: toko,
+    kategori: kategori,
+    produk: produk,
+    total_produk: produk.length,
+    diperbarui: sekarang_()
+  };
+
+  cacheSimpan_('katalog_publik_v1', hasil, 120);
+  return hasil;
+}
+
 /** kategori.list — Mengambil semua kategori aktif. */
 function aksiKategoriList_() {
   const items = bacaSemua_('Kategori').filter(function (k) { return !k.deleted; });

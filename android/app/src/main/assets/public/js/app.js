@@ -578,7 +578,7 @@ class App {
         showToast(`Pembaruan ${labelVer} siap diterapkan! Ketuk tombol "Perbarui & Restart Aplikasi".`, 'warning', 4500);
       }
     } else if (!silent) {
-      showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.167'})!`, 'success');
+      showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.168'})!`, 'success');
     }
 
     return { hasUpdate, remoteVer, needsNativeApk: window.appNeedsNativeApk };
@@ -873,7 +873,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.167'} • Auto-Update OTA & Mode Offline Aktif</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.168'} • Auto-Update OTA & Mode Offline Aktif</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -2124,7 +2124,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.167'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.168'}</div>
         </div>
       `;
     };
