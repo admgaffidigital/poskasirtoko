@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.161';
+const CACHE_NAME = 'pos-kasir-static-v1.0.162';
 const IMAGE_CACHE_NAME = 'pos-kasir-images-v1';
 const MAX_CACHED_IMAGES = 350;
 
@@ -51,6 +51,7 @@ const ASSETS = [
   './js/utils/produk-import.js',
   './js/utils/offline-queue.js',
   './js/utils/evaluasi-pdf.js',
+  './js/utils/charts.js',
   './assets/icon.svg',
   './assets/icon-192.png',
   './assets/icon-512.png'

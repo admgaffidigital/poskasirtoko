@@ -12,6 +12,15 @@ import { ICONS, showToast, showModal, showConfirm } from '../utils/ui.js';
 import { haptic, unduhFilePintar } from '../utils/native.js';
 import { bukaModalPilihanCetakPenjualan, bukaModalPilihanCetakPembelian, bukaModalPilihanCetakShift, cetakFakturA5, bukaModalCetakSuratJalan } from '../utils/printer.js';
 import { cetakLaporanEvaluasiBulananPdf, eksporEvaluasiBulananExcel, formatLabelBulan } from '../utils/evaluasi-pdf.js';
+import {
+  CHART_PALETTE,
+  singkatNominalChart,
+  renderDonutChart,
+  renderHorizontalBars,
+  renderComparisonBars,
+  renderWaterfallPnl,
+  renderInsightBox
+} from '../utils/charts.js';
 
 // State lokal modul laporan
 let stateLaporan = {
@@ -471,6 +480,70 @@ function renderTabDashboard(container, data) {
   const pelangganTerbaik = data.pelanggan_terbaik || [];
   const stokKritis = data.stok_kritis || [];
   const MAX_RINGKAS = 5;
+  const maxOmsetTerlaris = Math.max(...produkTerlaris.map((p) => Number(p.total_omset || 0)), 1);
+
+  // Susun Analisa Cerdas Otomatis (Bahasa Sederhana untuk Owner/Admin)
+  const totalPenjualan = Number(r.total_penjualan || 0);
+  const totalTransaksi = Number(r.total_transaksi || 0);
+  const hariAktif = Math.max(1, tren.filter((t) => Number(t.penjualan || 0) > 0).length);
+  const rataHarian = Math.round(totalPenjualan / hariAktif);
+  const rataNota = totalTransaksi > 0 ? Math.round(totalPenjualan / totalTransaksi) : 0;
+  const metodeMapDash = data.metode_bayar || {};
+  const metodeEntries = [
+    { nama: 'Tunai', val: Number(metodeMapDash.tunai?.total || 0) },
+    { nama: 'Transfer Bank', val: Number(metodeMapDash.transfer?.total || 0) },
+    { nama: 'QRIS', val: Number(metodeMapDash.qris?.total || 0) },
+    { nama: 'Saldo Titipan', val: Number(metodeMapDash.deposit?.total || 0) },
+    { nama: 'Tempo', val: Number(metodeMapDash.tempo?.total || 0) }
+  ].sort((a, b) => b.val - a.val);
+  const metodeDominan = metodeEntries[0];
+  const persenDominan = totalPenjualan > 0 && metodeDominan ? Math.round((metodeDominan.val / totalPenjualan) * 100) : 0;
+  const persenTempo = totalPenjualan > 0 ? Math.round((Number(metodeMapDash.tempo?.total || 0) / totalPenjualan) * 100) : 0;
+
+  const dashBullets = [];
+  if (totalPenjualan > 0) {
+    dashBullets.push(`Rata-rata omset <strong>${formatRupiah(rataHarian)}/hari aktif</strong> (${formatAngka(hariAktif)} hari bertransaksi) dengan nilai belanja rata-rata <strong>${formatRupiah(rataNota)}/nota</strong>.`);
+  } else {
+    dashBullets.push('Belum ada transaksi penjualan tercatat pada periode tanggal yang dipilih.');
+  }
+  if (isOwner && totalPenjualan > 0) {
+    const mb = Number(r.margin_bersih_persen || 0);
+    const labelKesehatan = mb >= 20 ? 'Sangat Sehat' : (mb >= 10 ? 'Sehat' : (mb > 0 ? 'Tipis, cek biaya/harga jual' : 'Rugi, evaluasi biaya & HPP'));
+    dashBullets.push(`Laba bersih riil mencapai <strong>${formatRupiah(r.laba_bersih_riil || 0)}</strong> (margin bersih <strong>${mb}%</strong> — ${labelKesehatan}).`);
+  }
+  if (produkTerlaris.length > 0 && totalPenjualan > 0) {
+    const top1 = produkTerlaris[0];
+    const topShare = Math.round((Number(top1.total_omset || 0) / totalPenjualan) * 100);
+    dashBullets.push(`Produk terlaris: <strong>${escapeHtml(top1.nama)}</strong> menyumbang <strong>${topShare}%</strong> dari omset (${formatRupiah(top1.total_omset)}).`);
+  }
+  if (totalPenjualan > 0 && metodeDominan && metodeDominan.val > 0) {
+    dashBullets.push(`Pembayaran didominasi <strong>${escapeHtml(metodeDominan.nama)} (${persenDominan}%)</strong>${persenTempo > 0 ? `, sedangkan porsi Tempo <strong>${persenTempo}%</strong>` : ''}.`);
+  }
+  if (stokKritis.length > 0 || Number(r.total_piutang_aktif || 0) > 0) {
+    const peringatan = [];
+    if (stokKritis.length > 0) peringatan.push(`<strong>${formatAngka(stokKritis.length)} item</strong> stok menipis/habis`);
+    if (Number(r.total_piutang_aktif || 0) > 0) peringatan.push(`piutang aktif <strong>${formatRupiah(r.total_piutang_aktif)}</strong> (${formatAngka(r.count_piutang_aktif || 0)} nota)`);
+    dashBullets.push(`Perlu perhatian: ${peringatan.join(' dan ')}.`);
+  }
+
+  let dashTone = 'primary';
+  let dashBadge = 'Ringkasan Periode';
+  if (isOwner && totalPenjualan > 0) {
+    const mb = Number(r.margin_bersih_persen || 0);
+    if (mb >= 15) { dashTone = 'success'; dashBadge = `Margin ${mb}% • Sehat`; }
+    else if (mb > 0) { dashTone = 'warning'; dashBadge = `Margin ${mb}% • Cukup`; }
+    else { dashTone = 'danger'; dashBadge = `Margin ${mb}% • Waspada`; }
+  } else if (stokKritis.length > 0) {
+    dashTone = 'warning';
+    dashBadge = `${stokKritis.length} Stok Kritis`;
+  }
+
+  const insightDashboardHtml = renderInsightBox({
+    title: 'Analisa Cepat Performa Toko',
+    badge: dashBadge,
+    badgeTone: dashTone,
+    bullets: dashBullets
+  });
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-3);">
@@ -557,6 +630,9 @@ function renderTabDashboard(container, data) {
         `}
       </div>
 
+      <!-- Analisa Cerdas Otomatis -->
+      ${insightDashboardHtml}
+
       <!-- Grafik Tren Harian -->
       <div class="card">
         <div class="card-header" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-2);">
@@ -586,18 +662,22 @@ function renderTabDashboard(container, data) {
           <div class="dash-list">
             ${produkTerlaris.length === 0 ? `
               <div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan di periode ini</div>
-            ` : produkTerlaris.map((p, idx) => `
+            ` : produkTerlaris.map((p, idx) => {
+              const barPct = Math.max(6, Math.round((Number(p.total_omset || 0) / maxOmsetTerlaris) * 100));
+              return `
               <div class="dash-row ${idx >= MAX_RINGKAS ? 'is-hidden-extra' : ''}">
                 <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
                 <div class="dash-row-main">
                   <div class="dash-row-title" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
                   <div class="dash-row-sub">Terjual <b>${formatAngka(p.qty_terjual)} ${escapeHtml(p.satuan || '')}</b></div>
+                  <div class="dash-mini-bar"><div class="dash-mini-bar-fill" style="width: ${barPct}%;"></div></div>
                 </div>
                 <div class="dash-row-right">
                   <div class="dash-row-val" style="color: var(--primary);">${formatRupiah(p.total_omset)}</div>
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
           ${produkTerlaris.length > MAX_RINGKAS ? `
             <div class="dash-list-footer">
@@ -802,29 +882,26 @@ function buatKomposisiMetodeBayar(metodeMap, totalOmset) {
     { key: 'tunai', nama: 'Tunai (Kas Kasir)', warna: 'var(--success)' },
     { key: 'transfer', nama: 'Transfer Bank', warna: 'var(--primary)' },
     { key: 'qris', nama: 'QRIS', warna: 'var(--info)' },
-    { key: 'deposit', nama: 'Saldo Titipan (Deposit)', warna: 'var(--warning)' },
+    { key: 'deposit', nama: 'Saldo Titipan', warna: 'var(--warning)' },
     { key: 'tempo', nama: 'Tempo / Kredit', warna: 'var(--danger)' }
   ];
 
-  return `
-    <div class="stack" style="gap: var(--sp-3);">
-      ${list.map((m) => {
+  const items = list.map((m) => {
     const item = metodeMap[m.key] || { total: 0, count: 0 };
-    const persen = totalOmset > 0 ? Math.round((item.total / totalOmset) * 100) : 0;
-    return `
-          <div>
-            <div class="cluster" style="justify-content: space-between; font-size: var(--fs-xs); margin-bottom: 4px;">
-              <span style="font-weight: var(--fw-medium); color: var(--text-main);">${escapeHtml(m.nama)} (${formatAngka(item.count)}x)</span>
-              <span style="font-weight: var(--fw-bold);">${formatRupiah(item.total)} (${persen}%)</span>
-            </div>
-            <div style="width: 100%; height: 8px; background: var(--bg-surface-variant); border-radius: 4px; overflow: hidden;">
-              <div style="width: ${persen}%; height: 100%; background: ${m.warna}; border-radius: 4px;"></div>
-            </div>
-          </div>
-        `;
-  }).join('')}
-    </div>
-  `;
+    return {
+      label: m.nama,
+      value: Number(item.total || 0),
+      color: m.warna,
+      sub: `${formatAngka(item.count || 0)} transaksi`
+    };
+  });
+
+  return renderDonutChart({
+    items,
+    centerLabel: 'Total Bayar',
+    centerValue: singkatNominalChart(totalOmset > 1 ? totalOmset : items.reduce((a, b) => a + b.value, 0)),
+    emptyText: 'Belum ada pembayaran tercatat pada periode ini'
+  });
 }
 
 function formatLabelStatusBayar(st) {
@@ -859,6 +936,67 @@ function renderTabPenjualan(container, data) {
   const canVoid = isOwner || isAdmin;
   const r = data.ringkasan || {};
   const items = data.items || [];
+
+  // Agregasi visual Penjualan: Diagram Donat Status Nota & Grafik Performa per Kasir
+  const statusMapJual = {
+    lunas: { label: 'Lunas', value: 0, count: 0, color: 'var(--success)' },
+    sebagian: { label: 'Sebagian / Cicil', value: 0, count: 0, color: 'var(--warning)' },
+    belum_lunas: { label: 'Tempo / Belum Lunas', value: 0, count: 0, color: 'var(--danger)' },
+    void_retur: { label: 'Void / Retur Penuh', value: 0, count: 0, color: 'var(--slate-500)' }
+  };
+  const kasirMap = new Map();
+
+  items.forEach((j) => {
+    const nom = Math.max(0, Number(j.total || 0));
+    const isVoid = j.status === 'void' || j.status_retur === 'penuh';
+    if (isVoid) {
+      statusMapJual.void_retur.value += nom;
+      statusMapJual.void_retur.count++;
+      return;
+    }
+    const st = String(j.status_bayar || 'lunas').toLowerCase();
+    if (st === 'sebagian') {
+      statusMapJual.sebagian.value += nom;
+      statusMapJual.sebagian.count++;
+    } else if (st === 'belum_lunas' || st === 'hutang') {
+      statusMapJual.belum_lunas.value += nom;
+      statusMapJual.belum_lunas.count++;
+    } else {
+      statusMapJual.lunas.value += nom;
+      statusMapJual.lunas.count++;
+    }
+
+    const namaKasir = String(j.kasir_nama || 'Kasir').trim() || 'Kasir';
+    const curK = kasirMap.get(namaKasir) || { label: namaKasir, value: 0, count: 0 };
+    curK.value += Math.max(0, nom - Number(j.total_retur || 0));
+    curK.count++;
+    kasirMap.set(namaKasir, curK);
+  });
+
+  const donutStatusJualHtml = renderDonutChart({
+    items: Object.values(statusMapJual).map((x) => ({
+      label: x.label,
+      value: x.value,
+      color: x.color,
+      sub: `${formatAngka(x.count)} nota`
+    })),
+    centerLabel: 'Total Nota',
+    centerValue: `${formatAngka(items.length)} nota`,
+    emptyText: 'Belum ada nota penjualan sesuai filter'
+  });
+
+  const barKasirHtml = renderHorizontalBars({
+    items: Array.from(kasirMap.values())
+      .sort((a, b) => b.value - a.value)
+      .map((k, idx) => ({
+        label: k.label,
+        value: k.value,
+        sub: `(${formatAngka(k.count)} nota)`,
+        color: CHART_PALETTE[idx % CHART_PALETTE.length]
+      })),
+    emptyText: 'Belum ada transaksi aktif untuk dibandingkan antar kasir',
+    maxItems: 6
+  });
 
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
@@ -902,6 +1040,22 @@ function renderTabPenjualan(container, data) {
             <div class="stat-card-desc">Laba kotor transaksi aktif</div>
           </div>
         ` : ''}
+      </div>
+
+      <!-- Visualisasi Analisa Penjualan (Donut Status + Performa Kasir) -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.chart} Komposisi Status Pembayaran Nota</h3>
+          </div>
+          <div class="card-body">${donutStatusJualHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.users} Kontribusi Penjualan per Kasir</h3>
+          </div>
+          <div class="card-body">${barKasirHtml}</div>
+        </div>
       </div>
 
       <!-- Tabel Transaksi Penjualan -->
@@ -1389,6 +1543,39 @@ function renderTabPembelian(container, data) {
   const r = data.ringkasan || {};
   const items = data.items || [];
 
+  // Visualisasi Pembelian: Donat Status Pembayaran & Top Supplier Terbesar
+  const donutBeliHtml = renderDonutChart({
+    items: [
+      { label: 'Sudah Dibayar', value: Number(r.total_terbayar || 0), color: 'var(--success)', sub: 'Lunas & cicilan' },
+      { label: 'Sisa Hutang Tempo', value: Number(r.total_sisa_hutang || 0), color: 'var(--danger)', sub: 'Belum jatuh tempo / aktif' }
+    ],
+    centerLabel: 'Total Beli',
+    centerValue: singkatNominalChart(r.total_pembelian || 0),
+    emptyText: 'Belum ada transaksi pembelian pada periode ini'
+  });
+
+  const supMap = new Map();
+  items.forEach((pb) => {
+    const nama = String(pb.supplier_nama || 'Supplier Umum').trim() || 'Supplier Umum';
+    const cur = supMap.get(nama) || { label: nama, value: 0, count: 0 };
+    cur.value += Math.max(0, Number(pb.total || 0) - Number(pb.total_retur || 0));
+    cur.count++;
+    supMap.set(nama, cur);
+  });
+
+  const barSupplierHtml = renderHorizontalBars({
+    items: Array.from(supMap.values())
+      .sort((a, b) => b.value - a.value)
+      .map((s, idx) => ({
+        label: s.label,
+        value: s.value,
+        sub: `(${formatAngka(s.count)} faktur)`,
+        color: CHART_PALETTE[idx % CHART_PALETTE.length]
+      })),
+    emptyText: 'Belum ada data pembelian supplier sesuai filter',
+    maxItems: 6
+  });
+
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Pembelian -->
@@ -1421,6 +1608,22 @@ function renderTabPembelian(container, data) {
             ${formatRupiah(r.total_sisa_hutang || 0)}
           </div>
           <div class="stat-card-desc">${r.total_sisa_hutang > 0 ? 'Tagihan tempo belum lunas' : 'Seluruh faktur periode ini lunas'}</div>
+        </div>
+      </div>
+
+      <!-- Visualisasi Pembelian (Donat Rasio Bayar + Top Supplier) -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.wallet} Rasio Pembayaran vs Sisa Hutang</h3>
+          </div>
+          <div class="card-body">${donutBeliHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.truck} Top Supplier Pembelian Terbesar</h3>
+          </div>
+          <div class="card-body">${barSupplierHtml}</div>
         </div>
       </div>
 
@@ -1553,6 +1756,42 @@ function renderTabArusKas(container, data) {
   const masuk = data.rincian_masuk || {};
   const keluar = data.rincian_keluar || {};
 
+  // Visualisasi Arus Kas: Perbandingan Masuk vs Keluar + 2 Diagram Donat Komposisi
+  const compareKasHtml = renderComparisonBars({
+    leftLabel: 'Total Kas Masuk (Penerimaan)',
+    leftValue: r.total_kas_masuk || 0,
+    leftColor: 'var(--success)',
+    rightLabel: 'Total Kas Keluar (Pengeluaran)',
+    rightValue: r.total_kas_keluar || 0,
+    rightColor: 'var(--danger)',
+    netLabel: 'Status Arus Kas Periode Ini'
+  });
+
+  const donutKasMasukHtml = renderDonutChart({
+    items: [
+      { label: 'Penjualan Tunai', value: Number(masuk.penjualan_tunai || 0), color: 'var(--success)' },
+      { label: 'Penjualan Transfer', value: Number(masuk.penjualan_transfer || 0), color: 'var(--primary)' },
+      { label: 'Penjualan QRIS', value: Number(masuk.penjualan_qris || 0), color: 'var(--info)' },
+      { label: 'Pelunasan Piutang', value: Number(masuk.piutang_tunai || 0) + Number(masuk.piutang_transfer || 0) + Number(masuk.piutang_qris || 0), color: 'var(--warning)' },
+      { label: 'Deposit & Refund Supplier', value: Number(masuk.deposit_masuk_tunai || 0) + Number(masuk.deposit_masuk_bank || 0) + Number(masuk.refund_retur_beli_tunai || 0) + Number(masuk.refund_retur_beli_bank || 0), color: 'var(--slate-500)' }
+    ],
+    centerLabel: 'Kas Masuk',
+    centerValue: singkatNominalChart(r.total_kas_masuk || 0),
+    emptyText: 'Belum ada penerimaan kas di periode ini'
+  });
+
+  const donutKasKeluarHtml = renderDonutChart({
+    items: [
+      { label: 'Pembelian Stok', value: Number(keluar.pembelian_tunai || 0) + Number(keluar.pembelian_transfer || 0), color: 'var(--warning)' },
+      { label: 'Bayar Hutang Supplier', value: Number(keluar.hutang_tunai || 0) + Number(keluar.hutang_transfer || 0), color: 'var(--primary)' },
+      { label: 'Biaya Operasional', value: Number(keluar.biaya_operasional_tunai || 0) + Number(keluar.biaya_operasional_bank || 0), color: 'var(--danger)' },
+      { label: 'Refund & Tarik Deposit', value: Number(keluar.refund_retur_tunai || 0) + Number(keluar.deposit_tarik_tunai || 0) + Number(keluar.deposit_tarik_bank || 0), color: 'var(--slate-500)' }
+    ],
+    centerLabel: 'Kas Keluar',
+    centerValue: singkatNominalChart(r.total_kas_keluar || 0),
+    emptyText: 'Belum ada pengeluaran kas di periode ini'
+  });
+
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Arus Kas -->
@@ -1598,6 +1837,30 @@ function renderTabArusKas(container, data) {
           </div>
           <div class="stat-card-value" style="color: var(--text-main);">${formatRupiah(r.saldo_bank_non_tunai || 0)}</div>
           <div class="stat-card-desc"><span class="badge badge-info">Rekening Toko</span></div>
+        </div>
+      </div>
+
+      <!-- Visual Perbandingan Arus Kas -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">${ICONS.chart} Grafik Perbandingan Kas Masuk vs Kas Keluar</h3>
+        </div>
+        <div class="card-body">${compareKasHtml}</div>
+      </div>
+
+      <!-- Diagram Donat Sumber Kas Masuk & Pos Kas Keluar -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title" style="color: var(--success);">${ICONS.arrowDownLeft} Diagram Sumber Kas Masuk</h3>
+          </div>
+          <div class="card-body">${donutKasMasukHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title" style="color: var(--danger);">${ICONS.arrowUpRight} Diagram Pos Kas Keluar</h3>
+          </div>
+          <div class="card-body">${donutKasKeluarHtml}</div>
         </div>
       </div>
 
@@ -1738,8 +2001,101 @@ function renderTabLabaRugi(container, data) {
   const produkMargin = data.produk_margin_teratas || [];
   const analisisBiaya = data.analisis_biaya || [];
 
+  const omsetBersih = Number(r.omset_bersih || 0);
+  const hppBersih = Math.max(0, Number(r.total_hpp || 0) - Number(r.total_retur_hpp || 0));
+  const labaKotor = Number(r.laba_kotor_bersih || 0);
+  const totalBiaya = Number(r.total_biaya_operasional || 0);
+  const rugiRusak = Number(r.total_kerugian_rusak || 0);
+  const labaBersih = Number(r.laba_bersih_riil || 0);
+  const marginBersih = Number(r.margin_bersih_persen || 0);
+
+  let statusMargin = 'Belum Ada Penjualan';
+  let toneMargin = 'info';
+  if (omsetBersih > 0) {
+    if (marginBersih >= 20) { statusMargin = `Sangat Sehat (${marginBersih}%)`; toneMargin = 'success'; }
+    else if (marginBersih >= 10) { statusMargin = `Sehat (${marginBersih}%)`; toneMargin = 'success'; }
+    else if (marginBersih > 0) { statusMargin = `Margin Tipis (${marginBersih}%)`; toneMargin = 'warning'; }
+    else { statusMargin = `Rugi (${marginBersih}%)`; toneMargin = 'danger'; }
+  }
+
+  const pnlBullets = [];
+  if (omsetBersih > 0) {
+    const rasioHpp = Math.round((hppBersih / omsetBersih) * 1000) / 10;
+    const rasioBiaya = Math.round(((totalBiaya + rugiRusak) / omsetBersih) * 1000) / 10;
+    pnlBullets.push(`Dari setiap <strong>Rp 100</strong> omset bersih: <strong>Rp ${rasioHpp}</strong> untuk modal barang (HPP), <strong>Rp ${rasioBiaya}</strong> untuk biaya operasional${rugiRusak > 0 ? ' & barang rusak' : ''}, dan <strong>Rp ${Math.max(0, marginBersih)}</strong> menjadi laba bersih.`);
+    if (kategoriList.length > 0) {
+      const topKat = [...kategoriList].sort((a, b) => Number(b.laba || 0) - Number(a.laba || 0))[0];
+      pnlBullets.push(`Kategori penyumbang laba terbesar: <strong>${escapeHtml(topKat.kategori)}</strong> sebesar <strong>${formatRupiah(topKat.laba)}</strong> (margin ${topKat.margin_persen}%).`);
+    }
+    if (analisisBiaya.length > 0) {
+      const topBiaya = analisisBiaya[0];
+      pnlBullets.push(`Pos biaya terbesar: <strong>${escapeHtml(topBiaya.kategori)}</strong> sebesar <strong>${formatRupiah(topBiaya.nominal)}</strong> (${topBiaya.persen}% dari total biaya).`);
+    }
+  } else {
+    pnlBullets.push('Belum ada transaksi penjualan pada periode ini untuk dianalisa profitabilitasnya.');
+  }
+
+  const insightPnlHtml = renderInsightBox({
+    title: 'Diagnosa Kesehatan Laba & Margin',
+    badge: statusMargin,
+    badgeTone: toneMargin,
+    bullets: pnlBullets
+  });
+
+  const donutStrukturPnlHtml = renderDonutChart({
+    items: [
+      { label: 'Modal Barang (HPP)', value: hppBersih, color: 'var(--warning)' },
+      { label: 'Biaya Operasional', value: totalBiaya, color: 'var(--danger)' },
+      ...(rugiRusak > 0 ? [{ label: 'Kerugian Barang Rusak', value: rugiRusak, color: 'var(--slate-500)' }] : []),
+      ...(labaBersih > 0 ? [{ label: 'Laba Bersih Riil', value: labaBersih, color: 'var(--success)' }] : [])
+    ],
+    centerLabel: 'Omset Bersih',
+    centerValue: singkatNominalChart(omsetBersih),
+    emptyText: 'Belum ada omset untuk divisualisasikan'
+  });
+
+  const waterfallPnlHtml = renderWaterfallPnl({
+    omsetBersih,
+    hppBersih,
+    labaKotor,
+    totalBiaya,
+    rugiRusak,
+    labaBersih
+  });
+
+  const donutBiayaHtml = analisisBiaya.length > 0 ? renderDonutChart({
+    items: analisisBiaya.slice(0, 6).map((b, idx) => ({
+      label: b.kategori,
+      value: Number(b.nominal || 0),
+      color: CHART_PALETTE[idx % CHART_PALETTE.length]
+    })),
+    centerLabel: 'Total Biaya',
+    centerValue: singkatNominalChart(totalBiaya),
+    size: 136,
+    thickness: 22
+  }) : '';
+
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
+      <!-- Diagnosa Kesehatan Margin Otomatis -->
+      ${insightPnlHtml}
+
+      <!-- Visualisasi Laba Rugi (Donat Struktur Omset + Grafik Alur Waterfall) -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.chart} Diagram Struktur Omset (HPP vs Biaya vs Laba)</h3>
+          </div>
+          <div class="card-body">${donutStrukturPnlHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.award} Grafik Alur Laba Rugi (Waterfall)</h3>
+          </div>
+          <div class="card-body">${waterfallPnlHtml}</div>
+        </div>
+      </div>
+
       <!-- Ringkasan Laporan Laba Rugi Toko -->
       <div class="card">
         <div class="card-header">
@@ -1847,6 +2203,7 @@ function renderTabLabaRugi(container, data) {
           <div class="card-header">
             <h3 class="card-title" style="color: var(--danger);">${ICONS.calculator} Rincian Biaya Operasional per Kategori</h3>
           </div>
+          ${donutBiayaHtml ? `<div class="card-body" style="border-bottom: 1px solid var(--border);">${donutBiayaHtml}</div>` : ''}
           <div class="card-body card-table-body" style="padding: 0;">
             <div class="table-wrap">
               <table class="table">
@@ -1919,6 +2276,58 @@ function renderTabStokValuasi(container, data) {
   const r = data.ringkasan || {};
   const items = data.items || [];
 
+  // Visualisasi Kesehatan Stok & Distribusi Modal/Unit per Kategori
+  const totalItemAktif = Number(r.total_item || items.length || 0);
+  const totalHabis = Number(r.total_habis || 0);
+  const totalKritis = Number(r.total_kritis || 0);
+  const totalAman = Math.max(0, totalItemAktif - totalHabis - totalKritis);
+
+  const donutKesehatanStokHtml = renderDonutChart({
+    items: [
+      { label: 'Stok Aman', value: totalAman, color: 'var(--success)', sub: 'Di atas batas min' },
+      { label: 'Stok Kritis (Menipis)', value: totalKritis, color: 'var(--warning)', sub: 'Segera restock' },
+      { label: 'Stok Habis (0)', value: totalHabis, color: 'var(--danger)', sub: 'Kosong / perlu order' }
+    ],
+    centerLabel: 'Total Item',
+    centerValue: `${formatAngka(totalItemAktif)}`,
+    valueFormatter: (v) => `${formatAngka(v)} item`,
+    emptyText: 'Belum ada item stok aktif'
+  });
+
+  const hasGudang = Number(r.total_unit_gudang || 0) > 0;
+  const donutLokasiStokHtml = hasGudang ? renderDonutChart({
+    items: [
+      { label: 'Stok Etalase Toko', value: Number(r.total_unit_toko || 0), color: 'var(--primary)' },
+      { label: 'Stok Gudang', value: Number(r.total_unit_gudang || 0), color: 'var(--info)' }
+    ],
+    centerLabel: 'Total Unit',
+    centerValue: singkatNominalChart(r.total_unit_stok || 0),
+    valueFormatter: (v) => `${formatAngka(v)} unit`
+  }) : '';
+
+  const katStokMap = new Map();
+  items.forEach((it) => {
+    const namaKat = String(it.kategori || 'Lainnya').trim() || 'Lainnya';
+    const cur = katStokMap.get(namaKat) || { label: namaKat, value: 0, count: 0 };
+    cur.value += isOwner ? Math.max(0, Number(it.nilai_aset || 0)) : Math.max(0, Number(it.stok || 0));
+    cur.count++;
+    katStokMap.set(namaKat, cur);
+  });
+
+  const barKatStokHtml = renderHorizontalBars({
+    items: Array.from(katStokMap.values())
+      .sort((a, b) => b.value - a.value)
+      .map((k, idx) => ({
+        label: k.label,
+        value: k.value,
+        sub: `(${formatAngka(k.count)} item)`,
+        color: CHART_PALETTE[idx % CHART_PALETTE.length]
+      })),
+    valueFormatter: isOwner ? formatRupiah : (v) => `${formatAngka(v)} unit`,
+    emptyText: 'Belum ada data kategori stok',
+    maxItems: 6
+  });
+
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Kartu Ringkasan Valuasi Stok -->
@@ -1964,6 +2373,30 @@ function renderTabStokValuasi(container, data) {
           </div>
           <div class="stat-card-value" style="color: ${r.total_kritis > 0 ? 'var(--warning)' : 'var(--text-muted)'};">${formatAngka(r.total_kritis || 0)}</div>
           <div class="stat-card-desc">Stok di bawah batas minimum</div>
+        </div>
+      </div>
+
+      <!-- Visualisasi Kesehatan & Distribusi Modal Stok -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.chart} Diagram Kesehatan Stok</h3>
+          </div>
+          <div class="card-body">${donutKesehatanStokHtml}</div>
+        </div>
+        ${hasGudang ? `
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">${ICONS.box} Sebaran Stok Toko vs Gudang</h3>
+            </div>
+            <div class="card-body">${donutLokasiStokHtml}</div>
+          </div>
+        ` : ''}
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.tag} ${isOwner ? 'Top Kategori Pemegang Modal Stok (HPP)' : 'Top Kategori Jumlah Unit Stok'}</h3>
+          </div>
+          <div class="card-body">${barKatStokHtml}</div>
         </div>
       </div>
 

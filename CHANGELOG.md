@@ -16,6 +16,17 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.162] - 2026-11-28
+### Ditambahkan — Visualisasi Laporan Lengkap Pure SVG (Diagram Donat, Grafik Batang, Waterfall Laba Rugi, & Analisa Cerdas)
+- **[DASHBOARD] [UI] Pustaka Grafik Pure SVG Ringan (`charts.js`, `components.css`, `laporan.js`, `sw.js`)**:
+  - Membangun utilitas visualisasi `frontend/js/utils/charts.js` 100% Pure SVG tanpa dependensi CDN luar (0ms offline, responsif mobile/desktop, otomatis mengikuti tema Terang/Hangat/Gelap & warna aksen, Solid Flat).
+  - **Dashboard**: menambahkan kotak **Analisa Cepat Performa Toko** otomatis, meningkatkan Komposisi Metode Pembayaran menjadi **Diagram Donat SVG**, dan menambahkan bar proporsi pada daftar Produk Paling Laris.
+  - **Penjualan**: menambahkan **Diagram Donat Status Pembayaran Nota** (Lunas/Sebagian/Tempo/Void) dan **Grafik Batang Kontribusi per Kasir**.
+  - **Pembelian**: menambahkan **Diagram Donat Rasio Pembayaran vs Sisa Hutang** dan **Grafik Batang Top Supplier Terbesar**.
+  - **Arus Kas**: menambahkan **Grafik Perbandingan Kas Masuk vs Kas Keluar** (surplus/defisit) serta 2 **Diagram Donat Sumber Kas Masuk & Pos Kas Keluar**.
+  - **Laba Rugi (Owner)**: menambahkan kotak **Diagnosa Kesehatan Laba & Margin**, **Diagram Donat Struktur Omset (HPP vs Biaya vs Laba)**, **Grafik Alur Laba Rugi (Waterfall)**, serta **Diagram Donat Rincian Biaya per Kategori**.
+  - **Valuasi Stok**: menambahkan **Diagram Donat Kesehatan Stok** (Aman/Kritis/Habis), **Diagram Donat Sebaran Toko vs Gudang**, dan **Grafik Top Kategori Pemegang Modal Stok (HPP)**.
+
 ## [1.0.161] - 2026-11-28
 ### Diperbaiki — Audit Mendalam Frontend & Backend: Proteksi Anti Double-Submit di 10 Modul Kritis
 - **[RETUR] [OPNAME] [PRODUK] [PELANGGAN] [SUPPLIER] [KATEGORI] [POS-JUAL] [AUTH] [MEMBER] Proteksi Anti Double-Tap / Double-Submit Menyeluruh**:
