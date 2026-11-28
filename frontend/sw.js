@@ -4,7 +4,7 @@
  * Request API (POST / script.google.com) TIDAK PERNAH di-cache!
  */
 
-const CACHE_NAME = 'pos-kasir-static-v1.0.166';
+const CACHE_NAME = 'pos-kasir-static-v1.0.167';
 const IMAGE_CACHE_NAME = 'pos-kasir-images-v1';
 const MAX_CACHED_IMAGES = 350;
 

@@ -1365,7 +1365,7 @@ export function bukaModalPanduanVarianSatuan() {
  * Inisialisasi Searchable Category Combobox (Dropdown Kategori dengan Pencarian Cepat)
  * Menampilkan hirarki Induk > Sub, highlight pencarian, dan integrasi input hidden #prd-kategori
  */
-function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = '') {
+function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = '', options = {}) {
   const wrap = $('#cat-picker-wrap', modalEl);
   if (!wrap) return;
 
@@ -1374,27 +1374,59 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
   const lblTrigger = $('#cat-picker-label', modalEl);
   const btnClear = $('#cat-picker-clear', modalEl);
   const dropdown = $('#cat-picker-dropdown', modalEl);
+  const searchWrap = dropdown?.querySelector('.cat-picker-search-wrap');
   const searchInput = $('#cat-picker-search', modalEl);
   const listEl = $('#cat-picker-list', modalEl);
+  const footerEl = $('#cat-picker-footer', modalEl);
+  const btnOpenCreate = $('#btn-cat-open-create', modalEl);
+  const createPanel = $('#cat-picker-create-panel', modalEl);
+  const inputQuickNama = $('#cat-quick-nama', modalEl);
+  const selQuickParent = $('#cat-quick-parent', modalEl);
+  const hintQuickParent = $('#cat-quick-hint', modalEl);
+  const btnQuickBack = $('#btn-cat-quick-back', modalEl);
+  const btnQuickCancel = $('#btn-cat-quick-cancel', modalEl);
+  const btnQuickSave = $('#btn-cat-quick-save', modalEl);
 
-  const katMap = new Map();
-  (daftarKategori || []).forEach((k) => katMap.set(k.id, k));
+  const userAktif = store.get('user');
+  const canCreateKat = Boolean(options.canCreate !== false && userAktif && (userAktif.role === 'owner' || userAktif.role === 'admin'));
+  const onKategoriBaru = typeof options.onKategoriBaru === 'function' ? options.onKategoriBaru : null;
 
-  const parents = (daftarKategori || []).filter((k) => !k.parent_id);
-  parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+  let itemsKategori = Array.isArray(daftarKategori) ? [...daftarKategori] : [];
+  let katMap = new Map();
+  let parents = [];
+  let subsByParent = {};
+  let orphans = [];
+  let isCreateMode = false;
+  let isSavingKat = false;
 
-  const subsByParent = {};
-  (daftarKategori || []).forEach((k) => {
-    if (k.parent_id) {
-      if (!subsByParent[k.parent_id]) subsByParent[k.parent_id] = [];
-      subsByParent[k.parent_id].push(k);
-    }
-  });
-  Object.keys(subsByParent).forEach((pid) => {
-    subsByParent[pid].sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
-  });
+  if (footerEl) {
+    footerEl.style.display = canCreateKat ? 'flex' : 'none';
+  }
 
-  const orphans = (daftarKategori || []).filter((k) => k.parent_id && !katMap.has(k.parent_id));
+  function rebuildIndex() {
+    katMap = new Map();
+    itemsKategori.forEach((k) => {
+      if (k && k.id) katMap.set(k.id, k);
+    });
+
+    parents = itemsKategori.filter((k) => k && !k.parent_id);
+    parents.sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+
+    subsByParent = {};
+    itemsKategori.forEach((k) => {
+      if (k && k.parent_id) {
+        if (!subsByParent[k.parent_id]) subsByParent[k.parent_id] = [];
+        subsByParent[k.parent_id].push(k);
+      }
+    });
+    Object.keys(subsByParent).forEach((pid) => {
+      subsByParent[pid].sort((a, b) => (Number(a.urutan) || 0) - (Number(b.urutan) || 0) || String(a.nama).localeCompare(String(b.nama)));
+    });
+
+    orphans = itemsKategori.filter((k) => k && k.parent_id && !katMap.has(k.parent_id));
+  }
+
+  rebuildIndex();
 
   function getCategoryDisplay(id) {
     if (!id || !katMap.has(id)) return '-- Tanpa Kategori --';
@@ -1420,6 +1452,134 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
     }
   }
 
+  function syncQuickParentOptions(preselectParentId = '') {
+    if (!selQuickParent) return;
+    let optHtml = '<option value="">-- Jadikan Kategori Utama --</option>';
+    parents.forEach((p) => {
+      const selected = String(p.id) === String(preselectParentId || '') ? ' selected' : '';
+      optHtml += `<option value="${escapeHtml(p.id)}"${selected}>${escapeHtml(p.nama)}</option>`;
+    });
+    selQuickParent.innerHTML = optHtml;
+    updateQuickHint();
+  }
+
+  function updateQuickHint() {
+    if (!hintQuickParent || !selQuickParent) return;
+    const pid = selQuickParent.value || '';
+    if (!pid) {
+      hintQuickParent.textContent = 'Akan disimpan sebagai Kategori Utama baru.';
+    } else {
+      const pObj = katMap.get(pid);
+      hintQuickParent.textContent = pObj
+        ? `Akan disimpan sebagai Sub-Kategori di bawah "${pObj.nama}".`
+        : 'Akan disimpan sebagai Sub-Kategori.';
+    }
+  }
+
+  function setCreateMode(active, { prefillNama = '', preselectParentId = '' } = {}) {
+    if (!createPanel) return;
+    isCreateMode = Boolean(active && canCreateKat);
+    if (searchWrap) searchWrap.style.display = isCreateMode ? 'none' : '';
+    if (listEl) listEl.style.display = isCreateMode ? 'none' : '';
+    if (footerEl) footerEl.style.display = (canCreateKat && !isCreateMode) ? 'flex' : 'none';
+    createPanel.style.display = isCreateMode ? 'flex' : 'none';
+
+    if (isCreateMode) {
+      syncQuickParentOptions(preselectParentId);
+      if (inputQuickNama) {
+        inputQuickNama.value = String(prefillNama || '').trim();
+        setTimeout(() => {
+          inputQuickNama.focus();
+          inputQuickNama.select();
+        }, 25);
+      }
+    } else {
+      renderList(searchInput?.value || '');
+      setTimeout(() => searchInput?.focus(), 20);
+    }
+    positionDropdown();
+  }
+
+  async function simpanKategoriCepat() {
+    if (!canCreateKat || isSavingKat || !inputQuickNama) return;
+    const nama = String(inputQuickNama.value || '').trim();
+    const parentId = selQuickParent ? String(selQuickParent.value || '').trim() : '';
+
+    if (!nama) {
+      showToast('Nama kategori / sub-kategori wajib diisi.', 'warning');
+      inputQuickNama.focus();
+      return;
+    }
+
+    // Validasi duplikat cepat di sisi klien
+    const namaLower = nama.toLowerCase();
+    const sudahAda = itemsKategori.some((k) => {
+      if (!k) return false;
+      const kParent = String(k.parent_id || '');
+      return kParent === parentId && String(k.nama || '').trim().toLowerCase() === namaLower;
+    });
+    if (sudahAda) {
+      showToast(
+        parentId
+          ? `Sub-kategori "${nama}" sudah terdaftar di bawah induk tersebut.`
+          : `Kategori utama "${nama}" sudah terdaftar.`,
+        'warning'
+      );
+      inputQuickNama.focus();
+      return;
+    }
+
+    isSavingKat = true;
+    const labelAsli = btnQuickSave ? btnQuickSave.innerHTML : '';
+    if (btnQuickSave) {
+      btnQuickSave.disabled = true;
+      btnQuickSave.textContent = 'Menyimpan...';
+    }
+
+    try {
+      const dibuat = await apiCall('kategori.create', {
+        nama,
+        parent_id: parentId,
+        urutan: 0
+      });
+
+      const katBaru = dibuat && dibuat.id ? dibuat : null;
+      if (!katBaru) {
+        throw new Error('Server tidak mengembalikan data kategori baru.');
+      }
+
+      if (!itemsKategori.some((k) => k && k.id === katBaru.id)) {
+        itemsKategori.push(katBaru);
+      }
+      if (Array.isArray(daftarKategori) && !daftarKategori.some((k) => k && k.id === katBaru.id)) {
+        daftarKategori.push(katBaru);
+      }
+      rebuildIndex();
+      if (onKategoriBaru) onKategoriBaru(katBaru);
+
+      updateSelected(katBaru.id);
+      isCreateMode = false;
+      closeDropdown();
+      btnTrigger?.focus();
+
+      const indukObj = parentId ? katMap.get(parentId) : null;
+      showToast(
+        indukObj
+          ? `Sub-kategori "${katBaru.nama}" (${indukObj.nama}) ditambahkan & dipilih!`
+          : `Kategori utama "${katBaru.nama}" ditambahkan & dipilih!`,
+        'success'
+      );
+    } catch (err) {
+      showToast(err?.message || 'Gagal menambah kategori baru.', 'error');
+    } finally {
+      isSavingKat = false;
+      if (btnQuickSave) {
+        btnQuickSave.disabled = false;
+        btnQuickSave.innerHTML = labelAsli || `${ICONS.check}<span>Simpan &amp; Pilih</span>`;
+      }
+    }
+  }
+
   function highlightMatch(text, query) {
     if (!query) return escapeHtml(text);
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -1427,7 +1587,8 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
   }
 
   function renderList(query = '') {
-    const q = (query || '').trim().toLowerCase();
+    const rawQuery = String(query || '').trim();
+    const q = rawQuery.toLowerCase();
     const currentId = inputHidden.value;
     let html = '';
 
@@ -1458,6 +1619,7 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
           <div class="cat-picker-item is-parent ${isParentSel ? 'is-selected' : ''}" data-id="${p.id}" role="option" aria-selected="${isParentSel}">
             <span class="cat-picker-item-icon" style="color: var(--primary);">${ICONS.folder}</span>
             <span class="grow fw-semibold">${highlightMatch(pNama, q)} <span class="badge badge-subtle text-2xs" style="margin-left: 4px; font-weight: normal;">Utama</span></span>
+            ${canCreateKat ? `<button type="button" class="cat-picker-add-sub-btn" data-add-sub-parent="${escapeHtml(p.id)}" title="Tambah Sub-Kategori di bawah ${escapeHtml(pNama)}">${ICONS.plus}<span>Sub</span></button>` : ''}
             ${isParentSel ? `<span class="cat-picker-check">${ICONS.check}</span>` : ''}
           </div>
         `;
@@ -1497,13 +1659,37 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
     }
 
     if (matchCount === 0 && q) {
-      html = `<div class="cat-picker-empty">Tidak ada kategori yang cocok dengan "${escapeHtml(q)}"</div>`;
+      html = `
+        <div class="cat-picker-empty">
+          <div>Tidak ada kategori yang cocok dengan "<strong>${escapeHtml(rawQuery)}</strong>"</div>
+          ${canCreateKat ? `
+            <button type="button" class="btn btn-primary btn-xs" id="btn-cat-create-from-search" style="margin-top: var(--sp-2); display: inline-flex; align-items: center; gap: 5px;">
+              ${ICONS.plus}
+              <span>Buat "${escapeHtml(rawQuery)}"</span>
+            </button>
+          ` : ''}
+        </div>
+      `;
     }
 
     listEl.innerHTML = html;
 
+    listEl.querySelectorAll('.cat-picker-add-sub-btn').forEach((btnSub) => {
+      btnSub.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pid = btnSub.getAttribute('data-add-sub-parent') || '';
+        setCreateMode(true, { prefillNama: '', preselectParentId: pid });
+      });
+    });
+
+    listEl.querySelector('#btn-cat-create-from-search')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setCreateMode(true, { prefillNama: rawQuery, preselectParentId: '' });
+    });
+
     listEl.querySelectorAll('.cat-picker-item').forEach((item) => {
       item.addEventListener('click', (e) => {
+        if (e.target.closest('.cat-picker-add-sub-btn')) return;
         e.stopPropagation();
         const id = item.getAttribute('data-id') || '';
         updateSelected(id);
@@ -1535,7 +1721,7 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
 
     const spaceBelow = vh - rect.bottom - margin;
     const spaceAbove = rect.top - margin;
-    const idealH = 400;
+    const idealH = isCreateMode ? 320 : 420;
 
     dropdown.style.position = 'fixed';
     dropdown.style.width = `${Math.round(desiredW)}px`;
@@ -1562,6 +1748,12 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
     if (dropdown.parentElement !== document.body) {
       document.body.appendChild(dropdown);
     }
+    isCreateMode = false;
+    if (searchWrap) searchWrap.style.display = '';
+    if (listEl) listEl.style.display = '';
+    if (footerEl) footerEl.style.display = canCreateKat ? 'flex' : 'none';
+    if (createPanel) createPanel.style.display = 'none';
+
     wrap.classList.add('is-open');
     dropdown.classList.add('is-floating');
     dropdown.style.display = 'flex';
@@ -1577,6 +1769,11 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
   }
 
   function closeDropdown() {
+    isCreateMode = false;
+    if (createPanel) createPanel.style.display = 'none';
+    if (searchWrap) searchWrap.style.display = '';
+    if (listEl) listEl.style.display = '';
+    if (footerEl) footerEl.style.display = canCreateKat ? 'flex' : 'none';
     wrap.classList.remove('is-open');
     dropdown.classList.remove('is-floating');
     dropdown.style.display = 'none';
@@ -1618,6 +1815,43 @@ function initSearchableCategoryPicker(modalEl, daftarKategori = [], initialId = 
       e.stopPropagation();
       closeDropdown();
       btnTrigger?.focus();
+    }
+  });
+
+  btnOpenCreate?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setCreateMode(true, { prefillNama: searchInput?.value || '', preselectParentId: '' });
+  });
+
+  btnQuickBack?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setCreateMode(false);
+  });
+
+  btnQuickCancel?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setCreateMode(false);
+  });
+
+  selQuickParent?.addEventListener('change', () => {
+    updateQuickHint();
+  });
+
+  btnQuickSave?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    simpanKategoriCepat();
+  });
+
+  inputQuickNama?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      simpanKategoriCepat();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setCreateMode(false);
     }
   });
 
@@ -1971,6 +2205,44 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
                 <div class="cat-picker-list" id="cat-picker-list" role="listbox">
                   <!-- Diisi secara dinamis -->
                 </div>
+                <div class="cat-picker-footer" id="cat-picker-footer">
+                  <button type="button" class="btn btn-secondary btn-sm cat-picker-create-trigger" id="btn-cat-open-create">
+                    ${ICONS.plus}
+                    <span>Tambah Kategori / Sub Baru</span>
+                  </button>
+                </div>
+                <div class="cat-picker-create-panel" id="cat-picker-create-panel" style="display: none;">
+                  <div class="cat-picker-create-head">
+                    <div class="fw-bold text-sm" style="display: inline-flex; align-items: center; gap: 6px; color: var(--text);">
+                      <span style="color: var(--primary); display: inline-flex;">${ICONS.folder}</span>
+                      <span>Tambah Kategori / Sub-Kategori</span>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-xs" id="btn-cat-quick-back" style="display: inline-flex; align-items: center; gap: 4px;">
+                      ${ICONS.chevronLeft}
+                      <span>Daftar</span>
+                    </button>
+                  </div>
+                  <div class="stack-sm" style="padding: var(--sp-3);">
+                    <div class="field" style="margin-bottom: 0;">
+                      <label class="field-label" for="cat-quick-nama">Nama Kategori / Sub-Kategori <span class="wajib">*</span></label>
+                      <input type="text" class="input input-sm" id="cat-quick-nama" maxlength="100" placeholder="Cth: CAT TEMBOK atau KUAS ROLL" autocomplete="off">
+                    </div>
+                    <div class="field" style="margin-bottom: 0;">
+                      <label class="field-label" for="cat-quick-parent">Induk Kategori (Opsional)</label>
+                      <select class="select select-sm" id="cat-quick-parent">
+                        <option value="">-- Jadikan Kategori Utama --</option>
+                      </select>
+                      <div class="text-2xs text-muted" id="cat-quick-hint" style="margin-top: 4px;">Akan disimpan sebagai Kategori Utama baru.</div>
+                    </div>
+                    <div class="row" style="justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-1);">
+                      <button type="button" class="btn btn-ghost btn-sm" id="btn-cat-quick-cancel">Batal</button>
+                      <button type="button" class="btn btn-primary btn-sm" id="btn-cat-quick-save" style="display: inline-flex; align-items: center; gap: 6px;">
+                        ${ICONS.check}
+                        <span>Simpan &amp; Pilih</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2198,8 +2470,19 @@ async function bukaModalFormProduk(container, produk, isDuplikat = false) {
 
   const form = $('#form-produk', modal.el);
 
-  // Inisialisasi Searchable Category Combobox (Dropdown dengan Pencarian Cepat)
-  initSearchableCategoryPicker(modal.el, daftarKategori, hasData ? (pData.kategori_id || '') : '');
+  // Inisialisasi Searchable Category Combobox (+ Tambah Kategori & Sub-Kategori Instan)
+  initSearchableCategoryPicker(modal.el, daftarKategori, hasData ? (pData.kategori_id || '') : '', {
+    onKategoriBaru: (katBaru) => {
+      if (!katBaru || !katBaru.id) return;
+      if (!cacheDaftarKategoriPrd.some((k) => k && k.id === katBaru.id)) {
+        cacheDaftarKategoriPrd = [...cacheDaftarKategoriPrd, katBaru];
+      }
+      const selKat = $('#filter-produk-kategori', container);
+      if (selKat) {
+        selKat.innerHTML = susunOpsiKategoriHtml(cacheDaftarKategoriPrd, filterState.kategori_id, 'Semua Kategori');
+      }
+    }
+  });
 
   // Tombol Batal Form Produk
   $('#btn-batal-produk', modal.el)?.addEventListener('click', () => {

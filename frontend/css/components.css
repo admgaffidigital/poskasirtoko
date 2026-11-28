@@ -5463,6 +5463,66 @@ a.list-item:hover {
   font-size: var(--fs-xs);
 }
 
+.cat-picker-add-sub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+
+.cat-picker-add-sub-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-soft-text);
+}
+
+.cat-picker-add-sub-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+.cat-picker-footer {
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cat-picker-create-trigger {
+  width: 100%;
+  justify-content: center;
+  gap: 6px;
+}
+
+.cat-picker-create-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.cat-picker-create-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
 /* ---------- Kalkulator HPP Presisi (Inline Drawer) ---------- */
 .hpp-field-head {
   display: flex;

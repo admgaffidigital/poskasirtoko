@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.167] - 2026-11-29
+### Ditambahkan — Pembuatan Kategori & Sub-Kategori Langsung di Dalam Form Tambah / Ubah Produk
+- **[PRODUK] [UI] Quick-Add Kategori & Sub-Kategori Inline (`produk.js`, `components.css`)**:
+  - Menambahkan fitur pembuatan **Kategori Utama** maupun **Sub-Kategori** langsung di dalam dropdown pemilih Kategori pada modal **Tambah / Ubah Produk** (khusus Owner & Admin) tanpa perlu keluar ke menu Kategori dan tanpa kehilangan data produk yang sedang diketik.
+  - Menyediakan 3 jalur cepat: tombol **`+ Tambah Kategori / Sub Baru`** di kaki dropdown, tombol **`+ Sub`** di setiap baris Kategori Utama untuk langsung menambah sub-kategori di bawah induk tersebut, serta tombol **`+ Buat "[kata pencarian]"`** saat hasil pencarian belum ditemukan.
+  - Setelah disimpan via `kategori.create`, kategori/sub-kategori baru otomatis langsung terpilih di form produk dan menyegarkan filter kategori di halaman Manajemen Produk.
+
 ## [1.0.166] - 2026-11-29
 ### Diperbaiki — Audit Debugging Finalisasi Menyeluruh (Cache Tutup Bulanan, Struk Offline, & Pembersihan Kode Mati)
 - **[UI] [DASHBOARD] [PWA] Perbaikan Cache Invalidation & Kebersihan Modul (`api.js`, `offline-queue.js`, `app.js`, `laporan.js`, `pos.js`, `pembelian.js`, `pricetag.js`, `users.js`, `barcode.js`)**:
