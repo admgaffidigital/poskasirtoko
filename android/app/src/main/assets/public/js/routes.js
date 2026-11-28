@@ -219,7 +219,7 @@ export const ROUTES = [
     title: 'Status & Diagnostik Sistem',
     shortTitle: 'Status Sistem',
     icon: ICONS.database,
-    roles: ['owner', 'admin', 'kasir'],
+    roles: ['owner', 'admin'],
     fase: 'Fase 0',
     inBottomNav: false,
     group: 'Sistem'
@@ -233,6 +233,7 @@ export const ROUTES = [
     roles: ['owner', 'admin', 'kasir'],
     fase: 'Fase 0',
     inBottomNav: false,
+    hiddenInMenu: true,
     group: 'Sistem'
   }
 ];

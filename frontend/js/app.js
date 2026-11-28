@@ -14,7 +14,6 @@ import {
   showConfirm,
   initTheme,
   toggleTheme,
-  toggleFontSize,
   bukaModalTemaWarna,
   ACCENT_PALETTES,
   THEME_MODES,
@@ -347,6 +346,7 @@ class App {
     };
     renderLogoInto($('#brand-logo-sidebar'));
     renderLogoInto($('.topbar-logo .brand-logo'));
+    renderLogoInto($('#brand-logo-lainnya'));
 
     // Perbarui judul tab/browser secara dinamis
     if (this.currentRoute && this.currentRoute.title) {
@@ -579,7 +579,7 @@ class App {
         showToast(`Pembaruan ${labelVer} siap diterapkan! Ketuk tombol "Perbarui & Restart Aplikasi".`, 'warning', 4500);
       }
     } else if (!silent) {
-      showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.164'})!`, 'success');
+      showToast(`Aplikasi Anda sudah menggunakan versi paling baru (v${CONFIG.VERSION || '1.0.165'})!`, 'success');
     }
 
     return { hasUpdate, remoteVer, needsNativeApk: window.appNeedsNativeApk };
@@ -874,7 +874,7 @@ class App {
                 <span class="fw-bold" style="font-size: var(--fs-md);">POS Kasir Toko (Aplikasi Terpasang)</span>
                 <span class="badge badge-success badge-sm badge-dot">Aktif</span>
               </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.164'} • Auto-Update OTA & Mode Offline Aktif</div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">Versi v${CONFIG.VERSION || '1.0.165'} • Auto-Update OTA & Mode Offline Aktif</div>
             </div>
           </div>
           <div class="row" style="gap: var(--sp-2); flex-wrap: wrap;">
@@ -961,11 +961,8 @@ class App {
           </nav>
 
           <div class="sidebar-footer">
-            <button type="button" class="btn btn-sm btn-icon" id="btn-theme-sidebar" title="Tema, Warna & Suasana Aplikasi" aria-label="Tema & Warna">
+            <button type="button" class="btn btn-sm btn-icon" id="btn-theme-sidebar" title="Tema, Warna & Ukuran Huruf" aria-label="Tema, Warna & Ukuran Huruf">
               ${ICONS.palette}
-            </button>
-            <button type="button" class="btn btn-sm btn-icon" id="btn-font-sidebar" title="Ukuran Font" aria-label="Ukuran Font">
-              <span class="fw-bold" style="font-size: var(--fs-sm);">Aa</span>
             </button>
             <button type="button" class="btn btn-sm btn-ghost grow text-xs" id="btn-user-sidebar" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               Masuk
@@ -1082,7 +1079,7 @@ class App {
 
     const groups = {};
     ROUTES.forEach((r) => {
-      if (r.id === 'lainnya') return;
+      if (r.id === 'lainnya' || r.hiddenInMenu) return;
       if (r.roles && !r.roles.includes(userRole)) return; // Sembunyikan jika tidak ada akses
       if (!groups[r.group]) groups[r.group] = [];
       groups[r.group].push(r);
@@ -1138,17 +1135,8 @@ class App {
       });
     };
 
-    const toggleFontHandler = () => {
-      const id = toggleFontSize();
-      const preset = FONT_SIZE_PRESETS.find((f) => f.id === id);
-      haptic.light();
-      showToast(`Ukuran huruf: ${preset ? `${preset.nama} (${preset.pct}%)` : id}`, 'info', 1800);
-    };
-
     $('#btn-theme-top')?.addEventListener('click', bukaDialogTemaHandler);
     $('#btn-theme-sidebar')?.addEventListener('click', bukaDialogTemaHandler);
-    $('#btn-font-top')?.addEventListener('click', toggleFontHandler);
-    $('#btn-font-sidebar')?.addEventListener('click', toggleFontHandler);
 
     const triggerSyncHandler = () => {
       this.sinkronkanDataGlobal();
@@ -1652,7 +1640,7 @@ class App {
     const userRole = user ? user.role : 'kasir';
 
     const daftarRute = ROUTES.filter((r) => {
-      if (r.id === 'lainnya') return false;
+      if (r.id === 'lainnya' || r.hiddenInMenu) return false;
       if (r.roles && !r.roles.includes(userRole)) return false;
       return true;
     }).map((r) => ({
@@ -1692,27 +1680,13 @@ class App {
       {
         grup: 'Aksi Cepat',
         id: 'act-theme',
-        judul: 'Tema, Warna & Suasana Aplikasi',
-        sub: 'Pilih 6 warna aksen (Oranye, Biru, Hijau, Toska, Ungu, Merah) & latar Terang/Hangat/Gelap',
-        kataKunci: 'tema theme warna color aksen gelap terang hangat dark light warm mode malam suasana',
+        judul: 'Tema, Warna & Ukuran Huruf',
+        sub: 'Pilih 6 warna aksen, suasana latar (Terang/Hangat/Gelap), jenis & ukuran huruf',
+        kataKunci: 'tema theme warna color aksen gelap terang hangat dark light warm mode malam suasana font huruf ukuran teks aksesibilitas aa',
         ikon: ICONS.palette,
-        hint: 'Warna',
+        hint: 'Tampilan',
         aksi: () => {
           bukaModalTemaWarna((cfg) => syncStatusBarWithTheme(cfg.theme));
-        }
-      },
-      {
-        grup: 'Aksi Cepat',
-        id: 'act-font',
-        judul: 'Ganti Preset Ukuran Huruf (5 Pilihan)',
-        sub: 'Ringkas 88% • Kecil 94% • Normal 100% • Besar 108% • Ekstra 116%',
-        kataKunci: 'font huruf ukuran teks aksesibilitas besar normal kecil ringkas ekstra aa',
-        ikon: ICONS.sparkles,
-        hint: 'Aa',
-        aksi: () => {
-          const id = toggleFontSize();
-          const preset = FONT_SIZE_PRESETS.find((f) => f.id === id);
-          showToast(`Ukuran huruf: ${preset ? `${preset.nama} (${preset.pct}%)` : id}`, 'info', 1800);
         }
       }
     ];
@@ -2152,7 +2126,7 @@ class App {
         <div class="card card-body" style="background: var(--surface-2); padding: var(--sp-3); border: 1px solid var(--border);">
           <div class="text-xs text-muted">Service Worker Offline</div>
           <div class="fw-bold" style="font-size: var(--fs-md); margin-top: 2px; color: ${swAktif ? 'var(--success-text)' : 'var(--text-muted)'};">${swAktif ? 'Aktif (Cache-First)' : 'Mode Standar'}</div>
-          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.164'}</div>
+          <div class="text-xs text-muted">Versi v${CONFIG.VERSION || '1.0.165'}</div>
         </div>
       `;
     };
@@ -2475,7 +2449,7 @@ class App {
     const userRole = user ? user.role : 'kasir';
 
     const listRoutes = ROUTES.filter((r) => {
-      if (r.id === 'lainnya') return false;
+      if (r.id === 'lainnya' || r.hiddenInMenu) return false;
       if (r.roles && !r.roles.includes(userRole)) return false;
       return true;
     });
@@ -2519,6 +2493,13 @@ class App {
 
     const namaToko = store.getNamaToko ? store.getNamaToko() : 'POS Kasir Toko';
     const namaUser = user ? (user.nama || user.username) : 'Pengguna';
+    const logoToko = String((store.get('toko') || {}).logo || (store.get('pengaturan') || {}).toko_logo_url || '').trim();
+    const logoStyle = logoToko
+      ? 'width: 44px; height: 44px; font-size: var(--fs-lg); border-radius: var(--radius-xl); flex-shrink: 0; background: var(--surface); padding: 3px; border: 1px solid var(--border);'
+      : 'width: 44px; height: 44px; font-size: var(--fs-lg); border-radius: var(--radius-xl); flex-shrink: 0;';
+    const logoInner = logoToko
+      ? `<img src="${escapeHtml(logoToko)}" alt="${escapeHtml(namaToko)}" style="width: 100%; height: 100%; object-fit: contain; border-radius: inherit; display: block;">`
+      : ICONS.store;
 
     let html = `
       <div class="menu-list-container">
@@ -2526,8 +2507,8 @@ class App {
         <div class="card card-body" style="background: var(--surface); margin-bottom: var(--sp-2);">
           <div class="row" style="justify-content: space-between; align-items: center; gap: var(--sp-3);">
             <div class="row" style="align-items: center; gap: var(--sp-3); flex: 1; min-width: 0;">
-              <div class="brand-logo" style="width: 44px; height: 44px; font-size: var(--fs-lg); border-radius: var(--radius-xl); flex-shrink: 0;">
-                ${ICONS.store}
+              <div class="brand-logo" id="brand-logo-lainnya" style="${logoStyle}">
+                ${logoInner}
               </div>
               <div style="flex: 1; min-width: 0;">
                 <div style="font-weight: var(--fw-bold); font-size: var(--fs-md); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">

@@ -16,6 +16,15 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.165] - 2026-11-29
+### Diubah — Perapian Navigasi & Eliminasi Duplikasi Tampilan UI (Lebih Bersih & Fokus Operasional)
+- **[UI] [SETTING] Pembersihan Menu & Tombol Duplikat (`routes.js`, `app.js`, `pengaturan.js`)**:
+  - Menyembunyikan halaman internal **Design System & Galeri Komponen** (`#/desainsistem`) dari Sidebar, Menu Lainnya, dan Command Palette (`Ctrl+K`) via flag `hiddenInMenu: true` (tetap bisa diakses langsung lewat URL `#/desainsistem` untuk kebutuhan developer).
+  - Membatasi menu **Status & Diagnostik Sistem** (`#/sistem`) khusus untuk peran **Owner & Admin** agar tampilan Kasir lebih ringkas dan fokus ke transaksi.
+  - Menghapus tombol ganda **`Aa` (Ukuran Huruf)** di footer Sidebar dan entri ganda di Command Palette (`Ctrl+K`) karena pengaturan ukuran & jenis huruf sudah terintegrasi lengkap di dalam tombol **Tema, Warna & Ukuran Huruf** (`#btn-theme-sidebar`).
+  - Menggabungkan seksi besar duplikat **Personalisasi Tema** di halaman **Pengaturan Umum** menjadi tombol ringkas **`Ubah Tema & Warna`** di dalam kartu **Status Sinkron Cloud & Antrean Offline**, sekaligus memperbarui label arsip backup menjadi **33 tabel database**.
+  - Menampilkan **Logo Toko Kustom** secara konsisten pada kartu profil di halaman **Menu Lainnya** (selaras dengan Sidebar & Topbar).
+
 ## [1.0.164] - 2026-11-28
 ### Ditambahkan — Fitur Persiapan Go-Live Bisnis Nyata (Reset Data Simulasi Owner-Only dengan 3 Lapis Pengaman)
 - **[BACKEND] [SETTING] Endpoint `sistem.resetGoLive` & Wizard Go-Live (`00_konfig_skema_router.gs`, `01_database_utilitas.gs`, `pengaturan.js`, `test_debug_final.js`)**:
