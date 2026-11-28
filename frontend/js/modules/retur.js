@@ -305,18 +305,21 @@ async function muatDataReturJual(container) {
 
     area.querySelectorAll('.btn-setujui-rt').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
         const id = btn.getAttribute('data-id');
         const setuju = await showConfirm(
           'Setujui Dokumen Retur Ini?',
           'Menyetujui retur akan mengembalikan kuantitas stok ke gudang, menghitung ulang Moving Average HPP memakai harga snapshot asal, serta menyesuaikan poin member/piutang.'
         );
         if (setuju) {
+          btn.disabled = true;
           try {
             const resA = await apiCall('retur.approve', { id });
             showToast(resA.pesan || 'Retur berhasil disetujui', 'success');
             await muatDataReturJual(container);
           } catch (err) {
             showToast(err.message || 'Gagal menyetujui retur', 'error');
+            btn.disabled = false;
           }
         }
       });
@@ -1233,12 +1236,15 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
 
     $('#btn-tutup-detail-rt', modalBody)?.addEventListener('click', () => modalInstance.close());
 
-    $('#btn-modal-setujui-rt', modalBody)?.addEventListener('click', async () => {
+    const btnModalSetujui = $('#btn-modal-setujui-rt', modalBody);
+    btnModalSetujui?.addEventListener('click', async () => {
+      if (btnModalSetujui.disabled) return;
       const setuju = await showConfirm(
         'Setujui Permohonan Retur Ini?',
         'Stok akan disesuaikan, Moving Average HPP dihitung ulang, dan penyesuaian dana/piutang akan langsung dieksekusi.'
       );
       if (setuju) {
+        btnModalSetujui.disabled = true;
         try {
           const resA = await apiCall('retur.approve', { id: rt.id });
           modalInstance.close();
@@ -1246,6 +1252,7 @@ async function bukaModalDetailRetur(container, returId, onRefresh) {
           if (onRefresh) onRefresh();
         } catch (err) {
           showToast(err.message || 'Gagal menyetujui retur', 'error');
+          btnModalSetujui.disabled = false;
         }
       }
     });
@@ -1296,12 +1303,18 @@ function bukaModalTolakRetur(container, returId, onRefresh) {
 
   $('#form-tolak-rt', modalBody)?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btnTolak = $('#btn-konfirmasi-tolak', modalBody);
+    if (btnTolak && btnTolak.disabled) return;
     const alasan_tolak = $('#alasan-tolak-input', modalBody)?.value.trim();
     if (!alasan_tolak) {
       showToast('Alasan penolakan wajib diisi', 'warning');
       return;
     }
 
+    if (btnTolak) {
+      btnTolak.disabled = true;
+      btnTolak.textContent = 'Memproses...';
+    }
     try {
       const res = await apiCall('retur.reject', { id: returId, alasan_tolak });
       modalInstance.close();
@@ -1309,6 +1322,10 @@ function bukaModalTolakRetur(container, returId, onRefresh) {
       if (onRefresh) onRefresh();
     } catch (err) {
       showToast(err.message || 'Gagal menolak retur', 'error');
+      if (btnTolak) {
+        btnTolak.disabled = false;
+        btnTolak.textContent = 'Tolak Permohonan';
+      }
     }
   });
 }

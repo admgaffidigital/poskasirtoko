@@ -195,6 +195,7 @@ async function muatSupplierList(container, canEdit, query = '') {
     // Event listener hapus
     area.querySelectorAll('.btn-hapus-supplier').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
         const id = btn.getAttribute('data-id');
         const nama = btn.getAttribute('data-nama');
         const yakin = await showConfirm({
@@ -207,12 +208,14 @@ async function muatSupplierList(container, canEdit, query = '') {
 
         if (!yakin) return;
 
+        btn.disabled = true;
         try {
           await apiCall('supplier.delete', { id });
           showToast(`Supplier "${nama}" berhasil dihapus.`, 'success');
           muatSupplierList(container, canEdit, $('#search-supplier', container)?.value.trim() || '');
         } catch (err) {
           showToast(err.message, 'error', 4500);
+          btn.disabled = false;
         }
       });
     });

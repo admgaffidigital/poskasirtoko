@@ -532,33 +532,40 @@ export async function renderProdukModule(container) {
       `
     });
 
+    let sedangProsesBulkStatus = false;
     const terapkanStatus = async (statusAktif) => {
+      if (sedangProsesBulkStatus) return;
+      sedangProsesBulkStatus = true;
       modalSt.close();
       showToast(`Memperbarui status ${terpilih.length} produk...`, 'info', 2000);
-      let sukses = 0;
-      for (const p of terpilih) {
-        try {
-          await apiCall('produk.update', {
-            id: p.id,
-            nama: p.nama,
-            sku: p.sku || '',
-            barcode: p.barcode || '',
-            kategori_id: p.kategori_id || '',
-            satuan_dasar: p.satuan_dasar || 'PCS',
-            hpp: Number(p.hpp || 0),
-            harga_ritel: Number(p.harga_ritel || 0),
-            harga_grosir: Number(p.harga_grosir || p.harga_ritel || 0),
-            min_grosir_qty: Number(p.min_grosir_qty || 1),
-            stok_min: Number(p.stok_min || 0),
-            punya_varian: Boolean(p.punya_varian),
-            foto_url: p.foto_url || '',
-            aktif: statusAktif
-          });
-          sukses++;
-        } catch (_) { }
+      try {
+        let sukses = 0;
+        for (const p of terpilih) {
+          try {
+            await apiCall('produk.update', {
+              id: p.id,
+              nama: p.nama,
+              sku: p.sku || '',
+              barcode: p.barcode || '',
+              kategori_id: p.kategori_id || '',
+              satuan_dasar: p.satuan_dasar || 'PCS',
+              hpp: Number(p.hpp || 0),
+              harga_ritel: Number(p.harga_ritel || 0),
+              harga_grosir: Number(p.harga_grosir || p.harga_ritel || 0),
+              min_grosir_qty: Number(p.min_grosir_qty || 1),
+              stok_min: Number(p.stok_min || 0),
+              punya_varian: Boolean(p.punya_varian),
+              foto_url: p.foto_url || '',
+              aktif: statusAktif
+            });
+            sukses++;
+          } catch (_) { }
+        }
+        showToast(`${sukses} produk berhasil di-${statusAktif ? 'aktifkan' : 'nonaktifkan'}.`, 'success');
+        keluarSelectModePrd();
+      } finally {
+        sedangProsesBulkStatus = false;
       }
-      showToast(`${sukses} produk berhasil di-${statusAktif ? 'aktifkan' : 'nonaktifkan'}.`, 'success');
-      keluarSelectModePrd();
     };
 
     modalSt.el.querySelector('#btn-bulk-set-aktif')?.addEventListener('click', () => terapkanStatus(true));
@@ -610,7 +617,9 @@ export async function renderProdukModule(container) {
   });
 
   // 5. Hapus Massal Produk
-  $('#btn-bulk-prd-hapus', container)?.addEventListener('click', async () => {
+  const btnBulkPrdHapus = $('#btn-bulk-prd-hapus', container);
+  btnBulkPrdHapus?.addEventListener('click', async () => {
+    if (btnBulkPrdHapus.disabled) return;
     const terpilih = Array.from(produkSelectedMap.values());
     if (!terpilih.length) return;
     const setuju = await showConfirm({
@@ -621,16 +630,21 @@ export async function renderProdukModule(container) {
     });
     if (!setuju) return;
 
-    showToast(`Menghapus ${terpilih.length} produk...`, 'info', 2000);
-    let sukses = 0;
-    for (const p of terpilih) {
-      try {
-        await apiCall('produk.delete', { id: p.id });
-        sukses++;
-      } catch (_) { }
+    btnBulkPrdHapus.disabled = true;
+    try {
+      showToast(`Menghapus ${terpilih.length} produk...`, 'info', 2000);
+      let sukses = 0;
+      for (const p of terpilih) {
+        try {
+          await apiCall('produk.delete', { id: p.id });
+          sukses++;
+        } catch (_) { }
+      }
+      showToast(`${sukses} dari ${terpilih.length} produk berhasil dihapus.`, 'success');
+      keluarSelectModePrd();
+    } finally {
+      btnBulkPrdHapus.disabled = false;
     }
-    showToast(`${sukses} dari ${terpilih.length} produk berhasil dihapus.`, 'success');
-    keluarSelectModePrd();
   });
 
   if (canEdit) {
@@ -1053,6 +1067,7 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
 
       area.querySelectorAll('.btn-del-prd').forEach((btn) => {
         btn.addEventListener('click', async () => {
+          if (btn.disabled) return;
           const id = btn.getAttribute('data-id');
           const nama = btn.getAttribute('data-nama');
           const setuju = await showConfirm({
@@ -1063,12 +1078,14 @@ async function muatProduk(container, canEdit, isKasir, isAppend = false) {
           });
           if (!setuju) return;
 
+          btn.disabled = true;
           try {
             await apiCall('produk.delete', { id });
             showToast('Produk berhasil dihapus.', 'success');
             await muatProduk(container, canEdit, isKasir);
           } catch (err) {
             showToast(err.message, 'error');
+            btn.disabled = false;
           }
         });
       });

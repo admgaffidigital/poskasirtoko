@@ -240,7 +240,9 @@ export async function renderKategoriModule(container) {
       renderTabelKategori(container, canEdit);
     });
 
-    container.querySelector('#btn-bulk-kat-hapus')?.addEventListener('click', async () => {
+    const btnBulkKatHapus = container.querySelector('#btn-bulk-kat-hapus');
+    btnBulkKatHapus?.addEventListener('click', async () => {
+      if (btnBulkKatHapus.disabled) return;
       const ids = Array.from(stateKategori.selectedIds);
       if (!ids.length) return;
       const setuju = await showConfirm({
@@ -251,34 +253,39 @@ export async function renderKategoriModule(container) {
       });
       if (!setuju) return;
 
-      // Hapus sub-kategori terlebih dahulu agar kategori induk yang kosong juga bersih
-      const sortedIds = ids.sort((a, b) => {
-        const ka = kategoriCache.find((k) => k.id === a);
-        const kb = kategoriCache.find((k) => k.id === b);
-        return (kb?.parent_id ? 1 : 0) - (ka?.parent_id ? 1 : 0);
-      });
+      btnBulkKatHapus.disabled = true;
+      try {
+        // Hapus sub-kategori terlebih dahulu agar kategori induk yang kosong juga bersih
+        const sortedIds = ids.sort((a, b) => {
+          const ka = kategoriCache.find((k) => k.id === a);
+          const kb = kategoriCache.find((k) => k.id === b);
+          return (kb?.parent_id ? 1 : 0) - (ka?.parent_id ? 1 : 0);
+        });
 
-      let sukses = 0;
-      let gagal = 0;
-      for (const id of sortedIds) {
-        try {
-          await apiCall('kategori.delete', { id });
-          sukses++;
-        } catch (_) {
-          gagal++;
+        let sukses = 0;
+        let gagal = 0;
+        for (const id of sortedIds) {
+          try {
+            await apiCall('kategori.delete', { id });
+            sukses++;
+          } catch (_) {
+            gagal++;
+          }
         }
+        showToast(
+          gagal > 0
+            ? `${sukses} kategori dihapus, ${gagal} dilewati (masih dipakai produk aktif).`
+            : `${sukses} kategori berhasil dihapus.`,
+          sukses > 0 ? 'success' : 'warning',
+          3200
+        );
+        stateKategori.selectMode = false;
+        stateKategori.selectedIds.clear();
+        syncKatBulkBar(container);
+        await muatKategori(container, canEdit);
+      } finally {
+        btnBulkKatHapus.disabled = false;
       }
-      showToast(
-        gagal > 0
-          ? `${sukses} kategori dihapus, ${gagal} dilewati (masih dipakai produk aktif).`
-          : `${sukses} kategori berhasil dihapus.`,
-        sukses > 0 ? 'success' : 'warning',
-        3200
-      );
-      stateKategori.selectMode = false;
-      stateKategori.selectedIds.clear();
-      syncKatBulkBar(container);
-      await muatKategori(container, canEdit);
     });
 
     container.querySelector('#btn-tambah-kategori')?.addEventListener('click', () => {
@@ -757,6 +764,7 @@ function renderTabelKategori(container, canEdit) {
           return;
         }
 
+        if (btn.disabled) return;
         const setuju = await showConfirm({
           title: 'Hapus Kategori',
           message: `Apakah Anda yakin ingin menghapus kategori "${nama}"?`,
@@ -765,12 +773,14 @@ function renderTabelKategori(container, canEdit) {
         });
         if (!setuju) return;
 
+        btn.disabled = true;
         try {
           await apiCall('kategori.delete', { id });
           showToast('Kategori berhasil dihapus.', 'success');
           await muatKategori(container, canEdit);
         } catch (err) {
           showToast(err.message, 'error', 4500);
+          btn.disabled = false;
         }
       });
     });

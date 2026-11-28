@@ -280,7 +280,9 @@ export async function renderPelangganModule(container) {
     });
 
     // Hapus Massal Pelanggan (Owner/Admin)
-    $('#btn-bulk-pel-hapus', container)?.addEventListener('click', async () => {
+    const btnBulkPelHapus = $('#btn-bulk-pel-hapus', container);
+    btnBulkPelHapus?.addEventListener('click', async () => {
+      if (btnBulkPelHapus.disabled) return;
       const terpilih = Array.from(pelangganSelectedMap.values());
       if (!terpilih.length) return;
       const setuju = await showConfirm({
@@ -291,22 +293,27 @@ export async function renderPelangganModule(container) {
       });
       if (!setuju) return;
 
-      let sukses = 0;
-      let gagal = 0;
-      for (const it of terpilih) {
-        try {
-          await apiCall('pelanggan.delete', { id: it.id });
-          sukses++;
-        } catch (_) {
-          gagal++;
+      btnBulkPelHapus.disabled = true;
+      try {
+        let sukses = 0;
+        let gagal = 0;
+        for (const it of terpilih) {
+          try {
+            await apiCall('pelanggan.delete', { id: it.id });
+            sukses++;
+          } catch (_) {
+            gagal++;
+          }
         }
+        showToast(
+          gagal > 0 ? `${sukses} pelanggan dihapus, ${gagal} dilewati (masih ada piutang aktif).` : `${sukses} pelanggan berhasil dihapus.`,
+          sukses > 0 ? 'success' : 'warning',
+          3200
+        );
+        keluarSelectPel();
+      } finally {
+        btnBulkPelHapus.disabled = false;
       }
-      showToast(
-        gagal > 0 ? `${sukses} pelanggan dihapus, ${gagal} dilewati (masih ada piutang aktif).` : `${sukses} pelanggan berhasil dihapus.`,
-        sukses > 0 ? 'success' : 'warning',
-        3200
-      );
-      keluarSelectPel();
     });
 
     $('#btn-tambah-pelanggan', container)?.addEventListener('click', () => {
@@ -555,6 +562,7 @@ async function muatDataPelanggan(container) {
 
     area.querySelectorAll('.btn-hapus-pel').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
         const id = btn.getAttribute('data-id');
         const nama = btn.getAttribute('data-nama');
         const setuju = await showConfirm(
@@ -562,12 +570,14 @@ async function muatDataPelanggan(container) {
           'Data pelanggan akan dinonaktifkan. Penghapusan akan ditolak otomatis jika pelanggan masih memiliki saldo piutang aktif.'
         );
         if (setuju) {
+          btn.disabled = true;
           try {
             const resH = await apiCall('pelanggan.delete', { id });
             showToast(resH.pesan || 'Pelanggan berhasil dihapus', 'success');
             await muatDataPelanggan(container);
           } catch (err) {
             showToast(err.message || 'Gagal menghapus pelanggan', 'error');
+            btn.disabled = false;
           }
         }
       });

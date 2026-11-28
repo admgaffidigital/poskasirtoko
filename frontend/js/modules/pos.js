@@ -4565,6 +4565,7 @@ export function renderPosModule(container) {
 
       elRoot.querySelectorAll('.btn-rab-hapus').forEach((btn) => {
         btn.addEventListener('click', async () => {
+          if (btn.disabled) return;
           const id = btn.getAttribute('data-id');
           const yakin = await showConfirm({
             title: 'Hapus Penawaran Harga',
@@ -4573,6 +4574,7 @@ export function renderPosModule(container) {
             danger: true
           });
           if (!yakin) return;
+          btn.disabled = true;
           try {
             await apiCall('penawaran.delete', { id });
             rabItems = rabItems.filter((x) => x.id !== id);
@@ -4580,6 +4582,7 @@ export function renderPosModule(container) {
             showToast('Penawaran berhasil dihapus.', 'info');
           } catch (err) {
             showToast(err.message || 'Gagal menghapus penawaran', 'error');
+            btn.disabled = false;
           }
         });
       });

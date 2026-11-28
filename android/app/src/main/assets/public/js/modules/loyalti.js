@@ -313,16 +313,19 @@ async function muatDataHadiah(container) {
 
     area.querySelectorAll('.btn-hapus-hadiah').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
         const id = btn.getAttribute('data-id');
         const nama = btn.getAttribute('data-nama');
         const setuju = await showConfirm(`Hapus Hadiah "${nama}"?`, 'Item hadiah akan dihapus dari katalog penukaran.');
         if (setuju) {
+          btn.disabled = true;
           try {
             const resH = await apiCall('hadiah.delete', { id });
             showToast(resH.pesan || 'Hadiah berhasil dihapus', 'success');
             await muatDataHadiah(container);
           } catch (err) {
             showToast(err.message || 'Gagal menghapus hadiah', 'error');
+            btn.disabled = false;
           }
         }
       });

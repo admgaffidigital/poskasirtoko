@@ -16,6 +16,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.161] - 2026-11-28
+### Diperbaiki — Audit Mendalam Frontend & Backend: Proteksi Anti Double-Submit di 10 Modul Kritis
+- **[RETUR] [OPNAME] [PRODUK] [PELANGGAN] [SUPPLIER] [KATEGORI] [POS-JUAL] [AUTH] [MEMBER] Proteksi Anti Double-Tap / Double-Submit Menyeluruh**:
+  - Menambahkan pengaman tombol aktif (`btn.disabled` / guard state + pemulihan otomatis saat gagal) pada 15 aksi mutasi penting yang sebelumnya berisiko terpicu ganda saat ketuk cepat di HP Android: `retur.approve` (tabel & detail), `retur.reject`, `opname.approve`, `kartuStok.delete`, `auth.gantiPin`, `penawaran.delete`, `hadiah.delete`, `pelanggan.delete` (satuan & massal), `supplier.delete`, `kategori.delete` (satuan & massal), serta `produk.delete` (satuan & massal) dan `produk.update` massal.
+  - Memverifikasi 100% paritas 96 aksi API frontend terhadap 106 rute `RUTE` backend, 100% kunci `tulis: true` (`denganKunci_`), 100% proteksi Tutup Buku (`cekPeriodeTerkunci_`) pada mutasi keuangan/stok, 0 bug tanggal UTC, dan 0 kebocoran `err.message` tanpa `escapeHtml`.
+
 ## [1.0.160] - 2026-11-28
 ### Diperbaiki & Disempurnakan — Perbaikan Bug Tersembunyi & Poles Modul Eksisting (Tanpa Fitur Baru)
 - **[UI] [POS-JUAL] Perbaikan Toast Error & Dialog Konfirmasi (`ui.js`, `biaya.js`, `pos.js`)**:

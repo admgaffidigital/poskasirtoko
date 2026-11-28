@@ -241,6 +241,8 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
   const form = $('#form-ganti-pin', modal.el);
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    if (btnSubmit && btnSubmit.disabled) return;
     const pinLama = $('#pin-lama', form).value.trim();
     const pinBaru = $('#pin-baru', form).value.trim();
     const pinKonfirm = $('#pin-baru-konfirm', form).value.trim();
@@ -255,6 +257,11 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
     }
 
     const tokenAktif = tokenLangsung || store.get('token');
+    const teksAsli = btnSubmit ? btnSubmit.textContent : '';
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = 'Menyimpan PIN...';
+    }
 
     try {
       await apiCall('auth.gantiPin', { pin_lama: pinLama, pin_baru: pinBaru }, { token: tokenAktif });
@@ -273,6 +280,10 @@ export function tampilkanDialogWajibGantiPin(tokenLangsung = null, onSuccess = n
       }
     } catch (err) {
       showToast(err.message, 'error', 4500);
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = teksAsli;
+      }
 
       // Jika token sesi sudah kedaluwarsa atau tidak valid, kembalikan ke modal login
       if (err.code === 'AUTH_INVALID' || err.code === 'AUTH_REQUIRED') {

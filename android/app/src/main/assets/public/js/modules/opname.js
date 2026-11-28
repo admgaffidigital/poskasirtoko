@@ -192,6 +192,7 @@ async function muatDataOpname(container, canEdit) {
     // Event listener setujui draft
     area.querySelectorAll('.btn-approve-opname').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
         const id = btn.getAttribute('data-id');
         const no = btn.getAttribute('data-no');
         const setuju = await showConfirm({
@@ -203,12 +204,14 @@ async function muatDataOpname(container, canEdit) {
 
         if (!setuju) return;
 
+        btn.disabled = true;
         try {
           await apiCall('opname.approve', { id });
           showToast(`Dokumen opname ${no} berhasil disetujui.`, 'success');
           muatDataOpname(container, canEdit);
         } catch (err) {
           showToast(err.message, 'error', 4500);
+          btn.disabled = false;
         }
       });
     });

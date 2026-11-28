@@ -363,6 +363,7 @@ async function muatDataKartuStok(container) {
     if (isOwner) {
       area.querySelectorAll('.btn-del-ks').forEach((btn) => {
         btn.addEventListener('click', async () => {
+          if (btn.disabled) return;
           const id = btn.getAttribute('data-id');
           const nama = btn.getAttribute('data-nama');
           const ref = btn.getAttribute('data-ref');
@@ -376,12 +377,14 @@ async function muatDataKartuStok(container) {
 
           if (!setuju) return;
 
+          btn.disabled = true;
           try {
             await apiCall('kartuStok.delete', { id });
             showToast('Catatan mutasi berhasil dihapus.', 'success');
             await muatDataKartuStok(container);
           } catch (err) {
             showToast(err.message || 'Gagal menghapus catatan mutasi.', 'error');
+            btn.disabled = false;
           }
         });
       });
