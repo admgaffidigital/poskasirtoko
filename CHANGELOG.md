@@ -16,6 +16,13 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Unreleased]
 
+## [1.0.163] - 2026-11-28
+### Ditambahkan — Lengkapi Visualisasi Grafik & Analisa Cerdas ke 100% Seluruh 9 Tab Laporan (Tutup Bulanan, Shift Kasir, & Pengiriman)
+- **[DASHBOARD] [UI] Visualisasi Lengkap 3 Tab Sisa (`laporan.js`)**:
+  - **Tutup Bulanan**: menambahkan kotak **Evaluasi & Rekomendasi Eksekutif Bulanan** otomatis (menjelaskan performa margin, penyebab arus kas defisit/surplus, porsi modal tertahan Slow-Moving, dan posisi Piutang vs Hutang), **Diagram Donat Struktur Omset (HPP vs Biaya vs Laba)**, **Diagram Donat Produktivitas Aset Stok (Aktif vs Slow-Moving)**, **Perbandingan Arus Kas Bulanan**, **Perbandingan Piutang vs Hutang**, serta bar proporsi pada Top 10 Produk Terlaris.
+  - **Shift Kasir**: menambahkan **Diagram Donat Disiplin Laci Shift** (Pas/Lebih/Kurang/Aktif) dan **Grafik Batang Omset Shift per Kasir**.
+  - **Pengiriman**: menambahkan **Diagram Donat Status Pengiriman & Penyelesaian** (Selesai/Diantar/Kirim Sebagian/Menunggu/Diretur).
+
 ## [1.0.162] - 2026-11-28
 ### Ditambahkan — Visualisasi Laporan Lengkap Pure SVG (Diagram Donat, Grafik Batang, Waterfall Laba Rugi, & Analisa Cerdas)
 - **[DASHBOARD] [UI] Pustaka Grafik Pure SVG Ringan (`charts.js`, `components.css`, `laporan.js`, `sw.js`)**:

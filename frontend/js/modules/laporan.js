@@ -2639,6 +2639,42 @@ function renderTabShiftKasir(container, data, rootContainer) {
     ? 'Rp 0 (Pas)'
     : (totalSelisih > 0 ? `+${formatRupiah(totalSelisih)}` : `-${formatRupiah(Math.abs(totalSelisih))}`);
 
+  // Visualisasi Shift Kasir: Donat Disiplin Laci & Grafik Omset per Kasir
+  const donutDisiplinShiftHtml = renderDonutChart({
+    items: [
+      { label: 'Pas (Rp 0)', value: Number(r.jumlah_pas || 0), color: 'var(--success)', sub: 'Sesuai sistem' },
+      { label: 'Lebih (+)', value: Number(r.jumlah_lebih || 0), color: 'var(--info)', sub: 'Kas fisik > sistem' },
+      { label: 'Kurang (-)', value: Number(r.jumlah_kurang || 0), color: 'var(--danger)', sub: 'Perlu cek kasir' },
+      { label: 'Shift Aktif', value: Number(r.shift_aktif || 0), color: 'var(--warning)', sub: 'Belum ditutup' }
+    ],
+    centerLabel: 'Total Shift',
+    centerValue: `${formatAngka(r.total_shift || items.length)}`,
+    valueFormatter: (v) => `${formatAngka(v)} shift`,
+    emptyText: 'Belum ada data shift pada periode ini'
+  });
+
+  const shiftKasirMap = new Map();
+  items.forEach((sh) => {
+    const nama = String(sh.kasir_nama || 'Kasir').trim() || 'Kasir';
+    const cur = shiftKasirMap.get(nama) || { label: nama, value: 0, count: 0 };
+    cur.value += Math.max(0, Number(sh.total_penjualan || 0));
+    cur.count++;
+    shiftKasirMap.set(nama, cur);
+  });
+
+  const barShiftKasirHtml = renderHorizontalBars({
+    items: Array.from(shiftKasirMap.values())
+      .sort((a, b) => b.value - a.value)
+      .map((k, idx) => ({
+        label: k.label,
+        value: k.value,
+        sub: `(${formatAngka(k.count)} shift)`,
+        color: CHART_PALETTE[idx % CHART_PALETTE.length]
+      })),
+    emptyText: 'Belum ada omset shift untuk dibandingkan',
+    maxItems: 6
+  });
+
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <div class="card-grid stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
@@ -2679,6 +2715,22 @@ function renderTabShiftKasir(container, data, rootContainer) {
           </div>
           <div class="stat-card-value mono" style="color: ${warnaSelisih};">${teksSelisihTotal}</div>
           <div class="stat-card-desc">${r.jumlah_pas || 0} pas • ${r.jumlah_lebih || 0} lebih • ${r.jumlah_kurang || 0} kurang</div>
+        </div>
+      </div>
+
+      <!-- Visualisasi Audit Shift Kasir -->
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.checkCircle} Diagram Disiplin Laci Shift</h3>
+          </div>
+          <div class="card-body">${donutDisiplinShiftHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.users} Omset Shift per Kasir</h3>
+          </div>
+          <div class="card-body">${barShiftKasirHtml}</div>
         </div>
       </div>
 
@@ -2914,6 +2966,23 @@ function renderTabPengiriman(container, data, rootContainer) {
     return `<span class="badge badge-secondary">${escapeHtml(st || '-')}</span>`;
   };
 
+  // Visualisasi Status Antrean Pengiriman
+  const jmlDireturAntar = items.filter((k) => k.status_antar === 'diretur' || k.status_retur === 'penuh').length;
+  const totalAntrean = Number(r.total_antrean || items.length || 0);
+  const donutPengirimanHtml = renderDonutChart({
+    items: [
+      { label: 'Selesai Diterima', value: Number(r.selesai || 0), color: 'var(--success)' },
+      { label: 'Sedang Diantar', value: Number(r.diantar || 0), color: 'var(--info)' },
+      { label: 'Kirim Sebagian (Bon)', value: Number(r.sebagian || 0), color: 'var(--primary)' },
+      { label: 'Menunggu Kirim', value: Number(r.belum_dikirim || 0), color: 'var(--warning)' },
+      { label: 'Diretur Penuh', value: jmlDireturAntar, color: 'var(--danger)' }
+    ],
+    centerLabel: 'Pengiriman',
+    centerValue: `${formatAngka(totalAntrean)} nota`,
+    valueFormatter: (v) => `${formatAngka(v)} nota`,
+    emptyText: 'Belum ada antrean pengiriman pada periode ini'
+  });
+
   container.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <div class="card-grid stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
@@ -2952,6 +3021,14 @@ function renderTabPengiriman(container, data, rootContainer) {
           <div class="stat-card-value mono" style="color: var(--success);">${formatAngka(r.selesai || 0)} Nota</div>
           <div class="stat-card-desc">Total ${formatAngka(r.total_antrean || 0)} pengiriman</div>
         </div>
+      </div>
+
+      <!-- Visualisasi Progress Antrean Pengiriman -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">${ICONS.truck} Diagram Status Pengiriman &amp; Penyelesaian</h3>
+        </div>
+        <div class="card-body">${donutPengirimanHtml}</div>
       </div>
 
       <div class="card">
@@ -3226,6 +3303,91 @@ function renderTabTutupBuku(target, data, rootContainer) {
   const prevD = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1);
   const ymLalu = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}`;
 
+  // Visualisasi & Analisa Cerdas Evaluasi Tutup Buku Bulanan
+  const tbOmset = Number(r.omset_bersih || 0);
+  const tbLabaKotor = Number(r.laba_kotor || 0);
+  const tbHpp = Math.max(0, Number(r.total_hpp !== undefined ? r.total_hpp : (tbOmset - tbLabaKotor)));
+  const tbBiaya = Number(r.total_biaya || 0);
+  const tbLabaBersih = Number(r.laba_bersih || 0);
+  const tbMargin = tbOmset > 0 ? Math.round((tbLabaBersih / tbOmset) * 1000) / 10 : Number(r.margin_persen || 0);
+  const tbValuasiStok = Number(r.valuasi_stok || 0);
+  const tbSlowVal = Math.min(tbValuasiStok, Math.max(0, Number(data?.nilai_slow_moving || 0)));
+  const tbStokProduktif = Math.max(0, tbValuasiStok - tbSlowVal);
+  const tbSlowPct = tbValuasiStok > 0 ? Math.round((tbSlowVal / tbValuasiStok) * 1000) / 10 : 0;
+  const tbTopList = Array.isArray(data?.top_produk_terlaris) ? data.top_produk_terlaris : [];
+  const tbMaxTopOmset = Math.max(...tbTopList.map((p) => Number(p.omset || 0)), 1);
+
+  const tbBullets = [];
+  if (tbOmset > 0) {
+    const statusProf = tbMargin >= 20 ? 'Sangat Sehat' : (tbMargin >= 10 ? 'Sehat' : (tbMargin > 0 ? 'Tipis' : 'Rugi'));
+    tbBullets.push(`Performa ${escapeHtml(labelBln)}: Omset bersih <strong>${formatRupiah(tbOmset)}</strong> (${formatAngka(r.total_transaksi || 0)} nota) menghasilkan laba bersih <strong>${formatRupiah(tbLabaBersih)}</strong> (margin bersih <strong>${tbMargin}%</strong> — ${statusProf}).`);
+  } else {
+    tbBullets.push(`Belum ada transaksi penjualan pada ${escapeHtml(labelBln)}.`);
+  }
+  const tbNetKas = Number(r.arus_kas_bersih || 0);
+  if (tbNetKas < 0 && Number(r.total_pembelian || 0) > tbOmset) {
+    tbBullets.push(`Arus kas bersih defisit <strong>${formatRupiah(Math.abs(tbNetKas))}</strong> terutama karena belanja restock barang (<strong>${formatRupiah(r.total_pembelian || 0)}</strong>) lebih tinggi dari omset bulan ini — modal berubah menjadi stok aset.`);
+  } else if (Number(r.arus_kas_masuk || 0) > 0 || Number(r.arus_kas_keluar || 0) > 0) {
+    tbBullets.push(`Arus kas bulan ini ${tbNetKas >= 0 ? 'surplus' : 'defisit'} <strong>${formatRupiah(Math.abs(tbNetKas))}</strong> (Masuk ${formatRupiah(r.arus_kas_masuk || 0)} vs Keluar ${formatRupiah(r.arus_kas_keluar || 0)}).`);
+  }
+  if (tbSlowVal > 0 && tbValuasiStok > 0) {
+    tbBullets.push(`Sebesar <strong>${tbSlowPct}%</strong> dari total aset stok (<strong>${formatRupiah(tbSlowVal)}</strong> pada ${formatAngka(data?.total_slow_moving || 0)} item) belum bergerak terjual — jadikan prioritas promo / paket diskon.`);
+  }
+  if (Number(r.saldo_piutang || 0) > 0 || Number(r.saldo_hutang || 0) > 0) {
+    tbBullets.push(`Posisi tempo aktif: Piutang pelanggan <strong>${formatRupiah(r.saldo_piutang || 0)}</strong> berbanding Hutang supplier <strong>${formatRupiah(r.saldo_hutang || 0)}</strong>.`);
+  }
+
+  const tbTone = tbOmset <= 0 ? 'info' : (tbMargin >= 10 ? 'success' : (tbMargin > 0 ? 'warning' : 'danger'));
+  const tbBadge = tbOmset <= 0 ? `Evaluasi ${labelBln}` : `Margin Bersih ${tbMargin}%`;
+
+  const insightTbHtml = renderInsightBox({
+    title: `Evaluasi & Rekomendasi Eksekutif (${labelBln})`,
+    badge: tbBadge,
+    badgeTone: tbTone,
+    bullets: tbBullets
+  });
+
+  const donutStrukturTbHtml = renderDonutChart({
+    items: [
+      { label: 'Modal Barang (HPP)', value: tbHpp, color: 'var(--warning)' },
+      { label: 'Biaya Operasional', value: tbBiaya, color: 'var(--danger)' },
+      ...(tbLabaBersih > 0 ? [{ label: 'Laba Bersih Riil', value: tbLabaBersih, color: 'var(--success)' }] : [])
+    ],
+    centerLabel: 'Omset Bersih',
+    centerValue: singkatNominalChart(tbOmset),
+    emptyText: 'Belum ada omset pada bulan ini'
+  });
+
+  const donutStokTbHtml = renderDonutChart({
+    items: [
+      { label: 'Stok Produktif (Terjual)', value: tbStokProduktif, color: 'var(--success)', sub: 'Stok berputar aktif' },
+      { label: 'Modal Slow-Moving', value: tbSlowVal, color: 'var(--warning)', sub: `${formatAngka(data?.total_slow_moving || 0)} item (0 terjual)` }
+    ],
+    centerLabel: 'Aset Stok',
+    centerValue: singkatNominalChart(tbValuasiStok),
+    emptyText: 'Belum ada valuasi aset stok'
+  });
+
+  const compareKasTbHtml = renderComparisonBars({
+    leftLabel: `Kas Masuk (${labelBln})`,
+    leftValue: r.arus_kas_masuk || 0,
+    leftColor: 'var(--success)',
+    rightLabel: `Kas Keluar (${labelBln})`,
+    rightValue: r.arus_kas_keluar || 0,
+    rightColor: 'var(--danger)',
+    netLabel: 'Saldo Arus Kas Bersih Bulanan'
+  });
+
+  const compareTempoTbHtml = renderComparisonBars({
+    leftLabel: 'Piutang Pelanggan (Akan Masuk)',
+    leftValue: r.saldo_piutang || 0,
+    leftColor: 'var(--info)',
+    rightLabel: 'Hutang Supplier (Kewajiban)',
+    rightValue: r.saldo_hutang || 0,
+    rightColor: 'var(--danger)',
+    netLabel: 'Selisih Posisi Piutang vs Hutang'
+  });
+
   target.innerHTML = `
     <div class="stack" style="gap: var(--sp-4);">
       <!-- Baris Kontrol Periode Bulan & Aksi Tutup Buku -->
@@ -3345,15 +3507,51 @@ function renderTabTutupBuku(target, data, rootContainer) {
         </div>
       </div>
 
+      <!-- Evaluasi Cerdas Bulanan -->
+      ${insightTbHtml}
+
+      <!-- Visualisasi Diagram Donat & Perbandingan Bulanan -->
+      <div class="lap-grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.chart} Diagram Struktur Omset (${escapeHtml(labelBln)})</h3>
+          </div>
+          <div class="card-body">${donutStrukturTbHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.box} Produktivitas Aset Stok (Aktif vs Slow-Moving)</h3>
+          </div>
+          <div class="card-body">${donutStokTbHtml}</div>
+        </div>
+      </div>
+
+      <div class="lap-grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.wallet} Perbandingan Arus Kas Bulanan</h3>
+          </div>
+          <div class="card-body">${compareKasTbHtml}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">${ICONS.clipboard} Posisi Piutang Pelanggan vs Hutang Supplier</h3>
+          </div>
+          <div class="card-body">${compareTempoTbHtml}</div>
+        </div>
+      </div>
+
       <!-- Top 10 Produk Terlaris & Barang Slow-Moving (Native Ranking List — Bebas Terpotong) -->
       <div class="lap-grid-2col">
         <div class="card">
           <div class="card-header" style="justify-content: space-between; align-items: center; gap: var(--sp-2);">
             <h3 class="card-title">${ICONS.award} Top 10 Produk Terlaris (${escapeHtml(labelBln)})</h3>
-            <span class="badge badge-info badge-sm">Top ${(data?.top_produk_terlaris || []).length}</span>
+            <span class="badge badge-info badge-sm">Top ${tbTopList.length}</span>
           </div>
           <div class="dash-list" style="max-height: 440px; overflow-y: auto;">
-            ${(data?.top_produk_terlaris || []).length ? data.top_produk_terlaris.map((p, idx) => `
+            ${tbTopList.length ? tbTopList.map((p, idx) => {
+              const barPct = Math.max(6, Math.round((Number(p.omset || 0) / tbMaxTopOmset) * 100));
+              return `
               <div class="dash-row">
                 <div class="dash-rank ${idx < 3 ? `rank-${idx + 1}` : ''}">${idx + 1}</div>
                 <div class="dash-row-main">
@@ -3363,13 +3561,15 @@ function renderTabTutupBuku(target, data, rootContainer) {
                     <span>•</span>
                     <span>Laba <b class="text-success">${formatRupiah(p.laba)}</b></span>
                   </div>
+                  <div class="dash-mini-bar"><div class="dash-mini-bar-fill" style="width: ${barPct}%;"></div></div>
                 </div>
                 <div class="dash-row-right">
                   <div class="dash-row-val text-primary">${formatRupiah(p.omset)}</div>
                   <div class="text-2xs text-muted">Omset</div>
                 </div>
               </div>
-            `).join('') : '<div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan pada bulan ini.</div>'}
+            `;
+            }).join('') : '<div class="text-xs text-muted text-center" style="padding: var(--sp-5);">Belum ada penjualan pada bulan ini.</div>'}
           </div>
         </div>
 
